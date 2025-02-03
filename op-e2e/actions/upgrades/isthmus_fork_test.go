@@ -287,10 +287,6 @@ func verifyIsthmusHeaderWithdrawalsRoot(gt *testing.T, rpcCl client.RPC, header 
 	}
 }
 
-var (
-	blockHashesContractCodeHash = common.HexToHash("0x6e49e66782037c0555897870e29fa5e552daf4719552131a0abce779daec0a5d")
-)
-
 func TestIsthmusNetworkUpgradeTransactions(gt *testing.T) {
 	t := helpers.NewDefaultTesting(gt)
 	dp := e2eutils.MakeDeployParams(t, helpers.DefaultRollupTestParams())
@@ -319,7 +315,7 @@ func TestIsthmusNetworkUpgradeTransactions(gt *testing.T) {
 	sequencer.ActL2PipelineFull(t)
 	verifier.ActL2PipelineFull(t)
 
-	// Build to the ecotone block
+	// Build to the isthmus block
 	sequencer.ActBuildL2ToIsthmus(t)
 
 	// get latest block
@@ -328,14 +324,10 @@ func TestIsthmusNetworkUpgradeTransactions(gt *testing.T) {
 	require.Equal(t, sequencer.L2Unsafe().Number, latestBlock.Number().Uint64())
 
 	transactions := latestBlock.Transactions()
+
 	// L1Block: 1 set-L1-info + 1 deploy
 	// See [derive.IsthmusNetworkUpgradeTransactions]
 	require.Equal(t, 2, len(transactions))
-
-	// l1Info, err := derive.L1BlockInfoFromBytes(sd.RollupCfg, latestBlock.Time(), transactions[0].Data())
-	// require.NoError(t, err)
-	// require.Equal(t, derive.L1InfoBedrockLen, len(transactions[0].Data()))
-	// require.Nil(t, l1Info.BlobBaseFee)
 
 	// Contract deployment transaction
 	txn := transactions[1]
@@ -350,94 +342,29 @@ func TestIsthmusNetworkUpgradeTransactions(gt *testing.T) {
 	code := verifyCodeHashMatches(t, ethCl, predeploys.EIP2935ContractAddr, predeploys.EIP2935ContractCodeHash)
 	require.Equal(t, predeploys.EIP2935ContractCode, code)
 
-	// TODO[JULIAN]: check recent block hashes
+	// Test that the beacon-block-root has been set
+	checkRecentBlockHash := func(blockNumber uint64, expectedHash common.Hash, msg string) {
+		historyBufferLength := uint64(8191)
+		bufferIdx := common.BigToHash(new(big.Int).SetUint64(blockNumber % historyBufferLength))
 
-	// // Test that the beacon-block-root has been set
-	// checkBeaconBlockRoot := func(timestamp uint64, expectedHash common.Hash, expectedTime uint64, msg string) {
-	// 	historyBufferLength := uint64(8191)
-	// 	rootIdx := common.BigToHash(new(big.Int).SetUint64((timestamp % historyBufferLength) + historyBufferLength))
-	// 	timeIdx := common.BigToHash(new(big.Int).SetUint64(timestamp % historyBufferLength))
+		rootValue, err := ethCl.StorageAt(context.Background(), predeploys.EIP2935ContractAddr, bufferIdx, nil)
+		require.NoError(t, err)
+		require.Equal(t, expectedHash, common.BytesToHash(rootValue), msg)
+	}
 
-	// 	rootValue, err := ethCl.StorageAt(context.Background(), predeploys.EIP4788ContractAddr, rootIdx, nil)
-	// 	require.NoError(t, err)
-	// 	require.Equal(t, expectedHash, common.BytesToHash(rootValue), msg)
+	// Legacy check:
+	// > The first block is an exception in upgrade-networks,
+	// > since the recent-block-hash contract isn't there at Isthmus activation,
+	// > and the recent-block-hash insertion is processed at the start of the block before deposit txs.
+	// > If the contract was permissionlessly deployed before, the contract storage will be updated (but not in this test).
+	checkRecentBlockHash(latestBlock.NumberU64(), common.Hash{}, "isthmus activation block has no data yet (since contract wasn't there)")
 
-	// 	timeValue, err := ethCl.StorageAt(context.Background(), predeploys.EIP4788ContractAddr, timeIdx, nil)
-	// 	require.NoError(t, err)
-	// 	timeBig := new(big.Int).SetBytes(timeValue)
-	// 	require.True(t, timeBig.IsUint64())
-	// 	require.Equal(t, expectedTime, timeBig.Uint64(), msg)
-	// }
-	// // The header will always have the beacon-block-root, at the very start.
-	// require.NotNil(t, latestBlock.BeaconRoot())
-	// require.Equal(t, *latestBlock.BeaconRoot(), common.Hash{},
-	// 	"L1 genesis block has zeroed parent-beacon-block-root, since it has no parent block, and that propagates into L2")
-	// // Legacy check:
-	// // > The first block is an exception in upgrade-networks,
-	// // > since the beacon-block root contract isn't there at Ecotone activation,
-	// // > and the beacon-block-root insertion is processed at the start of the block before deposit txs.
-	// // > If the contract was permissionlessly deployed before, the contract storage will be updated however.
-	// // > checkBeaconBlockRoot(latestBlock.Time(), common.Hash{}, 0, "ecotone activation block has no data yet (since contract wasn't there)")
-	// // Note: 4788 is now installed as preinstall, and thus always there.
-	// checkBeaconBlockRoot(latestBlock.Time(), common.Hash{}, latestBlock.Time(), "4788 lookup of first cancun block is 0 hash")
+	// Build empty L2 block, to pass Isthmus activation
+	sequencer.ActL2StartBlock(t)
+	sequencer.ActL2EndBlock(t)
 
-	// // Build empty L2 block, to pass ecotone activation
-	// sequencer.ActL2StartBlock(t)
-	// sequencer.ActL2EndBlock(t)
-
-	// // Test the L2 block after activation: it should have data in the contract storage now
-	// latestBlock, err = ethCl.BlockByNumber(context.Background(), nil)
-	// require.NoError(t, err)
-	// require.NotNil(t, latestBlock.BeaconRoot())
-	// firstBeaconBlockRoot := *latestBlock.BeaconRoot()
-	// checkBeaconBlockRoot(latestBlock.Time(), *latestBlock.BeaconRoot(), latestBlock.Time(), "post-activation")
-
-	// // require.again, now that we are past activation
-	// _, err = gasPriceOracle.Scalar(nil)
-	// require.ErrorContains(t, err, "scalar() is deprecated")
-
-	// // test if the migrated scalar matches the deploy config
-	// basefeeScalar, err := gasPriceOracle.BaseFeeScalar(nil)
-	// require.NoError(t, err)
-	// require.Equal(t, uint64(basefeeScalar), dp.DeployConfig.GasPriceOracleScalar, "must match deploy config")
-
-	// cost, err = gasPriceOracle.GetL1Fee(nil, []byte{0, 1, 2, 3, 4})
-	// require.NoError(t, err)
-	// // The GPO getL1Fee contract returns the L1 fee with approximate signature overhead pre-included,
-	// // like the pre-regolith L1 fee. We do the full fee check below. Just sanity check it is not zero anymore first.
-	// require.Greater(t, cost.Uint64(), uint64(0), "expecting non-zero scalars after activation block")
-
-	// // Get L1Block info
-	// l1Block, err := bindings.NewL1BlockCaller(predeploys.L1BlockAddr, ethCl)
-	// require.NoError(t, err)
-	// l1BlockInfo, err := l1Block.Timestamp(nil)
-	// require.NoError(t, err)
-	// require.Greater(t, l1BlockInfo, uint64(0))
-
-	// l1OriginBlock, err := miner.EthClient().BlockByHash(context.Background(), sequencer.L2Unsafe().L1Origin.Hash)
-	// require.NoError(t, err)
-	// l1Basefee, err := l1Block.Basefee(nil)
-	// require.NoError(t, err)
-	// require.Equal(t, l1OriginBlock.BaseFee().Uint64(), l1Basefee.Uint64(), "basefee must match")
-
-	// // calldataGas*(l1BaseFee*16*l1BaseFeeScalar + l1BlobBaseFee*l1BlobBaseFeeScalar)/16e6
-	// // _getCalldataGas in GPO adds the cost of 68 non-zero bytes for signature/rlp overhead.
-	// calldataGas := big.NewInt(4*16 + 1*4 + 68*16)
-	// expectedL1Fee := new(big.Int).Mul(calldataGas, l1Basefee)
-	// expectedL1Fee = expectedL1Fee.Mul(expectedL1Fee, big.NewInt(16))
-	// expectedL1Fee = expectedL1Fee.Mul(expectedL1Fee, new(big.Int).SetUint64(uint64(basefeeScalar)))
-	// expectedL1Fee = expectedL1Fee.Div(expectedL1Fee, big.NewInt(16e6))
-	// require.Equal(t, expectedL1Fee, cost, "expecting cost based on regular base fee scalar alone")
-
-	// // build forward, incorporate new L1 data
-	// miner.ActEmptyBlock(t)
-	// sequencer.ActL1HeadSignal(t)
-	// sequencer.ActBuildToL1Head(t)
-
-	// // Contract storage should be updated now, different than before
-	// latestBlock, err = ethCl.BlockByNumber(context.Background(), nil)
-	// require.NoError(t, err)
-	// require.NotNil(t, latestBlock.BeaconRoot())
-	// require.NotEqual(t, firstBeaconBlockRoot, *latestBlock.BeaconRoot())
-	// checkBeaconBlockRoot(latestBlock.Time(), *latestBlock.BeaconRoot(), latestBlock.Time(), "updates on new L1 data")
+	// Test the L2 block after activation: it should have the most recent block hash
+	latestBlock, err = ethCl.BlockByNumber(context.Background(), nil)
+	require.NoError(t, err)
+	checkRecentBlockHash(latestBlock.NumberU64()-1, latestBlock.Header().ParentHash, "post-activation")
 }
