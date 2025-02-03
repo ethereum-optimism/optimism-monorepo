@@ -90,13 +90,20 @@ func (db *DB) Rewind(target types.DerivedBlockSealPair, including bool) error {
 	return db.rewindLocked(target, including)
 }
 
-// RewindToL2 rewinds to the first entry where the L2 block with the given number was derived.
-func (db *DB) RewindToL2(derived uint64) error {
+// RewindToScope rewinds the DB to the last entry with
+// a derivedFrom value matching the given scope (inclusive, scope is retained in DB).
+// Note that this drop L1 blocks that resulted in a previously invalidated local-safe block.
+// This returns ErrFuture if the block is newer than the last known block.
+// This returns ErrConflict if a different block at the given height is known.
+func (db *DB) RewindToScope(scope eth.BlockID) error {
 	db.rwLock.Lock()
 	defer db.rwLock.Unlock()
-	_, link, err := db.firstDerivedFrom(derived)
+	_, link, err := db.lastDerivedAt(scope.Number)
 	if err != nil {
-		return fmt.Errorf("failed to find first derived-from %d: %w", derived, err)
+		return fmt.Errorf("failed to find last derived %d: %w", scope.Number, err)
+	}
+	if link.derivedFrom.ID() != scope {
+		return fmt.Errorf("found derived-from %s but expected %s: %w", link.derivedFrom, scope, types.ErrConflict)
 	}
 	return db.rewindLocked(types.DerivedBlockSealPair{
 		DerivedFrom: link.derivedFrom,
@@ -104,13 +111,17 @@ func (db *DB) RewindToL2(derived uint64) error {
 	}, false)
 }
 
-// RewindToL1 rewinds to the last entry that was derived from a L1 block with the given block number.
-func (db *DB) RewindToL1(derivedFrom uint64) error {
+// RewindToFirstDerived rewinds to the first time
+// when v was derived (inclusive, v is retained in DB).
+func (db *DB) RewindToFirstDerived(v eth.BlockID) error {
 	db.rwLock.Lock()
 	defer db.rwLock.Unlock()
-	_, link, err := db.lastDerivedAt(derivedFrom)
+	_, link, err := db.firstDerivedFrom(v.Number)
 	if err != nil {
-		return fmt.Errorf("failed to find last derived %d: %w", derivedFrom, err)
+		return fmt.Errorf("failed to find when %d was first derived: %w", v.Number, err)
+	}
+	if link.derived.ID() != v {
+		return fmt.Errorf("found derived %s but expected %s: %w", link.derived, v, types.ErrConflict)
 	}
 	return db.rewindLocked(types.DerivedBlockSealPair{
 		DerivedFrom: link.derivedFrom,

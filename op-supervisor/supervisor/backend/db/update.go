@@ -55,7 +55,7 @@ func (db *ChainsDB) Rewind(chain eth.ChainID, headBlock eth.BlockID) error {
 	if !ok {
 		return fmt.Errorf("cannot Rewind (localDB not found): %w: %s", types.ErrUnknownChain, chain)
 	}
-	if err := localDB.RewindToL2(headBlock.Number); err != nil {
+	if err := localDB.RewindToFirstDerived(headBlock); err != nil {
 		return fmt.Errorf("failed to rewind localDB to block %v: %w", headBlock, err)
 	}
 
@@ -64,7 +64,7 @@ func (db *ChainsDB) Rewind(chain eth.ChainID, headBlock eth.BlockID) error {
 	if !ok {
 		return fmt.Errorf("cannot Rewind (crossDB not found): %w: %s", types.ErrUnknownChain, chain)
 	}
-	if err := crossDB.RewindToL2(headBlock.Number); err != nil {
+	if err := crossDB.RewindToFirstDerived(headBlock); err != nil {
 		return fmt.Errorf("failed to rewind crossDB to block %v: %w", headBlock, err)
 	}
 	return nil
@@ -196,45 +196,32 @@ func (db *ChainsDB) InvalidateLocalSafe(chainID eth.ChainID, candidate types.Der
 	return nil
 }
 
-// RewindLocalSafe removes all local-safe blocks after the given new head.
-func (db *ChainsDB) RewindLocalSafe(chainID eth.ChainID, newHead types.BlockSeal) error {
+// RewindLocalSafe removes all local-safe blocks after the given new derived-from scope.
+// Note that this drop L1 blocks that resulted in a previously invalidated local-safe block.
+// This returns ErrFuture if the block is newer than the last known block.
+// This returns ErrConflict if a different block at the given height is known.
+func (db *ChainsDB) RewindLocalSafe(chainID eth.ChainID, scope eth.BlockID) error {
 	localSafeDB, ok := db.localDBs.Get(chainID)
 	if !ok {
 		return fmt.Errorf("cannot find local-safe DB of chain %s for invalidation: %w", chainID, types.ErrUnknownChain)
 	}
-
-	// If the new head is before the current head then rewind it
-	currentHeadPair, err := localSafeDB.Latest()
-	if err != nil {
-		return fmt.Errorf("cannot find local-safe head of chain %s: %w", chainID, err)
+	if err := localSafeDB.RewindToScope(scope); err != nil {
+		return fmt.Errorf("failed to rewind local-safe: %w", err)
 	}
-	currentHead := currentHeadPair.Derived
-	if newHead.Number <= currentHead.Number {
-		if err := localSafeDB.RewindToL2(newHead.Number); err != nil {
-			return fmt.Errorf("failed to rewind local-safe: %w", err)
-		}
-	}
-
 	return nil
 }
 
-// RewindCrossSafe removes all cross-safe blocks after the given new head.
-func (db *ChainsDB) RewindCrossSafe(chainID eth.ChainID, newHead types.BlockSeal) error {
+// RewindCrossSafe removes all cross-safe blocks after the given new derived-from scope.
+// This returns ErrFuture if the block is newer than the last known block.
+// This returns ErrConflict if a different block at the given height is known.
+func (db *ChainsDB) RewindCrossSafe(chainID eth.ChainID, scope eth.BlockID) error {
 	crossSafeDB, ok := db.crossDBs.Get(chainID)
 	if !ok {
 		return fmt.Errorf("cannot find cross-safe DB of chain %s for invalidation: %w", chainID, types.ErrUnknownChain)
 	}
-
-	// If the new head is before the current head then rewind it
-	currentHeadPair, err := crossSafeDB.Latest()
-	if err != nil {
-		return fmt.Errorf("cannot find cross-safe head of chain %s: %w", chainID, err)
+	if err := crossSafeDB.RewindToScope(scope); err != nil {
+		return fmt.Errorf("failed to rewind cross-safe: %w", err)
 	}
-	currentHead := currentHeadPair.Derived
-	if newHead.Number <= currentHead.Number {
-		return crossSafeDB.RewindToL2(newHead.Number)
-	}
-
 	return nil
 }
 
@@ -243,11 +230,9 @@ func (db *ChainsDB) RewindLogs(chainID eth.ChainID, newHead types.BlockSeal) err
 	if !ok {
 		return fmt.Errorf("cannot find events DB of chain %s for invalidation: %w", chainID, types.ErrUnknownChain)
 	}
-
 	if err := eventsDB.Rewind(newHead.ID()); err != nil {
 		return fmt.Errorf("failed to rewind logs of chain %s: %w", chainID, err)
 	}
-
 	return nil
 }
 
