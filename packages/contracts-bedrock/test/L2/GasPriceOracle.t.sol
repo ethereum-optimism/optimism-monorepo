@@ -356,6 +356,7 @@ contract GasPriceOracleFjordActive_Test is GasPriceOracle_Test {
 
     /// @dev Tests that `operatorFee` is 0 is Isthmus is not activated.
     function test_getOperatorFee_succeeds() external view {
+        assertEq(gasPriceOracle.isIsthmus(), false);
         assertEq(gasPriceOracle.getOperatorFee(10), 0);
     }
 }
@@ -387,7 +388,7 @@ contract GasPriceOracleIsthmus_Test is GasPriceOracle_Test {
 
     /// @dev Tests that `operatorFee` is set correctly.
     function test_getOperatorFee_succeeds() external view {
-        assertEq(gasPriceOracle.getOperatorFee(10), 340); // 10 * 4 + 300
+        assertEq(gasPriceOracle.getOperatorFee(10), 10 * operatorFeeScalar / 1e6 + operatorFeeConstant);
     }
 
     /// @dev Tests that `setIsthmus` is only callable by the depositor.
