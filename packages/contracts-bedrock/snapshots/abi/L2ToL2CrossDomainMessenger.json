@@ -255,11 +255,6 @@
   },
   {
     "inputs": [],
-    "name": "InvalidChainId",
-    "type": "error"
-  },
-  {
-    "inputs": [],
     "name": "MessageAlreadyRelayed",
     "type": "error"
   },

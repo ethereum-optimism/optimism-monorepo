@@ -280,7 +280,6 @@ contract L2Genesis is Deployer {
             setOptimismSuperchainERC20Factory(); // 26
             setOptimismSuperchainERC20Beacon(); // 27
             setSuperchainTokenBridge(); // 28
-            setDependencyManager(); // 29
         }
     }
 

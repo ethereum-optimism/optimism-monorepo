@@ -26,7 +26,6 @@ import {
 
 // Interfaces
 import { ICrossL2Inbox, Identifier } from "interfaces/L2/ICrossL2Inbox.sol";
-import { IDependencySet } from "interfaces/L2/IDependencySet.sol";
 
 /// @title L2ToL2CrossDomainMessengerWithModifiableTransientStorage
 /// @dev L2ToL2CrossDomainMessenger contract with methods to modify the transient storage.
@@ -89,13 +88,6 @@ contract L2ToL2CrossDomainMessengerTest is Test {
 
         // Ensure that the target contract is not CrossL2Inbox or L2ToL2CrossDomainMessenger
         vm.assume(_target != Predeploys.CROSS_L2_INBOX && _target != Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER);
-
-        // Mock the call over the `isInDependencySet` function to return true
-        vm.mockCall(
-            Predeploys.DEPENDENCY_MANAGER,
-            abi.encodeCall(IDependencySet.isInDependencySet, (_destination)),
-            abi.encode(true)
-        );
 
         // Get the current message nonce
         uint256 messageNonce = l2ToL2CrossDomainMessenger.messageNonce();

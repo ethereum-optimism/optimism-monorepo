@@ -163,7 +163,7 @@ library Predeploys {
             || (_useInterop && _addr == SUPERCHAIN_WETH) || (_useInterop && _addr == ETH_LIQUIDITY)
             || (_useInterop && _addr == OPTIMISM_SUPERCHAIN_ERC20_FACTORY)
             || (_useInterop && _addr == OPTIMISM_SUPERCHAIN_ERC20_BEACON)
-            || (_useInterop && _addr == SUPERCHAIN_TOKEN_BRIDGE) || (_useInterop && _addr == DEPENDENCY_MANAGER);
+            || (_useInterop && _addr == SUPERCHAIN_TOKEN_BRIDGE);
     }
 
     function isPredeployNamespace(address _addr) internal pure returns (bool) {

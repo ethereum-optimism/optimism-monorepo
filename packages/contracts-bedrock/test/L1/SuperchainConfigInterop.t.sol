@@ -173,68 +173,12 @@ contract SuperchainConfigInterop_AddDependency_Test is SuperchainConfigInterop_B
         assertTrue(_superchainConfigInterop().authorizedPortals(portal));
     }
 
-    /// @notice Tests that `addDependency` successfully adds a chain to the dependency set through a portal call.
-    function test_addDependencyFromPortal_succeeds(uint256 _chainId, uint256 _chainId2) external {
-        vm.assume(!_superchainConfigInterop().isInDependencySet(_chainId));
-        vm.assume(!_superchainConfigInterop().isInDependencySet(_chainId2));
-        vm.assume(_chainId != _chainId2);
-        uint256 currentSize = _superchainConfigInterop().dependencySetSize();
-
-        // Add first an authorized portal
-        address authorizedPortal = _setUpPortal(_chainId);
-        vm.prank(_superchainConfigInterop().clusterManager());
-        _superchainConfigInterop().addDependency(_chainId, address(systemConfig));
-
-        address portal2 = _setUpPortal(_chainId2);
-
-        // Expect the DependencyAdded event to be emitted
-        vm.expectEmit(address(superchainConfig));
-        emit DependencyAdded(_chainId2, address(systemConfig), portal2);
-
-        // Mock the `authorizedPortal` to return the dependency manager predeploy as l2Sender
-        _mockAndExpect(
-            authorizedPortal,
-            abi.encodeCall(IOptimismPortalInterop.l2Sender, ()),
-            abi.encode(Predeploys.DEPENDENCY_MANAGER)
-        );
-
-        // Add the new chain to the dependency set from the `authorizedPortal`
-        vm.prank(authorizedPortal);
-        _superchainConfigInterop().addDependency(_chainId2, address(systemConfig));
-
-        // Check that the new chain is in the dependency set
-        assertTrue(_superchainConfigInterop().isInDependencySet(_chainId2));
-        assertEq(_superchainConfigInterop().dependencySetSize(), currentSize + 2);
-        assertTrue(_superchainConfigInterop().authorizedPortals(portal2));
-    }
-
     /// @notice Tests that `addDependency` reverts when the caller is not the cluster manager or an authorized portal.
-    function test_addDependency_notClusterManagerOrPortal_reverts(address _caller, uint256 _chainId) external {
+    function test_addDependency_notClusterManager_reverts(address _caller, uint256 _chainId) external {
         vm.assume(_caller != _superchainConfigInterop().clusterManager());
-        vm.assume(_caller != address(optimismPortal2));
 
         vm.expectRevert(Unauthorized.selector);
         vm.prank(_caller);
-        _superchainConfigInterop().addDependency(_chainId, address(systemConfig));
-    }
-
-    /// @notice Tests that `addDependency` reverts when the caller is an authorized portal but not the correct L2
-    /// sender.
-    function test_addDependency_notCorrectL2Sender_reverts(uint256 _chainId, address _l2sender) external {
-        vm.assume(_chainId != block.chainid);
-        vm.assume(_l2sender != Predeploys.DEPENDENCY_MANAGER);
-
-        address portal = _setUpPortal(_chainId);
-
-        // Mock the `authorizedPortal` to return the dependency manager predeploy as l2Sender
-        _mockAndExpect(portal, abi.encodeCall(IOptimismPortalInterop.l2Sender, ()), abi.encode(_l2sender));
-
-        // Add first an authorized portal
-        vm.prank(_superchainConfigInterop().clusterManager());
-        _superchainConfigInterop().addDependency(_chainId, address(systemConfig));
-
-        vm.expectRevert(Unauthorized.selector);
-        vm.prank(portal);
         _superchainConfigInterop().addDependency(_chainId, address(systemConfig));
     }
 
@@ -269,9 +213,13 @@ contract SuperchainConfigInterop_AddDependency_Test is SuperchainConfigInterop_B
     }
 
     /// @notice Tests that `addDependency` reverts when the portal is already authorized.
-    function test_addDependency_portalAlreadyAuthorized_reverts(uint256 _chainId) external {
+    function test_addDependency_portalAlreadyAuthorized_reverts(uint256 _chainId, uint256 _otherChainId) external {
+        // Bound chainId to be within uint128 range but not equal to block.chainid
+        _chainId = bound(_chainId, 1, type(uint128).max);
+        _otherChainId = bound(_otherChainId, 1, type(uint128).max);
         vm.assume(_chainId != block.chainid);
-        vm.assume(_chainId <= type(uint128).max);
+        vm.assume(_otherChainId != block.chainid);
+        vm.assume(_chainId != _otherChainId);
 
         _setUpPortal(_chainId);
 
@@ -281,7 +229,7 @@ contract SuperchainConfigInterop_AddDependency_Test is SuperchainConfigInterop_B
 
         vm.prank(_superchainConfigInterop().clusterManager());
         vm.expectRevert(SuperchainConfigInterop.PortalAlreadyAuthorized.selector);
-        _superchainConfigInterop().addDependency(_chainId + 1, address(systemConfig));
+        _superchainConfigInterop().addDependency(_otherChainId, address(systemConfig));
     }
 
     /// @notice Tests that `addDependency` reverts when the superchain is paused.

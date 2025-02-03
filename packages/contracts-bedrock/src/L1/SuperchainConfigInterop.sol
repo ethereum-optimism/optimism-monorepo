@@ -8,7 +8,6 @@ import { SuperchainConfig } from "src/L1/SuperchainConfig.sol";
 import { Storage } from "src/libraries/Storage.sol";
 import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import { Unauthorized } from "src/libraries/errors/CommonErrors.sol";
-import { Predeploys } from "src/libraries/Predeploys.sol";
 
 // Interfaces
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
@@ -120,15 +119,9 @@ contract SuperchainConfigInterop is SuperchainConfig {
     /// @param _systemConfig    The SystemConfig contract address of the chain to add.
     function addDependency(uint256 _chainId, address _systemConfig) external {
         if (paused()) revert SuperchainPaused();
+        if (msg.sender != clusterManager()) revert Unauthorized();
 
         SuperchainConfigDependencies storage dependenciesStorage = _dependenciesStorage();
-
-        if (msg.sender != clusterManager()) {
-            if (!dependenciesStorage.authorizedPortals[msg.sender]) revert Unauthorized();
-            if (IOptimismPortalInterop(payable(msg.sender)).l2Sender() != Predeploys.DEPENDENCY_MANAGER) {
-                revert Unauthorized();
-            }
-        }
 
         if (dependenciesStorage.dependencySet.length() == type(uint8).max) revert DependencySetTooLarge();
 
