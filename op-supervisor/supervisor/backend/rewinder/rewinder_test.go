@@ -160,20 +160,16 @@ func TestRewindL2(t *testing.T) {
 	i.AttachEmitter(&mockEmitter{})
 
 	// Simulate receiving a LocalDerivedDoneEvent for block2B
-	i.OnEvent(superevents.LocalDerivedDoneEvent{
+	i.OnEvent(superevents.LocalSafeUpdateEvent{
 		ChainID: chainID,
-		Derived: types.DerivedBlockRefPair{
-			DerivedFrom: eth.BlockRef{
-				Hash:       l1Block1.Hash,
-				Number:     l1Block1.Number,
-				Time:       l1Block1.Time,
-				ParentHash: l1Block1.ParentHash,
+		NewLocalSafe: types.DerivedBlockSealPair{
+			DerivedFrom: types.BlockSeal{
+				Hash:   l1Block1.Hash,
+				Number: l1Block1.Number,
 			},
-			Derived: eth.BlockRef{
-				Hash:       block2B.Hash,
-				Number:     block2B.Number,
-				Time:       block2B.Time,
-				ParentHash: block2B.ParentHash,
+			Derived: types.BlockSeal{
+				Hash:   block2B.Hash,
+				Number: block2B.Number,
 			},
 		},
 	})
@@ -261,20 +257,16 @@ func TestNoRewindNeeded(t *testing.T) {
 	s.verifyCrossSafe(chainID, block2A.ID(), "block2A should still be cross-safe")
 
 	// Trigger LocalDerived check with same L2 block - should not rewind
-	i.OnEvent(superevents.LocalDerivedDoneEvent{
+	i.OnEvent(superevents.LocalSafeUpdateEvent{
 		ChainID: chainID,
-		Derived: types.DerivedBlockRefPair{
-			DerivedFrom: eth.BlockRef{
-				Hash:       l1Block2.Hash,
-				Number:     l1Block2.Number,
-				Time:       l1Block2.Time,
-				ParentHash: l1Block2.ParentHash,
+		NewLocalSafe: types.DerivedBlockSealPair{
+			DerivedFrom: types.BlockSeal{
+				Hash:   l1Block2.Hash,
+				Number: l1Block2.Number,
 			},
-			Derived: eth.BlockRef{
-				Hash:       block2A.Hash,
-				Number:     block2A.Number,
-				Time:       block2A.Time,
-				ParentHash: block2A.ParentHash,
+			Derived: types.BlockSeal{
+				Hash:   block2A.Hash,
+				Number: block2A.Number,
 			},
 		},
 	})
@@ -363,20 +355,16 @@ func TestRewindLongChain(t *testing.T) {
 	}
 
 	// Trigger LocalDerived event with block96B
-	i.OnEvent(superevents.LocalDerivedDoneEvent{
+	i.OnEvent(superevents.LocalSafeUpdateEvent{
 		ChainID: chainID,
-		Derived: types.DerivedBlockRefPair{
-			DerivedFrom: eth.BlockRef{
-				Hash:       l1Blocks[96/10].Hash,
-				Number:     l1Blocks[96/10].Number,
-				Time:       l1Blocks[96/10].Time,
-				ParentHash: l1Blocks[96/10].ParentHash,
+		NewLocalSafe: types.DerivedBlockSealPair{
+			DerivedFrom: types.BlockSeal{
+				Hash:   l1Blocks[96/10].Hash,
+				Number: l1Blocks[96/10].Number,
 			},
-			Derived: eth.BlockRef{
-				Hash:       block96B.Hash,
-				Number:     block96B.Number,
-				Time:       block96B.Time,
-				ParentHash: block96B.ParentHash,
+			Derived: types.BlockSeal{
+				Hash:   block96B.Hash,
+				Number: block96B.Number,
 			},
 		},
 	})
@@ -436,20 +424,16 @@ func TestRewindMultiChain(t *testing.T) {
 
 	// Trigger LocalDerived events for both chains
 	for chainID := range s.chains {
-		i.OnEvent(superevents.LocalDerivedDoneEvent{
+		i.OnEvent(superevents.LocalSafeUpdateEvent{
 			ChainID: chainID,
-			Derived: types.DerivedBlockRefPair{
-				DerivedFrom: eth.BlockRef{
-					Hash:       l1Block1.Hash,
-					Number:     l1Block1.Number,
-					Time:       l1Block1.Time,
-					ParentHash: l1Block1.ParentHash,
+			NewLocalSafe: types.DerivedBlockSealPair{
+				DerivedFrom: types.BlockSeal{
+					Hash:   l1Block1.Hash,
+					Number: l1Block1.Number,
 				},
-				Derived: eth.BlockRef{
-					Hash:       block2B.Hash,
-					Number:     block2B.Number,
-					Time:       block2B.Time,
-					ParentHash: block2B.ParentHash,
+				Derived: types.BlockSeal{
+					Hash:   block2B.Hash,
+					Number: block2B.Number,
 				},
 			},
 		})
@@ -578,19 +562,16 @@ func TestRewindL2WalkBack(t *testing.T) {
 	i := New(s.logger, s.chainsDB, chain.l1Node)
 	i.AttachEmitter(&mockEmitter{})
 	// Trigger LocalDerived event with block4B
-	i.OnEvent(superevents.LocalDerivedDoneEvent{
+	i.OnEvent(superevents.LocalSafeUpdateEvent{
 		ChainID: chainID,
-		Derived: types.DerivedBlockRefPair{
-			DerivedFrom: eth.BlockRef{
+		NewLocalSafe: types.DerivedBlockSealPair{
+			DerivedFrom: types.BlockSeal{
 				Hash:   block4B.L1Origin.Hash,
 				Number: block4B.L1Origin.Number,
-				Time:   1004,
 			},
-			Derived: eth.BlockRef{
-				Hash:       block4B.Hash,
-				Number:     block4B.Number,
-				Time:       block4B.Time,
-				ParentHash: block4B.ParentHash,
+			Derived: types.BlockSeal{
+				Hash:   block4B.Hash,
+				Number: block4B.Number,
 			},
 		},
 	})

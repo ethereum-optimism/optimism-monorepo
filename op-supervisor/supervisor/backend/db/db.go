@@ -65,7 +65,8 @@ type LocalDerivedFromStorage interface {
 	NextDerived(derived eth.BlockID) (next types.DerivedBlockSealPair, err error)
 	PreviousDerivedFrom(derivedFrom eth.BlockID) (prevDerivedFrom types.BlockSeal, err error)
 	PreviousDerived(derived eth.BlockID) (prevDerived types.BlockSeal, err error)
-	RewindToL2(derived uint64) error
+	RewindToScope(scope eth.BlockID) error
+	RewindToFirstDerived(v eth.BlockID) error
 }
 
 var _ LocalDerivedFromStorage = (*fromda.DB)(nil)
@@ -128,7 +129,6 @@ func (db *ChainsDB) OnEvent(ev event.Event) bool {
 		db.maybeInitSafeDB(x.ChainID, x.Anchor)
 	case superevents.LocalDerivedEvent:
 		db.UpdateLocalSafe(x.ChainID, x.Derived.DerivedFrom, x.Derived.Derived)
-		db.emitter.Emit(superevents.LocalDerivedDoneEvent(x))
 	case superevents.FinalizedL1RequestEvent:
 		db.onFinalizedL1(x.FinalizedL1)
 	case superevents.ReplaceBlockEvent:

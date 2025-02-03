@@ -119,15 +119,6 @@ func (ev LocalDerivedEvent) String() string {
 	return "local-derived"
 }
 
-type LocalDerivedDoneEvent struct {
-	ChainID eth.ChainID
-	Derived types.DerivedBlockRefPair
-}
-
-func (ev LocalDerivedDoneEvent) String() string {
-	return "local-derive-done"
-}
-
 type AnchorEvent struct {
 	ChainID eth.ChainID
 	Anchor  types.DerivedBlockRefPair

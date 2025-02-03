@@ -21,15 +21,15 @@ type l1Node interface {
 type rewinderDB interface {
 	DependencySet() depset.DependencySet
 
-	LastDerivedFrom(chainID eth.ChainID, derivedFrom eth.BlockID) (derived types.BlockSeal, err error)
+	LastCrossDerivedFrom(chainID eth.ChainID, derivedFrom eth.BlockID) (derived types.BlockSeal, err error)
 	PreviousDerivedFrom(chain eth.ChainID, derivedFrom eth.BlockID) (prevDerivedFrom types.BlockSeal, err error)
 	CrossDerivedFromBlockRef(chainID eth.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error)
 
 	LocalSafe(eth.ChainID) (types.DerivedBlockSealPair, error)
 	CrossSafe(eth.ChainID) (types.DerivedBlockSealPair, error)
 
-	RewindLocalSafe(eth.ChainID, types.BlockSeal) error
-	RewindCrossSafe(eth.ChainID, types.BlockSeal) error
+	RewindLocalSafe(eth.ChainID, eth.BlockID) error
+	RewindCrossSafe(eth.ChainID, eth.BlockID) error
 	RewindLogs(chainID eth.ChainID, newHead types.BlockSeal) error
 
 	FindSealedBlock(eth.ChainID, uint64) (types.BlockSeal, error)
@@ -64,7 +64,7 @@ func (r *Rewinder) OnEvent(ev event.Event) bool {
 	case superevents.RewindL1Event:
 		r.handleRewindL1Event(x)
 		return true
-	case superevents.LocalDerivedDoneEvent:
+	case superevents.LocalSafeUpdateEvent:
 		r.handleLocalDerivedEvent(x)
 		return true
 	default:
@@ -86,9 +86,9 @@ func (r *Rewinder) handleRewindL1Event(ev superevents.RewindL1Event) {
 // handleLocalDerivedEvent checks if the newly derived block matches what we have in our unsafe DB
 // If it doesn't match, we need to rewind the logs DB to the common ancestor between
 // the LocalUnsafe head and the new LocalSafe block
-func (r *Rewinder) handleLocalDerivedEvent(ev superevents.LocalDerivedDoneEvent) {
+func (r *Rewinder) handleLocalDerivedEvent(ev superevents.LocalSafeUpdateEvent) {
 	// Get the block at the derived height from our unsafe chain
-	newSafeHead := ev.Derived.Derived
+	newSafeHead := ev.NewLocalSafe.Derived
 	unsafeVersion, err := r.db.FindSealedBlock(ev.ChainID, newSafeHead.Number)
 	if err != nil {
 		r.log.Error("failed to get unsafe block at derived height", "chain", ev.ChainID, "height", newSafeHead.Number, "err", err)
@@ -225,27 +225,20 @@ func (r *Rewinder) rewindL1ChainIfReorged(chainID eth.ChainID, newTip eth.BlockI
 		currentL1 = prevDerivedFrom.ID()
 	}
 
-	// Get the last L2 block derived from the common ancestor
-	localSafeDerived, err := r.db.LastDerivedFrom(chainID, commonL1Ancestor)
-	if err != nil {
-		return fmt.Errorf("failed to get derived from for chain %s: %w", chainID, err)
+	// Rewind LocalSafe to not include data derived from the old L1 chain
+	if err := r.db.RewindLocalSafe(chainID, commonL1Ancestor); err != nil {
+		if errors.Is(err, types.ErrFuture) {
+			r.log.Warn("Rewinding on L1 reorg, but local-safe DB does not have L1 block", "block", commonL1Ancestor, "err", err)
+		} else {
+			return fmt.Errorf("failed to rewind local-safe for chain %s: %w", chainID, err)
+		}
 	}
 
-	// Rewind LocalSafe to the derived block
-	if err := r.db.RewindLocalSafe(chainID, localSafeDerived); err != nil {
-		return fmt.Errorf("failed to rewind local-safe for chain %s: %w", chainID, err)
-	}
-
-	// Get the current CrossSafe head and check if it needs rewinding
-	crossSafe, err := r.db.CrossSafe(chainID)
-	if err != nil {
-		return fmt.Errorf("failed to get cross safe for chain %s: %w", chainID, err)
-	}
-
-	// Only rewind CrossSafe if it's ahead of our new LocalSafe head
-	if crossSafe.Derived.Number > localSafeDerived.Number {
-		// Rewind CrossSafe to the same derived block since they share the L1 ancestor
-		if err := r.db.RewindCrossSafe(chainID, localSafeDerived); err != nil {
+	// Rewind CrossSafe to not include data derived from the old L1 chain
+	if err := r.db.RewindCrossSafe(chainID, commonL1Ancestor); err != nil {
+		if errors.Is(err, types.ErrFuture) {
+			r.log.Warn("Rewinding on L1 reorg, but cross-safe DB does not have L1 block", "block", commonL1Ancestor, "err", err)
+		} else {
 			return fmt.Errorf("failed to rewind cross-safe for chain %s: %w", chainID, err)
 		}
 	}
