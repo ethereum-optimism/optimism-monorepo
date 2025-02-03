@@ -552,10 +552,18 @@ func TestEVM_SingleStep_SlSr(t *testing.T) {
 		funct     uint16
 		expectVal Word
 	}{
-		{name: "sll", funct: uint16(4) << 6, rt: Word(0x20), rsReg: uint32(0x0), expectVal: Word(0x20) << uint8(4)},                         // sll t0, t1, 3
-		{name: "srl", funct: uint16(4)<<6 | 2, rt: Word(0x20), rsReg: uint32(0x0), expectVal: Word(0x20) >> uint8(4)},                       // srl t0, t1, 3
-		{name: "sra", funct: uint16(4)<<6 | 3, rt: Word(0x80_00_00_20), rsReg: uint32(0x0), expectVal: signExtend64(0xF8_00_00_02)},         // sra t0, t1, 3
-		{name: "sllv", funct: uint16(4), rt: Word(0x20), rs: Word(4), rsReg: uint32(0xa), expectVal: Word(0x20) << Word(4)},                 // sllv t0, t1, t2
+		{name: "sll", funct: uint16(4) << 6, rt: Word(0x20), rsReg: uint32(0x0), expectVal: Word(0x20) << uint8(4)}, // sll t0, t1, 3
+		{name: "sll with overflow", funct: uint16(1) << 6, rt: Word(0x8000_0000), rsReg: uint32(0x0), expectVal: 0x0},
+		{name: "sll with sign extension", funct: uint16(4) << 6, rt: Word(0x0800_0000), rsReg: uint32(0x0), expectVal: signExtend64(0x8000_0000)},
+		{name: "sll with max shift, sign extension", funct: uint16(31) << 6, rt: Word(0x01), rsReg: uint32(0x0), expectVal: signExtend64(0x8000_0000)},
+		{name: "sll with max shift, overflow", funct: uint16(31) << 6, rt: Word(0x02), rsReg: uint32(0x0), expectVal: 0x0},
+		{name: "srl", funct: uint16(4)<<6 | 2, rt: Word(0x20), rsReg: uint32(0x0), expectVal: Word(0x20) >> uint8(4)},               // srl t0, t1, 3
+		{name: "sra", funct: uint16(4)<<6 | 3, rt: Word(0x80_00_00_20), rsReg: uint32(0x0), expectVal: signExtend64(0xF8_00_00_02)}, // sra t0, t1, 3
+		{name: "sllv", funct: uint16(4), rt: Word(0x20), rs: Word(4), rsReg: uint32(0xa), expectVal: Word(0x20) << Word(4)},         // sllv t0, t1, t2
+		{name: "sllv with overflow", funct: uint16(4), rt: Word(0x8000_0000), rs: Word(1), rsReg: uint32(0xa), expectVal: 0x0},
+		{name: "sllv with sign extension", funct: uint16(4), rt: Word(0x0800_0000), rs: Word(4), rsReg: uint32(0xa), expectVal: signExtend64(0x8000_0000)},
+		{name: "sllv with max shift, sign extension", funct: uint16(4), rt: Word(0x01), rs: Word(31), rsReg: uint32(0xa), expectVal: signExtend64(0x8000_0000)},
+		{name: "sllv with max shift, overflow", funct: uint16(4), rt: Word(0x02), rs: Word(31), rsReg: uint32(0xa), expectVal: 0x0},
 		{name: "srlv", funct: uint16(6), rt: Word(0x20_00), rs: Word(4), rsReg: uint32(0xa), expectVal: Word(0x20_00) >> Word(4)},           // srlv t0, t1, t2
 		{name: "srav", funct: uint16(7), rt: Word(0xdeafbeef), rs: Word(12), rsReg: uint32(0xa), expectVal: signExtend64(Word(0xfffdeafb))}, // srav t0, t1, t2
 	}
