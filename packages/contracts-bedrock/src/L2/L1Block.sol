@@ -56,11 +56,12 @@ contract L1Block is ISemver {
     /// @notice The latest L1 blob base fee.
     uint256 public blobBaseFee;
 
+    /// @notice The constant value applied to the operator fee.
+    uint64 public operatorFeeConstant;
+
     /// @notice The scalar value applied to the operator fee.
     uint32 public operatorFeeScalar;
 
-    /// @notice The constant value applied to the operator fee.
-    uint64 public operatorFeeConstant;
 
     /// @custom:semver 1.5.1-beta.7
     function version() public pure virtual returns (string memory) {

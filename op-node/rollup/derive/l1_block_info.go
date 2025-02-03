@@ -249,10 +249,10 @@ func (info *L1BlockInfo) marshalBinaryIsthmus() ([]byte, error) {
 	if err := solabi.WriteAddress(w, info.BatcherAddr); err != nil {
 		return nil, err
 	}
-	if err := binary.Write(w, binary.BigEndian, info.OperatorFeeConstant); err != nil {
+	if err := binary.Write(w, binary.BigEndian, info.OperatorFeeScalar); err != nil {
 		return nil, err
 	}
-	if err := binary.Write(w, binary.BigEndian, info.OperatorFeeScalar); err != nil {
+	if err := binary.Write(w, binary.BigEndian, info.OperatorFeeConstant); err != nil {
 		return nil, err
 	}
 	return w.Bytes(), nil
@@ -388,10 +388,10 @@ func (info *L1BlockInfo) unmarshalBinaryIsthmus(data []byte) error {
 	if info.BatcherAddr, err = solabi.ReadAddress(r); err != nil {
 		return err
 	}
-	if err := binary.Read(r, binary.BigEndian, &info.OperatorFeeConstant); err != nil {
+	if err := binary.Read(r, binary.BigEndian, &info.OperatorFeeScalar); err != nil {
 		return ErrInvalidIsthmusFormat
 	}
-	if err := binary.Read(r, binary.BigEndian, &info.OperatorFeeScalar); err != nil {
+	if err := binary.Read(r, binary.BigEndian, &info.OperatorFeeConstant); err != nil {
 		return ErrInvalidIsthmusFormat
 	}
 	if !solabi.EmptyReader(r) {
