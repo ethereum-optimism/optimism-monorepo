@@ -19,10 +19,9 @@ type UpgradeOPChainInput struct {
 type OPChainConfig struct {
 	SystemConfigProxy common.Address `json:"systemConfigProxy"`
 	ProxyAdmin        common.Address `json:"proxyAdmin"`
-	AbsolutePrestate  common.Hash    `json:"absolutePrestate"`
 }
 
-var opChainConfigEncoder = w3.MustNewFunc("dummy((address systemConfigProxy,address proxyAdmin,bytes32 absolutePrestate)[])", "")
+var opChainConfigEncoder = w3.MustNewFunc("dummy((address systemConfigProxy,address proxyAdmin)[])", "")
 
 func (u *UpgradeOPChainInput) OpChainConfigs() ([]byte, error) {
 	data, err := opChainConfigEncoder.EncodeArgs(u.EncodedChainConfigs)
