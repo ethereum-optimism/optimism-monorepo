@@ -266,6 +266,8 @@ func TestInteropLocalSafeInvalidation(gt *testing.T) {
 	actors.ChainB.Sequencer.ActL2PipelineFull(t)
 	originalBlock := actors.ChainB.Sequencer.SyncStatus().UnsafeL2
 	require.Equal(t, uint64(1), originalBlock.Number)
+	originalOutput, err := actors.ChainB.Sequencer.RollupClient().OutputAtBlock(t.Ctx(), originalBlock.Number)
+	require.NoError(t, err)
 
 	// build another empty L2 block, that will get reorged out
 	actors.ChainB.Sequencer.ActL2StartBlock(t)
@@ -328,7 +330,7 @@ func TestInteropLocalSafeInvalidation(gt *testing.T) {
 	txs := replacementBlock.Transactions()
 	out, err := managed.DecodeInvalidatedBlockTx(txs[len(txs)-1])
 	require.NoError(t, err)
-	require.Equal(t, originalBlock.Hash, out.BlockHash)
+	require.Equal(t, originalOutput.OutputRoot, eth.OutputRoot(out))
 
 	// Now check if we can continue to build L2 blocks on top of the new chain.
 	// Build a new L2 block
