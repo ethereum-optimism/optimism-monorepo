@@ -180,3 +180,108 @@ contract L1BlockEcotone_Test is L1BlockTest {
         assertEq(data, expReturn);
     }
 }
+
+contract L1BlockIsthmus_Test is L1BlockTest {
+    /// @dev Tests that setL1BlockValuesIsthmus updates the values appropriately.
+    function testFuzz_setL1BlockValuesIsthmus_succeeds(
+        uint32 baseFeeScalar,
+        uint32 blobBaseFeeScalar,
+        uint64 sequenceNumber,
+        uint64 timestamp,
+        uint64 number,
+        uint256 baseFee,
+        uint256 blobBaseFee,
+        bytes32 hash,
+        bytes32 batcherHash,
+        uint32 operatorFeeScalar,
+        uint64 operatorFeeConstant
+    )
+        external
+    {
+        bytes memory functionCallDataPacked = Encoding.encodeSetL1BlockValuesIsthmus(
+            baseFeeScalar,
+            blobBaseFeeScalar,
+            sequenceNumber,
+            timestamp,
+            number,
+            baseFee,
+            blobBaseFee,
+            hash,
+            batcherHash,
+            operatorFeeScalar,
+            operatorFeeConstant
+        );
+
+        vm.prank(depositor);
+        (bool success,) = address(l1Block).call(functionCallDataPacked);
+        assertTrue(success, "Function call failed");
+
+        assertEq(l1Block.baseFeeScalar(), baseFeeScalar);
+        assertEq(l1Block.blobBaseFeeScalar(), blobBaseFeeScalar);
+        assertEq(l1Block.sequenceNumber(), sequenceNumber);
+        assertEq(l1Block.timestamp(), timestamp);
+        assertEq(l1Block.number(), number);
+        assertEq(l1Block.basefee(), baseFee);
+        assertEq(l1Block.blobBaseFee(), blobBaseFee);
+        assertEq(l1Block.hash(), hash);
+        assertEq(l1Block.batcherHash(), batcherHash);
+        assertEq(l1Block.operatorFeeScalar(), operatorFeeScalar);
+        assertEq(l1Block.operatorFeeConstant(), operatorFeeConstant);
+
+        // ensure we didn't accidentally pollute the 128 bits of the sequencenum+scalars slot that
+        // should be empty
+        bytes32 scalarsSlot = vm.load(address(l1Block), bytes32(uint256(3)));
+        bytes32 mask128 = hex"FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000000000000000000000000000";
+
+        assertEq(0, scalarsSlot & mask128);
+
+        // ensure we didn't accidentally pollute the 128 bits of the number & timestamp slot that
+        // should be empty
+        bytes32 numberTimestampSlot = vm.load(address(l1Block), bytes32(uint256(0)));
+        assertEq(0, numberTimestampSlot & mask128);
+    }
+
+    /// @dev Tests that `setL1BlockValuesIsthmus` succeeds if sender address is the depositor
+    function test_setL1BlockValuesIsthmus_isDepositor_succeeds() external {
+        bytes memory functionCallDataPacked = Encoding.encodeSetL1BlockValuesIsthmus(
+            type(uint32).max,
+            type(uint32).max,
+            type(uint64).max,
+            type(uint64).max,
+            type(uint64).max,
+            type(uint256).max,
+            type(uint256).max,
+            bytes32(type(uint256).max),
+            bytes32(type(uint256).max),
+            type(uint32).max,
+            type(uint64).max
+        );
+
+        vm.prank(depositor);
+        (bool success,) = address(l1Block).call(functionCallDataPacked);
+        assertTrue(success, "function call failed");
+    }
+
+    /// @dev Tests that `setL1BlockValuesIsthmus` reverts if sender address is not the depositor
+    function test_setL1BlockValuesIsthmus_notDepositor_reverts() external {
+        bytes memory functionCallDataPacked = Encoding.encodeSetL1BlockValuesIsthmus(
+            type(uint32).max,
+            type(uint32).max,
+            type(uint64).max,
+            type(uint64).max,
+            type(uint64).max,
+            type(uint256).max,
+            type(uint256).max,
+            bytes32(type(uint256).max),
+            bytes32(type(uint256).max),
+            type(uint32).max,
+            type(uint64).max
+        );
+
+        (bool success, bytes memory data) = address(l1Block).call(functionCallDataPacked);
+        assertTrue(!success, "function call should have failed");
+        // make sure return value is the expected function selector for "NotDepositor()"
+        bytes memory expReturn = hex"3cc50b45";
+        assertEq(data, expReturn);
+    }
+}
