@@ -7,7 +7,9 @@ import (
 	"math/rand"
 	"testing"
 
+	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/trace/vm"
 	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/types"
+	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	interopTypes "github.com/ethereum-optimism/optimism/op-program/client/interop/types"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
@@ -27,7 +29,7 @@ var (
 
 func TestGet(t *testing.T) {
 	t.Run("AtPostState", func(t *testing.T) {
-		provider, stubSupervisor, l1Head := createProvider(t)
+		provider, stubSupervisor, l1Head, _ := createProvider(t)
 		response := eth.SuperRootResponse{
 			CrossSafeDerivedFrom: l1Head,
 			Timestamp:            poststateTimestamp,
@@ -48,7 +50,7 @@ func TestGet(t *testing.T) {
 	})
 
 	t.Run("AtNewTimestamp", func(t *testing.T) {
-		provider, stubSupervisor, l1Head := createProvider(t)
+		provider, stubSupervisor, l1Head, _ := createProvider(t)
 		response := eth.SuperRootResponse{
 			CrossSafeDerivedFrom: l1Head,
 			Timestamp:            prestateTimestamp + 1,
@@ -69,7 +71,7 @@ func TestGet(t *testing.T) {
 	})
 
 	t.Run("ValidTransitionBetweenFirstTwoSuperRoots", func(t *testing.T) {
-		provider, stubSupervisor, l1Head := createProvider(t)
+		provider, stubSupervisor, l1Head, _ := createProvider(t)
 		prev, next := createValidSuperRoots(l1Head)
 		stubSupervisor.Add(prev.response)
 		stubSupervisor.Add(next.response)
@@ -78,7 +80,7 @@ func TestGet(t *testing.T) {
 	})
 
 	t.Run("Step0SuperRootIsSafeBeforeGameL1Head", func(t *testing.T) {
-		provider, stubSupervisor, l1Head := createProvider(t)
+		provider, stubSupervisor, l1Head, _ := createProvider(t)
 		response := eth.SuperRootResponse{
 			CrossSafeDerivedFrom: eth.BlockID{Number: l1Head.Number - 10, Hash: common.Hash{0xcc}},
 			Timestamp:            poststateTimestamp,
@@ -99,7 +101,7 @@ func TestGet(t *testing.T) {
 	})
 
 	t.Run("Step0SuperRootNotSafeAtGameL1Head", func(t *testing.T) {
-		provider, stubSupervisor, l1Head := createProvider(t)
+		provider, stubSupervisor, l1Head, _ := createProvider(t)
 		response := eth.SuperRootResponse{
 			CrossSafeDerivedFrom: eth.BlockID{Number: l1Head.Number + 1, Hash: common.Hash{0xaa}},
 			Timestamp:            poststateTimestamp,
@@ -119,7 +121,7 @@ func TestGet(t *testing.T) {
 	})
 
 	t.Run("NextSuperRootSafeBeforeGameL1Head", func(t *testing.T) {
-		provider, stubSupervisor, l1Head := createProvider(t)
+		provider, stubSupervisor, l1Head, _ := createProvider(t)
 		prev, next := createValidSuperRoots(l1Head)
 		// Make super roots be safe earlier
 		prev.response.CrossSafeDerivedFrom = eth.BlockID{Number: l1Head.Number - 10, Hash: common.Hash{0xaa}}
@@ -130,7 +132,7 @@ func TestGet(t *testing.T) {
 	})
 
 	t.Run("PreviousSuperRootNotSafeAtGameL1Head", func(t *testing.T) {
-		provider, stubSupervisor, l1Head := createProvider(t)
+		provider, stubSupervisor, l1Head, _ := createProvider(t)
 		prev, next := createValidSuperRoots(l1Head)
 		// Make super roots be safe only after L1 head
 		prev.response.CrossSafeDerivedFrom = eth.BlockID{Number: l1Head.Number + 1, Hash: common.Hash{0xaa}}
@@ -147,36 +149,95 @@ func TestGet(t *testing.T) {
 	})
 
 	t.Run("FirstChainUnsafe", func(t *testing.T) {
-		t.Skip("TODO: Detect which chain is the first to be unsafe")
+		provider, stubSupervisor, l1Head, rollupCfgs := createProvider(t)
+		prev, next := createValidSuperRoots(l1Head)
+		// Make super roots be safe only after L1 head
+		prev.response.CrossSafeDerivedFrom = eth.BlockID{Number: l1Head.Number, Hash: common.Hash{0xaa}}
+		next.response.CrossSafeDerivedFrom = eth.BlockID{Number: l1Head.Number + 1, Hash: common.Hash{0xbb}}
+		stubSupervisor.Add(prev.response)
+		stubSupervisor.Add(next.response)
+
+		chain1Cfg, ok := rollupCfgs.Get(eth.ChainIDFromUInt64(1))
+		require.True(t, ok)
+		chain2Cfg, ok := rollupCfgs.Get(eth.ChainIDFromUInt64(2))
+		require.True(t, ok)
+		chain1RequiredBlock, err := chain1Cfg.TargetBlockNumber(prestateTimestamp + 1)
+		require.NoError(t, err)
+		chain2RequiredBlock, err := chain2Cfg.TargetBlockNumber(prestateTimestamp + 1)
+		require.NoError(t, err)
+		stubSupervisor.SetAllSafeDerivedAt(l1Head, map[eth.ChainID]eth.BlockID{
+			eth.ChainIDFromUInt64(1): {Number: chain1RequiredBlock - 1, Hash: common.Hash{0xcc}},
+			eth.ChainIDFromUInt64(2): {Number: chain2RequiredBlock, Hash: common.Hash{0xcc}},
+		})
+
+		// All steps should be the invalid transition hash.
+		for i := int64(0); i < StepsPerTimestamp+1; i++ {
+			claim, err := provider.Get(context.Background(), types.NewPosition(gameDepth, big.NewInt(i)))
+			require.NoError(t, err)
+			require.Equalf(t, InvalidTransitionHash, claim, "incorrect claim at index %d", i)
+		}
 	})
 	t.Run("SecondChainUnsafe", func(t *testing.T) {
-		t.Skip("TODO: Detect which chain is the first to be unsafe")
+		provider, stubSupervisor, l1Head, rollupCfgs := createProvider(t)
+		prev, next := createValidSuperRoots(l1Head)
+		// Make super roots be safe only after L1 head
+		prev.response.CrossSafeDerivedFrom = eth.BlockID{Number: l1Head.Number, Hash: common.Hash{0xaa}}
+		next.response.CrossSafeDerivedFrom = eth.BlockID{Number: l1Head.Number + 1, Hash: common.Hash{0xbb}}
+		stubSupervisor.Add(prev.response)
+		stubSupervisor.Add(next.response)
+
+		chain1Cfg, ok := rollupCfgs.Get(eth.ChainIDFromUInt64(1))
+		require.True(t, ok)
+		chain2Cfg, ok := rollupCfgs.Get(eth.ChainIDFromUInt64(2))
+		require.True(t, ok)
+		chain1RequiredBlock, err := chain1Cfg.TargetBlockNumber(prestateTimestamp + 1)
+		require.NoError(t, err)
+		chain2RequiredBlock, err := chain2Cfg.TargetBlockNumber(prestateTimestamp + 1)
+		require.NoError(t, err)
+		stubSupervisor.SetAllSafeDerivedAt(l1Head, map[eth.ChainID]eth.BlockID{
+			eth.ChainIDFromUInt64(1): {Number: chain1RequiredBlock, Hash: common.Hash{0xcc}},
+			eth.ChainIDFromUInt64(2): {Number: chain2RequiredBlock - 1, Hash: common.Hash{0xcc}},
+		})
+
+		// First step should be valid because we can reach the required block on chain 1
+		claim, err := provider.Get(context.Background(), types.NewPosition(gameDepth, big.NewInt(0)))
+		require.NoError(t, err)
+		require.NotEqual(t, InvalidTransitionHash, claim, "incorrect claim at index 0")
+
+		// Remaining steps should be the invalid transition hash.
+		for i := int64(1); i < StepsPerTimestamp+1; i++ {
+			claim, err := provider.Get(context.Background(), types.NewPosition(gameDepth, big.NewInt(i)))
+			require.NoError(t, err)
+			require.Equalf(t, InvalidTransitionHash, claim, "incorrect claim at index %d", i)
+		}
 	})
 }
 
 func TestGetStepDataReturnsError(t *testing.T) {
-	provider, _, _ := createProvider(t)
+	provider, _, _, _ := createProvider(t)
 	_, _, _, err := provider.GetStepData(context.Background(), types.RootPosition)
 	require.ErrorIs(t, err, ErrGetStepData)
 }
 
 func TestGetL2BlockNumberChallengeReturnsError(t *testing.T) {
-	provider, _, _ := createProvider(t)
+	provider, _, _, _ := createProvider(t)
 	_, err := provider.GetL2BlockNumberChallenge(context.Background())
 	require.ErrorIs(t, err, types.ErrL2BlockNumberValid)
 }
 
 func TestComputeStep(t *testing.T) {
 	t.Run("ErrorWhenTraceIndexTooBig", func(t *testing.T) {
+		rollupCfgs, err := NewRollupConfigs(vm.Config{})
+		require.NoError(t, err)
 		// Uses a big game depth so the trace index doesn't fit in uint64
-		provider := NewSuperTraceProvider(testlog.Logger(t, log.LvlInfo), nil, &stubRootProvider{}, eth.BlockID{}, 65, prestateTimestamp, poststateTimestamp)
+		provider := NewSuperTraceProvider(testlog.Logger(t, log.LvlInfo), rollupCfgs, nil, &stubRootProvider{}, eth.BlockID{}, 65, prestateTimestamp, poststateTimestamp)
 		// Left-most position in top game
-		_, _, err := provider.ComputeStep(types.RootPosition)
+		_, _, err = provider.ComputeStep(types.RootPosition)
 		require.ErrorIs(t, err, ErrIndexTooBig)
 	})
 
 	t.Run("FirstTimestampSteps", func(t *testing.T) {
-		provider, _, _ := createProvider(t)
+		provider, _, _, _ := createProvider(t)
 		for i := int64(0); i < StepsPerTimestamp-1; i++ {
 			timestamp, step, err := provider.ComputeStep(types.NewPosition(gameDepth, big.NewInt(i)))
 			require.NoError(t, err)
@@ -188,7 +249,7 @@ func TestComputeStep(t *testing.T) {
 	})
 
 	t.Run("SecondTimestampSteps", func(t *testing.T) {
-		provider, _, _ := createProvider(t)
+		provider, _, _, _ := createProvider(t)
 		for i := int64(-1); i < StepsPerTimestamp-1; i++ {
 			traceIndex := StepsPerTimestamp + i
 			timestamp, step, err := provider.ComputeStep(types.NewPosition(gameDepth, big.NewInt(traceIndex)))
@@ -200,7 +261,7 @@ func TestComputeStep(t *testing.T) {
 	})
 
 	t.Run("LimitToPoststateTimestamp", func(t *testing.T) {
-		provider, _, _ := createProvider(t)
+		provider, _, _, _ := createProvider(t)
 		timestamp, step, err := provider.ComputeStep(types.RootPosition)
 		require.NoError(t, err)
 		require.Equal(t, poststateTimestamp, timestamp, "Incorrect timestamp at root position")
@@ -208,7 +269,7 @@ func TestComputeStep(t *testing.T) {
 	})
 
 	t.Run("StepShouldLoopBackToZero", func(t *testing.T) {
-		provider, _, _ := createProvider(t)
+		provider, _, _, _ := createProvider(t)
 		prevTimestamp := prestateTimestamp
 		prevStep := uint64(0) // Absolute prestate is always on a timestamp boundary, so step 0
 		for traceIndex := int64(0); traceIndex < 5*StepsPerTimestamp; traceIndex++ {
@@ -227,13 +288,30 @@ func TestComputeStep(t *testing.T) {
 	})
 }
 
-func createProvider(t *testing.T) (*SuperTraceProvider, *stubRootProvider, eth.BlockID) {
+func createProvider(t *testing.T) (*SuperTraceProvider, *stubRootProvider, eth.BlockID, *RollupConfigs) {
 	logger := testlog.Logger(t, log.LvlInfo)
 	l1Head := eth.BlockID{Number: 23542, Hash: common.Hash{0xab, 0xcd}}
 	stubSupervisor := &stubRootProvider{
 		rootsByTimestamp: make(map[uint64]eth.SuperRootResponse),
 	}
-	return NewSuperTraceProvider(logger, nil, stubSupervisor, l1Head, gameDepth, prestateTimestamp, poststateTimestamp), stubSupervisor, l1Head
+	chain1Cfg := &rollup.Config{
+		L2ChainID: big.NewInt(1),
+		Genesis: rollup.Genesis{
+			L2Time: 500,
+		},
+		BlockTime: 1,
+	}
+	chain2Cfg := &rollup.Config{
+		L2ChainID: big.NewInt(2),
+		Genesis: rollup.Genesis{
+			L2Time: 500,
+		},
+		BlockTime: 1,
+	}
+	rollupCfgs, err := NewRollupConfigsFromParsed(chain1Cfg, chain2Cfg)
+	require.NoError(t, err)
+	provider := NewSuperTraceProvider(logger, rollupCfgs, nil, stubSupervisor, l1Head, gameDepth, prestateTimestamp, poststateTimestamp)
+	return provider, stubSupervisor, l1Head, rollupCfgs
 }
 
 type superRootData struct {
@@ -284,7 +362,7 @@ func createValidSuperRoots(l1Head eth.BlockID) (superRootData, superRootData) {
 				Pending:   outputA2.Marshal(),
 			},
 			{
-				ChainID:   eth.ChainIDFromUInt64(1),
+				ChainID:   eth.ChainIDFromUInt64(2),
 				Canonical: eth.OutputRoot(outputB2),
 				Pending:   outputB2.Marshal(),
 			},
@@ -346,6 +424,7 @@ func expectValidTransition(t *testing.T, provider *SuperTraceProvider, prev supe
 
 type stubRootProvider struct {
 	rootsByTimestamp map[uint64]eth.SuperRootResponse
+	allSafeDerivedAt map[eth.BlockID]map[eth.ChainID]eth.BlockID
 }
 
 func (s *stubRootProvider) Add(root eth.SuperRootResponse) {
@@ -353,6 +432,21 @@ func (s *stubRootProvider) Add(root eth.SuperRootResponse) {
 		s.rootsByTimestamp = make(map[uint64]eth.SuperRootResponse)
 	}
 	s.rootsByTimestamp[root.Timestamp] = root
+}
+
+func (s *stubRootProvider) SetAllSafeDerivedAt(derivedFrom eth.BlockID, safeHeads map[eth.ChainID]eth.BlockID) {
+	if s.allSafeDerivedAt == nil {
+		s.allSafeDerivedAt = make(map[eth.BlockID]map[eth.ChainID]eth.BlockID)
+	}
+	s.allSafeDerivedAt[derivedFrom] = safeHeads
+}
+
+func (s *stubRootProvider) AllSafeDerivedAt(_ context.Context, derivedFrom eth.BlockID) (map[eth.ChainID]eth.BlockID, error) {
+	heads, ok := s.allSafeDerivedAt[derivedFrom]
+	if !ok {
+		return nil, fmt.Errorf("no heads found for block %d", derivedFrom)
+	}
+	return heads, nil
 }
 
 func (s *stubRootProvider) SuperRootAtTimestamp(_ context.Context, timestamp hexutil.Uint64) (eth.SuperRootResponse, error) {
