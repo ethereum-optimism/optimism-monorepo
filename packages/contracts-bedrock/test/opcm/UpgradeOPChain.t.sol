@@ -2,7 +2,6 @@
 pragma solidity 0.8.15;
 
 import { Test } from "forge-std/Test.sol";
-import { Claim } from "src/dispute/lib/Types.sol";
 
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 import { IProxyAdmin } from "interfaces/universal/IProxyAdmin.sol";

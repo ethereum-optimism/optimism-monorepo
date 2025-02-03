@@ -12,7 +12,7 @@ import { Deployer } from "scripts/deploy/Deployer.sol";
 import { Deploy } from "scripts/deploy/Deploy.s.sol";
 
 // Libraries
-import { GameTypes, Claim } from "src/dispute/lib/Types.sol";
+import { GameTypes } from "src/dispute/lib/Types.sol";
 import { EIP1967Helper } from "test/mocks/EIP1967Helper.sol";
 
 // Interfaces
