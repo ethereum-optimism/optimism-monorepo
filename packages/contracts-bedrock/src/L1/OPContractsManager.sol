@@ -181,7 +181,7 @@ contract OPContractsManager is ISemver {
     bool public isRC = true;
 
     /// @notice Returns the release string. Appends "-rc" if this is a release candidate.
-    function l1ContractsRelease() external virtual view returns (string memory) {
+    function l1ContractsRelease() external view virtual returns (string memory) {
         return isRC ? string.concat(L1_CONTRACTS_RELEASE, "-rc") : L1_CONTRACTS_RELEASE;
     }
 
@@ -1136,5 +1136,3 @@ contract OPContractsManager is ISemver {
         setDGFImplementation(IDisputeGameFactory(_opChainAddrs.disputeGameFactory), _gameType, IDisputeGame(newGame));
     }
 }
-
-

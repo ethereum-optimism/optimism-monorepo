@@ -22,7 +22,6 @@ import { Claim, GameTypes } from "src/dispute/lib/Types.sol";
  * @notice A custom implementation of OPContractsManager that allows for modified deployment parameters
  */
 contract OPPrestateUpdater is OPContractsManager {
-
     struct PrestateUpdateInput {
         OpChain opChain;
         Claim faultDisputePrestate;
@@ -53,14 +52,16 @@ contract OPPrestateUpdater is OPContractsManager {
         Blueprints memory _blueprints,
         Implementations memory _implementations,
         address _upgradeController
-    ) OPContractsManager(
-        _superchainConfig,
-        _protocolVersions,
-        _l1ContractsRelease,
-        _blueprints,
-        _implementations,
-        _upgradeController
-    ) {}
+    )
+        OPContractsManager(
+            _superchainConfig,
+            _protocolVersions,
+            _l1ContractsRelease,
+            _blueprints,
+            _implementations,
+            _upgradeController
+        )
+    { }
 
     /// @notice Overrides the l1ContractsRelease function to return "none", as this OPCM
     /// is not releasing new contracts.
@@ -90,23 +91,19 @@ contract OPPrestateUpdater is OPContractsManager {
             AddGameInput memory pdgInput;
             AddGameInput memory fdgInput;
 
-            if(Claim.unwrap(_prestateUpdateInputs[i].permissionedDisputePrestate) == bytes32(0)) {
+            if (Claim.unwrap(_prestateUpdateInputs[i].permissionedDisputePrestate) == bytes32(0)) {
                 revert("Permissioned dispute prestate is required");
             }
             // Get the current game implementation to copy parameters from
-            IDisputeGameFactory dgf = IDisputeGameFactory(_prestateUpdateInputs[i].opChain.systemConfigProxy.disputeGameFactory());
-            IPermissionedDisputeGame pdg = IPermissionedDisputeGame(
-                address(
-                    getGameImplementation(
-                        dgf,
-                        GameTypes.PERMISSIONED_CANNON
-                    )
-                )
-            );
+            IDisputeGameFactory dgf =
+                IDisputeGameFactory(_prestateUpdateInputs[i].opChain.systemConfigProxy.disputeGameFactory());
+            IPermissionedDisputeGame pdg =
+                IPermissionedDisputeGame(address(getGameImplementation(dgf, GameTypes.PERMISSIONED_CANNON)));
             uint256 initBond = dgf.initBonds(GameTypes.PERMISSIONED_CANNON);
 
             // Get the existing game parameters
-            IFaultDisputeGame.GameConstructorParams memory pdgParams = getGameConstructorParams(IFaultDisputeGame(address(pdg)));
+            IFaultDisputeGame.GameConstructorParams memory pdgParams =
+                getGameConstructorParams(IFaultDisputeGame(address(pdg)));
 
             // Create game input with updated prestate but same other params
             pdgInput = AddGameInput({
@@ -126,21 +123,15 @@ contract OPPrestateUpdater is OPContractsManager {
             });
 
             // If fault dispute prestate is provided, create a new game with the same parameters but updated prestate
-            if(hasFDG) {
+            if (hasFDG) {
                 // Get the current game implementation to copy parameters from
-                IFaultDisputeGame fdg = IFaultDisputeGame(
-                    address(
-                        getGameImplementation(
-                            dgf,
-                            GameTypes.CANNON
-                        )
-                    )
-                );
+                IFaultDisputeGame fdg = IFaultDisputeGame(address(getGameImplementation(dgf, GameTypes.CANNON)));
                 if (address(fdg) == address(0)) revert("Fault dispute game not found");
                 initBond = dgf.initBonds(GameTypes.CANNON);
 
                 // Get the existing game parameters
-                IFaultDisputeGame.GameConstructorParams memory fdgParams = getGameConstructorParams(IFaultDisputeGame(address(fdg)));
+                IFaultDisputeGame.GameConstructorParams memory fdgParams =
+                    getGameConstructorParams(IFaultDisputeGame(address(fdg)));
 
                 // Create game input with updated prestate but same other params
                 fdgInput = AddGameInput({
@@ -161,7 +152,7 @@ contract OPPrestateUpdater is OPContractsManager {
             }
 
             // Game inputs must be ordered with increasing game type values. So FDG is first if it exists.
-            if(hasFDG) {
+            if (hasFDG) {
                 inputs[0] = fdgInput;
                 inputs[1] = pdgInput;
             } else {
@@ -170,6 +161,5 @@ contract OPPrestateUpdater is OPContractsManager {
             // Add the new game type with updated prestate
             super.addGameType(inputs);
         }
-
     }
 }
