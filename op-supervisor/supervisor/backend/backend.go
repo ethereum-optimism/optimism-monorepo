@@ -394,7 +394,13 @@ func (su *SupervisorBackend) CheckMessage(identifier types.Identifier, payloadHa
 	chainID := identifier.ChainID
 	blockNum := identifier.BlockNumber
 	logIdx := identifier.LogIndex
-	_, err := su.chainDBs.Check(chainID, blockNum, identifier.Timestamp, logIdx, logHash)
+	_, err := su.chainDBs.Contains(chainID,
+		types.ContainsQuery{
+			BlockNum:  blockNum,
+			Timestamp: identifier.Timestamp,
+			LogIdx:    logIdx,
+			LogHash:   logHash,
+		})
 	if errors.Is(err, types.ErrFuture) {
 		su.logger.Debug("Future message", "identifier", identifier, "payloadHash", payloadHash, "err", err)
 		return types.LocalUnsafe, nil

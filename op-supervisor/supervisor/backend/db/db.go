@@ -44,7 +44,7 @@ type LogStorage interface {
 	// This can be used to check the validity of cross-chain interop events.
 	// The block-seal of the blockNum block, that the log was included in, is returned.
 	// This seal may be fully zeroed, without error, if the block isn't fully known yet.
-	Contains(blockNum uint64, logIdx uint32, logHash common.Hash) (includedIn types.BlockSeal, err error)
+	Contains(types.ContainsQuery) (includedIn types.BlockSeal, err error)
 
 	// OpenBlock accumulates the ExecutingMessage events for a block and returns them
 	OpenBlock(blockNum uint64) (ref eth.BlockRef, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error)

@@ -322,7 +322,7 @@ type mockSafeStartDeps struct {
 	derivedFromFn func() (derivedFrom types.BlockSeal, err error)
 }
 
-func (m *mockSafeStartDeps) Check(chain eth.ChainID, blockNum uint64, timestamp uint64, logIdx uint32, logHash common.Hash) (includedIn types.BlockSeal, err error) {
+func (m *mockSafeStartDeps) Contains(chain eth.ChainID, q types.ContainsQuery) (includedIn types.BlockSeal, err error) {
 	if m.checkFn != nil {
 		return m.checkFn()
 	}

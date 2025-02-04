@@ -4,15 +4,13 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/ethereum/go-ethereum/common"
-
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 )
 
 type SafeStartDeps interface {
-	Check(chain eth.ChainID, blockNum uint64, timestamp uint64, logIdx uint32, logHash common.Hash) (includedIn types.BlockSeal, err error)
+	Contains(chain eth.ChainID, query types.ContainsQuery) (includedIn types.BlockSeal, err error)
 
 	CrossDerivedFrom(chainID eth.ChainID, derived eth.BlockID) (derivedFrom types.BlockSeal, err error)
 
@@ -61,7 +59,13 @@ func CrossSafeHazards(d SafeStartDeps, chainID eth.ChainID, inL1DerivedFrom eth.
 		if msg.Timestamp < candidate.Timestamp {
 			// If timestamp is older: invariant ensures non-cyclic ordering relative to other messages.
 			// Check that the block that they are included in is cross-safe already.
-			includedIn, err := d.Check(initChainID, msg.BlockNum, msg.Timestamp, msg.LogIdx, msg.Hash)
+			includedIn, err := d.Contains(initChainID,
+				types.ContainsQuery{
+					Timestamp: msg.Timestamp,
+					BlockNum:  msg.BlockNum,
+					LogIdx:    msg.LogIdx,
+					LogHash:   msg.Hash,
+				})
 			if err != nil {
 				return nil, fmt.Errorf("executing msg %s failed check: %w", msg, err)
 			}
@@ -80,7 +84,13 @@ func CrossSafeHazards(d SafeStartDeps, chainID eth.ChainID, inL1DerivedFrom eth.
 			// Thus check that it was included in a local-safe block,
 			// and then proceed with transitive block checks,
 			// to ensure the local block we depend on is becoming cross-safe also.
-			includedIn, err := d.Check(initChainID, msg.BlockNum, msg.Timestamp, msg.LogIdx, msg.Hash)
+			includedIn, err := d.Contains(initChainID,
+				types.ContainsQuery{
+					Timestamp: msg.Timestamp,
+					BlockNum:  msg.BlockNum,
+					LogIdx:    msg.LogIdx,
+					LogHash:   msg.Hash,
+				})
 			if err != nil {
 				return nil, fmt.Errorf("executing msg %s failed check: %w", msg, err)
 			}

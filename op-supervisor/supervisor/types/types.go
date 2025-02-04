@@ -36,6 +36,15 @@ func (ci *ChainIndex) UnmarshalText(data []byte) error {
 	return nil
 }
 
+// ContainsQuery contains all the information needed to check a message
+// against a chain's database, to determine if it is valid (ie all invariants hold).
+type ContainsQuery struct {
+	Timestamp uint64
+	BlockNum  uint64
+	LogIdx    uint32
+	LogHash   common.Hash
+}
+
 type ExecutingMessage struct {
 	Chain     ChainIndex // same as ChainID for now, but will be indirect, i.e. translated to full ID, later
 	BlockNum  uint64

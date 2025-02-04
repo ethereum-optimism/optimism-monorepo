@@ -4,8 +4,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/ethereum/go-ethereum/common"
-
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/db/logs"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
@@ -259,26 +257,14 @@ func (db *ChainsDB) CrossDerivedFromBlockRef(chainID eth.ChainID, derived eth.Bl
 	return res.MustWithParent(parent.ID()), nil
 }
 
-// Check calls the underlying logDB to determine if the given log entry exists at the given location.
+// Contains calls the underlying logDB to determine if the given log entry exists at the given location.
 // If the block-seal of the block that includes the log is known, it is returned. It is fully zeroed otherwise, if the block is in-progress.
-func (db *ChainsDB) Check(chain eth.ChainID, blockNum uint64, timestamp uint64, logIdx uint32, logHash common.Hash) (includedIn types.BlockSeal, err error) {
+func (db *ChainsDB) Contains(chain eth.ChainID, q types.ContainsQuery) (includedIn types.BlockSeal, err error) {
 	logDB, ok := db.logDBs.Get(chain)
 	if !ok {
 		return types.BlockSeal{}, fmt.Errorf("%w: %v", types.ErrUnknownChain, chain)
 	}
-	includedIn, err = logDB.Contains(blockNum, logIdx, logHash)
-	if err != nil {
-		return types.BlockSeal{}, err
-	}
-	if includedIn.Timestamp != timestamp {
-		return types.BlockSeal{},
-			fmt.Errorf("log exists in block %s, but block timestamp %d does not match %d: %w",
-				includedIn,
-				includedIn.Timestamp,
-				timestamp,
-				types.ErrConflict)
-	}
-	return includedIn, nil
+	return logDB.Contains(q)
 }
 
 // OpenBlock returns the Executing Messages for the block at the given number on the given chain.
