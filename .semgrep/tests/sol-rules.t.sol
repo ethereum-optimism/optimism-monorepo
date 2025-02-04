@@ -584,3 +584,22 @@ contract SemgrepTest__sol_style_enforce_require_msg {
         require(cond);
     }
 }
+
+contract SemgrepTest__sol_safety_try_catch_eip_150 {
+    function test() {
+        // ok: sol-safety-trycatch-eip150
+        // eip150-safe
+        try someContract.someFunction() {
+            // ...
+        } catch {
+            // ...
+        }
+
+        // ruleid: sol-safety-trycatch-eip150
+        try someContract.someFunction() {
+            // ...
+        } catch {
+            // ...
+        }
+    }
+}

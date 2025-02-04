@@ -28,12 +28,12 @@
     "sourceCodeHash": "0x8e3082457c03d764157a5a33e6a5ae383a1d3ecdc9a49cd0230b60a9960e9e8e"
   },
   "src/L1/OptimismPortal2.sol": {
-    "initCodeHash": "0x2cc5776c92d6cb154aa3d9897c476deaf49d98dc81493fabaea72987b9588853",
-    "sourceCodeHash": "0x09d877d68eb2439759e0a912a5d86d85b4742dfd205bdc1ac9dfbb32f8ccb7b0"
+    "initCodeHash": "0x332494d4362ac28b0b99182ad4077400aa2f49c72caa16ed370e62890e52a2f3",
+    "sourceCodeHash": "0xfc55cdde215c0086482e377c0cebccacfc36ac312794cf806dba6a73472ff94a"
   },
   "src/L1/OptimismPortalInterop.sol": {
-    "initCodeHash": "0x1d97b348b70a43a4dd96f8285252593931f4e0b2ff4e6d549169e82c8ddea4f9",
-    "sourceCodeHash": "0x1610886629862a69b043f45fa8a187341f5a9ab05fd2c2d84f0add56e2be4439"
+    "initCodeHash": "0x1f2468a793a3dabc1b2c130d9d588bbbcabe8754ba7ee69476dda673134d3125",
+    "sourceCodeHash": "0x278e28fdb6b4cea0ae892cd8afd9532456b1de7397969b0c73307f48188caada"
   },
   "src/L1/ProtocolVersions.sol": {
     "initCodeHash": "0x5a76c8530cb24cf23d3baacc6eefaac226382af13f1e2a35535d2ec2b0573b29",
@@ -172,12 +172,12 @@
     "sourceCodeHash": "0x08efbce44394f555a4e656816897029e2e80e455e4200a1b887fc18993294660"
   },
   "src/dispute/FaultDisputeGame.sol": {
-    "initCodeHash": "0xb7493f4eac423a07e9a9e318f25d003c74ece97da1fab5d4e47a7d5497d6db2f",
-    "sourceCodeHash": "0x30ae8a7e5718b9c8b0536034143f8f93f01d6f8b53f287fe4d020eb1d7053ef9"
+    "initCodeHash": "0xd86a649deaa0d5ca6c4b60afb941c52fd2b5d10857657defda3629faaff6d77e",
+    "sourceCodeHash": "0xf5d3760949af227ea161f552a1d0c5d605a26bfd24dc428f674c011cb7f0a416"
   },
   "src/dispute/PermissionedDisputeGame.sol": {
-    "initCodeHash": "0x77f51a5cc73ee6e3a1b2f8d406daccd0d4e0fb20751532e9a48f398183c99f94",
-    "sourceCodeHash": "0x73b6788068565814ac516055269910e0c44273edd17978f421d05ba8431ef60b"
+    "initCodeHash": "0x63ab07ca14b77da770de1814b112e1a21ea984c5132b8ff3beaab2cf88018c19",
+    "sourceCodeHash": "0xba32e6f35777426839a60e5556c09844e805eaabc14b9d3732cc64f2a99ce7fc"
   },
   "src/legacy/DeployerWhitelist.sol": {
     "initCodeHash": "0x53099379ed48b87f027d55712dbdd1da7d7099925426eb0531da9c0012e02c29",

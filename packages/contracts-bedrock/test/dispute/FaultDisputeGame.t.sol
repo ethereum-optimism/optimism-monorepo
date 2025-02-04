@@ -2474,6 +2474,38 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
         assertEq(uint8(gameProxy.bondDistributionMode()), uint8(BondDistributionMode.NORMAL));
     }
 
+    /// @dev Tests that closeGame called with any amount of gas either reverts (with OOG) or
+    ///      updates the anchor state. This is specifically to verify that the try/catch inside
+    ///      closeGame can't be called with just enough gas to OOG when calling the
+    ///      AnchorStateRegistry but successfully execute the remainder of the function.
+    /// @param _gas Amount of gas to provide to closeGame.
+    function testFuzz_closeGame_canUpdateAnchorStateAndDoes_succeeds(uint256 _gas) public {
+        // Resolve and close the game first
+        vm.warp(block.timestamp + 3 days + 12 hours);
+        gameProxy.resolveClaim(0, 0);
+        gameProxy.resolve();
+
+        // Wait for finalization delay
+        vm.warp(block.timestamp + 3.5 days + 1 seconds);
+
+        // Since providing *too* much gas isn't the issue here, bounding it to half the block gas
+        // limit is sufficient. We want to know that either (1) the function reverts or (2) the
+        // anchor state gets updated. If the function doesn't revert and the anchor state isn't
+        // updated then we have a problem.
+        _gas = bound(_gas, 0, block.gaslimit / 2);
+
+        // The anchor state should not be the game proxy.
+        assert(address(gameProxy.anchorStateRegistry().anchorGame()) != address(gameProxy));
+
+        // Try closing the game.
+        try gameProxy.closeGame{ gas: _gas }() {
+            // If we got here, the function didn't revert, so the anchor state should have updated.
+            assert(address(gameProxy.anchorStateRegistry().anchorGame()) == address(gameProxy));
+        } catch {
+            // Ok, function reverted.
+        }
+    }
+
     /// @dev Helper to generate a mock RLP encoded header (with only a real block number) & an output root proof.
     function _generateOutputRootProof(
         bytes32 _storageRoot,
