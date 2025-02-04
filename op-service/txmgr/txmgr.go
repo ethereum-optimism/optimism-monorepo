@@ -145,7 +145,8 @@ type SimpleTxManager struct {
 	nonce     *uint64
 	nonceLock sync.RWMutex
 
-	pending atomic.Int64
+	pending      atomic.Int64
+	riskyPending int
 
 	closed atomic.Bool
 }
@@ -282,7 +283,9 @@ func (m *SimpleTxManager) SendAsync(ctx context.Context, candidate TxCandidate, 
 		return
 	}
 
+	m.riskyPending++
 	m.metr.RecordPendingTx(m.pending.Add(1))
+	m.l.Warn("(sendaysnc) PENDING_TX metric incremented to", "value", m.pending.Load(), "risky", m.riskyPending)
 
 	var cancel context.CancelFunc
 	if m.cfg.TxSendTimeout == 0 {
@@ -295,7 +298,10 @@ func (m *SimpleTxManager) SendAsync(ctx context.Context, candidate TxCandidate, 
 	if err != nil {
 		m.resetNonce()
 		cancel()
+		m.riskyPending--
 		m.metr.RecordPendingTx(m.pending.Add(-1))
+		m.l.Warn("(sendasync err) PENDING_TX metric decremented to", "value", m.pending.Load(), "risky", m.riskyPending)
+
 		ch <- SendResponse{
 			Receipt: nil,
 			Err:     err,
@@ -304,7 +310,7 @@ func (m *SimpleTxManager) SendAsync(ctx context.Context, candidate TxCandidate, 
 	}
 
 	go func() {
-		defer m.metr.RecordPendingTx(m.pending.Add(-1))
+
 		defer cancel()
 		receipt, err := m.sendTx(ctx, tx)
 		if err != nil {
@@ -315,6 +321,9 @@ func (m *SimpleTxManager) SendAsync(ctx context.Context, candidate TxCandidate, 
 			Nonce:   tx.Nonce(),
 			Err:     err,
 		}
+		m.riskyPending--
+		m.metr.RecordPendingTx(m.pending.Add(-1))
+		m.l.Warn("(send async) PENDING_TX metric decremented to", "value", m.pending.Load(), "risky", m.riskyPending)
 	}()
 }
 

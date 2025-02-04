@@ -922,7 +922,7 @@ func (cfg SystemConfig) Start(t *testing.T, startOpts ...StartOption) (*System, 
 		PollInterval:             50 * time.Millisecond,
 		TxMgrConfig:              setuputils.NewTxMgrConfig(sys.EthInstances[RoleL1].UserRPC(), cfg.Secrets.Batcher),
 		LogConfig: oplog.CLIConfig{
-			Level:  log.LevelInfo,
+			Level:  log.LevelTrace,
 			Format: oplog.FormatText,
 		},
 		Stopped:               sys.Cfg.DisableBatcher, // Batch submitter may be enabled later

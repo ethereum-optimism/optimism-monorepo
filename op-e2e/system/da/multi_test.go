@@ -7,11 +7,11 @@ import (
 	"time"
 
 	op_e2e "github.com/ethereum-optimism/optimism/op-e2e"
+	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/geth"
 	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/transactions"
 	"github.com/ethereum-optimism/optimism/op-e2e/system/e2esys"
-	"github.com/ethereum-optimism/optimism/op-node/rollup/derive"
 	"github.com/stretchr/testify/require"
 )
 
@@ -19,9 +19,11 @@ func TestBatcherMultiTx(t *testing.T) {
 	op_e2e.InitParallel(t)
 
 	cfg := e2esys.DefaultSystemConfig(t)
-	cfg.BatcherMaxPendingTransactions = 0 // no limit on parallel txs
+	cfg.DeployConfig.L1BlockTime = 12
+	cfg.L1FinalizedDistance = 10
+	cfg.BatcherMaxPendingTransactions = 4 // no limit on parallel txs
 	// ensures that batcher txs are as small as possible
-	cfg.BatcherMaxL1TxSizeBytes = derive.FrameV0OverHeadSize + 1 /*version bytes*/ + 1
+	// cfg.BatcherMaxL1TxSizeBytes = derive.FrameV0OverHeadSize + 1 /*version bytes*/ + 1
 	cfg.DisableBatcher = true
 	sys, err := cfg.Start(t)
 	require.NoError(t, err, "Error starting up system")
@@ -34,6 +36,15 @@ func TestBatcherMultiTx(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
+
+	// build up a backlog of L2 transactions
+	numL2Txs := 300
+	var txHash common.Hash
+	for nonce := range numL2Txs {
+		txHash = sendTx(t, cfg.Secrets.Alice, uint64(nonce), 123456, cfg.L2ChainIDBig(), l2Seq)
+	}
+
+	waitForReceipt(t, txHash, l2Seq)
 
 	// start batch submission
 	driver := sys.BatchSubmitter.TestDriver()
