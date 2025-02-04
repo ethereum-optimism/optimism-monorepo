@@ -354,7 +354,7 @@ func (ea *L2EngineAPI) NewPayloadV3(ctx context.Context, params *eth.ExecutionPa
 		}
 	}
 
-	return ea.newPayload(ctx, params, versionedHashes, beaconRoot, nil)
+	return ea.newPayload(ctx, params, versionedHashes, beaconRoot, [][]byte{})
 }
 
 // Ported from: https://github.com/ethereum-optimism/op-geth/blob/94bb3f660f770afd407280055e7f58c0d89a01af/eth/catalyst/api.go#L646
