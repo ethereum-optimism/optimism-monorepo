@@ -25,7 +25,6 @@ func TestCombineDeployConfig(t *testing.T) {
 		BaseFeeVaultRecipient:      common.HexToAddress("0x123"),
 		L1FeeVaultRecipient:        common.HexToAddress("0x456"),
 		SequencerFeeVaultRecipient: common.HexToAddress("0x789"),
-		OperatorFeeVaultRecipient:  common.HexToAddress("0xabc"),
 		Roles: ChainRoles{
 			SystemConfigOwner: common.HexToAddress("0x123"),
 			L1ProxyAdminOwner: common.HexToAddress("0x456"),

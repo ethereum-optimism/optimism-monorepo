@@ -159,10 +159,6 @@ func InteropL2DevConfig(l1ChainID, l2ChainID uint64, addrs devkeys.Addresses, me
 	if err != nil {
 		return nil, err
 	}
-	operatorFeeVaultRecipient, err := addrs.Address(chainOps(devkeys.OperatorFeeVaultRecipientRole))
-	if err != nil {
-		return nil, err
-	}
 	sequencerP2P, err := addrs.Address(chainOps(devkeys.SequencerP2PRole))
 	if err != nil {
 		return nil, err
@@ -206,15 +202,12 @@ func InteropL2DevConfig(l1ChainID, l2ChainID uint64, addrs devkeys.Addresses, me
 				BaseFeeVaultRecipient:                    baseFeeVaultRecipient,
 				L1FeeVaultRecipient:                      l1FeeVaultRecipient,
 				SequencerFeeVaultRecipient:               sequencerFeeVaultRecipient,
-				OperatorFeeVaultRecipient:                operatorFeeVaultRecipient,
 				BaseFeeVaultMinimumWithdrawalAmount:      (*hexutil.Big)(Ether(10)),
 				L1FeeVaultMinimumWithdrawalAmount:        (*hexutil.Big)(Ether(10)),
 				SequencerFeeVaultMinimumWithdrawalAmount: (*hexutil.Big)(Ether(10)),
-				OperatorFeeVaultMinimumWithdrawalAmount:  (*hexutil.Big)(Ether(10)),
 				BaseFeeVaultWithdrawalNetwork:            "remote",
 				L1FeeVaultWithdrawalNetwork:              "remote",
 				SequencerFeeVaultWithdrawalNetwork:       "remote",
-				OperatorFeeVaultWithdrawalNetwork:        "remote",
 			},
 			GovernanceDeployConfig: genesis.GovernanceDeployConfig{
 				EnableGovernance: false,
