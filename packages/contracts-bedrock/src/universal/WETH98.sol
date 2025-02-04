@@ -21,6 +21,7 @@ pragma solidity 0.8.15;
 
 /// @title WETH98
 /// @notice WETH98 is a version of WETH9 upgraded for Solidity 0.8.x.
+///         Some functions were changed to virtual to allow for overriding in other WETH implementations.
 contract WETH98 {
     /// @notice Returns the number of decimals the token uses.
     /// @return The number of decimals the token uses.

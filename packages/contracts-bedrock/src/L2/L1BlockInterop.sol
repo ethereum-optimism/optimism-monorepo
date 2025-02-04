@@ -11,7 +11,7 @@ import { NotDepositor, NotCrossL2Inbox } from "src/libraries/L1BlockErrors.sol";
 /// @custom:proxied true
 /// @custom:predeploy 0x4200000000000000000000000000000000000015
 /// @title L1BlockInterop
-/// @notice Interop extenstions of L1Block.
+/// @notice Interop extensions of L1Block.
 contract L1BlockInterop is L1Block {
     /// @notice Storage slot that the isDeposit is stored at.
     ///         This is a custom slot that is not part of the standard storage layout.

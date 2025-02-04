@@ -13,7 +13,6 @@ import { SuperchainConfigInterop, ISystemConfig, IOptimismPortalInterop } from "
 
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import { Predeploys } from "src/libraries/Predeploys.sol";
 
 contract SuperchainConfigInterop_Base_Test is CommonTest {
     function setUp() public virtual override {

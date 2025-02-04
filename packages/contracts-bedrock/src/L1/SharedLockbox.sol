@@ -68,6 +68,8 @@ contract SharedLockbox is Initializable, ISemver {
 
     /// @notice Unlocks ETH from the lockbox.
     ///         Called by an authorized portal when finalizing a withdrawal that requires ETH.
+    ///         Cannot be called if the lockbox is paused.
+    /// @param _value The amount of ETH to unlock.
     function unlockETH(uint256 _value) external {
         if (paused()) revert Paused();
         if (!superchainConfig().authorizedPortals(msg.sender)) revert Unauthorized();

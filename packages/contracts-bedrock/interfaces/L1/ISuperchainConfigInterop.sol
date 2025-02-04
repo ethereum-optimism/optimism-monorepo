@@ -22,7 +22,7 @@ interface ISuperchainConfigInterop is IDependencySet, ISuperchainConfig {
     function version() external pure returns (string memory);
     function addDependency(uint256 _chainId, address _systemConfig) external;
     function dependencySet() external view returns (uint256[] memory);
-    function dependencySetSize() external view returns (uint8);
+    function dependencySetSize() external view returns (uint256);
     function authorizedPortals(address _portal) external view returns (bool);
 
     function __constructor__() external;

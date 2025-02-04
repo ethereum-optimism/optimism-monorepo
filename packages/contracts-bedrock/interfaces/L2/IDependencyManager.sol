@@ -14,7 +14,7 @@ interface IDependencyManager is ISemver {
 
     function addDependency(address _superchainConfig, uint256 _chainId, address _systemConfig) external;
     function isInDependencySet(uint256 _chainId) external view returns (bool);
-    function dependencySetSize() external view returns (uint8);
+    function dependencySetSize() external view returns (uint256);
     function dependencySet() external view returns (uint256[] memory);
 
     function __constructor__() external;

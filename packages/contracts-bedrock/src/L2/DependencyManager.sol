@@ -31,7 +31,7 @@ contract DependencyManager is ISemver {
     event DependencyAdded(uint256 indexed chainId, address indexed systemConfig, address indexed superchainConfig);
 
     /// @notice The minimum gas limit for the withdrawal tx to update the dependency set on L1.
-    uint256 internal constant ADD_DEPENDENCY_WITHDRAWWAL_GAS_LIMIT = 400_000;
+    uint256 internal constant ADD_DEPENDENCY_WITHDRAWAL_GAS_LIMIT = 400_000;
 
     /// @notice The interop dependency set, containing the chain IDs in it.
     EnumerableSet.UintSet internal _dependencySet;
@@ -55,7 +55,7 @@ contract DependencyManager is ISemver {
         // Initiate a withdrawal tx to update the dependency set on L1.
         IL2ToL1MessagePasser(payable(Predeploys.L2_TO_L1_MESSAGE_PASSER)).initiateWithdrawal(
             _superchainConfig,
-            ADD_DEPENDENCY_WITHDRAWWAL_GAS_LIMIT,
+            ADD_DEPENDENCY_WITHDRAWAL_GAS_LIMIT,
             abi.encodeCall(ISuperchainConfigInterop.addDependency, (_chainId, _systemConfig))
         );
 
@@ -72,8 +72,8 @@ contract DependencyManager is ISemver {
 
     /// @notice Returns the size of the interop dependency set.
     /// @return The size of the interop dependency set.
-    function dependencySetSize() external view returns (uint8) {
-        return uint8(_dependencySet.length());
+    function dependencySetSize() external view returns (uint256) {
+        return _dependencySet.length();
     }
 
     /// @notice Getter for the chain ids list on the dependency set.

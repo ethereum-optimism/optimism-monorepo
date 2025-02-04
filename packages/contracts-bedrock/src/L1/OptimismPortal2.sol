@@ -6,7 +6,6 @@ import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable
 import { ResourceMetering } from "src/L1/ResourceMetering.sol";
 
 // Libraries
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { SafeCall } from "src/libraries/SafeCall.sol";
 import { Constants } from "src/libraries/Constants.sol";
 import { Types } from "src/libraries/Types.sol";
@@ -34,7 +33,6 @@ import {
 import { GameStatus, GameType, Claim, Timestamp } from "src/dispute/lib/Types.sol";
 
 // Interfaces
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ISemver } from "interfaces/universal/ISemver.sol";
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 import { IResourceMetering } from "interfaces/L1/IResourceMetering.sol";
@@ -48,9 +46,6 @@ import { IDisputeGame } from "interfaces/dispute/IDisputeGame.sol";
 ///         and L2. Messages sent directly to the OptimismPortal have no form of replayability.
 ///         Users are encouraged to use the L1CrossDomainMessenger for a higher-level interface.
 contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
-    /// @notice Allows for interactions with non standard ERC20 tokens.
-    using SafeERC20 for IERC20;
-
     /// @notice Represents a proven withdrawal.
     /// @custom:field disputeGameProxy The address of the dispute game proxy that the withdrawal was proven against.
     /// @custom:field timestamp        Timestamp at which the withdrawal was proven.

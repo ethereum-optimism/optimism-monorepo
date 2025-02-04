@@ -170,8 +170,8 @@ contract SuperchainConfigInterop is SuperchainConfig {
 
     /// @notice Returns the size of the dependency set.
     /// @return The size of the dependency set.
-    function dependencySetSize() external view returns (uint8) {
-        return uint8(_dependenciesStorage().dependencySet.length());
+    function dependencySetSize() external view returns (uint256) {
+        return _dependenciesStorage().dependencySet.length();
     }
 
     /// @notice Checks if a portal is authorized to interact with the SharedLockbox.

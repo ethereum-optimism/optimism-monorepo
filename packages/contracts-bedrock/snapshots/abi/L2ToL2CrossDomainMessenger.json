@@ -270,11 +270,6 @@
   },
   {
     "inputs": [],
-    "name": "MessageTargetCrossL2Inbox",
-    "type": "error"
-  },
-  {
-    "inputs": [],
     "name": "MessageTargetL2ToL2CrossDomainMessenger",
     "type": "error"
   },

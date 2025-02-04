@@ -27,9 +27,6 @@ interface IL2ToL2CrossDomainMessenger {
     /// @notice Thrown when attempting to relay a message whose destination chain is not the chain relaying it.
     error MessageDestinationNotRelayChain();
 
-    /// @notice Thrown when attempting to relay a message whose target is CrossL2Inbox.
-    error MessageTargetCrossL2Inbox();
-
     /// @notice Thrown when attempting to relay a message whose target is L2ToL2CrossDomainMessenger.
     error MessageTargetL2ToL2CrossDomainMessenger();
 
