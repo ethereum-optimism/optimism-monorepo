@@ -15,6 +15,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/ethdb/memorydb"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
 )
@@ -199,6 +200,8 @@ func (t *interopTaskExecutor) RunDerivation(
 		claimedBlockNumber,
 		l1Oracle,
 		l2Oracle,
+		memorydb.New(),
+		tasks.DerivationOptions{StoreBlockData: true},
 	)
 }
 

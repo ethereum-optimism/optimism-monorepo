@@ -111,7 +111,6 @@ See the [Node Software Releases](https://docs.optimism.io/builders/node-operator
 
 The full set of components that have releases are:
 
-- `ci-builder`
 - `op-batcher`
 - `op-contracts`
 - `op-challenger`

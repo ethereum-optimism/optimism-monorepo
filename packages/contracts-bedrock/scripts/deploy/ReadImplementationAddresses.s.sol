@@ -143,7 +143,7 @@ contract ReadImplementationAddresses is Script {
         vm.prank(address(0));
         _rio.set(_rio.l1StandardBridge.selector, l1SBImpl);
 
-        address mipsLogic = _rii.opcm().implementations().mips64Impl;
+        address mipsLogic = _rii.opcm().implementations().mipsImpl;
         _rio.set(_rio.mipsSingleton.selector, mipsLogic);
 
         address delayedWETH = _rii.opcm().implementations().delayedWETHImpl;

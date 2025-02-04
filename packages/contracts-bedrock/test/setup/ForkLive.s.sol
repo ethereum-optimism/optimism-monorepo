@@ -12,7 +12,7 @@ import { Deployer } from "scripts/deploy/Deployer.sol";
 import { Deploy } from "scripts/deploy/Deploy.s.sol";
 
 // Libraries
-import { GameTypes, Claim } from "src/dispute/lib/Types.sol";
+import { GameTypes } from "src/dispute/lib/Types.sol";
 import { EIP1967Helper } from "test/mocks/EIP1967Helper.sol";
 
 // Interfaces
@@ -37,6 +37,8 @@ import { IAnchorStateRegistry } from "interfaces/dispute/IAnchorStateRegistry.so
 contract ForkLive is Deployer {
     using stdToml for string;
 
+    bool public useOpsRepo;
+
     /// @notice Returns the base chain name to use for forking
     /// @return The base chain name as a string
     function baseChain() internal view returns (string memory) {
@@ -58,7 +60,7 @@ contract ForkLive is Deployer {
     function run() public {
         string memory superchainOpsAllocsPath = vm.envOr("SUPERCHAIN_OPS_ALLOCS_PATH", string(""));
 
-        bool useOpsRepo = bytes(superchainOpsAllocsPath).length > 0;
+        useOpsRepo = bytes(superchainOpsAllocsPath).length > 0;
         if (useOpsRepo) {
             console.log("ForkLive: loading state from %s", superchainOpsAllocsPath);
             // Set the resultant state from the superchain ops repo upgrades.
@@ -72,17 +74,16 @@ contract ForkLive is Deployer {
         } else {
             // Read the superchain registry and save the addresses to the Artifacts contract.
             _readSuperchainRegistry();
-            // Now deploy the updated OPCM and implementations of the contracts
+            // Now deploy the updated OPCM and implementations of the contracts.
             _deployNewImplementations();
         }
 
         // Now upgrade the contracts (if the config is set to do so)
-        if (cfg.useUpgradedFork()) {
-            require(!useOpsRepo, "ForkLive: cannot upgrade and use ops repo");
+        if (useOpsRepo) {
+            console.log("ForkLive: using ops repo to upgrade");
+        } else if (cfg.useUpgradedFork()) {
             console.log("ForkLive: upgrading");
             _upgrade();
-        } else if (useOpsRepo) {
-            console.log("ForkLive: using ops repo to upgrade");
         }
     }
 
@@ -170,11 +171,7 @@ contract ForkLive is Deployer {
         vm.label(upgrader, "ProxyAdmin Owner");
 
         IOPContractsManager.OpChainConfig[] memory opChains = new IOPContractsManager.OpChainConfig[](1);
-        opChains[0] = IOPContractsManager.OpChainConfig({
-            systemConfigProxy: systemConfig,
-            proxyAdmin: proxyAdmin,
-            absolutePrestate: Claim.wrap(bytes32(keccak256("absolutePrestate")))
-        });
+        opChains[0] = IOPContractsManager.OpChainConfig({ systemConfigProxy: systemConfig, proxyAdmin: proxyAdmin });
 
         // TODO Migrate from DelegateCaller to a Safe to reduce risk of mocks not properly
         // reflecting the production system.

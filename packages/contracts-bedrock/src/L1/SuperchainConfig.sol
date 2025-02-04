@@ -11,7 +11,7 @@ import { Storage } from "src/libraries/Storage.sol";
 import { ISemver } from "interfaces/universal/ISemver.sol";
 
 /// @custom:proxied true
-/// @custom:audit none This contracts is not yet audited.
+/// @custom:audit none This contract is not yet audited.
 /// @title SuperchainConfig
 /// @notice The SuperchainConfig contract is used to manage configuration of global superchain values.
 contract SuperchainConfig is Initializable, ISemver {

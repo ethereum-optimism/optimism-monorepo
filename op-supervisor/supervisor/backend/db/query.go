@@ -45,14 +45,12 @@ func (db *ChainsDB) LastCommonL1() (types.BlockSeal, error) {
 		if err != nil {
 			return types.BlockSeal{}, fmt.Errorf("failed to determine Last Common L1: %w", err)
 		}
-		derivedFrom := last.DerivedFrom
-		commonL1 = derivedFrom
 		// if the common block isn't yet set,
 		// or if the new common block is older than the current common block
 		// set the common block
 		if commonL1 == (types.BlockSeal{}) ||
-			derivedFrom.Number < commonL1.Number {
-			commonL1 = derivedFrom
+			last.DerivedFrom.Number < commonL1.Number {
+			commonL1 = last.DerivedFrom
 		}
 	}
 	return commonL1, nil
@@ -200,7 +198,7 @@ func (db *ChainsDB) FinalizedL1() eth.BlockRef {
 func (db *ChainsDB) Finalized(chainID eth.ChainID) (types.BlockSeal, error) {
 	finalizedL1 := db.finalizedL1.Get()
 	if finalizedL1 == (eth.L1BlockRef{}) {
-		return types.BlockSeal{}, fmt.Errorf("no finalized L1 signal, cannot determine L2 finality of chain %s yet", chainID)
+		return types.BlockSeal{}, fmt.Errorf("no finalized L1 signal, cannot determine L2 finality of chain %s yet: %w", chainID, types.ErrFuture)
 	}
 
 	// compare the finalized L1 block with the last derived block in the cross DB
@@ -224,14 +222,14 @@ func (db *ChainsDB) Finalized(chainID eth.ChainID) (types.BlockSeal, error) {
 	}
 
 	// otherwise, use the finalized L1 block to determine the final L2 block that was derived from it
-	derived, err := db.LastDerivedFrom(chainID, finalizedL1.ID())
+	derived, err := db.LastCrossDerivedFrom(chainID, finalizedL1.ID())
 	if err != nil {
 		return types.BlockSeal{}, fmt.Errorf("could not find what was last derived in L2 chain %s from the finalized L1 block %s: %w", chainID, finalizedL1, err)
 	}
 	return derived, nil
 }
 
-func (db *ChainsDB) LastDerivedFrom(chainID eth.ChainID, derivedFrom eth.BlockID) (derived types.BlockSeal, err error) {
+func (db *ChainsDB) LastCrossDerivedFrom(chainID eth.ChainID, derivedFrom eth.BlockID) (derived types.BlockSeal, err error) {
 	crossDB, ok := db.crossDBs.Get(chainID)
 	if !ok {
 		return types.BlockSeal{}, types.ErrUnknownChain

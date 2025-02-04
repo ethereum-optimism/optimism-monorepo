@@ -28,10 +28,6 @@ lint-go-fix: ## Lints Go code with specific linters and fixes reported issues
 	golangci-lint run -E goimports,sqlclosecheck,bodyclose,asciicheck,misspell,errorlint --timeout 5m -e "errors.As" -e "errors.Is" ./... --fix
 .PHONY: lint-go-fix
 
-ci-builder: ## Builds the CI builder Docker image
-	docker build -t ci-builder -f ops/docker/ci-builder/Dockerfile .
-.PHONY: ci-builder
-
 golang-docker: ## Builds Docker images for Go components using buildx
 	# We don't use a buildx builder here, and just load directly into regular docker, for convenience.
 	GIT_COMMIT=$$(git rev-parse HEAD) \
@@ -135,15 +131,15 @@ reproducible-prestate:   ## Builds reproducible-prestate binary
 .PHONY: reproducible-prestate
 
 # Include any files required for the devnet to build and run.
-DEVNET_CANNON_PRESTATE_FILES := op-program/bin/prestate-proof.json op-program/bin/prestate.bin.gz op-program/bin/prestate-proof-mt.json op-program/bin/prestate-mt.bin.gz op-program/bin/prestate-interop.bin.gz
+DEVNET_CANNON_PRESTATE_FILES := op-program/bin/prestate-proof.json op-program/bin/prestate.bin.gz op-program/bin/prestate-proof-mt64.json op-program/bin/prestate-mt64.bin.gz op-program/bin/prestate-interop.bin.gz
 
 
 $(DEVNET_CANNON_PRESTATE_FILES):
 	make cannon-prestate
-	make cannon-prestate-mt
+	make cannon-prestate-mt64
 	make cannon-prestate-interop
 
-cannon-prestates: cannon-prestate cannon-prestate-mt cannon-prestate-interop
+cannon-prestates: cannon-prestate cannon-prestate-mt64 cannon-prestate-interop
 .PHONY: cannon-prestates
 
 cannon-prestate: op-program cannon ## Generates prestate using cannon and op-program
@@ -152,11 +148,11 @@ cannon-prestate: op-program cannon ## Generates prestate using cannon and op-pro
 	mv op-program/bin/0.json op-program/bin/prestate-proof.json
 .PHONY: cannon-prestate
 
-cannon-prestate-mt: op-program cannon ## Generates prestate using cannon and op-program in the latest 64-bit multithreaded cannon format
-	./cannon/bin/cannon load-elf --type multithreaded64-3 --path op-program/bin/op-program-client64.elf --out op-program/bin/prestate-mt.bin.gz --meta op-program/bin/meta-mt.json
-	./cannon/bin/cannon run --proof-at '=0' --stop-at '=1' --input op-program/bin/prestate-mt.bin.gz --meta op-program/bin/meta-mt.json --proof-fmt 'op-program/bin/%d-mt.json' --output ""
-	mv op-program/bin/0-mt.json op-program/bin/prestate-proof-mt.json
-.PHONY: cannon-prestate-mt
+cannon-prestate-mt64: op-program cannon ## Generates prestate using cannon and op-program in the latest 64-bit multithreaded cannon format
+	./cannon/bin/cannon load-elf --type multithreaded64-3 --path op-program/bin/op-program-client64.elf --out op-program/bin/prestate-mt64.bin.gz --meta op-program/bin/meta-mt64.json
+	./cannon/bin/cannon run --proof-at '=0' --stop-at '=1' --input op-program/bin/prestate-mt64.bin.gz --meta op-program/bin/meta-mt64.json --proof-fmt 'op-program/bin/%d-mt64.json' --output ""
+	mv op-program/bin/0-mt64.json op-program/bin/prestate-proof-mt64.json
+.PHONY: cannon-prestate-mt64
 
 cannon-prestate-interop: op-program cannon ## Generates interop prestate using cannon and op-program in the latest 64-bit multithreaded cannon format
 	./cannon/bin/cannon load-elf --type multithreaded64-3 --path op-program/bin/op-program-client-interop.elf --out op-program/bin/prestate-interop.bin.gz --meta op-program/bin/meta-interop.json

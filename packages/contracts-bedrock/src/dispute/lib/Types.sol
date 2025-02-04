@@ -70,6 +70,9 @@ library GameTypes {
     /// @notice A dispute game type that uses an alphabet vm.
     ///         Not intended for production use.
     GameType internal constant ALPHABET = GameType.wrap(255);
+
+    /// @notice A dispute game type that uses RISC Zero's Kailua
+    GameType internal constant KAILUA = GameType.wrap(1337);
 }
 
 /// @title VMStatuses

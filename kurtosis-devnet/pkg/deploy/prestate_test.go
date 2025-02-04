@@ -10,7 +10,7 @@ import (
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/tmpl"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 func TestLocalPrestate(t *testing.T) {

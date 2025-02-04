@@ -21,7 +21,8 @@ func TestParseRunArg(t *testing.T) {
 		{arg: "asterisc", expected: runner.RunConfig{TraceType: types.TraceTypeAsterisc, Name: types.TraceTypeAsterisc.String()}},
 		{arg: "cannon/test1", expected: runner.RunConfig{TraceType: types.TraceTypeCannon, Name: "test1"}},
 		{arg: "cannon/test1/0x1234", expected: runner.RunConfig{TraceType: types.TraceTypeCannon, Name: "test1", Prestate: common.HexToHash("0x1234")}},
-		{arg: "cannon/test1/invalid", err: ErrInvalidPrestateHash},
+		{arg: "cannon/test1/0xinvalid", err: ErrInvalidPrestateHash},
+		{arg: "cannon/test1/develop.bin.gz", expected: runner.RunConfig{TraceType: types.TraceTypeCannon, Name: "test1", PrestateFilename: "develop.bin.gz"}},
 	}
 	for _, test := range tests {
 		test := test

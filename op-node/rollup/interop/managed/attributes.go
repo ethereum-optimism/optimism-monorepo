@@ -14,6 +14,8 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 )
 
+var OptimisticBlockDepositSenderAddress = common.HexToAddress("0xdeaddeaddeaddeaddeaddeaddeaddeaddead0002")
+
 // AttributesToReplaceInvalidBlock builds the payload-attributes to replace an invalidated block.
 // See https://github.com/ethereum-optimism/specs/blob/main/specs/interop/derivation.md#replacing-invalid-blocks
 func AttributesToReplaceInvalidBlock(invalidatedBlock *eth.ExecutionPayloadEnvelope) *eth.PayloadAttributes {
@@ -26,9 +28,12 @@ func AttributesToReplaceInvalidBlock(invalidatedBlock *eth.ExecutionPayloadEnvel
 		}
 	}
 	// Add the system-tx that declares the replacement.
+	if invalidatedBlock.ExecutionPayload.WithdrawalsRoot == nil {
+		panic("withdrawals-root is nil")
+	}
 	l2Output := eth.OutputV0{
 		StateRoot:                invalidatedBlock.ExecutionPayload.StateRoot,
-		MessagePasserStorageRoot: eth.Bytes32{}, // TODO: the withdrawals-root in header is needed here.
+		MessagePasserStorageRoot: eth.Bytes32(*invalidatedBlock.ExecutionPayload.WithdrawalsRoot),
 		BlockHash:                invalidatedBlock.ExecutionPayload.BlockHash,
 	}
 	outputRootPreimage := l2Output.Marshal()
@@ -67,7 +72,7 @@ func InvalidatedBlockSourceDepositTx(outputRootPreimage []byte) *types.Transacti
 	src := derive.InvalidatedBlockSource{OutputRoot: outputRoot}
 	return types.NewTx(&types.DepositTx{
 		SourceHash:          src.SourceHash(),
-		From:                derive.L1InfoDepositerAddress,
+		From:                OptimisticBlockDepositSenderAddress,
 		To:                  &common.Address{}, // to the zero address, no EVM execution.
 		Mint:                big.NewInt(0),
 		Value:               big.NewInt(0),
@@ -97,7 +102,7 @@ func DecodeInvalidatedBlockTx(tx *types.Transaction) (*eth.OutputV0, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get invalidated-block deposit-tx sender addr: %w", err)
 	}
-	if from != derive.L1InfoDepositerAddress {
+	if from != OptimisticBlockDepositSenderAddress {
 		return nil, fmt.Errorf("expected system tx sender, but got %s", from)
 	}
 	out, err := eth.UnmarshalOutput(tx.Data())

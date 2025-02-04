@@ -23,6 +23,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/l1access"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/processors"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/rewinder"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/superevents"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/syncnode"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/frontend"
@@ -66,6 +67,9 @@ type SupervisorBackend struct {
 	chainMetrics locks.RWMap[eth.ChainID, *chainMetrics]
 
 	emitter event.Emitter
+
+	// Rewinder for handling reorgs
+	rewinder *rewinder.Rewinder
 }
 
 var _ event.AttachEmitter = (*SupervisorBackend)(nil)
@@ -123,8 +127,11 @@ func NewSupervisorBackend(ctx context.Context, logger log.Logger,
 		eventSys:              eventSys,
 		sysCancel:             sysCancel,
 		sysContext:            sysCtx,
+
+		rewinder: rewinder.New(logger, chainsDBs, l1Accessor),
 	}
 	eventSys.Register("backend", super, event.DefaultRegisterOpts())
+	eventSys.Register("rewinder", super.rewinder, event.DefaultRegisterOpts())
 
 	// create node controller
 	super.syncNodesController = syncnode.NewSyncNodesController(logger, depSet, eventSys, super)
@@ -520,6 +527,9 @@ func (su *SupervisorBackend) SuperRootAtTimestamp(ctx context.Context, timestamp
 	})
 	chainInfos := make([]eth.ChainRootInfo, len(chains))
 	superRootChains := make([]eth.ChainIDAndOutput, len(chains))
+
+	var crossSafeDerivedFrom eth.BlockID
+
 	for i, chainID := range chains {
 		src, ok := su.syncSources.Get(chainID)
 		if !ok {
@@ -541,15 +551,28 @@ func (su *SupervisorBackend) SuperRootAtTimestamp(ctx context.Context, timestamp
 			Pending:   pending.Marshal(),
 		}
 		superRootChains[i] = eth.ChainIDAndOutput{ChainID: chainID, Output: canonicalRoot}
+
+		ref, err := src.L2BlockRefByTimestamp(ctx, uint64(timestamp))
+		if err != nil {
+			return eth.SuperRootResponse{}, err
+		}
+		derivedFrom, err := su.chainDBs.CrossDerivedFrom(chainID, ref.ID())
+		if err != nil {
+			return eth.SuperRootResponse{}, err
+		}
+		if crossSafeDerivedFrom.Number == 0 || crossSafeDerivedFrom.Number < derivedFrom.Number {
+			crossSafeDerivedFrom = derivedFrom.ID()
+		}
 	}
 	superRoot := eth.SuperRoot(&eth.SuperV1{
 		Timestamp: uint64(timestamp),
 		Chains:    superRootChains,
 	})
 	return eth.SuperRootResponse{
-		Timestamp: uint64(timestamp),
-		SuperRoot: superRoot,
-		Chains:    chainInfos,
+		CrossSafeDerivedFrom: crossSafeDerivedFrom,
+		Timestamp:            uint64(timestamp),
+		SuperRoot:            superRoot,
+		Chains:               chainInfos,
 	}, nil
 }
 

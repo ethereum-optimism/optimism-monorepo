@@ -25,6 +25,7 @@ import (
 type backend interface {
 	LocalSafe(ctx context.Context, chainID eth.ChainID) (pair types.DerivedIDPair, err error)
 	LocalUnsafe(ctx context.Context, chainID eth.ChainID) (eth.BlockID, error)
+	CrossSafe(ctx context.Context, chainID eth.ChainID) (pair types.DerivedIDPair, err error)
 	SafeDerivedAt(ctx context.Context, chainID eth.ChainID, derivedFrom eth.BlockID) (derived eth.BlockID, err error)
 	Finalized(ctx context.Context, chainID eth.ChainID) (eth.BlockID, error)
 	L1BlockRefByNumber(ctx context.Context, number uint64) (eth.L1BlockRef, error)
@@ -109,7 +110,11 @@ func (m *ManagedNode) OnEvent(ev event.Event) bool {
 			return false
 		}
 		m.resetSignal(x.Err, x.L1Ref)
-	// TODO: watch for reorg events from DB. Send a reset signal to op-node if needed
+	case superevents.ChainRewoundEvent:
+		if x.ChainID != m.chainID {
+			return false
+		}
+		m.sendReset()
 	default:
 		return false
 	}
@@ -339,6 +344,36 @@ func (m *ManagedNode) resetSignal(errSignal error, l1Ref eth.BlockRef) {
 		if err != nil {
 			m.log.Warn("Node failed to reset", "err", err)
 		}
+	}
+}
+
+func (m *ManagedNode) sendReset() {
+	ctx, cancel := context.WithTimeout(m.ctx, internalTimeout)
+	defer cancel()
+
+	u, err := m.backend.LocalUnsafe(ctx, m.chainID)
+	if err != nil {
+		m.log.Warn("Failed to retrieve local-unsafe", "err", err)
+		return
+	}
+	s, err := m.backend.CrossSafe(ctx, m.chainID)
+	if err != nil {
+		m.log.Warn("Failed to retrieve cross-safe", "err", err)
+		return
+	}
+	f, err := m.backend.Finalized(ctx, m.chainID)
+	if err != nil {
+		if errors.Is(err, types.ErrFuture) {
+			f = eth.BlockID{Number: 0}
+		} else {
+			m.log.Warn("Failed to retrieve finalized", "err", err)
+			return
+		}
+	}
+
+	if err := m.Node.Reset(ctx, u, s.Derived, f); err != nil {
+		m.log.Warn("Node failed to reset", "err", err)
+		return
 	}
 }
 

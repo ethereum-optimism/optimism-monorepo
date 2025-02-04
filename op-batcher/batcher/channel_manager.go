@@ -62,7 +62,7 @@ func NewChannelManager(log log.Logger, metr metrics.Metricer, cfgProvider Channe
 		log:         log,
 		metr:        metr,
 		cfgProvider: cfgProvider,
-		defaultCfg:  cfgProvider.ChannelConfig(),
+		defaultCfg:  cfgProvider.ChannelConfig(false),
 		rollupCfg:   rollupCfg,
 		outFactory:  NewChannelOut,
 		txChannels:  make(map[string]*channel),
@@ -190,7 +190,7 @@ func (s *channelManager) nextTxData(channel *channel) (txData, error) {
 // It will decide whether to switch DA type automatically.
 // When switching DA type, the channelManager state will be rebuilt
 // with a new ChannelConfig.
-func (s *channelManager) TxData(l1Head eth.BlockID) (txData, error) {
+func (s *channelManager) TxData(l1Head eth.BlockID, isPectra bool) (txData, error) {
 	channel, err := s.getReadyChannel(l1Head)
 	if err != nil {
 		return emptyTxData, err
@@ -202,7 +202,7 @@ func (s *channelManager) TxData(l1Head eth.BlockID) (txData, error) {
 	}
 
 	// Call provider method to reassess optimal DA type
-	newCfg := s.cfgProvider.ChannelConfig()
+	newCfg := s.cfgProvider.ChannelConfig(isPectra)
 
 	// No change:
 	if newCfg.UseBlobs == s.defaultCfg.UseBlobs {

@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 
@@ -26,6 +27,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/predeploys"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
+	gethTypes "github.com/ethereum/go-ethereum/core/types"
 )
 
 func TestFullInterop(gt *testing.T) {
@@ -264,6 +266,8 @@ func TestInteropLocalSafeInvalidation(gt *testing.T) {
 	actors.ChainB.Sequencer.ActL2PipelineFull(t)
 	originalBlock := actors.ChainB.Sequencer.SyncStatus().UnsafeL2
 	require.Equal(t, uint64(1), originalBlock.Number)
+	originalOutput, err := actors.ChainB.Sequencer.RollupClient().OutputAtBlock(t.Ctx(), originalBlock.Number)
+	require.NoError(t, err)
 
 	// build another empty L2 block, that will get reorged out
 	actors.ChainB.Sequencer.ActL2StartBlock(t)
@@ -326,7 +330,7 @@ func TestInteropLocalSafeInvalidation(gt *testing.T) {
 	txs := replacementBlock.Transactions()
 	out, err := managed.DecodeInvalidatedBlockTx(txs[len(txs)-1])
 	require.NoError(t, err)
-	require.Equal(t, originalBlock.Hash, out.BlockHash)
+	require.Equal(t, originalOutput.OutputRoot, eth.OutputRoot(out))
 
 	// Now check if we can continue to build L2 blocks on top of the new chain.
 	// Build a new L2 block
@@ -543,10 +547,268 @@ func TestInteropFaultProofs(gt *testing.T) {
 			expectValid:        true,
 		},
 		{
-			name: "Consolidate-ReplaceInvalidBlock",
-			// Will need to generate an invalid block before this can be enabled
-			skipProgram:    true,
-			skipChallenger: true,
+			name:               "AlreadyAtClaimedTimestamp",
+			agreedClaim:        end.Marshal(),
+			disputedClaim:      end.Marshal(),
+			disputedTraceIndex: 5000,
+			expectValid:        true,
+		},
+
+		{
+			name:               "FirstChainReachesL1Head",
+			agreedClaim:        start.Marshal(),
+			disputedClaim:      interop.InvalidTransition,
+			disputedTraceIndex: 0,
+			// The derivation reaches the L1 head before the next block can be created
+			l1Head:      actors.L1Miner.L1Chain().Genesis().Hash(),
+			expectValid: true,
+		},
+		{
+			name:               "SecondChainReachesL1Head",
+			agreedClaim:        step1Expected,
+			disputedClaim:      interop.InvalidTransition,
+			disputedTraceIndex: 1,
+			// The derivation reaches the L1 head before the next block can be created
+			l1Head:         actors.L1Miner.L1Chain().Genesis().Hash(),
+			expectValid:    true,
+			skipChallenger: true, // test's agreedClaim is incorrect - first chain is also invalid
+		},
+		{
+			name:               "SuperRootInvalidIfUnsupportedByL1Data",
+			agreedClaim:        start.Marshal(),
+			disputedClaim:      step1Expected,
+			disputedTraceIndex: 0,
+			// The derivation reaches the L1 head before the next block can be created
+			l1Head:      actors.L1Miner.L1Chain().Genesis().Hash(),
+			expectValid: false,
+		},
+		{
+			name:               "FromInvalidTransitionHash",
+			agreedClaim:        interop.InvalidTransition,
+			disputedClaim:      interop.InvalidTransition,
+			disputedTraceIndex: 2,
+			// The derivation reaches the L1 head before the next block can be created
+			l1Head:      actors.L1Miner.L1Chain().Genesis().Hash(),
+			expectValid: true,
+		},
+	}
+
+	for _, test := range tests {
+		test := test
+		gt.Run(fmt.Sprintf("%s-fpp", test.name), func(gt *testing.T) {
+			t := helpers.NewDefaultTesting(gt)
+			if test.skipProgram {
+				t.Skip("Not yet implemented")
+				return
+			}
+			logger := testlog.Logger(t, slog.LevelInfo)
+			checkResult := fpHelpers.ExpectNoError()
+			if !test.expectValid {
+				checkResult = fpHelpers.ExpectError(claim.ErrClaimNotValid)
+			}
+			l1Head := test.l1Head
+			if l1Head == (common.Hash{}) {
+				l1Head = actors.L1Miner.L1Chain().CurrentBlock().Hash()
+			}
+			fpHelpers.RunFaultProofProgram(
+				t,
+				logger,
+				actors.L1Miner,
+				checkResult,
+				WithInteropEnabled(actors, test.agreedClaim, crypto.Keccak256Hash(test.disputedClaim), endTimestamp),
+				fpHelpers.WithL1Head(l1Head),
+			)
+		})
+
+		gt.Run(fmt.Sprintf("%s-challenger", test.name), func(gt *testing.T) {
+			t := helpers.NewDefaultTesting(gt)
+			if test.skipChallenger {
+				t.Skip("Not yet implemented")
+				return
+			}
+			logger := testlog.Logger(t, slog.LevelInfo)
+			prestateProvider := super.NewSuperRootPrestateProvider(&actors.Supervisor.QueryFrontend, startTimestamp)
+			var l1Head eth.BlockID
+			if test.l1Head == (common.Hash{}) {
+				l1Head = eth.ToBlockID(eth.HeaderBlockInfo(actors.L1Miner.L1Chain().CurrentBlock()))
+			} else {
+				l1Head = eth.ToBlockID(actors.L1Miner.L1Chain().GetBlockByHash(test.l1Head))
+			}
+			gameDepth := challengerTypes.Depth(30)
+			rollupCfgs, err := super.NewRollupConfigsFromParsed(actors.ChainA.RollupCfg, actors.ChainB.RollupCfg)
+			require.NoError(t, err)
+			provider := super.NewSuperTraceProvider(logger, rollupCfgs, prestateProvider, &actors.Supervisor.QueryFrontend, l1Head, gameDepth, startTimestamp, endTimestamp)
+			var agreedPrestate []byte
+			if test.disputedTraceIndex > 0 {
+				agreedPrestate, err = provider.GetPreimageBytes(ctx, challengerTypes.NewPosition(gameDepth, big.NewInt(test.disputedTraceIndex-1)))
+				require.NoError(t, err)
+			} else {
+				superRoot, err := provider.AbsolutePreState(ctx)
+				require.NoError(t, err)
+				agreedPrestate = superRoot.Marshal()
+			}
+			require.Equal(t, test.agreedClaim, agreedPrestate)
+
+			disputedClaim, err := provider.GetPreimageBytes(ctx, challengerTypes.NewPosition(gameDepth, big.NewInt(test.disputedTraceIndex)))
+			require.NoError(t, err)
+			if test.expectValid {
+				require.Equal(t, test.disputedClaim, disputedClaim, "Claim is correct so should match challenger's opinion")
+			} else {
+				require.NotEqual(t, test.disputedClaim, disputedClaim, "Claim is incorrect so should not match challenger's opinion")
+			}
+		})
+	}
+}
+
+func TestInteropFaultProofsInvalidBlock(gt *testing.T) {
+	t := helpers.NewDefaultTesting(gt)
+
+	is := SetupInterop(t)
+	actors := is.CreateActors()
+	aliceA := setupUser(t, is, actors.ChainA, 0)
+	aliceB := setupUser(t, is, actors.ChainB, 0)
+	initializeChainState(t, actors)
+	emitTx := initializeEmitterContractTest(t, aliceA, actors)
+
+	// Create a message with a conflicting payload
+	fakeMessage := []byte("this message was never emitted")
+	auth := newL2TxOpts(t, aliceB.secret, actors.ChainB)
+	id := idForTx(t, actors, emitTx)
+	contract, err := inbox.NewInbox(predeploys.CrossL2InboxAddr, actors.ChainB.SequencerEngine.EthClient())
+	require.NoError(t, err)
+	execTx, err := contract.ValidateMessage(auth, id, crypto.Keccak256Hash(fakeMessage))
+	require.NoError(t, err)
+	includeTxOnChainAndSyncWithoutCrossSafety(t, actors, actors.ChainB, execTx, aliceB.address)
+
+	// Confirm transaction inclusion
+	rec, err := actors.ChainB.SequencerEngine.EthClient().TransactionReceipt(t.Ctx(), execTx.Hash())
+	require.NoError(t, err)
+	require.NotNil(t, rec)
+
+	// safe head is still behind until we verify cross-safe
+	assertHeads(t, actors.ChainA, 3, 3, 2, 2)
+	assertHeads(t, actors.ChainB, 3, 3, 2, 2)
+	endTimestamp := actors.ChainB.Sequencer.L2Unsafe().Time
+
+	chainAClient := actors.ChainA.Sequencer.RollupClient()
+	chainBClient := actors.ChainB.Sequencer.RollupClient()
+
+	ctx := context.Background()
+	startTimestamp := endTimestamp - 1
+	source, err := NewSuperRootSource(ctx, chainAClient, chainBClient)
+	require.NoError(t, err)
+	start, err := source.CreateSuperRoot(ctx, startTimestamp)
+	require.NoError(t, err)
+	end, err := source.CreateSuperRoot(ctx, endTimestamp)
+	require.NoError(t, err)
+
+	endBlockNumA, err := actors.ChainA.RollupCfg.TargetBlockNumber(endTimestamp)
+	require.NoError(t, err)
+	chain1End, err := chainAClient.OutputAtBlock(ctx, endBlockNumA)
+	require.NoError(t, err)
+
+	endBlockNumB, err := actors.ChainB.RollupCfg.TargetBlockNumber(endTimestamp)
+	require.NoError(t, err)
+	chain2End, err := chainBClient.OutputAtBlock(ctx, endBlockNumB)
+	require.NoError(t, err)
+
+	step1Expected := (&types.TransitionState{
+		SuperRoot: start.Marshal(),
+		PendingProgress: []types.OptimisticBlock{
+			{BlockHash: chain1End.BlockRef.Hash, OutputRoot: chain1End.OutputRoot},
+		},
+		Step: 1,
+	}).Marshal()
+
+	step2Expected := (&types.TransitionState{
+		SuperRoot: start.Marshal(),
+		PendingProgress: []types.OptimisticBlock{
+			{BlockHash: chain1End.BlockRef.Hash, OutputRoot: chain1End.OutputRoot},
+			{BlockHash: chain2End.BlockRef.Hash, OutputRoot: chain2End.OutputRoot},
+		},
+		Step: 2,
+	}).Marshal()
+
+	paddingStep := func(step uint64) []byte {
+		return (&types.TransitionState{
+			SuperRoot: start.Marshal(),
+			PendingProgress: []types.OptimisticBlock{
+				{BlockHash: chain1End.BlockRef.Hash, OutputRoot: chain1End.OutputRoot},
+				{BlockHash: chain2End.BlockRef.Hash, OutputRoot: chain2End.OutputRoot},
+			},
+			Step: step,
+		}).Marshal()
+	}
+
+	// Induce block replacement
+	verifyCrossSafe(t, actors)
+	// assert that the invalid message tx was reorged out
+	_, err = actors.ChainB.SequencerEngine.EthClient().TransactionReceipt(t.Ctx(), execTx.Hash())
+	require.ErrorIs(gt, err, ethereum.NotFound)
+	assertHeads(t, actors.ChainA, 3, 3, 3, 3)
+	assertHeads(t, actors.ChainB, 3, 3, 3, 3)
+
+	crossSafeSuperRootEnd, err := source.CreateSuperRoot(ctx, endTimestamp)
+	require.NoError(t, err)
+
+	tests := []*transitionTest{
+		{
+			name:               "FirstChainOptimisticBlock",
+			agreedClaim:        start.Marshal(),
+			disputedClaim:      step1Expected,
+			disputedTraceIndex: 0,
+			expectValid:        true,
+			skipChallenger:     true,
+		},
+		{
+			name:               "SecondChainOptimisticBlock",
+			agreedClaim:        step1Expected,
+			disputedClaim:      step2Expected,
+			disputedTraceIndex: 1,
+			expectValid:        true,
+			skipChallenger:     true,
+		},
+		{
+			name:               "FirstPaddingStep",
+			agreedClaim:        step2Expected,
+			disputedClaim:      paddingStep(3),
+			disputedTraceIndex: 2,
+			expectValid:        true,
+			skipChallenger:     true,
+		},
+		{
+			name:               "SecondPaddingStep",
+			agreedClaim:        paddingStep(3),
+			disputedClaim:      paddingStep(4),
+			disputedTraceIndex: 3,
+			expectValid:        true,
+			skipChallenger:     true,
+		},
+		{
+			name:               "LastPaddingStep",
+			agreedClaim:        paddingStep(1022),
+			disputedClaim:      paddingStep(1023),
+			disputedTraceIndex: 1022,
+			expectValid:        true,
+			skipChallenger:     true,
+		},
+		{
+			name:               "Consolidate-ExpectInvalidPendingBlock",
+			agreedClaim:        paddingStep(1023),
+			disputedClaim:      end.Marshal(),
+			disputedTraceIndex: 1023,
+			expectValid:        false,
+			skipProgram:        true,
+			skipChallenger:     true,
+		},
+		{
+			name:               "Consolidate-ReplaceInvalidBlock",
+			agreedClaim:        paddingStep(1023),
+			disputedClaim:      crossSafeSuperRootEnd.Marshal(),
+			disputedTraceIndex: 1023,
+			expectValid:        true,
+			skipProgram:        true,
+			skipChallenger:     true,
 		},
 		{
 			name: "Consolidate-ReplaceBlockInvalidatedByFirstInvalidatedBlock",
@@ -558,8 +820,8 @@ func TestInteropFaultProofs(gt *testing.T) {
 		},
 		{
 			name:               "AlreadyAtClaimedTimestamp",
-			agreedClaim:        end.Marshal(),
-			disputedClaim:      end.Marshal(),
+			agreedClaim:        crossSafeSuperRootEnd.Marshal(),
+			disputedClaim:      crossSafeSuperRootEnd.Marshal(),
 			disputedTraceIndex: 5000,
 			expectValid:        true,
 		},
@@ -648,7 +910,9 @@ func TestInteropFaultProofs(gt *testing.T) {
 				l1Head = eth.ToBlockID(actors.L1Miner.L1Chain().GetBlockByHash(test.l1Head))
 			}
 			gameDepth := challengerTypes.Depth(30)
-			provider := super.NewSuperTraceProvider(logger, prestateProvider, &actors.Supervisor.QueryFrontend, l1Head, gameDepth, startTimestamp, endTimestamp)
+			rollupCfgs, err := super.NewRollupConfigsFromParsed(actors.ChainA.RollupCfg, actors.ChainB.RollupCfg)
+			require.NoError(t, err)
+			provider := super.NewSuperTraceProvider(logger, rollupCfgs, prestateProvider, &actors.Supervisor.QueryFrontend, l1Head, gameDepth, startTimestamp, endTimestamp)
 			var agreedPrestate []byte
 			if test.disputedTraceIndex > 0 {
 				agreedPrestate, err = provider.GetPreimageBytes(ctx, challengerTypes.NewPosition(gameDepth, big.NewInt(test.disputedTraceIndex-1)))
@@ -669,6 +933,60 @@ func TestInteropFaultProofs(gt *testing.T) {
 			}
 		})
 	}
+}
+
+func includeTxOnChainAndSyncWithoutCrossSafety(t helpers.Testing, actors *InteropActors, chain *Chain, tx *gethTypes.Transaction, sender common.Address) {
+	// Advance both chains
+	chain.Sequencer.ActL2StartBlock(t)
+	if tx != nil {
+		err := chain.SequencerEngine.EngineApi.IncludeTx(tx, sender)
+		require.NoError(t, err)
+	}
+	chain.Sequencer.ActL2EndBlock(t)
+
+	cross := actors.ChainA
+	if chain == actors.ChainA {
+		cross = actors.ChainB
+	}
+	cross.Sequencer.ActL2StartBlock(t)
+	cross.Sequencer.ActL2EndBlock(t)
+
+	// Sync the chain and the supervisor
+	chain.Sequencer.SyncSupervisor(t)
+	actors.Supervisor.ProcessFull(t)
+
+	// Add to L1
+	actors.ChainA.Batcher.ActSubmitAll(t)
+	actors.ChainB.Batcher.ActSubmitAll(t)
+	actors.L1Miner.ActL1StartBlock(12)(t)
+	actors.L1Miner.ActL1IncludeTx(actors.ChainA.BatcherAddr)(t)
+	actors.L1Miner.ActL1IncludeTx(actors.ChainB.BatcherAddr)(t)
+	actors.L1Miner.ActL1EndBlock(t)
+
+	// Complete L1 data processing
+	actors.ChainA.Sequencer.ActL2EventsUntil(t, event.Is[derive.ExhaustedL1Event], 100, false)
+	actors.ChainB.Sequencer.ActL2EventsUntil(t, event.Is[derive.ExhaustedL1Event], 100, false)
+	actors.Supervisor.SignalLatestL1(t)
+	actors.ChainA.Sequencer.SyncSupervisor(t)    // supervisor to react to exhaust-L1
+	actors.ChainB.Sequencer.SyncSupervisor(t)    // supervisor to react to exhaust-L1
+	actors.ChainA.Sequencer.ActL2PipelineFull(t) // node to complete syncing to L1 head.
+	actors.ChainB.Sequencer.ActL2PipelineFull(t) // node to complete syncing to L1 head.
+
+	// Ingest the new local-safe event
+	actors.ChainA.Sequencer.SyncSupervisor(t)
+	actors.ChainB.Sequencer.SyncSupervisor(t)
+}
+
+func verifyCrossSafe(t helpers.Testing, actors *InteropActors) {
+	actors.Supervisor.ProcessFull(t)
+	actors.ChainA.Sequencer.ActL2PipelineFull(t)
+	actors.ChainB.Sequencer.ActL2PipelineFull(t)
+	// another round-trip, for post-processing like cross-safe / cross-unsafe to propagate to the op-node
+	actors.ChainA.Sequencer.SyncSupervisor(t)
+	actors.ChainB.Sequencer.SyncSupervisor(t)
+	actors.Supervisor.ProcessFull(t)
+	actors.ChainA.Sequencer.ActL2PipelineFull(t)
+	actors.ChainB.Sequencer.ActL2PipelineFull(t)
 }
 
 func WithInteropEnabled(actors *InteropActors, agreedPrestate []byte, disputedClaim common.Hash, claimTimestamp uint64) fpHelpers.FixtureInputParam {

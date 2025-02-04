@@ -58,7 +58,7 @@ func TestForgeAllocs_FromState(t *testing.T) {
 
 	// Commit and make a new state, we cannot reuse the state after Commit
 	// (see doc-comment in Commit, absolute footgun)
-	root, err := st.Commit(0, false)
+	root, err := st.Commit(0, false, false)
 	require.NoError(t, err)
 	st, err = state.New(root, stateDB)
 	require.NoError(t, err)
@@ -66,7 +66,7 @@ func TestForgeAllocs_FromState(t *testing.T) {
 	st.SetState(contract, common.Hash{0: 0xa}, common.Hash{0: 1})
 	st.SetState(contract, crypto.Keccak256Hash([]byte("hello")), crypto.Keccak256Hash([]byte("world")))
 
-	root, err = st.Commit(0, false)
+	root, err = st.Commit(0, false, false)
 	require.NoError(t, err)
 	st, err = state.New(root, stateDB)
 	require.NoError(t, err)

@@ -647,14 +647,15 @@ func testManyEntryDB(t *testing.T, offsetL1 uint64, offsetL2 uint64) {
 	})
 }
 
-// TestRewind tests what happens if we rewind
-func TestRewind(t *testing.T) {
+// TestRewindToScope tests what happens if we rewind based on derived-from scope.
+func TestRewindToScope(t *testing.T) {
 	l1Block0 := mockL1(0)
 	l1Block1 := mockL1(1)
 	l1Block2 := mockL1(2)
 	l1Block3 := mockL1(3)
 	l1Block4 := mockL1(4)
 	l1Block5 := mockL1(5)
+	l1Block6 := mockL1(6)
 
 	l2Block0 := mockL2(0)
 	l2Block1 := mockL2(1)
@@ -679,17 +680,17 @@ func TestRewind(t *testing.T) {
 		require.Equal(t, l2Block2, pair.Derived)
 
 		// Rewind to the future
-		require.ErrorIs(t, db.RewindToL1(6), types.ErrFuture)
+		require.ErrorIs(t, db.RewindToScope(l1Block6.ID()), types.ErrFuture)
 
 		// Rewind to the exact block we're at
-		require.NoError(t, db.RewindToL1(l1Block5.Number))
+		require.NoError(t, db.RewindToScope(l1Block5.ID()))
 		pair, err = db.Latest()
 		require.NoError(t, err)
 		require.Equal(t, l1Block5, pair.DerivedFrom)
 		require.Equal(t, l2Block2, pair.Derived)
 
 		// Now rewind to L1 block 3 (inclusive).
-		require.NoError(t, db.RewindToL1(l1Block3.Number))
+		require.NoError(t, db.RewindToScope(l1Block3.ID()))
 
 		// See if we find consistent data
 		pair, err = db.Latest()
@@ -698,14 +699,74 @@ func TestRewind(t *testing.T) {
 		require.Equal(t, l2Block1, pair.Derived)
 
 		// Rewind further to L1 block 1 (inclusive).
-		require.NoError(t, db.RewindToL1(l1Block1.Number))
+		require.NoError(t, db.RewindToScope(l1Block1.ID()))
 		pair, err = db.Latest()
 		require.NoError(t, err)
 		require.Equal(t, l1Block1, pair.DerivedFrom)
 		require.Equal(t, l2Block1, pair.Derived)
 
 		// Rewind further to L1 block 0 (inclusive).
-		require.NoError(t, db.RewindToL1(l1Block0.Number))
+		require.NoError(t, db.RewindToScope(l1Block0.ID()))
+		pair, err = db.Latest()
+		require.NoError(t, err)
+		require.Equal(t, l1Block0, pair.DerivedFrom)
+		require.Equal(t, l2Block0, pair.Derived)
+	})
+}
+
+// TestRewindToFirstDerived tests what happens if we rewind based on when a block was first derived.
+func TestRewindToFirstDerived(t *testing.T) {
+	l1Block0 := mockL1(0)
+	l1Block1 := mockL1(1)
+	l1Block2 := mockL1(2)
+	l1Block3 := mockL1(3)
+	l1Block4 := mockL1(4)
+	l1Block5 := mockL1(5)
+
+	l2Block0 := mockL2(0)
+	l2Block1 := mockL2(1)
+	l2Block2 := mockL2(2)
+	l2Block3 := mockL2(3)
+
+	runDBTest(t, func(t *testing.T, db *DB, m *stubMetrics) {
+		// L2 genesis derived from L1 genesis
+		require.NoError(t, db.AddDerived(toRef(l1Block0, common.Hash{}), toRef(l2Block0, common.Hash{})))
+		// Many L1 blocks all repeating the same L2 block
+		l2Ref1 := toRef(l2Block1, l2Block0.Hash)
+		require.NoError(t, db.AddDerived(toRef(l1Block1, l1Block0.Hash), l2Ref1))
+		require.NoError(t, db.AddDerived(toRef(l1Block2, l1Block1.Hash), l2Ref1))
+		require.NoError(t, db.AddDerived(toRef(l1Block3, l1Block2.Hash), l2Ref1))
+		require.NoError(t, db.AddDerived(toRef(l1Block4, l1Block3.Hash), l2Ref1))
+		// New L1 block that finally produces a new L2 block
+		require.NoError(t, db.AddDerived(toRef(l1Block5, l1Block4.Hash), toRef(l2Block2, l2Block1.Hash)))
+	}, func(t *testing.T, db *DB, m *stubMetrics) {
+
+		pair, err := db.Latest()
+		require.NoError(t, err)
+		require.Equal(t, l1Block5, pair.DerivedFrom)
+		require.Equal(t, l2Block2, pair.Derived)
+
+		// Rewind to the future
+		require.ErrorIs(t, db.RewindToFirstDerived(l2Block3.ID()), types.ErrFuture)
+
+		// Rewind to the exact block we're at
+		require.NoError(t, db.RewindToFirstDerived(l2Block2.ID()))
+		pair, err = db.Latest()
+		require.NoError(t, err)
+		require.Equal(t, l1Block5, pair.DerivedFrom)
+		require.Equal(t, l2Block2, pair.Derived)
+
+		// Now rewind to L2 block 1
+		require.NoError(t, db.RewindToFirstDerived(l2Block1.ID()))
+
+		// See if we went back to the first occurrence of L2 block 1.
+		pair, err = db.Latest()
+		require.NoError(t, err)
+		require.Equal(t, l1Block1, pair.DerivedFrom)
+		require.Equal(t, l2Block1, pair.Derived)
+
+		// Rewind further to L2 block 0 (inclusive).
+		require.NoError(t, db.RewindToFirstDerived(l2Block0.ID()))
 		pair, err = db.Latest()
 		require.NoError(t, err)
 		require.Equal(t, l1Block0, pair.DerivedFrom)

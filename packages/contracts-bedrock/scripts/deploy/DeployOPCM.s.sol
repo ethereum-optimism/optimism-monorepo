@@ -39,7 +39,7 @@ contract DeployOPCMInput is BaseDeployIO {
     address internal _disputeGameFactoryImpl;
     address internal _anchorStateRegistryImpl;
     address internal _delayedWETHImpl;
-    address internal _mips64Impl;
+    address internal _mipsImpl;
 
     // Setter for address type
     function set(bytes4 _sel, address _addr) public {
@@ -67,7 +67,7 @@ contract DeployOPCMInput is BaseDeployIO {
         else if (_sel == this.disputeGameFactoryImpl.selector) _disputeGameFactoryImpl = _addr;
         else if (_sel == this.anchorStateRegistryImpl.selector) _anchorStateRegistryImpl = _addr;
         else if (_sel == this.delayedWETHImpl.selector) _delayedWETHImpl = _addr;
-        else if (_sel == this.mips64Impl.selector) _mips64Impl = _addr;
+        else if (_sel == this.mipsImpl.selector) _mipsImpl = _addr;
         else revert("DeployOPCMInput: unknown selector");
     }
 
@@ -194,9 +194,9 @@ contract DeployOPCMInput is BaseDeployIO {
         return _delayedWETHImpl;
     }
 
-    function mips64Impl() public view returns (address) {
-        require(_mips64Impl != address(0), "DeployOPCMInput: not set");
-        return _mips64Impl;
+    function mipsImpl() public view returns (address) {
+        require(_mipsImpl != address(0), "DeployOPCMInput: not set");
+        return _mipsImpl;
     }
 }
 
@@ -242,7 +242,7 @@ contract DeployOPCM is Script {
             disputeGameFactoryImpl: address(_doi.disputeGameFactoryImpl()),
             anchorStateRegistryImpl: address(_doi.anchorStateRegistryImpl()),
             delayedWETHImpl: address(_doi.delayedWETHImpl()),
-            mips64Impl: address(_doi.mips64Impl())
+            mipsImpl: address(_doi.mipsImpl())
         });
 
         IOPContractsManager opcm_ = deployOPCM(
@@ -324,7 +324,7 @@ contract DeployOPCM is Script {
         require(implementations.disputeGameFactoryImpl == _doi.disputeGameFactoryImpl(), "OPCMI-180");
         require(implementations.anchorStateRegistryImpl == _doi.anchorStateRegistryImpl(), "OPCMI-190");
         require(implementations.delayedWETHImpl == _doi.delayedWETHImpl(), "OPCMI-200");
-        require(implementations.mips64Impl == _doi.mips64Impl(), "OPCMI-210");
+        require(implementations.mipsImpl == _doi.mipsImpl(), "OPCMI-210");
     }
 
     function etchIOContracts() public returns (DeployOPCMInput doi_, DeployOPCMOutput doo_) {

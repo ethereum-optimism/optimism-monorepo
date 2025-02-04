@@ -252,7 +252,8 @@ library MIPS64Instructions {
 
                 // sll
                 if (_fun == 0x00) {
-                    return signExtend((_rt & U32_MASK) << ((_insn >> 6) & 0x1F), 32);
+                    uint32 shiftAmt = (_insn >> 6) & 0x1F;
+                    return signExtend((_rt << shiftAmt) & U32_MASK, 32);
                 }
                 // srl
                 else if (_fun == 0x02) {
@@ -265,7 +266,8 @@ library MIPS64Instructions {
                 }
                 // sllv
                 else if (_fun == 0x04) {
-                    return signExtend((_rt & U32_MASK) << (_rs & 0x1F), 32);
+                    uint64 shiftAmt = _rs & 0x1F;
+                    return signExtend((_rt << shiftAmt) & U32_MASK, 32);
                 }
                 // srlv
                 else if (_fun == 0x6) {

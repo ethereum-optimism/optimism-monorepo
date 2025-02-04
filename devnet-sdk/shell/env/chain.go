@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"html/template"
+	"path/filepath"
 
 	"github.com/ethereum-optimism/optimism/devnet-sdk/descriptors"
 )
@@ -88,7 +89,11 @@ func (c *ChainConfig) GetEnv() (*ChainEnv, error) {
 	}
 
 	// To allow commands within the shell to know which devnet and chain they are in
-	envVars[EnvFileVar] = c.devnetFile
+	absPath, err := filepath.Abs(c.devnetFile)
+	if err != nil {
+		absPath = c.devnetFile // Fallback to original path if abs fails
+	}
+	envVars[EnvFileVar] = absPath
 	envVars[ChainNameVar] = c.name
 
 	return &ChainEnv{

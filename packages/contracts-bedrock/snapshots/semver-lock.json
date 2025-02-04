@@ -16,8 +16,8 @@
     "sourceCodeHash": "0xf9ba98657dc235355146e381b654fe3ed766feb7cd87636ec0c9d4c6dd3e1973"
   },
   "src/L1/OPContractsManager.sol": {
-    "initCodeHash": "0xba9f472eded9b88b53b2c6d46c9d4e9ebf6d348fcc364cae1836f8f5f5717d87",
-    "sourceCodeHash": "0x7138ea0dbc9dfc4fbdc4fa867fa2bea7be5a2c592ce7391282083ef068cb332e"
+    "initCodeHash": "0xee8025c5f74ce7d9da5875b5f5b97106af0a307f366cc9559ec27174b3e3d0bc",
+    "sourceCodeHash": "0x1c37bb41a46a1c0fe6c8cef88037ecc6700675c4cfa8d673349f026ffd919526"
   },
   "src/L1/OptimismPortal2.sol": {
     "initCodeHash": "0xfaa5f7f911871a00e43024bcf1344cfe846c3cb1aec83d898f5acdd98e3ae223",
@@ -37,11 +37,11 @@
   },
   "src/L1/SuperchainConfig.sol": {
     "initCodeHash": "0xfce1f0ba88263d9761e458331cae9540278ebae15c1b319c7f941bedc4d85d46",
-    "sourceCodeHash": "0xa98dfaa25f6594f702ca868a3bf54c6b00694d6a3d5601c04ac5db788d2b6e3c"
+    "sourceCodeHash": "0x4137b5c7cc4d5a76d9ba840032ad2725f7ea117daa0a9873154a6de43fec2a98"
   },
   "src/L1/SuperchainConfigInterop.sol": {
     "initCodeHash": "0x407e75ae35995cd8fc10f1057cd933569c2b87f827c6d49d0a902617e1ff2ccb",
-    "sourceCodeHash": "0xb2da0725bcef3c54c0f6cb74ce2cabaa54526447fbbb40b1a6e1f75f97b6cc90"
+    "sourceCodeHash": "0xaadd2fc373a6123f64b43baa5cae86b48e2f34540d7e57e9922aab3366a5a938"
   },
   "src/L1/SystemConfig.sol": {
     "initCodeHash": "0x98c1049952199f55ae63e34ec61a839d43bde52b0892c482ae4246d0c088e826",
@@ -152,8 +152,8 @@
     "sourceCodeHash": "0x62c820b22c72399efd7688dcf713c34a6ee6821835ec66d5e7b98f33bbbfb209"
   },
   "src/cannon/MIPS64.sol": {
-    "initCodeHash": "0x7889eff8538b652c2008beb523dc8db7ef52c9af8b6da38adab8e8288bfb7041",
-    "sourceCodeHash": "0xb710bd6d4844f9ee45f301bb815786619b5e2d6b2f85ae17f39bee4f414f1957"
+    "initCodeHash": "0x6c433a3fdba3af72d2d0399572e25b1b878ae53fb13cd237e2f4c1964b51644f",
+    "sourceCodeHash": "0x9d1af96777dc76b215aec7111c4fab2af4116dfefc734908e661ec641421dae2"
   },
   "src/cannon/PreimageOracle.sol": {
     "initCodeHash": "0x17d3b3df1aaaf7a705b8d48de8a05e6511b910fdafdbe5eb7f7f95ec944fba9a",
