@@ -132,7 +132,7 @@ func TestAltDAFinalityData(t *testing.T) {
 				L1Origin:       previous.ID(), // reference previous origin, not the block the batch was included in
 				SequenceNumber: j,
 			}
-			fi.OnEvent(engine.SafeDerivedEvent{Safe: l2parent, DerivedFrom: l1parent})
+			fi.OnEvent(engine.SafeDerivedEvent{Safe: l2parent, Source: l1parent})
 			emitter.AssertExpectations(t)
 		}
 		// might trigger finalization attempt, if expired finality delay
