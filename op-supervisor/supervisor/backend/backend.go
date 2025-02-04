@@ -24,6 +24,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/l1access"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/processors"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/rewinder"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/status"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/superevents"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/syncnode"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/frontend"
@@ -57,6 +58,9 @@ type SupervisorBackend struct {
 
 	// syncNodesController controls the derivation or reset of the sync nodes
 	syncNodesController *syncnode.SyncNodesController
+
+	// statusTracker tracks the sync status of the supervisor
+	statusTracker *status.StatusTracker
 
 	// synchronousProcessors disables background-workers,
 	// requiring manual triggers for the backend to process l2 data.
@@ -136,6 +140,10 @@ func NewSupervisorBackend(ctx context.Context, logger log.Logger,
 	// create node controller
 	super.syncNodesController = syncnode.NewSyncNodesController(logger, depSet, eventSys, super)
 	eventSys.Register("sync-controller", super.syncNodesController, event.DefaultRegisterOpts())
+
+	// create status tracker
+	super.statusTracker = status.NewStatusTracker()
+	eventSys.Register("status", super.statusTracker, event.DefaultRegisterOpts())
 
 	// Initialize the resources of the supervisor backend.
 	// Stop the supervisor if any of the resources fails to be initialized.
@@ -574,6 +582,10 @@ func (su *SupervisorBackend) SuperRootAtTimestamp(ctx context.Context, timestamp
 		SuperRoot:            superRoot,
 		Chains:               chainInfos,
 	}, nil
+}
+
+func (su *SupervisorBackend) SyncStatus() (map[eth.ChainID]*eth.SupervisorChainStatus, error) {
+	return su.statusTracker.SyncStatus(), nil
 }
 
 // PullLatestL1 makes the supervisor aware of the latest L1 block. Exposed for testing purposes.

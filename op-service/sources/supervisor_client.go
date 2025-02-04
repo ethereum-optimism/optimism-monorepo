@@ -174,6 +174,15 @@ func (cl *SupervisorClient) AllSafeDerivedAt(ctx context.Context, derivedFrom et
 	return result, err
 }
 
+func (cl *SupervisorClient) SyncStatus(ctx context.Context) (map[eth.ChainID]*eth.SupervisorChainStatus, error) {
+	var result map[eth.ChainID]*eth.SupervisorChainStatus
+	err := cl.client.CallContext(
+		ctx,
+		&result,
+		"supervisor_syncStatus")
+	return result, err
+}
+
 func (cl *SupervisorClient) Close() {
 	cl.client.Close()
 }

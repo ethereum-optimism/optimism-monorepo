@@ -79,6 +79,10 @@ func (m *MockBackend) SuperRootAtTimestamp(ctx context.Context, timestamp hexuti
 	return eth.SuperRootResponse{}, nil
 }
 
+func (m *MockBackend) SyncStatus() (map[eth.ChainID]*eth.SupervisorChainStatus, error) {
+	return nil, nil
+}
+
 func (m *MockBackend) Close() error {
 	return nil
 }
