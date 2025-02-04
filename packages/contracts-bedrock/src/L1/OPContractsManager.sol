@@ -118,6 +118,7 @@ contract OPContractsManager is ISemver {
     struct OpChainConfig {
         ISystemConfig systemConfigProxy;
         IProxyAdmin proxyAdmin;
+        Claim absolutePrestate;
     }
 
     struct AddGameInput {
@@ -143,9 +144,9 @@ contract OPContractsManager is ISemver {
 
     // -------- Constants and Variables --------
 
-    /// @custom:semver 1.0.2
+    /// @custom:semver 1.1.0
     function version() public pure virtual returns (string memory) {
-        return "1.0.2";
+        return "1.1.0";
     }
 
     /// @notice Address of the SuperchainConfig contract shared by all chains.
@@ -234,6 +235,9 @@ contract OPContractsManager is ISemver {
 
     /// @notice Thrown when the SuperchainProxyAdmin does not match the SuperchainConfig's admin.
     error SuperchainProxyAdminMismatch();
+
+    /// @notice Thrown when a prestate is not set for a game.
+    error PrestateNotSet();
 
     // -------- Methods --------
 
@@ -1109,6 +1113,10 @@ contract OPContractsManager is ISemver {
         // Modify the params with the new anchorStateRegistry and vm values.
         params.anchorStateRegistry = IAnchorStateRegistry(address(_newAnchorStateRegistryProxy));
         params.vm = IBigStepper(_implementations.mipsImpl);
+        if (Claim.unwrap(_opChainConfig.absolutePrestate) == bytes32(0)) {
+            revert PrestateNotSet();
+        }
+        params.absolutePrestate = _opChainConfig.absolutePrestate;
 
         IDisputeGame newGame;
         if (GameType.unwrap(_gameType) == GameType.unwrap(GameTypes.PERMISSIONED_CANNON)) {
