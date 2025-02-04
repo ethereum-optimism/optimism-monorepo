@@ -426,16 +426,6 @@
             "internalType": "Duration",
             "name": "disputeMaxClockDuration",
             "type": "uint64"
-          },
-          {
-            "internalType": "uint32",
-            "name": "operatorFeeScalar",
-            "type": "uint32"
-          },
-          {
-            "internalType": "uint64",
-            "name": "operatorFeeConstant",
-            "type": "uint64"
           }
         ],
         "internalType": "struct OPContractsManager.DeployInput",

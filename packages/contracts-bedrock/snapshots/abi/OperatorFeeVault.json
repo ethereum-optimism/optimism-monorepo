@@ -1,22 +1,6 @@
 [
   {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "_recipient",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "_minWithdrawalAmount",
-        "type": "uint256"
-      },
-      {
-        "internalType": "enum Types.WithdrawalNetwork",
-        "name": "_withdrawalNetwork",
-        "type": "uint8"
-      }
-    ],
+    "inputs": [],
     "stateMutability": "nonpayable",
     "type": "constructor"
   },
