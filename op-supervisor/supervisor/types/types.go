@@ -42,7 +42,7 @@ type ContainsQuery struct {
 	Timestamp uint64
 	BlockNum  uint64
 	LogIdx    uint32
-	LogHash   common.Hash
+	LogHash   common.Hash // LogHash commits to the origin-address and the message payload-hash
 }
 
 type ExecutingMessage struct {
