@@ -376,9 +376,7 @@ contract DeployOPChain is Script {
             disputeMaxGameDepth: _doi.disputeMaxGameDepth(),
             disputeSplitDepth: _doi.disputeSplitDepth(),
             disputeClockExtension: _doi.disputeClockExtension(),
-            disputeMaxClockDuration: _doi.disputeMaxClockDuration(),
-            operatorFeeScalar: _doi.operatorFeeScalar(),
-            operatorFeeConstant: _doi.operatorFeeConstant()
+            disputeMaxClockDuration: _doi.disputeMaxClockDuration()
         });
 
         vm.broadcast(msg.sender);

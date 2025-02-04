@@ -20,10 +20,6 @@ interface IOperatorFeeVault {
 
     function version() external view returns (string memory);
 
-    function __constructor__(
-        address _recipient,
-        uint256 _minWithdrawalAmount,
-        Types.WithdrawalNetwork _withdrawalNetwork
-    )
+    function __constructor__()
         external;
 }

@@ -80,7 +80,7 @@ func TestIsthmusNetworkTransactions(t *testing.T) {
 	require.Equal(t, deployOperatorFeeVaultSource.SourceHash(), deployOperatorFeeVault.SourceHash())
 	require.Nil(t, deployOperatorFeeVault.To())
 	require.Equal(t, uint64(500_000), deployOperatorFeeVault.Gas())
-	require.Equal(t, append(operatorFeeVaultDeploymentBytecode, operatorFeeVaultEncodedArgs...), deployOperatorFeeVault.Data())
+	require.Equal(t, operatorFeeVaultDeploymentBytecode, deployOperatorFeeVault.Data())
 
 	updateL1BlockProxySender, updateL1BlockProxy := toDepositTxn(t, upgradeTxns[3])
 	require.Equal(t, updateL1BlockProxySender, common.Address{})

@@ -495,14 +495,7 @@ contract L2Genesis is Deployer {
             DeployUtils.create1(
                 "OperatorFeeVault",
                 DeployUtils.encodeConstructor(
-                    abi.encodeCall(
-                        IOperatorFeeVault.__constructor__,
-                        (
-                            cfg.operatorFeeVaultRecipient(),
-                            cfg.operatorFeeVaultMinimumWithdrawalAmount(),
-                            Types.WithdrawalNetwork(cfg.operatorFeeVaultWithdrawalNetwork())
-                        )
-                    )
+                    abi.encodeCall(IOperatorFeeVault.__constructor__, ())
                 )
             )
         );
