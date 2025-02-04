@@ -18,14 +18,18 @@ import { Constants } from "src/libraries/Constants.sol";
 import { Claim, GameTypes } from "src/dispute/lib/Types.sol";
 
 /**
- * @title CustomOPContractsManager
+ * @title OPPrestateUpdater
  * @notice A custom implementation of OPContractsManager that allows for modified deployment parameters
  */
 contract OPPrestateUpdater is OPContractsManager {
     struct PrestateUpdateInput {
         OpChain opChain;
-        Claim faultDisputePrestate;
-        Claim permissionedDisputePrestate;
+        Claim absolutePrestate;
+        bool newFDG;
+        address pdgProposer;
+        address pdgChallenger;
+        address vm;
+        uint256 initBond;
     }
 
     /**
@@ -86,12 +90,12 @@ contract OPPrestateUpdater is OPContractsManager {
     function updatePrestate(PrestateUpdateInput[] memory _prestateUpdateInputs) external {
         // Loop through each chain and prestate hash
         for (uint256 i = 0; i < _prestateUpdateInputs.length; i++) {
-            bool hasFDG = Claim.unwrap(_prestateUpdateInputs[i].faultDisputePrestate) != bytes32(0);
+            bool hasFDG = Claim.unwrap(_prestateUpdateInputs[i].absolutePrestate) != bytes32(0);
             AddGameInput[] memory inputs = new AddGameInput[](hasFDG ? 2 : 1);
             AddGameInput memory pdgInput;
             AddGameInput memory fdgInput;
 
-            if (Claim.unwrap(_prestateUpdateInputs[i].permissionedDisputePrestate) == bytes32(0)) {
+            if (Claim.unwrap(_prestateUpdateInputs[i].absolutePrestate) == bytes32(0)) {
                 revert("Permissioned dispute prestate is required");
             }
             // Get the current game implementation to copy parameters from
@@ -107,7 +111,7 @@ contract OPPrestateUpdater is OPContractsManager {
 
             // Create game input with updated prestate but same other params
             pdgInput = AddGameInput({
-                disputeAbsolutePrestate: _prestateUpdateInputs[i].permissionedDisputePrestate,
+                disputeAbsolutePrestate: _prestateUpdateInputs[i].absolutePrestate,
                 saltMixer: "prestate_update",
                 systemConfig: _prestateUpdateInputs[i].opChain.systemConfigProxy,
                 proxyAdmin: _prestateUpdateInputs[i].opChain.proxyAdmin,
@@ -128,14 +132,13 @@ contract OPPrestateUpdater is OPContractsManager {
                 IFaultDisputeGame fdg = IFaultDisputeGame(address(getGameImplementation(dgf, GameTypes.CANNON)));
                 if (address(fdg) == address(0)) revert("Fault dispute game not found");
                 initBond = dgf.initBonds(GameTypes.CANNON);
-
                 // Get the existing game parameters
                 IFaultDisputeGame.GameConstructorParams memory fdgParams =
                     getGameConstructorParams(IFaultDisputeGame(address(fdg)));
 
                 // Create game input with updated prestate but same other params
                 fdgInput = AddGameInput({
-                    disputeAbsolutePrestate: _prestateUpdateInputs[i].faultDisputePrestate,
+                    disputeAbsolutePrestate: _prestateUpdateInputs[i].absolutePrestate,
                     saltMixer: "prestate_update",
                     systemConfig: _prestateUpdateInputs[i].opChain.systemConfigProxy,
                     proxyAdmin: _prestateUpdateInputs[i].opChain.proxyAdmin,

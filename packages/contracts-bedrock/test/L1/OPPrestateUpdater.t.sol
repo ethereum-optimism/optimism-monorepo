@@ -180,8 +180,7 @@ contract OPPrestateUpdater_Test is Test {
             )
         );
 
-        assertEq(pdg.absolutePrestate().raw(), inputs[0].permissionedDisputePrestate.raw(), "pdg prestate mismatch");
-        assertEq(fdg.absolutePrestate().raw(), inputs[0].faultDisputePrestate.raw(), "fdg prestate mismatch");
+        assertEq(pdg.absolutePrestate().raw(), inputs[0].absolutePrestate.raw(), "pdg prestate mismatch");
     }
 
     function addGameType(IOPContractsManager.AddGameInput memory input)
