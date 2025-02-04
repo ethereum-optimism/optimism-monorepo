@@ -10,6 +10,9 @@ type Metrics interface {
 	CacheAdd(chainID eth.ChainID, label string, cacheSize int, evicted bool)
 	CacheGet(chainID eth.ChainID, label string, hit bool)
 
+	RecordCrossUnsafeRef(chainID eth.ChainID, ref eth.BlockRef)
+	RecordCrossSafeRef(chainID eth.ChainID, ref eth.BlockRef)
+
 	RecordDBEntryCount(chainID eth.ChainID, kind string, count int64)
 	RecordDBSearchEntriesRead(chainID eth.ChainID, count int64)
 }
@@ -26,6 +29,14 @@ func newChainMetrics(chainID eth.ChainID, delegate Metrics) *chainMetrics {
 		chainID:  chainID,
 		delegate: delegate,
 	}
+}
+
+func (c *chainMetrics) RecordCrossUnsafeRef(ref eth.BlockRef) {
+	c.delegate.RecordCrossUnsafeRef(c.chainID, ref)
+}
+
+func (c *chainMetrics) RecordCrossSafeRef(ref eth.BlockRef) {
+	c.delegate.RecordCrossSafeRef(c.chainID, ref)
 }
 
 func (c *chainMetrics) CacheAdd(label string, cacheSize int, evicted bool) {

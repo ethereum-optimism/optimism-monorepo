@@ -6,6 +6,7 @@ import (
 
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
+	"github.com/ethereum-optimism/optimism/op-supervisor/metrics"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 	"github.com/ethereum/go-ethereum/common"
@@ -96,7 +97,7 @@ func TestCommonL1UnknownChain(t *testing.T) {
 	m1 := &mockDerivedFromStorage{}
 	m2 := &mockDerivedFromStorage{}
 	logger := testlog.Logger(t, log.LevelDebug)
-	chainDB := NewChainsDB(logger, sampleDepSet(t))
+	chainDB := NewChainsDB(logger, sampleDepSet(t), metrics.NoopMetrics)
 
 	// add a mock local derived-from storage to drive the test
 	chainDB.AddLocalDerivedFromDB(eth.ChainIDFromUInt64(900), m1)
@@ -112,7 +113,7 @@ func TestCommonL1(t *testing.T) {
 	m2 := &mockDerivedFromStorage{}
 	m3 := &mockDerivedFromStorage{}
 	logger := testlog.Logger(t, log.LevelDebug)
-	chainDB := NewChainsDB(logger, sampleDepSet(t))
+	chainDB := NewChainsDB(logger, sampleDepSet(t), metrics.NoopMetrics)
 
 	// add a mock local derived-from storage to drive the test
 	chainDB.AddLocalDerivedFromDB(eth.ChainIDFromUInt64(900), m1)

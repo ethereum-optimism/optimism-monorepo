@@ -11,6 +11,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-node/rollup/event"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/locks"
+	"github.com/ethereum-optimism/optimism/op-supervisor/metrics"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/db/fromda"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/db/logs"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
@@ -78,6 +79,11 @@ type CrossDerivedFromStorage interface {
 
 var _ LogStorage = (*logs.DB)(nil)
 
+type Metrics interface {
+	RecordCrossUnsafeRef(chainID eth.ChainID, ref eth.BlockRef)
+	RecordCrossSafeRef(chainID eth.ChainID, ref eth.BlockRef)
+}
+
 // ChainsDB is a database that stores logs and derived-from data for multiple chains.
 // it implements the LogStorage interface, as well as several DB interfaces needed by the cross package.
 type ChainsDB struct {
@@ -107,14 +113,21 @@ type ChainsDB struct {
 
 	// emitter used to signal when the DB changes, for other modules to react to
 	emitter event.Emitter
+
+	m Metrics
 }
 
 var _ event.AttachEmitter = (*ChainsDB)(nil)
 
-func NewChainsDB(l log.Logger, depSet depset.DependencySet) *ChainsDB {
+func NewChainsDB(l log.Logger, depSet depset.DependencySet, m Metrics) *ChainsDB {
+	if m == nil {
+		m = metrics.NoopMetrics
+	}
+
 	return &ChainsDB{
 		logger: l,
 		depSet: depSet,
+		m:      m,
 	}
 }
 

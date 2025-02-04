@@ -108,7 +108,7 @@ func NewSupervisorBackend(ctx context.Context, logger log.Logger,
 	sysCtx, sysCancel := context.WithCancel(ctx)
 
 	// create initial per-chain resources
-	chainsDBs := db.NewChainsDB(logger, depSet)
+	chainsDBs := db.NewChainsDB(logger, depSet, m)
 	eventSys.Register("chainsDBs", chainsDBs, event.DefaultRegisterOpts())
 
 	l1Accessor := l1access.NewL1Accessor(sysCtx, logger, nil)
