@@ -64,8 +64,6 @@ func NewBlockProcessorFromPayloadAttributes(provider BlockDataProvider, parent c
 	return NewBlockProcessorFromHeader(provider, header)
 }
 
-var emptyRequestsHash = types.CalcRequestsHash([][]byte{})
-
 func NewBlockProcessorFromHeader(provider BlockDataProvider, h *types.Header) (*BlockProcessor, error) {
 	header := types.CopyHeader(h) // Copy to avoid mutating the original header
 
@@ -116,7 +114,7 @@ func NewBlockProcessorFromHeader(provider BlockDataProvider, h *types.Header) (*
 		header.WithdrawalsHash = &mpHash
 
 		// set the header requests root to empty hash for Isthmus blocks
-		header.RequestsHash = &emptyRequestsHash
+		header.RequestsHash = &types.EmptyRequestsHash
 	}
 
 	return &BlockProcessor{
