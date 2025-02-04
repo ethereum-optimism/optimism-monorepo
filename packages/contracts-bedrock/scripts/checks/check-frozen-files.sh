@@ -49,15 +49,18 @@ FROZEN_FILES=(
   "src/L1/L1CrossDomainMessenger.sol"
   "src/L1/L1ERC721Bridge.sol"
   "src/L1/L1StandardBridge.sol"
-  "src/L1/OptimismPortal2.sol"
+  # TODO(#14145): Add back when fixes are finished
+  # "src/L1/OptimismPortal2.sol"
   "src/L1/ProtocolVersions.sol"
   "src/L1/SuperchainConfig.sol"
   "src/L1/SystemConfig.sol"
-  "src/dispute/AnchorStateRegistry.sol"
+  # TODO(#14146): Add back when fixes are finished
+  # "src/dispute/AnchorStateRegistry.sol"
   "src/dispute/DelayedWETH.sol"
   "src/dispute/DisputeGameFactory.sol"
-  "src/dispute/FaultDisputeGame.sol"
-  "src/dispute/PermissionedDisputeGame.sol"
+  # TODO(#14147): Add back when fixes are finished
+  # "src/dispute/FaultDisputeGame.sol"
+  # "src/dispute/PermissionedDisputeGame.sol"
   "src/cannon/MIPS.sol"
   "src/cannon/MIPS2.sol"
 # TODO(#14116): Add MIPS64 back when development is finished
