@@ -56,7 +56,7 @@ contract CrossL2InboxTest is CommonTest {
         // Expect a revert with the NoExecutingDeposits selector
         vm.expectRevert(NoExecutingDeposits.selector);
 
-        // Call the executeMessage function
+        // Call the validateMessage function
         crossL2Inbox.validateMessage(_id, _messageHash);
     }
 }
