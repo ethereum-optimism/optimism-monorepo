@@ -75,6 +75,7 @@ contract DeployOPPrestateUpdaterInput is BaseDeployIO {
         else if (_sel == this.mipsImpl.selector) _mipsImpl = _addr;
         else revert("DeployOPPrestateUpdaterInput: unknown selector");
         // forgefmt: disable-end
+    }
 
     // Setter for string type
     function set(bytes4 _sel, string memory _value) public {
