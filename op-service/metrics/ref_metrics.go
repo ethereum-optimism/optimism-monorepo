@@ -11,7 +11,7 @@ import (
 )
 
 type RefMetricer interface {
-	RecordRef(layer string, name string, num uint64, timestamp uint64, h common.Hash)
+	RecordRef(layer string, name string, num uint64, timestamp uint64, h common.Hash, labels ...string)
 	RecordL1Ref(name string, ref eth.L1BlockRef)
 	RecordL2Ref(name string, ref eth.L2BlockRef)
 }
@@ -84,19 +84,20 @@ func MakeRefMetrics(ns string, factory Factory) RefMetrics {
 	}
 }
 
-func (m *RefMetrics) RecordRef(layer string, name string, num uint64, timestamp uint64, h common.Hash) {
-	m.RefsNumber.WithLabelValues(layer, name).Set(float64(num))
+func (m *RefMetrics) RecordRef(layer string, name string, num uint64, timestamp uint64, h common.Hash, labels ...string) {
+	labels = append(labels, layer, name)
+	m.RefsNumber.WithLabelValues(labels...).Set(float64(num))
 	if timestamp != 0 {
-		m.RefsTime.WithLabelValues(layer, name).Set(float64(timestamp))
+		m.RefsTime.WithLabelValues(labels...).Set(float64(timestamp))
 		// only meter the latency when we first see this hash for the given label name
 		if m.LatencySeen[name] != h {
 			m.LatencySeen[name] = h
-			m.RefsLatency.WithLabelValues(layer, name).Set(float64(timestamp) - (float64(time.Now().UnixNano()) / 1e9))
+			m.RefsLatency.WithLabelValues(labels...).Set(float64(timestamp) - (float64(time.Now().UnixNano()) / 1e9))
 		}
 	}
 	// we map the first 8 bytes to a float64, so we can graph changes of the hash to find divergences visually.
 	// We don't do math.Float64frombits, just a regular conversion, to keep the value within a manageable range.
-	m.RefsHash.WithLabelValues(layer, name).Set(float64(binary.LittleEndian.Uint64(h[:])))
+	m.RefsHash.WithLabelValues(labels...).Set(float64(binary.LittleEndian.Uint64(h[:])))
 }
 
 func (m *RefMetrics) RecordL1Ref(name string, ref eth.L1BlockRef) {
@@ -113,6 +114,6 @@ func (m *RefMetrics) RecordL2Ref(name string, ref eth.L2BlockRef) {
 // to have a noop RefMetricer.
 type NoopRefMetrics struct{}
 
-func (*NoopRefMetrics) RecordRef(string, string, uint64, uint64, common.Hash) {}
-func (*NoopRefMetrics) RecordL1Ref(string, eth.L1BlockRef)                    {}
-func (*NoopRefMetrics) RecordL2Ref(string, eth.L2BlockRef)                    {}
+func (*NoopRefMetrics) RecordRef(string, string, uint64, uint64, common.Hash, ...string) {}
+func (*NoopRefMetrics) RecordL1Ref(string, eth.L1BlockRef)                               {}
+func (*NoopRefMetrics) RecordL2Ref(string, eth.L2BlockRef)                               {}
