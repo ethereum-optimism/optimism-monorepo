@@ -52,7 +52,7 @@ require (
 	github.com/urfave/cli/v2 v2.27.5
 	golang.org/x/crypto v0.32.0
 	golang.org/x/exp v0.0.0-20241009180824-f66d83c29e7c
-	golang.org/x/sync v0.10.0
+	golang.org/x/sync v0.11.0
 	golang.org/x/term v0.28.0
 	golang.org/x/time v0.9.0
 	gopkg.in/yaml.v3 v3.0.1
