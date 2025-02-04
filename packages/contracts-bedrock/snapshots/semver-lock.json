@@ -16,11 +16,11 @@
     "sourceCodeHash": "0xf9ba98657dc235355146e381b654fe3ed766feb7cd87636ec0c9d4c6dd3e1973"
   },
   "src/L1/OPContractsManager.sol": {
-    "initCodeHash": "0xee8025c5f74ce7d9da5875b5f5b97106af0a307f366cc9559ec27174b3e3d0bc",
-    "sourceCodeHash": "0x1c37bb41a46a1c0fe6c8cef88037ecc6700675c4cfa8d673349f026ffd919526"
+    "initCodeHash": "0x9541af1beee06d1f089c4579b9f00f9c8e41bd4e10f7764d69c78e2ca0bb7a32",
+    "sourceCodeHash": "0x5dd1375011961c3cf695c4020892fec93c1b9730ff3d678ed99454cbb6bd081d"
   },
   "src/L1/OPContractsManagerInterop.sol": {
-    "initCodeHash": "0xa4b08c116f7d530d839bd57ff51d8db9bc6d4b0a20aa7e59828a7d78d857f43d",
+    "initCodeHash": "0xbb8117d3f6fbf9bdff9b7549214513c0a42768f031c3bc48c92770df2ebfd45f",
     "sourceCodeHash": "0xa9514a700ab57f561ccc9836c6722c732bbcad4eceb65cc9ad9c06b05adbf4c2"
   },
   "src/L1/OptimismPortal2.sol": {

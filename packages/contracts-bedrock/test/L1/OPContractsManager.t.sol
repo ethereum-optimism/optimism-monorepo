@@ -266,10 +266,7 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
         bytes32 salt = keccak256(
             abi.encode(
                 l2ChainId,
-                string.concat(
-                    "v2.0.0-",
-                    string(bytes.concat(bytes20(address(opChainConfigs[0].systemConfigProxy))))
-                ),
+                string.concat("v2.0.0-", string(bytes.concat(bytes20(address(opChainConfigs[0].systemConfigProxy))))),
                 "AnchorStateRegistry"
             )
         );
