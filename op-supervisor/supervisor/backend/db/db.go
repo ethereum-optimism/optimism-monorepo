@@ -51,7 +51,7 @@ type LogStorage interface {
 	OpenBlock(blockNum uint64) (ref eth.BlockRef, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error)
 }
 
-type LocalDerivedFromStorage interface {
+type DerivationStorage interface {
 	// basic info
 	First() (pair types.DerivedBlockSealPair, err error)
 	Last() (pair types.DerivedBlockSealPair, err error)
@@ -81,12 +81,7 @@ type LocalDerivedFromStorage interface {
 	RewindToFirstDerived(v eth.BlockID) error
 }
 
-var _ LocalDerivedFromStorage = (*fromda.DB)(nil)
-
-type CrossDerivedFromStorage interface {
-	LocalDerivedFromStorage
-	// This will start to differ with reorg support
-}
+var _ DerivationStorage = (*fromda.DB)(nil)
 
 var _ LogStorage = (*logs.DB)(nil)
 
@@ -106,10 +101,10 @@ type ChainsDB struct {
 	crossUnsafe locks.RWMap[eth.ChainID, *locks.RWValue[types.BlockSeal]]
 
 	// local-safe: index of what we optimistically know about L2 blocks being derived from L1
-	localDBs locks.RWMap[eth.ChainID, LocalDerivedFromStorage]
+	localDBs locks.RWMap[eth.ChainID, DerivationStorage]
 
 	// cross-safe: index of L2 blocks we know to only have cross-L2 valid dependencies
-	crossDBs locks.RWMap[eth.ChainID, CrossDerivedFromStorage]
+	crossDBs locks.RWMap[eth.ChainID, DerivationStorage]
 
 	// finalized: the L1 finality progress. This can be translated into what may be considered as finalized in L2.
 	// It is initially zeroed, and the L2 finality query will return
@@ -171,7 +166,7 @@ func (db *ChainsDB) AddLogDB(chainID eth.ChainID, logDB LogStorage) {
 	db.logDBs.Set(chainID, logDB)
 }
 
-func (db *ChainsDB) AddLocalDerivedFromDB(chainID eth.ChainID, dfDB LocalDerivedFromStorage) {
+func (db *ChainsDB) AddLocalDerivedFromDB(chainID eth.ChainID, dfDB DerivationStorage) {
 	if db.localDBs.Has(chainID) {
 		db.logger.Warn("overwriting existing local derived-from DB for chain", "chain", chainID)
 	}
@@ -179,7 +174,7 @@ func (db *ChainsDB) AddLocalDerivedFromDB(chainID eth.ChainID, dfDB LocalDerived
 	db.localDBs.Set(chainID, dfDB)
 }
 
-func (db *ChainsDB) AddCrossDerivedFromDB(chainID eth.ChainID, dfDB CrossDerivedFromStorage) {
+func (db *ChainsDB) AddCrossDerivedFromDB(chainID eth.ChainID, dfDB DerivationStorage) {
 	if db.crossDBs.Has(chainID) {
 		db.logger.Warn("overwriting existing cross derived-from DB for chain", "chain", chainID)
 	}
