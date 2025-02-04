@@ -383,8 +383,6 @@ func (ea *L2EngineAPI) NewPayloadV4(ctx context.Context, params *eth.ExecutionPa
 
 	if !ea.config().IsIsthmus(uint64(params.Timestamp)) {
 		return &eth.PayloadStatusV1{Status: eth.ExecutionInvalid}, engine.UnsupportedFork.With(errors.New("newPayloadV4 called pre-isthmus"))
-	} else if len(executionRequests) > 0 {
-		return &eth.PayloadStatusV1{Status: eth.ExecutionInvalid}, engine.InvalidParams.With(errors.New("newPayloadV4 called with non-empty execution requests"))
 	}
 
 	requests := convertRequests(executionRequests)
