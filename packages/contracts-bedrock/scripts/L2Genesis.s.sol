@@ -493,10 +493,7 @@ contract L2Genesis is Deployer {
     function setOperatorFeeVault() public {
         IOperatorFeeVault vault = IOperatorFeeVault(
             DeployUtils.create1(
-                "OperatorFeeVault",
-                DeployUtils.encodeConstructor(
-                    abi.encodeCall(IOperatorFeeVault.__constructor__, ())
-                )
+                "OperatorFeeVault", DeployUtils.encodeConstructor(abi.encodeCall(IOperatorFeeVault.__constructor__, ()))
             )
         );
 

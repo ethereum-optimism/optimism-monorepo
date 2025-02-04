@@ -22,7 +22,5 @@ contract OperatorFeeVault is FeeVault, ISemver {
 
     /// @notice Constructs the OperatorFeeVault contract.
     /// Funds are withdrawn to the base fee vault on the L2 network.
-    constructor()
-        FeeVault(Predeploys.BASE_FEE_VAULT, 0, Types.WithdrawalNetwork.L2)
-    { }
+    constructor() FeeVault(Predeploys.BASE_FEE_VAULT, 0, Types.WithdrawalNetwork.L2) { }
 }
