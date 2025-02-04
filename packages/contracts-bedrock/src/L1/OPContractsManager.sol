@@ -520,11 +520,16 @@ contract OPContractsManager is ISemver {
             IAnchorStateRegistry newAnchorStateRegistryProxy;
             {
                 // Deploy a new proxy, because we're replacing the old one.
+                // Include the system config address in the salt to ensure that the new proxy is unique,
+                // even if another chains with the same L2 chain ID has been deployed by this contract.
                 newAnchorStateRegistryProxy = IAnchorStateRegistry(
                     deployProxy({
                         _l2ChainId: l2ChainId,
                         _proxyAdmin: _opChainConfigs[i].proxyAdmin,
-                        _saltMixer: "v2.0.0",
+                        _saltMixer: string.concat(
+                            "v2.0.0-",
+                            string(bytes.concat(bytes32(uint256(uint160(address(_opChainConfigs[i].systemConfigProxy))))))
+                        ),
                         _contractName: "AnchorStateRegistry"
                     })
                 );

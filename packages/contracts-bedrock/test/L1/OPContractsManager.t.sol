@@ -10,6 +10,7 @@ import { DelegateCaller } from "test/mocks/Callers.sol";
 // Scripts
 import { DeployOPChainInput } from "scripts/deploy/DeployOPChain.s.sol";
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
+import { Deploy } from "scripts/deploy/Deploy.s.sol";
 
 // Libraries
 import { EIP1967Helper } from "test/mocks/EIP1967Helper.sol";
@@ -262,7 +263,16 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
         address oldL1CrossDomainMessenger = addressManager.getAddress("OVM_L1CrossDomainMessenger");
 
         // Predict the address of the new AnchorStateRegistry proxy
-        bytes32 salt = keccak256(abi.encode(l2ChainId, "v2.0.0", "AnchorStateRegistry"));
+        bytes32 salt = keccak256(
+            abi.encode(
+                l2ChainId,
+                string.concat(
+                    "v2.0.0-",
+                    string(bytes.concat(bytes32(uint256(uint160(address(opChainConfigs[0].systemConfigProxy))))))
+                ),
+                "AnchorStateRegistry"
+            )
+        );
         bytes memory initCode = bytes.concat(vm.getCode("Proxy"), abi.encode(proxyAdmin));
         address newAnchorStateRegistryProxy = vm.computeCreate2Address(salt, keccak256(initCode), _delegateCaller);
         vm.label(newAnchorStateRegistryProxy, "NewAnchorStateRegistryProxy");
@@ -396,6 +406,18 @@ contract OPContractsManager_Upgrade_Test is OPContractsManager_Upgrade_Harness {
 
         // Run the upgrade test and checks
         runUpgradeTestAndChecks(_nonUpgradeController);
+    }
+
+    function test_upgrade_duplicateL2ChainId_succeeds() public {
+        // Deploy a new OPChain with the same L2 chain ID as the current OPChain
+        Deploy deploy = Deploy(address(uint160(uint256(keccak256(abi.encode("optimism.deploy"))))));
+        IOPContractsManager.DeployInput memory deployInput = deploy.getDeployInput();
+        deployInput.l2ChainId = l2ChainId;
+        deployInput.saltMixer = "v2.0.0";
+        opcm.deploy(deployInput);
+
+        // Try to upgrade the current OPChain
+        runUpgradeTestAndChecks(upgrader);
     }
 }
 
