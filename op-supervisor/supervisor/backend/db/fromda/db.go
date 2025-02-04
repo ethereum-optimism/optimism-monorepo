@@ -70,12 +70,12 @@ func (db *DB) PreviousDerived(derived eth.BlockID) (prevDerived types.BlockSeal,
 	db.rwLock.RLock()
 	defer db.rwLock.RUnlock()
 	// last is always the latest view, and thus canonical.
-	_, lastCanonical, err := db.lastDerivedFrom(derived.Number)
+	_, lastCanonical, err := db.derivedNumToLastSource(derived.Number)
 	if err != nil {
 		return types.BlockSeal{}, fmt.Errorf("failed to find last derived %d: %w", derived.Number, err)
 	}
 	// get the first time this L2 block was seen.
-	selfIndex, self, err := db.firstDerivedFrom(derived.Number)
+	selfIndex, self, err := db.derivedNumToFirstSource(derived.Number)
 	if err != nil {
 		return types.BlockSeal{}, fmt.Errorf("failed to find first derived %d: %w", derived.Number, err)
 	}
@@ -98,7 +98,7 @@ func (db *DB) PreviousDerived(derived eth.BlockID) (prevDerived types.BlockSeal,
 // derivedFrom: the L1 block that the L2 block is safe for (not necessarily the first, multiple L2 blocks may be derived from the same L1 block).
 // derived: the L2 block that was derived (not necessarily the first, the L1 block may have been empty and repeated the last safe L2 block).
 // If the last entry is invalidated, this returns a types.ErrAwaitReplacementBlock error.
-func (db *DB) Latest() (pair types.DerivedBlockSealPair, err error) {
+func (db *DB) Last() (pair types.DerivedBlockSealPair, err error) {
 	db.rwLock.RLock()
 	defer db.rwLock.RUnlock()
 	link, err := db.latest()
@@ -106,6 +106,19 @@ func (db *DB) Latest() (pair types.DerivedBlockSealPair, err error) {
 		return types.DerivedBlockSealPair{}, err
 	}
 	return link.sealOrErr()
+}
+
+// latest is like Latest, but without lock, for internal use.
+func (db *DB) latest() (link LinkEntry, err error) {
+	lastIndex := db.store.LastEntryIdx()
+	if lastIndex < 0 {
+		return LinkEntry{}, types.ErrFuture
+	}
+	last, err := db.readAt(lastIndex)
+	if err != nil {
+		return LinkEntry{}, fmt.Errorf("failed to read last derivation data: %w", err)
+	}
+	return last, nil
 }
 
 func (db *DB) Invalidated() (pair types.DerivedBlockSealPair, err error) {
@@ -124,31 +137,18 @@ func (db *DB) Invalidated() (pair types.DerivedBlockSealPair, err error) {
 	}, nil
 }
 
-// latest is like Latest, but without lock, for internal use.
-func (db *DB) latest() (link LinkEntry, err error) {
-	lastIndex := db.store.LastEntryIdx()
-	if lastIndex < 0 {
-		return LinkEntry{}, types.ErrFuture
-	}
-	last, err := db.readAt(lastIndex)
-	if err != nil {
-		return LinkEntry{}, fmt.Errorf("failed to read last derivation data: %w", err)
-	}
-	return last, nil
-}
-
 // LastDerivedAt returns the last L2 block derived from the given L1 block.
 // This may return types.ErrAwaitReplacementBlock if the entry was invalidated and needs replacement.
-func (db *DB) LastDerivedAt(derivedFrom eth.BlockID) (derived types.BlockSeal, err error) {
+func (db *DB) SourceToLastDerived(source eth.BlockID) (derived types.BlockSeal, err error) {
 	db.rwLock.RLock()
 	defer db.rwLock.RUnlock()
-	_, link, err := db.lastDerivedAt(derivedFrom.Number)
+	_, link, err := db.sourceNumToLastDerived(source.Number)
 	if err != nil {
 		return types.BlockSeal{}, err
 	}
-	if link.derivedFrom.ID() != derivedFrom {
+	if link.derivedFrom.ID() != source {
 		return types.BlockSeal{}, fmt.Errorf("searched for last derived-from %s but found %s: %w",
-			derivedFrom, link.derivedFrom, types.ErrConflict)
+			source, link.derivedFrom, types.ErrConflict)
 	}
 	if link.invalidated {
 		return types.BlockSeal{}, types.ErrAwaitReplacementBlock
@@ -162,7 +162,7 @@ func (db *DB) NextDerived(derived eth.BlockID) (pair types.DerivedBlockSealPair,
 	db.rwLock.RLock()
 	defer db.rwLock.RUnlock()
 	// get the last time this L2 block was seen.
-	selfIndex, self, err := db.lastDerivedFrom(derived.Number)
+	selfIndex, self, err := db.derivedNumToLastSource(derived.Number)
 	if err != nil {
 		return types.DerivedBlockSealPair{}, fmt.Errorf("failed to find derived %d: %w", derived.Number, err)
 	}
@@ -176,16 +176,16 @@ func (db *DB) NextDerived(derived eth.BlockID) (pair types.DerivedBlockSealPair,
 	return next.sealOrErr()
 }
 
-// IsDerived checks if the given block is the canonical block at the given chain.
+// IsCanonical checks if the given block is canonical for the given chain.
 // This returns an ErrFuture if the block is not known yet.
 // An ErrConflict if there is a different block.
 // Or an ErrAwaitReplacementBlock if it was invalidated.
-func (db *DB) IsDerived(derived eth.BlockID) error {
+func (db *DB) IsCanonical(derived eth.BlockID) error {
 	db.rwLock.RLock()
 	defer db.rwLock.RUnlock()
 	// Take the last entry: this will be the latest canonical view,
 	// if the block was previously invalidated.
-	_, link, err := db.lastDerivedFrom(derived.Number)
+	_, link, err := db.derivedNumToLastSource(derived.Number)
 	if err != nil {
 		return err
 	}
@@ -201,10 +201,10 @@ func (db *DB) IsDerived(derived eth.BlockID) error {
 
 // DerivedFrom determines where a L2 block was first derived from.
 // (a L2 block may repeat if the following L1 blocks are empty and don't produce additional L2 blocks)
-func (db *DB) DerivedFrom(derived eth.BlockID) (derivedFrom types.BlockSeal, err error) {
+func (db *DB) DerivedToFirstSource(derived eth.BlockID) (types.BlockSeal, error) {
 	db.rwLock.RLock()
 	defer db.rwLock.RUnlock()
-	_, link, err := db.firstDerivedFrom(derived.Number)
+	_, link, err := db.derivedNumToFirstSource(derived.Number)
 	if err != nil {
 		return types.BlockSeal{}, err
 	}
@@ -215,20 +215,20 @@ func (db *DB) DerivedFrom(derived eth.BlockID) (derivedFrom types.BlockSeal, err
 	return link.derivedFrom, nil
 }
 
-func (db *DB) PreviousDerivedFrom(derivedFrom eth.BlockID) (prevDerivedFrom types.BlockSeal, err error) {
+func (db *DB) PreviousSource(source eth.BlockID) (types.BlockSeal, error) {
 	db.rwLock.RLock()
 	defer db.rwLock.RUnlock()
-	return db.previousDerivedFrom(derivedFrom)
+	return db.previousSource(source)
 }
 
-func (db *DB) previousDerivedFrom(derivedFrom eth.BlockID) (prevDerivedFrom types.BlockSeal, err error) {
+func (db *DB) previousSource(source eth.BlockID) (types.BlockSeal, error) {
 	// get the last time this L1 block was seen.
-	selfIndex, self, err := db.firstDerivedAt(derivedFrom.Number)
+	selfIndex, self, err := db.sourceNumToFirstDerived(source.Number)
 	if err != nil {
-		return types.BlockSeal{}, fmt.Errorf("failed to find derived %d: %w", derivedFrom.Number, err)
+		return types.BlockSeal{}, fmt.Errorf("failed to find derived %d: %w", source.Number, err)
 	}
-	if self.derivedFrom.ID() != derivedFrom {
-		return types.BlockSeal{}, fmt.Errorf("found %s, but expected %s: %w", self.derivedFrom, derivedFrom, types.ErrConflict)
+	if self.derivedFrom.ID() != source {
+		return types.BlockSeal{}, fmt.Errorf("found %s, but expected %s: %w", self.derivedFrom, source, types.ErrConflict)
 	}
 	if selfIndex == 0 {
 		// genesis block has a zeroed block as parent block
@@ -236,49 +236,48 @@ func (db *DB) previousDerivedFrom(derivedFrom eth.BlockID) (prevDerivedFrom type
 			return types.BlockSeal{}, nil
 		} else {
 			return types.BlockSeal{},
-				fmt.Errorf("cannot find previous derived before start of database: %s (%w)", derivedFrom, types.ErrPreviousToFirst)
+				fmt.Errorf("cannot find previous derived before start of database: %s (%w)", source, types.ErrPreviousToFirst)
 		}
 	}
 	prev, err := db.readAt(selfIndex - 1)
 	if err != nil {
-		return types.BlockSeal{}, fmt.Errorf("cannot find previous derived before %s: %w", derivedFrom, err)
+		return types.BlockSeal{}, fmt.Errorf("cannot find previous derived before %s: %w", source, err)
 	}
 	return prev.derivedFrom, nil
 }
 
-// NextDerivedFrom finds the next L1 block after derivedFrom
-func (db *DB) NextDerivedFrom(derivedFrom eth.BlockID) (nextDerivedFrom types.BlockSeal, err error) {
+// NextSource finds the next source after the given source
+func (db *DB) NextSource(source eth.BlockID) (types.BlockSeal, error) {
 	db.rwLock.RLock()
 	defer db.rwLock.RUnlock()
-	selfIndex, self, err := db.lastDerivedAt(derivedFrom.Number)
+	selfIndex, self, err := db.sourceNumToLastDerived(source.Number)
 	if err != nil {
-		return types.BlockSeal{}, fmt.Errorf("failed to find derived-from %d: %w", derivedFrom.Number, err)
+		return types.BlockSeal{}, fmt.Errorf("failed to find derived-from %d: %w", source.Number, err)
 	}
-	if self.derivedFrom.ID() != derivedFrom {
-		return types.BlockSeal{}, fmt.Errorf("found %s, but expected %s: %w", self.derivedFrom, derivedFrom, types.ErrConflict)
+	if self.derivedFrom.ID() != source {
+		return types.BlockSeal{}, fmt.Errorf("found %s, but expected %s: %w", self.derivedFrom, source, types.ErrConflict)
 	}
 	next, err := db.readAt(selfIndex + 1)
 	if err != nil {
-		return types.BlockSeal{}, fmt.Errorf("cannot find next derived-from after %s: %w", derivedFrom, err)
+		return types.BlockSeal{}, fmt.Errorf("cannot find next derived-from after %s: %w", source, err)
 	}
 	return next.derivedFrom, nil
 }
 
-// FirstAfter determines the next entry after the given pair of derivedFrom, derived.
-// Either one or both of the two entries will be an increment by 1.
+// Next returns the next Derived Block Pair after the given pair.
 // This may return types.ErrAwaitReplacementBlock if the entry was invalidated and needs replacement.
-func (db *DB) FirstAfter(derivedFrom, derived eth.BlockID) (pair types.DerivedBlockSealPair, err error) {
+func (db *DB) Next(pair types.DerivedIDPair) (types.DerivedBlockSealPair, error) {
 	db.rwLock.RLock()
 	defer db.rwLock.RUnlock()
-	selfIndex, selfLink, err := db.lookup(derivedFrom.Number, derived.Number)
+	selfIndex, selfLink, err := db.lookup(pair.DerivedFrom.Number, pair.Derived.Number)
 	if err != nil {
 		return types.DerivedBlockSealPair{}, err
 	}
-	if selfLink.derivedFrom.ID() != derivedFrom {
-		return types.DerivedBlockSealPair{}, fmt.Errorf("DB has derived-from %s but expected %s: %w", selfLink.derivedFrom, derivedFrom, types.ErrConflict)
+	if selfLink.derivedFrom.ID() != pair.DerivedFrom {
+		return types.DerivedBlockSealPair{}, fmt.Errorf("DB has derived-from %s but expected %s: %w", selfLink.derivedFrom, pair.DerivedFrom, types.ErrConflict)
 	}
-	if selfLink.derived.ID() != derived {
-		return types.DerivedBlockSealPair{}, fmt.Errorf("DB has derived %s but expected %s: %w", selfLink.derived, derived, types.ErrConflict)
+	if selfLink.derived.ID() != pair.Derived {
+		return types.DerivedBlockSealPair{}, fmt.Errorf("DB has derived %s but expected %s: %w", selfLink.derived, pair.Derived, types.ErrConflict)
 	}
 	next, err := db.readAt(selfIndex + 1)
 	if err != nil {
@@ -287,15 +286,31 @@ func (db *DB) FirstAfter(derivedFrom, derived eth.BlockID) (pair types.DerivedBl
 	return next.sealOrErr()
 }
 
-func (db *DB) lastDerivedFrom(derived uint64) (entrydb.EntryIdx, LinkEntry, error) {
-	return db.find(true, func(link LinkEntry) int {
-		return cmp.Compare(derived, link.derived.Number)
+func (db *DB) derivedNumToFirstSource(derivedNum uint64) (entrydb.EntryIdx, LinkEntry, error) {
+	// Forward: prioritize the first entry.
+	return db.find(false, func(link LinkEntry) int {
+		return cmp.Compare(link.derived.Number, derivedNum)
 	})
 }
 
-func (db *DB) firstDerivedFrom(derived uint64) (entrydb.EntryIdx, LinkEntry, error) {
+func (db *DB) derivedNumToLastSource(derivedNum uint64) (entrydb.EntryIdx, LinkEntry, error) {
+	// Reverse: prioritize the last entry.
+	return db.find(true, func(link LinkEntry) int {
+		return cmp.Compare(derivedNum, link.derived.Number)
+	})
+}
+
+func (db *DB) sourceNumToFirstDerived(sourceNum uint64) (entrydb.EntryIdx, LinkEntry, error) {
+	// Forward: prioritize the first entry.
 	return db.find(false, func(link LinkEntry) int {
-		return cmp.Compare(link.derived.Number, derived)
+		return cmp.Compare(link.derivedFrom.Number, sourceNum)
+	})
+}
+
+func (db *DB) sourceNumToLastDerived(sourceNum uint64) (entrydb.EntryIdx, LinkEntry, error) {
+	// Reverse: prioritize the last entry.
+	return db.find(true, func(link LinkEntry) int {
+		return cmp.Compare(sourceNum, link.derivedFrom.Number)
 	})
 }
 
@@ -306,19 +321,6 @@ func (db *DB) lookup(derivedFrom, derived uint64) (entrydb.EntryIdx, LinkEntry, 
 			return cmp.Compare(link.derivedFrom.Number, derivedFrom)
 		}
 		return res
-	})
-}
-
-func (db *DB) lastDerivedAt(derivedFrom uint64) (entrydb.EntryIdx, LinkEntry, error) {
-	// Reverse: prioritize the last entry.
-	return db.find(true, func(link LinkEntry) int {
-		return cmp.Compare(derivedFrom, link.derivedFrom.Number)
-	})
-}
-
-func (db *DB) firstDerivedAt(derivedFrom uint64) (entrydb.EntryIdx, LinkEntry, error) {
-	return db.find(false, func(link LinkEntry) int {
-		return cmp.Compare(link.derivedFrom.Number, derivedFrom)
 	})
 }
 

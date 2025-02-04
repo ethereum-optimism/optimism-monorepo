@@ -22,7 +22,7 @@ type rewinderDB interface {
 	DependencySet() depset.DependencySet
 
 	LastCrossDerivedFrom(chainID eth.ChainID, derivedFrom eth.BlockID) (derived types.BlockSeal, err error)
-	PreviousDerivedFrom(chain eth.ChainID, derivedFrom eth.BlockID) (prevDerivedFrom types.BlockSeal, err error)
+	PreviousSource(chain eth.ChainID, source eth.BlockID) (prevSource types.BlockSeal, err error)
 	CrossDerivedFromBlockRef(chainID eth.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error)
 
 	LocalSafe(eth.ChainID) (types.DerivedBlockSealPair, error)
@@ -201,7 +201,7 @@ func (r *Rewinder) rewindL1ChainIfReorged(chainID eth.ChainID, newTip eth.BlockI
 		}
 
 		// Get the previous L1 block from our DB
-		prevDerivedFrom, err := r.db.PreviousDerivedFrom(chainID, currentL1)
+		prevDerivedFrom, err := r.db.PreviousSource(chainID, currentL1)
 		if err != nil {
 			// If we hit the first block, use it as common ancestor
 			if errors.Is(err, types.ErrPreviousToFirst) {

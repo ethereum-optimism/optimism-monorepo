@@ -15,15 +15,15 @@ import (
 )
 
 type mockDerivedFromStorage struct {
-	latestFn func() (pair types.DerivedBlockSealPair, err error)
+	lastFn func() (pair types.DerivedBlockSealPair, err error)
 }
 
 func (m *mockDerivedFromStorage) First() (pair types.DerivedBlockSealPair, err error) {
 	return types.DerivedBlockSealPair{}, nil
 }
-func (m *mockDerivedFromStorage) Latest() (pair types.DerivedBlockSealPair, err error) {
-	if m.latestFn != nil {
-		return m.latestFn()
+func (m *mockDerivedFromStorage) Last() (pair types.DerivedBlockSealPair, err error) {
+	if m.lastFn != nil {
+		return m.lastFn()
 	}
 	return types.DerivedBlockSealPair{}, nil
 }
@@ -39,25 +39,25 @@ func (m *mockDerivedFromStorage) ReplaceInvalidatedBlock(replacementDerived eth.
 func (m *mockDerivedFromStorage) RewindAndInvalidate(invalidated types.DerivedBlockRefPair) error {
 	return nil
 }
-func (m *mockDerivedFromStorage) LastDerivedAt(derivedFrom eth.BlockID) (derived types.BlockSeal, err error) {
+func (m *mockDerivedFromStorage) SourceToLastDerived(source eth.BlockID) (derived types.BlockSeal, err error) {
 	return types.BlockSeal{}, nil
 }
-func (m *mockDerivedFromStorage) IsDerived(derived eth.BlockID) error {
+func (m *mockDerivedFromStorage) IsCanonical(derived eth.BlockID) error {
 	return nil
 }
-func (m *mockDerivedFromStorage) DerivedFrom(derived eth.BlockID) (derivedFrom types.BlockSeal, err error) {
+func (m *mockDerivedFromStorage) DerivedToFirstSource(derived eth.BlockID) (source types.BlockSeal, err error) {
 	return types.BlockSeal{}, nil
 }
-func (m *mockDerivedFromStorage) FirstAfter(derivedFrom, derived eth.BlockID) (next types.DerivedBlockSealPair, err error) {
+func (m *mockDerivedFromStorage) Next(pair types.DerivedIDPair) (next types.DerivedBlockSealPair, err error) {
 	return types.DerivedBlockSealPair{}, nil
 }
-func (m *mockDerivedFromStorage) NextDerivedFrom(derivedFrom eth.BlockID) (nextDerivedFrom types.BlockSeal, err error) {
+func (m *mockDerivedFromStorage) NextSource(source eth.BlockID) (nextSource types.BlockSeal, err error) {
 	return types.BlockSeal{}, nil
 }
 func (m *mockDerivedFromStorage) NextDerived(derived eth.BlockID) (next types.DerivedBlockSealPair, err error) {
 	return types.DerivedBlockSealPair{}, nil
 }
-func (m *mockDerivedFromStorage) PreviousDerivedFrom(derivedFrom eth.BlockID) (prevDerivedFrom types.BlockSeal, err error) {
+func (m *mockDerivedFromStorage) PreviousSource(source eth.BlockID) (prevSource types.BlockSeal, err error) {
 	return types.BlockSeal{}, nil
 }
 func (m *mockDerivedFromStorage) PreviousDerived(derived eth.BlockID) (prevDerived types.BlockSeal, err error) {
@@ -131,36 +131,36 @@ func TestCommonL1(t *testing.T) {
 		}
 	}
 	t.Run("pattern 1", func(t *testing.T) {
-		m1.latestFn = returnN(1)
-		m2.latestFn = returnN(2)
-		m3.latestFn = returnN(3)
+		m1.lastFn = returnN(1)
+		m2.lastFn = returnN(2)
+		m3.lastFn = returnN(3)
 
 		latest, err := chainDB.LastCommonL1()
 		require.NoError(t, err)
 		require.Equal(t, uint64(1), latest.Number)
 	})
 	t.Run("pattern 2", func(t *testing.T) {
-		m1.latestFn = returnN(3)
-		m2.latestFn = returnN(2)
-		m3.latestFn = returnN(1)
+		m1.lastFn = returnN(3)
+		m2.lastFn = returnN(2)
+		m3.lastFn = returnN(1)
 
 		latest, err := chainDB.LastCommonL1()
 		require.NoError(t, err)
 		require.Equal(t, uint64(1), latest.Number)
 	})
 	t.Run("pattern 3", func(t *testing.T) {
-		m1.latestFn = returnN(99)
-		m2.latestFn = returnN(1)
-		m3.latestFn = returnN(98)
+		m1.lastFn = returnN(99)
+		m2.lastFn = returnN(1)
+		m3.lastFn = returnN(98)
 
 		latest, err := chainDB.LastCommonL1()
 		require.NoError(t, err)
 		require.Equal(t, uint64(1), latest.Number)
 	})
 	t.Run("error", func(t *testing.T) {
-		m1.latestFn = returnN(99)
-		m2.latestFn = returnN(1)
-		m3.latestFn = func() (pair types.DerivedBlockSealPair, err error) {
+		m1.lastFn = returnN(99)
+		m2.lastFn = returnN(1)
+		m3.lastFn = func() (pair types.DerivedBlockSealPair, err error) {
 			return types.DerivedBlockSealPair{}, fmt.Errorf("error")
 		}
 		latest, err := chainDB.LastCommonL1()

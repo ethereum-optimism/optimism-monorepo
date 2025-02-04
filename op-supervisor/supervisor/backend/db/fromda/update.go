@@ -42,7 +42,7 @@ func (db *DB) ReplaceInvalidatedBlock(replacementDerived eth.BlockRef, invalidat
 	// Find the parent-block of derived-from.
 	// We need this to build a block-ref, so the DB can be consistency-checked when the next entry is added.
 	// There is always one, since the first entry in the DB should never be an invalidated one.
-	prevDerivedFrom, err := db.previousDerivedFrom(last.derivedFrom.ID())
+	prevDerivedFrom, err := db.previousSource(last.derivedFrom.ID())
 	if err != nil {
 		return types.DerivedBlockSealPair{}, err
 	}
@@ -95,10 +95,11 @@ func (db *DB) Rewind(target types.DerivedBlockSealPair, including bool) error {
 // Note that this drop L1 blocks that resulted in a previously invalidated local-safe block.
 // This returns ErrFuture if the block is newer than the last known block.
 // This returns ErrConflict if a different block at the given height is known.
+// TODO: rename this "RewindToSource" to match the idea of Source
 func (db *DB) RewindToScope(scope eth.BlockID) error {
 	db.rwLock.Lock()
 	defer db.rwLock.Unlock()
-	_, link, err := db.lastDerivedAt(scope.Number)
+	_, link, err := db.sourceNumToLastDerived(scope.Number)
 	if err != nil {
 		return fmt.Errorf("failed to find last derived %d: %w", scope.Number, err)
 	}
@@ -116,7 +117,7 @@ func (db *DB) RewindToScope(scope eth.BlockID) error {
 func (db *DB) RewindToFirstDerived(v eth.BlockID) error {
 	db.rwLock.Lock()
 	defer db.rwLock.Unlock()
-	_, link, err := db.firstDerivedFrom(v.Number)
+	_, link, err := db.derivedNumToFirstSource(v.Number)
 	if err != nil {
 		return fmt.Errorf("failed to find when %d was first derived: %w", v.Number, err)
 	}

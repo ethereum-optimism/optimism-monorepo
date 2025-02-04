@@ -252,7 +252,7 @@ func (db *ChainsDB) ResetCrossUnsafeIfNewerThan(chainID eth.ChainID, number uint
 	if !ok {
 		return fmt.Errorf("cannot find cross-safe DB of chain %s for invalidation: %w", chainID, types.ErrUnknownChain)
 	}
-	crossSafe, err := crossSafeDB.Latest()
+	crossSafe, err := crossSafeDB.Last()
 	if err != nil {
 		return fmt.Errorf("cannot get cross-safe of chain %s: %w", chainID, err)
 	}
