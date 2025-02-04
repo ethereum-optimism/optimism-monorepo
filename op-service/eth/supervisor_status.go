@@ -6,6 +6,6 @@ type SupervisorChainStatus struct {
 	LocalDerived BlockRef `json:"localDerived"`
 	// LocalDerivedFrom is the origin of LocalDerived.
 	LocalDerivedFrom L1BlockRef `json:"localDerivedFrom"`
-	// LocalUnsafe is the absolute tip of the L2 chain.
+	// LocalUnsafe is the latest L2 block that has been processed by the supervisor.
 	LocalUnsafe BlockRef `json:"localUnsafe"`
 }

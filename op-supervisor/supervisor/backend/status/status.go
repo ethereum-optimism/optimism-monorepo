@@ -36,7 +36,7 @@ func (su *StatusTracker) OnEvent(ev event.Event) bool {
 		v.LocalDerived = x.Derived.Derived
 		v.LocalDerivedFrom = x.Derived.DerivedFrom
 		su.statuses[x.ChainID] = v
-	case superevents.LocalUnsafeReceivedEvent:
+	case superevents.LocalUnsafeUpdateEvent:
 		v := loadStatus(x.ChainID)
 		v.LocalUnsafe = x.NewLocalUnsafe
 		su.statuses[x.ChainID] = v
