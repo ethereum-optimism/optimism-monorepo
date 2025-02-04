@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
+
 import { console2 as console } from "forge-std/console2.sol";
 // Testing
 import { Test, stdStorage, StdStorage } from "forge-std/Test.sol";
@@ -122,7 +123,7 @@ contract OPPrestateUpdater_Test is Test {
         );
 
         // Also add a permissionless game
-        IOPContractsManager.AddGameInput memory input = newGameInputFactory({permissioned: false});
+        IOPContractsManager.AddGameInput memory input = newGameInputFactory({ permissioned: false });
         input.disputeGameType = GameTypes.CANNON;
         addGameType(input);
 
@@ -132,7 +133,14 @@ contract OPPrestateUpdater_Test is Test {
                 _args: DeployUtils.encodeConstructor(
                     abi.encodeCall(
                         IOPContractsManager.__constructor__,
-                        (ISuperchainConfig(address(this)), IProtocolVersions(address(this)), "dev", blueprints, impls, address(0))
+                        (
+                            ISuperchainConfig(address(this)),
+                            IProtocolVersions(address(this)),
+                            "dev",
+                            blueprints,
+                            impls,
+                            address(0)
+                        )
                     )
                 ),
                 _salt: DeployUtils.DEFAULT_SALT
@@ -153,16 +161,22 @@ contract OPPrestateUpdater_Test is Test {
         address proxyAdminOwner = chainDeployOutput.opChainProxyAdmin.owner();
 
         vm.etch(address(proxyAdminOwner), vm.getDeployedCode("test/mocks/Callers.sol:DelegateCaller"));
-        DelegateCaller(proxyAdminOwner).dcForward(address(prestateUpdater), abi.encodeCall(OPPrestateUpdater.updatePrestate, (inputs)));
+        DelegateCaller(proxyAdminOwner).dcForward(
+            address(prestateUpdater), abi.encodeCall(OPPrestateUpdater.updatePrestate, (inputs))
+        );
 
         IFaultDisputeGame fdg = IFaultDisputeGame(
             address(
-                IDisputeGameFactory(chainDeployOutput.systemConfigProxy.disputeGameFactory()).gameImpls(GameTypes.CANNON)
+                IDisputeGameFactory(chainDeployOutput.systemConfigProxy.disputeGameFactory()).gameImpls(
+                    GameTypes.CANNON
+                )
             )
         );
         IPermissionedDisputeGame pdg = IPermissionedDisputeGame(
             address(
-                IDisputeGameFactory(chainDeployOutput.systemConfigProxy.disputeGameFactory()).gameImpls(GameTypes.PERMISSIONED_CANNON)
+                IDisputeGameFactory(chainDeployOutput.systemConfigProxy.disputeGameFactory()).gameImpls(
+                    GameTypes.PERMISSIONED_CANNON
+                )
             )
         );
 
