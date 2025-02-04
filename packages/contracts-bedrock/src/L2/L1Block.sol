@@ -62,7 +62,6 @@ contract L1Block is ISemver {
     /// @notice The scalar value applied to the operator fee.
     uint32 public operatorFeeScalar;
 
-
     /// @custom:semver 1.5.1-beta.7
     function version() public pure virtual returns (string memory) {
         return "1.5.1-beta.7";
