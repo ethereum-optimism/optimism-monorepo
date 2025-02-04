@@ -757,10 +757,10 @@ contract DeployImplementations is Script {
         uint256 mipsVersion = _dii.mipsVersion();
         IPreimageOracle preimageOracle = IPreimageOracle(address(_dio.preimageOracleSingleton()));
 
-        // We want to ensure that the OPCM for upgrade 13 is deployed with Mips64 on production networks.
-        if (mipsVersion == 1) {
+        // We want to ensure that the OPCM for upgrade 13 is deployed with Mips32 on production networks.
+        if (mipsVersion != 1) {
             if (block.chainid == Chains.Mainnet || block.chainid == Chains.Sepolia) {
-                revert("DeployImplementations: Mips V1 should not be deployed on Mainnet or Sepolia");
+                revert("DeployImplementations: Only Mips32 should be deployed on Mainnet or Sepolia");
             }
         }
 

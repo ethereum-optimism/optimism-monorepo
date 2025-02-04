@@ -432,14 +432,14 @@ contract DeployImplementations_Test is Test {
 
     function test_run_deployMipsV1OnMainnetOrSepolia_reverts() public {
         setDefaults();
-        dii.set(dii.mipsVersion.selector, 1);
+        dii.set(dii.mipsVersion.selector, 2);
 
         vm.chainId(Chains.Mainnet);
-        vm.expectRevert("DeployImplementations: Mips V1 should not be deployed on Mainnet or Sepolia");
+        vm.expectRevert("DeployImplementations: Only Mips32 should be deployed on Mainnet or Sepolia");
         deployImplementations.run(dii, dio);
 
         vm.chainId(Chains.Sepolia);
-        vm.expectRevert("DeployImplementations: Mips V1 should not be deployed on Mainnet or Sepolia");
+        vm.expectRevert("DeployImplementations: Only Mips32 should be deployed on Mainnet or Sepolia");
         deployImplementations.run(dii, dio);
     }
 }
