@@ -250,8 +250,8 @@ contract OPContractsManager is ISemver {
         Implementations memory _implementations,
         address _upgradeController
     ) {
-        // assertValidContractAddress(address(_superchainConfig));
-        // assertValidContractAddress(address(_protocolVersions));
+        assertValidContractAddress(address(_superchainConfig));
+        assertValidContractAddress(address(_protocolVersions));
         superchainConfig = _superchainConfig;
         protocolVersions = _protocolVersions;
         superchainProxyAdmin = _superchainProxyAdmin;
