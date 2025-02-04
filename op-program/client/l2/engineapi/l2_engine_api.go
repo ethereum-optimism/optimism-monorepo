@@ -553,7 +553,6 @@ func (ea *L2EngineAPI) newPayload(_ context.Context, payload *eth.ExecutionPaylo
 	}, hashes, root, requests, ea.backend.Config())
 	if err != nil {
 		log.Debug("Invalid NewPayload params", "params", payload, "error", err)
-		fmt.Printf("Invalid NewPayload params: %+v %s %+v\n", payload, err, requests)
 		return &eth.PayloadStatusV1{Status: eth.ExecutionInvalidBlockHash}, nil
 	}
 	// If we already have the block locally, ignore the entire execution and just
