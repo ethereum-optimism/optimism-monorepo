@@ -114,10 +114,10 @@ func TestCreatedBlocksAreCached(t *testing.T) {
 	require.EqualValues(t, engine.VALID, result.PayloadStatus.Status)
 	require.NotNil(t, result.PayloadID)
 
-	envelope, err := engineAPI.GetPayloadV3(context.Background(), *result.PayloadID)
+	envelope, err := engineAPI.GetPayloadV4(context.Background(), *result.PayloadID)
 	require.NoError(t, err)
 	require.NotNil(t, envelope)
-	newPayloadResult, err := engineAPI.NewPayloadV3(context.Background(), envelope.ExecutionPayload, []common.Hash{}, envelope.ParentBeaconBlockRoot)
+	newPayloadResult, err := engineAPI.NewPayloadV4(context.Background(), envelope.ExecutionPayload, []common.Hash{}, envelope.ParentBeaconBlockRoot, []hexutil.Bytes{})
 	require.NoError(t, err)
 	require.EqualValues(t, engine.VALID, newPayloadResult.Status)
 

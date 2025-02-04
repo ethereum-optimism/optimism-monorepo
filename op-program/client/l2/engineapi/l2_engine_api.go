@@ -354,7 +354,7 @@ func (ea *L2EngineAPI) NewPayloadV3(ctx context.Context, params *eth.ExecutionPa
 		}
 	}
 
-	return ea.newPayload(ctx, params, versionedHashes, beaconRoot, [][]byte{})
+	return ea.newPayload(ctx, params, versionedHashes, beaconRoot, nil)
 }
 
 // Ported from: https://github.com/ethereum-optimism/op-geth/blob/94bb3f660f770afd407280055e7f58c0d89a01af/eth/catalyst/api.go#L646
@@ -381,6 +381,8 @@ func (ea *L2EngineAPI) NewPayloadV4(ctx context.Context, params *eth.ExecutionPa
 
 	if !ea.config().IsIsthmus(uint64(params.Timestamp)) {
 		return &eth.PayloadStatusV1{Status: eth.ExecutionInvalid}, engine.UnsupportedFork.With(errors.New("newPayloadV4 called pre-isthmus"))
+	} else if len(executionRequests) > 0 {
+		return &eth.PayloadStatusV1{Status: eth.ExecutionInvalid}, engine.InvalidParams.With(errors.New("newPayloadV4 called with non-empty execution requests"))
 	}
 
 	requests := convertRequests(executionRequests)
@@ -549,6 +551,7 @@ func (ea *L2EngineAPI) newPayload(_ context.Context, payload *eth.ExecutionPaylo
 	}, hashes, root, requests, ea.backend.Config())
 	if err != nil {
 		log.Debug("Invalid NewPayload params", "params", payload, "error", err)
+		fmt.Printf("Invalid NewPayload params: %+v %s %+v\n", payload, err, requests)
 		return &eth.PayloadStatusV1{Status: eth.ExecutionInvalidBlockHash}, nil
 	}
 	// If we already have the block locally, ignore the entire execution and just
