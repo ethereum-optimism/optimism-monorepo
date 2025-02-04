@@ -161,13 +161,6 @@ deploy:
 #                       SNAPSHOTS                      #
 ########################################################
 
-# Generates a gas snapshot without building.
-gas-snapshot-no-build:
-  forge snapshot --match-contract GasBenchMark --snap snapshots/.gas-snapshot
-
-# Generates a gas snapshot.
-gas-snapshot: build-go-ffi gas-snapshot-no-build
-
 # Generates default Kontrol summary.
 kontrol-summary:
   ./test/kontrol/scripts/make-summary-deployment.sh
@@ -194,7 +187,7 @@ semver-lock-no-build:
 semver-lock: build-source semver-lock-no-build
 
 # Generates core snapshots without building contracts.
-snapshots-no-build: snapshots-abi-storage-no-build semver-lock-no-build gas-snapshot-no-build
+snapshots-no-build: snapshots-abi-storage-no-build semver-lock-no-build
 
 # Builds contracts and then generates core snapshots.
 snapshots: build-source snapshots-no-build
@@ -203,13 +196,6 @@ snapshots: build-source snapshots-no-build
 ########################################################
 #                        CHECKS                        #
 ########################################################
-
-# Checks that the gas snapshot is up to date without building.
-gas-snapshot-check-no-build:
-  forge snapshot --match-contract GasBenchMark --snap snapshots/.gas-snapshot --check
-
-# Checks that the gas snapshot is up to date.
-gas-snapshot-check: build-go-ffi gas-snapshot-check-no-build
 
 # Checks if the snapshots are up to date without building.
 snapshots-check-no-build:
