@@ -528,7 +528,7 @@ contract OPContractsManager is ISemver {
                         _proxyAdmin: _opChainConfigs[i].proxyAdmin,
                         _saltMixer: string.concat(
                             "v2.0.0-",
-                            string(bytes.concat(bytes32(uint256(uint160(address(_opChainConfigs[i].systemConfigProxy))))))
+                            string(bytes.concat(bytes20(address(_opChainConfigs[i].systemConfigProxy))))
                         ),
                         _contractName: "AnchorStateRegistry"
                     })
