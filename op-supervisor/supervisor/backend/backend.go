@@ -456,8 +456,8 @@ func (su *SupervisorBackend) CrossSafe(ctx context.Context, chainID eth.ChainID)
 		return types.DerivedIDPair{}, err
 	}
 	return types.DerivedIDPair{
-		DerivedFrom: p.DerivedFrom.ID(),
-		Derived:     p.Derived.ID(),
+		Source:  p.Source.ID(),
+		Derived: p.Derived.ID(),
 	}, nil
 }
 
@@ -467,8 +467,8 @@ func (su *SupervisorBackend) LocalSafe(ctx context.Context, chainID eth.ChainID)
 		return types.DerivedIDPair{}, err
 	}
 	return types.DerivedIDPair{
-		DerivedFrom: p.DerivedFrom.ID(),
-		Derived:     p.Derived.ID(),
+		Source:  p.Source.ID(),
+		Derived: p.Derived.ID(),
 	}, nil
 }
 

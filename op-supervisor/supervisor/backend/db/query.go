@@ -47,8 +47,8 @@ func (db *ChainsDB) LastCommonL1() (types.BlockSeal, error) {
 		// or if the new common block is older than the current common block
 		// set the common block
 		if commonL1 == (types.BlockSeal{}) ||
-			last.DerivedFrom.Number < commonL1.Number {
-			commonL1 = last.DerivedFrom
+			last.Source.Number < commonL1.Number {
+			commonL1 = last.Source
 		}
 	}
 	return commonL1, nil
@@ -210,12 +210,12 @@ func (db *ChainsDB) Finalized(chainID eth.ChainID) (types.BlockSeal, error) {
 	}
 	// if the finalized L1 block is newer than the latest L1 block used to derive L2 blocks,
 	// the finality signal automatically applies to all previous blocks, including the latest derived block
-	if finalizedL1.Number > latest.DerivedFrom.Number {
+	if finalizedL1.Number > latest.Source.Number {
 		db.logger.Warn("Finalized L1 block is newer than the latest L1 for this chain. Assuming latest L2 is finalized",
 			"chain", chainID,
 			"finalizedL1", finalizedL1.Number,
-			"latestDerivedFrom", latest.DerivedFrom.Number,
-			"latestDerived", latest.DerivedFrom)
+			"latestDerivedFrom", latest.Source.Number,
+			"latestDerived", latest.Source)
 		return latest.Derived, nil
 	}
 
@@ -337,17 +337,17 @@ func (db *ChainsDB) CandidateCrossSafe(chain eth.ChainID) (result types.DerivedB
 				return types.DerivedBlockRefPair{}, fmt.Errorf("failed to find first local-safe block: %w", err)
 			}
 			// the first derivedFrom (L1 block) is unlikely to be the genesis block,
-			derivedFromRef, err := first.DerivedFrom.WithParent(eth.BlockID{})
+			derivedFromRef, err := first.Source.WithParent(eth.BlockID{})
 			if err != nil {
 				// if the first derivedFrom isn't the genesis block, just warn and continue anyway
 				db.logger.Warn("First DerivedFrom is not genesis block")
-				derivedFromRef = first.DerivedFrom.ForceWithParent(eth.BlockID{})
+				derivedFromRef = first.Source.ForceWithParent(eth.BlockID{})
 			}
 			// the first derived must be the genesis block, panic otherwise
 			derivedRef := first.Derived.MustWithParent(eth.BlockID{})
 			return types.DerivedBlockRefPair{
-				DerivedFrom: derivedFromRef,
-				Derived:     derivedRef,
+				Source:  derivedFromRef,
+				Derived: derivedRef,
 			}, nil
 		}
 		return types.DerivedBlockRefPair{}, err
@@ -371,42 +371,42 @@ func (db *ChainsDB) CandidateCrossSafe(chain eth.ChainID) (result types.DerivedB
 
 	candidateRef := candidatePair.Derived.MustWithParent(crossSafe.Derived.ID())
 
-	parentDerivedFrom, err := lDB.PreviousSource(candidatePair.DerivedFrom.ID())
+	parentDerivedFrom, err := lDB.PreviousSource(candidatePair.Source.ID())
 	// if we are working with the first item in the database, PreviousDerivedFrom will return ErrPreviousToFirst
 	// in which case we can attach a zero parent to the cross-derived-from block, as the parent block is unknown
 	if errors.Is(err, types.ErrPreviousToFirst) {
 		parentDerivedFrom = types.BlockSeal{}
 	} else if err != nil {
-		return types.DerivedBlockRefPair{}, fmt.Errorf("failed to find parent-block of derived-from %s: %w", candidatePair.DerivedFrom, err)
+		return types.DerivedBlockRefPair{}, fmt.Errorf("failed to find parent-block of derived-from %s: %w", candidatePair.Source, err)
 	}
-	candidateFromRef := candidatePair.DerivedFrom.MustWithParent(parentDerivedFrom.ID())
+	candidateFromRef := candidatePair.Source.MustWithParent(parentDerivedFrom.ID())
 
 	// Allow increment of DA by 1, if we know the floor (due to local safety) is 1 ahead of the current cross-safe L1 scope.
-	if candidatePair.DerivedFrom.Number > crossSafe.DerivedFrom.Number+1 {
+	if candidatePair.Source.Number > crossSafe.Source.Number+1 {
 		// If we are not ready to process the candidate block,
 		// then we need to stick to the current scope, so the caller can bump up from there.
 		var crossDerivedFromRef eth.BlockRef
-		parent, err := lDB.PreviousSource(crossSafe.DerivedFrom.ID())
+		parent, err := lDB.PreviousSource(crossSafe.Source.ID())
 		// if we are working with the first item in the database, PreviousDerivedFrom will return ErrPreviousToFirst
 		// in which case we can attach a zero parent to the cross-derived-from block, as the parent block is unknown
 		if errors.Is(err, types.ErrPreviousToFirst) {
-			crossDerivedFromRef = crossSafe.DerivedFrom.ForceWithParent(eth.BlockID{})
+			crossDerivedFromRef = crossSafe.Source.ForceWithParent(eth.BlockID{})
 		} else if err != nil {
 			return types.DerivedBlockRefPair{},
-				fmt.Errorf("failed to find parent-block of cross-derived-from %s: %w", crossSafe.DerivedFrom, err)
+				fmt.Errorf("failed to find parent-block of cross-derived-from %s: %w", crossSafe.Source, err)
 		} else {
-			crossDerivedFromRef = crossSafe.DerivedFrom.MustWithParent(parent.ID())
+			crossDerivedFromRef = crossSafe.Source.MustWithParent(parent.ID())
 		}
 		return types.DerivedBlockRefPair{
-				DerivedFrom: crossDerivedFromRef,
-				Derived:     eth.BlockRef{},
+				Source:  crossDerivedFromRef,
+				Derived: eth.BlockRef{},
 			},
 			fmt.Errorf("candidate is from %s, while current scope is %s: %w",
-				candidateFromRef, crossSafe.DerivedFrom, types.ErrOutOfScope)
+				candidateFromRef, crossSafe.Source, types.ErrOutOfScope)
 	}
 	return types.DerivedBlockRefPair{
-		DerivedFrom: candidateFromRef,
-		Derived:     candidateRef,
+		Source:  candidateFromRef,
+		Derived: candidateRef,
 	}, nil
 }
 

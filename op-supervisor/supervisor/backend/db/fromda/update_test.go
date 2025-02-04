@@ -33,7 +33,7 @@ func TestBadUpdates(t *testing.T) {
 	noChange := assertFn(func(t *testing.T, db *DB, m *stubMetrics) {
 		pair, err := db.Last()
 		require.NoError(t, err)
-		require.Equal(t, dDerivedFrom, pair.DerivedFrom)
+		require.Equal(t, dDerivedFrom, pair.Source)
 		require.Equal(t, dDerived, pair.Derived)
 	})
 
@@ -71,7 +71,7 @@ func TestBadUpdates(t *testing.T) {
 			assertFn: func(t *testing.T, db *DB, m *stubMetrics) {
 				pair, err := db.Last()
 				require.NoError(t, err)
-				require.Equal(t, dDerivedFrom, pair.DerivedFrom)
+				require.Equal(t, dDerivedFrom, pair.Source)
 				require.Equal(t, eDerived, pair.Derived)
 			},
 		},
@@ -122,7 +122,7 @@ func TestBadUpdates(t *testing.T) {
 			assertFn: func(t *testing.T, db *DB, m *stubMetrics) {
 				pair, err := db.Last()
 				require.NoError(t, err)
-				require.Equal(t, eDerivedFrom, pair.DerivedFrom)
+				require.Equal(t, eDerivedFrom, pair.Source)
 				require.Equal(t, dDerived, pair.Derived)
 			},
 		},

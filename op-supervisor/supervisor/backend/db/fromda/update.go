@@ -52,12 +52,12 @@ func (db *DB) ReplaceInvalidatedBlock(replacementDerived eth.BlockRef, invalidat
 		return types.DerivedBlockSealPair{}, err
 	}
 	replacement := types.DerivedBlockRefPair{
-		DerivedFrom: last.derivedFrom.ForceWithParent(prevDerivedFrom.ID()),
-		Derived:     replacementDerived,
+		Source:  last.derivedFrom.ForceWithParent(prevDerivedFrom.ID()),
+		Derived: replacementDerived,
 	}
 	// Insert the replacement
-	if err := db.addLink(replacement.DerivedFrom, replacement.Derived, invalidated); err != nil {
-		return types.DerivedBlockSealPair{}, fmt.Errorf("failed to add %s as replacement at %s: %w", replacement.Derived, replacement.DerivedFrom, err)
+	if err := db.addLink(replacement.Source, replacement.Derived, invalidated); err != nil {
+		return types.DerivedBlockSealPair{}, fmt.Errorf("failed to add %s as replacement at %s: %w", replacement.Derived, replacement.Source, err)
 	}
 	return replacement.Seals(), nil
 }
@@ -70,13 +70,13 @@ func (db *DB) RewindAndInvalidate(invalidated types.DerivedBlockRefPair) error {
 	defer db.rwLock.Unlock()
 
 	invalidatedSeals := types.DerivedBlockSealPair{
-		DerivedFrom: types.BlockSealFromRef(invalidated.DerivedFrom),
-		Derived:     types.BlockSealFromRef(invalidated.Derived),
+		Source:  types.BlockSealFromRef(invalidated.Source),
+		Derived: types.BlockSealFromRef(invalidated.Derived),
 	}
 	if err := db.rewindLocked(invalidatedSeals, true); err != nil {
 		return err
 	}
-	if err := db.addLink(invalidated.DerivedFrom, invalidated.Derived, invalidated.Derived.Hash); err != nil {
+	if err := db.addLink(invalidated.Source, invalidated.Derived, invalidated.Derived.Hash); err != nil {
 		return fmt.Errorf("failed to add invalidation entry %s: %w", invalidated, err)
 	}
 	return nil
@@ -107,8 +107,8 @@ func (db *DB) RewindToScope(scope eth.BlockID) error {
 		return fmt.Errorf("found derived-from %s but expected %s: %w", link.derivedFrom, scope, types.ErrConflict)
 	}
 	return db.rewindLocked(types.DerivedBlockSealPair{
-		DerivedFrom: link.derivedFrom,
-		Derived:     link.derived,
+		Source:  link.derivedFrom,
+		Derived: link.derived,
 	}, false)
 }
 
@@ -125,8 +125,8 @@ func (db *DB) RewindToFirstDerived(v eth.BlockID) error {
 		return fmt.Errorf("found derived %s but expected %s: %w", link.derived, v, types.ErrConflict)
 	}
 	return db.rewindLocked(types.DerivedBlockSealPair{
-		DerivedFrom: link.derivedFrom,
-		Derived:     link.derived,
+		Source:  link.derivedFrom,
+		Derived: link.derived,
 	}, false)
 }
 
@@ -136,13 +136,13 @@ func (db *DB) RewindToFirstDerived(v eth.BlockID) error {
 // Note: This function must be called with the rwLock held.
 // Callers are responsible for locking and unlocking the Database.
 func (db *DB) rewindLocked(t types.DerivedBlockSealPair, including bool) error {
-	i, link, err := db.lookup(t.DerivedFrom.Number, t.Derived.Number)
+	i, link, err := db.lookup(t.Source.Number, t.Derived.Number)
 	if err != nil {
 		return err
 	}
-	if link.derivedFrom.Hash != t.DerivedFrom.Hash {
+	if link.derivedFrom.Hash != t.Source.Hash {
 		return fmt.Errorf("found derived-from %s, but expected %s: %w",
-			link.derivedFrom, t.DerivedFrom, types.ErrConflict)
+			link.derivedFrom, t.Source, types.ErrConflict)
 	}
 	if link.derived.Hash != t.Derived.Hash {
 		return fmt.Errorf("found derived %s, but expected %s: %w",

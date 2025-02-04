@@ -91,8 +91,8 @@ func (db *ChainsDB) UpdateLocalSafe(chain eth.ChainID, derivedFrom eth.BlockRef,
 	db.emitter.Emit(superevents.LocalSafeUpdateEvent{
 		ChainID: chain,
 		NewLocalSafe: types.DerivedBlockSealPair{
-			DerivedFrom: types.BlockSealFromRef(derivedFrom),
-			Derived:     types.BlockSealFromRef(lastDerived),
+			Source:  types.BlockSealFromRef(derivedFrom),
+			Derived: types.BlockSealFromRef(lastDerived),
 		},
 	})
 }
@@ -128,8 +128,8 @@ func (db *ChainsDB) UpdateCrossSafe(chain eth.ChainID, l1View eth.BlockRef, last
 	db.emitter.Emit(superevents.CrossSafeUpdateEvent{
 		ChainID: chain,
 		NewCrossSafe: types.DerivedBlockSealPair{
-			DerivedFrom: types.BlockSealFromRef(l1View),
-			Derived:     types.BlockSealFromRef(lastCrossDerived),
+			Source:  types.BlockSealFromRef(l1View),
+			Derived: types.BlockSealFromRef(lastCrossDerived),
 		},
 	})
 	db.m.RecordCrossSafeRef(chain, lastCrossDerived)

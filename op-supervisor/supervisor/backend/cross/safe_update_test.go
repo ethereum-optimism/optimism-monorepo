@@ -22,8 +22,8 @@ func TestCrossSafeUpdate(t *testing.T) {
 		candidateScope := eth.BlockRef{Number: 2}
 		csd.candidateCrossSafeFn = func() (pair types.DerivedBlockRefPair, err error) {
 			return types.DerivedBlockRefPair{
-				DerivedFrom: candidateScope,
-				Derived:     candidate,
+				Source:  candidateScope,
+				Derived: candidate,
 			}, nil
 		}
 		opened := eth.BlockRef{Number: 1}
@@ -48,8 +48,8 @@ func TestCrossSafeUpdate(t *testing.T) {
 		candidateScope := eth.BlockRef{Number: 2}
 		csd.candidateCrossSafeFn = func() (pair types.DerivedBlockRefPair, err error) {
 			return types.DerivedBlockRefPair{
-				DerivedFrom: candidateScope,
-				Derived:     candidate,
+				Source:  candidateScope,
+				Derived: candidate,
 			}, nil
 		}
 		csd.openBlockFn = func(chainID eth.ChainID, blockNum uint64) (ref eth.BlockRef, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error) {
@@ -70,8 +70,8 @@ func TestCrossSafeUpdate(t *testing.T) {
 		candidateScope := eth.BlockRef{Number: 2}
 		csd.candidateCrossSafeFn = func() (pair types.DerivedBlockRefPair, err error) {
 			return types.DerivedBlockRefPair{
-				DerivedFrom: candidateScope,
-				Derived:     candidate,
+				Source:  candidateScope,
+				Derived: candidate,
 			}, nil
 		}
 		csd.openBlockFn = func(chainID eth.ChainID, blockNum uint64) (ref eth.BlockRef, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error) {
@@ -89,8 +89,8 @@ func TestCrossSafeUpdate(t *testing.T) {
 		candidateScope := eth.BlockRef{Number: 2}
 		csd.candidateCrossSafeFn = func() (pair types.DerivedBlockRefPair, err error) {
 			return types.DerivedBlockRefPair{
-				DerivedFrom: candidateScope,
-				Derived:     candidate,
+				Source:  candidateScope,
+				Derived: candidate,
 			}, nil
 		}
 		csd.openBlockFn = func(chainID eth.ChainID, blockNum uint64) (ref eth.BlockRef, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error) {
@@ -100,7 +100,7 @@ func TestCrossSafeUpdate(t *testing.T) {
 		csd.invalidateLocalSafeFn = func(id eth.ChainID, p types.DerivedBlockRefPair) error {
 			require.Equal(t, chainID, id)
 			require.Equal(t, candidate, p.Derived)
-			require.Equal(t, candidateScope, p.DerivedFrom)
+			require.Equal(t, candidateScope, p.Source)
 			invalidated = true
 			return nil
 		}
@@ -117,8 +117,8 @@ func TestCrossSafeUpdate(t *testing.T) {
 		candidateScope := eth.BlockRef{Number: 2}
 		csd.candidateCrossSafeFn = func() (types.DerivedBlockRefPair, error) {
 			return types.DerivedBlockRefPair{
-				DerivedFrom: candidateScope,
-				Derived:     candidate,
+				Source:  candidateScope,
+				Derived: candidate,
 			}, nil
 		}
 		csd.openBlockFn = func(chainID eth.ChainID, blockNum uint64) (ref eth.BlockRef, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error) {
@@ -165,8 +165,8 @@ func TestCrossSafeUpdate(t *testing.T) {
 		candidateScope := eth.BlockRef{Number: 2}
 		csd.candidateCrossSafeFn = func() (types.DerivedBlockRefPair, error) {
 			return types.DerivedBlockRefPair{
-				DerivedFrom: candidateScope,
-				Derived:     candidate,
+				Source:  candidateScope,
+				Derived: candidate,
 			}, nil
 		}
 		csd.openBlockFn = func(chainID eth.ChainID, blockNum uint64) (ref eth.BlockRef, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error) {
@@ -190,8 +190,8 @@ func TestCrossSafeUpdate(t *testing.T) {
 		candidateScope := eth.BlockRef{Number: 2}
 		csd.candidateCrossSafeFn = func() (types.DerivedBlockRefPair, error) {
 			return types.DerivedBlockRefPair{
-				DerivedFrom: candidateScope,
-				Derived:     candidate,
+				Source:  candidateScope,
+				Derived: candidate,
 			}, nil
 		}
 		csd.openBlockFn = func(chainID eth.ChainID, blockNum uint64) (ref eth.BlockRef, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error) {
@@ -215,8 +215,8 @@ func TestCrossSafeUpdate(t *testing.T) {
 		candidateScope := eth.BlockRef{Number: 2}
 		csd.candidateCrossSafeFn = func() (types.DerivedBlockRefPair, error) {
 			return types.DerivedBlockRefPair{
-				DerivedFrom: candidateScope,
-				Derived:     candidate,
+				Source:  candidateScope,
+				Derived: candidate,
 			}, nil
 		}
 		csd.openBlockFn = func(chainID eth.ChainID, blockNum uint64) (ref eth.BlockRef, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error) {
@@ -246,7 +246,7 @@ func TestScopedCrossSafeUpdate(t *testing.T) {
 		// the error is returned
 		candidate, err := scopedCrossSafeUpdate(logger, chainID, csd)
 		require.ErrorContains(t, err, "some error")
-		require.Equal(t, eth.BlockRef{}, candidate.DerivedFrom)
+		require.Equal(t, eth.BlockRef{}, candidate.Source)
 	})
 	t.Run("CandidateCrossSafe returns error", func(t *testing.T) {
 		logger := testlog.Logger(t, log.LevelDebug)
@@ -259,7 +259,7 @@ func TestScopedCrossSafeUpdate(t *testing.T) {
 		// the error is returned
 		pair, err := scopedCrossSafeUpdate(logger, chainID, csd)
 		require.ErrorContains(t, err, "some error")
-		require.Equal(t, eth.BlockRef{}, pair.DerivedFrom)
+		require.Equal(t, eth.BlockRef{}, pair.Source)
 	})
 	t.Run("candidate does not match opened block", func(t *testing.T) {
 		logger := testlog.Logger(t, log.LevelDebug)
@@ -268,8 +268,8 @@ func TestScopedCrossSafeUpdate(t *testing.T) {
 		candidate := eth.BlockRef{Number: 1}
 		csd.candidateCrossSafeFn = func() (types.DerivedBlockRefPair, error) {
 			return types.DerivedBlockRefPair{
-				DerivedFrom: eth.BlockRef{},
-				Derived:     candidate,
+				Source:  eth.BlockRef{},
+				Derived: candidate,
 			}, nil
 		}
 		opened := eth.BlockRef{Number: 2}
@@ -280,7 +280,7 @@ func TestScopedCrossSafeUpdate(t *testing.T) {
 		// an ErrConflict is returned
 		pair, err := scopedCrossSafeUpdate(logger, chainID, csd)
 		require.ErrorIs(t, err, types.ErrConflict)
-		require.Equal(t, eth.BlockRef{}, pair.DerivedFrom)
+		require.Equal(t, eth.BlockRef{}, pair.Source)
 	})
 	t.Run("CrossSafeHazards returns error", func(t *testing.T) {
 		logger := testlog.Logger(t, log.LevelDebug)
@@ -289,8 +289,8 @@ func TestScopedCrossSafeUpdate(t *testing.T) {
 		candidate := eth.BlockRef{Number: 1}
 		csd.candidateCrossSafeFn = func() (types.DerivedBlockRefPair, error) {
 			return types.DerivedBlockRefPair{
-				DerivedFrom: eth.BlockRef{},
-				Derived:     candidate,
+				Source:  eth.BlockRef{},
+				Derived: candidate,
 			}, nil
 		}
 		opened := eth.BlockRef{Number: 1}
@@ -308,7 +308,7 @@ func TestScopedCrossSafeUpdate(t *testing.T) {
 		pair, err := scopedCrossSafeUpdate(logger, chainID, csd)
 		require.ErrorContains(t, err, "some error")
 		require.ErrorContains(t, err, "dependencies of cross-safe candidate")
-		require.Equal(t, eth.BlockRef{}, pair.DerivedFrom)
+		require.Equal(t, eth.BlockRef{}, pair.Source)
 	})
 	t.Run("HazardSafeFrontierChecks returns error", func(t *testing.T) {
 		logger := testlog.Logger(t, log.LevelDebug)
@@ -317,8 +317,8 @@ func TestScopedCrossSafeUpdate(t *testing.T) {
 		candidate := eth.BlockRef{Number: 1}
 		csd.candidateCrossSafeFn = func() (types.DerivedBlockRefPair, error) {
 			return types.DerivedBlockRefPair{
-				DerivedFrom: eth.BlockRef{},
-				Derived:     candidate,
+				Source:  eth.BlockRef{},
+				Derived: candidate,
 			}, nil
 		}
 		opened := eth.BlockRef{Number: 1}
@@ -345,7 +345,7 @@ func TestScopedCrossSafeUpdate(t *testing.T) {
 		pair, err := scopedCrossSafeUpdate(logger, chainID, csd)
 		require.ErrorContains(t, err, "some error")
 		require.ErrorContains(t, err, "frontier")
-		require.Equal(t, eth.BlockRef{}, pair.DerivedFrom)
+		require.Equal(t, eth.BlockRef{}, pair.Source)
 	})
 	t.Run("HazardCycleChecks returns error", func(t *testing.T) {
 		logger := testlog.Logger(t, log.LevelDebug)
@@ -355,8 +355,8 @@ func TestScopedCrossSafeUpdate(t *testing.T) {
 		candidateScope := eth.BlockRef{Number: 2}
 		csd.candidateCrossSafeFn = func() (types.DerivedBlockRefPair, error) {
 			return types.DerivedBlockRefPair{
-				DerivedFrom: candidateScope,
-				Derived:     candidate,
+				Source:  candidateScope,
+				Derived: candidate,
 			}, nil
 		}
 		opened := eth.BlockRef{Number: 1, Time: 1}
@@ -374,7 +374,7 @@ func TestScopedCrossSafeUpdate(t *testing.T) {
 		pair, err := scopedCrossSafeUpdate(logger, chainID, csd)
 		require.ErrorContains(t, err, "cycle detected")
 		require.ErrorContains(t, err, "failed to verify block")
-		require.Equal(t, eth.BlockRef{Number: 2}, pair.DerivedFrom)
+		require.Equal(t, eth.BlockRef{Number: 2}, pair.Source)
 	})
 	t.Run("UpdateCrossSafe returns error", func(t *testing.T) {
 		logger := testlog.Logger(t, log.LevelDebug)
@@ -384,8 +384,8 @@ func TestScopedCrossSafeUpdate(t *testing.T) {
 		candidateScope := eth.BlockRef{Number: 2}
 		csd.candidateCrossSafeFn = func() (types.DerivedBlockRefPair, error) {
 			return types.DerivedBlockRefPair{
-				DerivedFrom: candidateScope,
-				Derived:     candidate,
+				Source:  candidateScope,
+				Derived: candidate,
 			}, nil
 		}
 		opened := eth.BlockRef{Number: 1}
@@ -405,7 +405,7 @@ func TestScopedCrossSafeUpdate(t *testing.T) {
 		pair, err := scopedCrossSafeUpdate(logger, chainID, csd)
 		require.ErrorContains(t, err, "some error")
 		require.ErrorContains(t, err, "failed to update")
-		require.Equal(t, eth.BlockRef{Number: 2}, pair.DerivedFrom)
+		require.Equal(t, eth.BlockRef{Number: 2}, pair.Source)
 	})
 	t.Run("successful update", func(t *testing.T) {
 		logger := testlog.Logger(t, log.LevelDebug)
@@ -415,8 +415,8 @@ func TestScopedCrossSafeUpdate(t *testing.T) {
 		candidateScope := eth.BlockRef{Number: 2}
 		csd.candidateCrossSafeFn = func() (types.DerivedBlockRefPair, error) {
 			return types.DerivedBlockRefPair{
-				DerivedFrom: candidateScope,
-				Derived:     candidate,
+				Source:  candidateScope,
+				Derived: candidate,
 			}, nil
 		}
 		opened := eth.BlockRef{Number: 1}
@@ -444,7 +444,7 @@ func TestScopedCrossSafeUpdate(t *testing.T) {
 		require.Equal(t, chainID, updatingChain)
 		require.Equal(t, candidateScope, updatingCandidateScope)
 		require.Equal(t, candidate, updatingCandidate)
-		require.Equal(t, candidateScope, pair.DerivedFrom)
+		require.Equal(t, candidateScope, pair.Source)
 		require.NoError(t, err)
 	})
 }

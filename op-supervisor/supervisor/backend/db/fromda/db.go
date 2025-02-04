@@ -132,8 +132,8 @@ func (db *DB) Invalidated() (pair types.DerivedBlockSealPair, err error) {
 		return types.DerivedBlockSealPair{}, fmt.Errorf("last entry %s is not invalidated: %w", link, types.ErrConflict)
 	}
 	return types.DerivedBlockSealPair{
-		DerivedFrom: link.derivedFrom,
-		Derived:     link.derived,
+		Source:  link.derivedFrom,
+		Derived: link.derived,
 	}, nil
 }
 
@@ -269,12 +269,12 @@ func (db *DB) NextSource(source eth.BlockID) (types.BlockSeal, error) {
 func (db *DB) Next(pair types.DerivedIDPair) (types.DerivedBlockSealPair, error) {
 	db.rwLock.RLock()
 	defer db.rwLock.RUnlock()
-	selfIndex, selfLink, err := db.lookup(pair.DerivedFrom.Number, pair.Derived.Number)
+	selfIndex, selfLink, err := db.lookup(pair.Source.Number, pair.Derived.Number)
 	if err != nil {
 		return types.DerivedBlockSealPair{}, err
 	}
-	if selfLink.derivedFrom.ID() != pair.DerivedFrom {
-		return types.DerivedBlockSealPair{}, fmt.Errorf("DB has derived-from %s but expected %s: %w", selfLink.derivedFrom, pair.DerivedFrom, types.ErrConflict)
+	if selfLink.derivedFrom.ID() != pair.Source {
+		return types.DerivedBlockSealPair{}, fmt.Errorf("DB has derived-from %s but expected %s: %w", selfLink.derivedFrom, pair.Source, types.ErrConflict)
 	}
 	if selfLink.derived.ID() != pair.Derived {
 		return types.DerivedBlockSealPair{}, fmt.Errorf("DB has derived %s but expected %s: %w", selfLink.derived, pair.Derived, types.ErrConflict)

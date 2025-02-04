@@ -124,7 +124,7 @@ func TestCommonL1(t *testing.T) {
 	returnN := func(n uint64) func() (pair types.DerivedBlockSealPair, err error) {
 		return func() (pair types.DerivedBlockSealPair, err error) {
 			return types.DerivedBlockSealPair{
-				DerivedFrom: types.BlockSeal{
+				Source: types.BlockSeal{
 					Number: n,
 				},
 			}, nil

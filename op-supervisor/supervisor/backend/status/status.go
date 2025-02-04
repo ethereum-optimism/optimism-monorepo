@@ -39,7 +39,7 @@ func (su *StatusTracker) OnEvent(ev event.Event) bool {
 	switch x := ev.(type) {
 	case superevents.LocalDerivedOriginUpdateEvent:
 		status := loadStatusRef(x.ChainID)
-		status.CurrentL1 = x.Derived.DerivedFrom
+		status.CurrentL1 = x.Derived.Source
 	case superevents.LocalUnsafeUpdateEvent:
 		status := loadStatusRef(x.ChainID)
 		status.LocalUnsafe = x.NewLocalUnsafe

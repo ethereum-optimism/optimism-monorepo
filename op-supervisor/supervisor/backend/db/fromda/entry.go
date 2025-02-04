@@ -115,7 +115,7 @@ func (d *LinkEntry) sealOrErr() (types.DerivedBlockSealPair, error) {
 		return types.DerivedBlockSealPair{}, types.ErrAwaitReplacementBlock
 	}
 	return types.DerivedBlockSealPair{
-		DerivedFrom: d.derivedFrom,
-		Derived:     d.derived,
+		Source:  d.derivedFrom,
+		Derived: d.derived,
 	}, nil
 }

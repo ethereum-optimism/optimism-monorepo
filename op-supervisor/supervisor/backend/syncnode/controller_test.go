@@ -183,8 +183,8 @@ func TestInitFromAnchorPoint(t *testing.T) {
 	ctrl := mockSyncControl{}
 	ctrl.anchorPointFn = func(ctx context.Context) (types.DerivedBlockRefPair, error) {
 		return types.DerivedBlockRefPair{
-			Derived:     eth.BlockRef{Number: 1},
-			DerivedFrom: eth.BlockRef{Number: 0},
+			Derived: eth.BlockRef{Number: 1},
+			Source:  eth.BlockRef{Number: 0},
 		}, nil
 	}
 
