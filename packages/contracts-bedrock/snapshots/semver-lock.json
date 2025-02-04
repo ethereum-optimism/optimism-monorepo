@@ -160,8 +160,8 @@
     "sourceCodeHash": "0xb7b0a06cd971c4647247dc19ce997d0c64a73e87c81d30731da9cf9efa1b952a"
   },
   "src/dispute/AnchorStateRegistry.sol": {
-    "initCodeHash": "0x378970d3613b8cf0202cc660afd8b0447988a22c18fdb9e7096a5dedbb389ad8",
-    "sourceCodeHash": "0x95cd2860ee20ed54615da02f53c87ca836aa15af20e3164ae6ef5a9b9cfd3983"
+    "initCodeHash": "0x09ed487b605b933a2da4c87a799e2d11957a4c627efeea04aee804a9f4999bc1",
+    "sourceCodeHash": "0xafba7130f42072db2a610be8186e36669995eaf3d0a4a81f65f5c22f0c66e4c9"
   },
   "src/dispute/DelayedWETH.sol": {
     "initCodeHash": "0xdd0b5e523f3b53563fe0b6e6165fb73605b14910ffa32a7cbed855cdebab47c6",

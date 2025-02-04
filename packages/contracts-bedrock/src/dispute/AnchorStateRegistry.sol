@@ -23,8 +23,8 @@ import { IOptimismPortal2 } from "interfaces/L1/IOptimismPortal2.sol";
 ///         be initialized with a more recent starting state which reduces the amount of required offchain computation.
 contract AnchorStateRegistry is Initializable, ISemver {
     /// @notice Semantic version.
-    /// @custom:semver 2.2.0
-    string public constant version = "2.2.0";
+    /// @custom:semver 2.2.1
+    string public constant version = "2.2.1";
 
     /// @notice Address of the SuperchainConfig contract.
     ISuperchainConfig public superchainConfig;
@@ -161,13 +161,6 @@ contract AnchorStateRegistry is Initializable, ISemver {
             && (_game.status() == GameStatus.DEFENDER_WINS || _game.status() == GameStatus.CHALLENGER_WINS);
     }
 
-    /// @notice Returns whether a game is beyond the airgap period.
-    /// @param _game The game to check.
-    /// @return Whether the game is beyond the airgap period.
-    function isGameAirgapped(IDisputeGame _game) public view returns (bool) {
-        return block.timestamp - _game.resolvedAt().raw() > portal.disputeGameFinalityDelaySeconds();
-    }
-
     /// @notice **READ THIS FUNCTION DOCUMENTATION CAREFULLY.**
     ///         Determines whether a game resolved properly and the game was not subject to any
     ///         invalidation conditions. The root claim of a proper game IS NOT guaranteed to be
@@ -209,8 +202,9 @@ contract AnchorStateRegistry is Initializable, ISemver {
             return false;
         }
 
-        // Game must be beyond the airgap period.
-        if (!isGameAirgapped(_game)) {
+        // Game must be beyond the "airgap period" - time since resolution must be at least
+        // "dispute game finality delay" seconds in the past.
+        if (block.timestamp - _game.resolvedAt().raw() <= portal.disputeGameFinalityDelaySeconds()) {
             return false;
         }
 
@@ -222,20 +216,17 @@ contract AnchorStateRegistry is Initializable, ISemver {
     /// @return Whether the game's root claim is valid.
     function isGameClaimValid(IDisputeGame _game) public view returns (bool) {
         // Game must be a proper game.
-        bool properGame = isGameProper(_game);
-        if (!properGame) {
+        if (!isGameProper(_game)) {
             return false;
         }
 
         // Must be respected.
-        bool respected = isGameRespected(_game);
-        if (!respected) {
+        if (!isGameRespected(_game)) {
             return false;
         }
 
         // Game must be finalized.
-        bool finalized = isGameFinalized(_game);
-        if (!finalized) {
+        if (!isGameFinalized(_game)) {
             return false;
         }
 

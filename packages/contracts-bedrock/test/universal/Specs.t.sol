@@ -557,7 +557,6 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "AnchorStateRegistry", _sel: _getSel("getAnchorRoot()") });
         _addSpec({ _name: "AnchorStateRegistry", _sel: _getSel("disputeGameFactory()") });
         _addSpec({ _name: "AnchorStateRegistry", _sel: _getSel("initialize(address,address,address,(bytes32,uint256))") });
-        _addSpec({ _name: "AnchorStateRegistry", _sel: _getSel("isGameAirgapped(address)") });
         _addSpec({ _name: "AnchorStateRegistry", _sel: _getSel("isGameBlacklisted(address)") });
         _addSpec({ _name: "AnchorStateRegistry", _sel: _getSel("isGameClaimValid(address)") });
         _addSpec({ _name: "AnchorStateRegistry", _sel: _getSel("isGameFinalized(address)") });
