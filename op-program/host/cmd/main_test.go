@@ -251,6 +251,16 @@ func TestL2Head(t *testing.T) {
 		require.Equal(t, common.HexToHash(l2HeadValue), cfg.L2Head)
 	})
 
+	t.Run("NotRequiredForInterop", func(t *testing.T) {
+		req := requiredArgs()
+		delete(req, "--l2.head")
+		delete(req, "--l2.outputroot")
+		args := append(toArgList(req), "--l2.agreed-prestate", "0x1234")
+		cfg := configForArgs(t, args)
+		require.Equal(t, common.Hash{}, cfg.L2Head)
+		require.True(t, cfg.InteropEnabled)
+	})
+
 	t.Run("Invalid", func(t *testing.T) {
 		verifyArgsInvalid(t, config.ErrInvalidL2Head.Error(), replaceRequiredArg("--l2.head", "something"))
 	})

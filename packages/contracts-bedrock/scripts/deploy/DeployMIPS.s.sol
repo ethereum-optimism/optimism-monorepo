@@ -82,9 +82,10 @@ contract DeployMIPS is Script {
         IPreimageOracle preimageOracle = IPreimageOracle(_mi.preimageOracle());
         vm.broadcast(msg.sender);
         singleton = IMIPS(
-            DeployUtils.create1({
+            DeployUtils.createDeterministic({
                 _name: mipsVersion == 1 ? "MIPS" : "MIPS64",
-                _args: DeployUtils.encodeConstructor(abi.encodeCall(IMIPS.__constructor__, (preimageOracle)))
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(IMIPS.__constructor__, (preimageOracle))),
+                _salt: DeployUtils.DEFAULT_SALT
             })
         );
 

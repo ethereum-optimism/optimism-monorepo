@@ -13,6 +13,9 @@ import { IBeacon } from "@openzeppelin/contracts/proxy/beacon/IBeacon.sol";
 contract OptimismSuperchainERC20BeaconTest is CommonTest {
     /// @notice Sets up the test suite.
     function setUp() public override {
+        // Skip the test until OptimismSuperchainERC20Beacon is integrated again
+        vm.skip(true);
+
         super.enableInterop();
         super.setUp();
     }

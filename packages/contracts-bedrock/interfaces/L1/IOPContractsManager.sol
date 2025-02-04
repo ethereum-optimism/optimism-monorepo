@@ -105,14 +105,13 @@ interface IOPContractsManager {
         address disputeGameFactoryImpl;
         address anchorStateRegistryImpl;
         address delayedWETHImpl;
-        address mips64Impl;
+        address mipsImpl;
     }
 
     /// @notice The input required to identify a chain for upgrading.
     struct OpChainConfig {
         ISystemConfig systemConfigProxy;
         IProxyAdmin proxyAdmin;
-        Claim absolutePrestate;
     }
 
     struct AddGameInput {
@@ -209,8 +208,6 @@ interface IOPContractsManager {
     error SuperchainConfigMismatch(ISystemConfig systemConfig);
 
     error SuperchainProxyAdminMismatch();
-
-    error PrestateNotSet();
 
     // -------- Methods --------
 

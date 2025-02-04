@@ -997,7 +997,7 @@ type mockExecutor struct {
 }
 
 func (m *mockExecutor) RunProgram(
-	ctx context.Context, prefetcher hostcommon.Prefetcher, blockNumber uint64, chainID eth.ChainID) error {
+	ctx context.Context, prefetcher hostcommon.Prefetcher, blockNumber uint64, chainID eth.ChainID, db l2.KeyValueStore) error {
 	m.invoked = true
 	m.blockNumber = blockNumber
 	m.chainID = chainID

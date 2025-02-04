@@ -743,14 +743,14 @@ contract Deploy is Deployer {
         );
     }
 
-    /// @notice Loads the multithreaded mips absolute prestate from the prestate-proof-mt for devnets otherwise
+    /// @notice Loads the multithreaded mips absolute prestate from the prestate-proof-mt64 for devnets otherwise
     ///         from the config.
     function _loadDevnetMtMipsAbsolutePrestate() internal returns (Claim mipsAbsolutePrestate_) {
         // Fetch the absolute prestate dump
-        string memory filePath = string.concat(vm.projectRoot(), "/../../op-program/bin/prestate-proof-mt.json");
+        string memory filePath = string.concat(vm.projectRoot(), "/../../op-program/bin/prestate-proof-mt64.json");
         if (bytes(Process.bash(string.concat("[[ -f ", filePath, " ]] && echo \"present\""))).length == 0) {
             revert(
-                "Deploy: MT-Cannon prestate dump not found, generate it with `make cannon-prestate-mt` in the monorepo root"
+                "Deploy: MT-Cannon prestate dump not found, generate it with `make cannon-prestate-mt64` in the monorepo root"
             );
         }
         mipsAbsolutePrestate_ =
@@ -888,6 +888,8 @@ contract Deploy is Deployer {
             gameTypeString = "Alphabet";
         } else if (rawGameType == GameTypes.OP_SUCCINCT.raw()) {
             gameTypeString = "OP Succinct";
+        } else if (rawGameType == GameTypes.KAILUA.raw()) {
+            gameTypeString = "Kailua";
         } else {
             gameTypeString = "Unknown";
         }

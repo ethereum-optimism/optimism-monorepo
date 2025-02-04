@@ -211,6 +211,13 @@ contract SystemConfig_Initialize_TestFail is SystemConfig_Initialize_Test {
 }
 
 contract SystemConfig_Init_ResourceConfig is SystemConfig_Init {
+    function setUp() public virtual override {
+        super.setUp();
+        skipIfOpsRepoTest(
+            "SystemConfig_Init_ResourceConfig: cannot test initialization on superchain ops repo upgrade tests"
+        );
+    }
+
     /// @dev Tests that `setResourceConfig` reverts if the min base fee
     ///      is greater than the maximum allowed base fee.
     function test_setResourceConfig_badMinMax_reverts() external {

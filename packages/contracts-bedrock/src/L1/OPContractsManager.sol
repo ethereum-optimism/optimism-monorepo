@@ -111,14 +111,13 @@ contract OPContractsManager is ISemver {
         address disputeGameFactoryImpl;
         address anchorStateRegistryImpl;
         address delayedWETHImpl;
-        address mips64Impl;
+        address mipsImpl;
     }
 
     /// @notice The input required to identify a chain for upgrading, along with new prestate hashes
     struct OpChainConfig {
         ISystemConfig systemConfigProxy;
         IProxyAdmin proxyAdmin;
-        Claim absolutePrestate;
     }
 
     struct AddGameInput {
@@ -144,9 +143,9 @@ contract OPContractsManager is ISemver {
 
     // -------- Constants and Variables --------
 
-    /// @custom:semver 1.0.0
+    /// @custom:semver 1.0.1
     function version() public pure virtual returns (string memory) {
-        return "1.0.0";
+        return "1.0.1";
     }
 
     /// @notice Address of the SuperchainConfig contract shared by all chains.
@@ -235,9 +234,6 @@ contract OPContractsManager is ISemver {
 
     /// @notice Thrown when the SuperchainProxyAdmin does not match the SuperchainConfig's admin.
     error SuperchainProxyAdminMismatch();
-
-    /// @notice Thrown when a prestate is not set for a game.
-    error PrestateNotSet();
 
     // -------- Methods --------
 
@@ -348,7 +344,7 @@ contract OPContractsManager is ISemver {
                         splitDepth: _input.disputeSplitDepth,
                         clockExtension: _input.disputeClockExtension,
                         maxClockDuration: _input.disputeMaxClockDuration,
-                        vm: IBigStepper(implementation.mips64Impl),
+                        vm: IBigStepper(implementation.mipsImpl),
                         weth: IDelayedWETH(payable(address(output.delayedWETHPermissionedGameProxy))),
                         anchorStateRegistry: IAnchorStateRegistry(address(output.anchorStateRegistryProxy)),
                         l2ChainId: _input.l2ChainId
@@ -1108,11 +1104,7 @@ contract OPContractsManager is ISemver {
 
         // Modify the params with the new anchorStateRegistry and vm values.
         params.anchorStateRegistry = IAnchorStateRegistry(address(_newAnchorStateRegistryProxy));
-        params.vm = IBigStepper(_implementations.mips64Impl);
-        if (Claim.unwrap(_opChainConfig.absolutePrestate) == bytes32(0)) {
-            revert PrestateNotSet();
-        }
-        params.absolutePrestate = _opChainConfig.absolutePrestate;
+        params.vm = IBigStepper(_implementations.mipsImpl);
 
         IDisputeGame newGame;
         if (GameType.unwrap(_gameType) == GameType.unwrap(GameTypes.PERMISSIONED_CANNON)) {

@@ -79,11 +79,8 @@ type CrossUnsafeWorker struct {
 }
 
 func (c *CrossUnsafeWorker) OnEvent(ev event.Event) bool {
-	switch x := ev.(type) {
+	switch ev.(type) {
 	case superevents.UpdateCrossUnsafeRequestEvent:
-		if x.ChainID != c.chainID {
-			return false
-		}
 		if err := CrossUnsafeUpdate(c.logger, c.chainID, c.d); err != nil {
 			if errors.Is(err, types.ErrFuture) {
 				c.logger.Debug("Worker awaits additional blocks", "err", err)

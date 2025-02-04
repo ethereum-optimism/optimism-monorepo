@@ -84,6 +84,15 @@ OP Stack smart contracts are designed to utilize a single, consistent Solidity v
 refer to [SOLIDITY_UPGRADES.md](./meta/SOLIDITY_UPGRADES.md) to understand the process for updating to
 newer Solidity versions.
 
+### Frozen Code
+
+From time to time we need to ensure that certain files remain frozen, as they may be under audit or
+a large PR is in the works and we wish to avoid a large rebase. In order to enforce this,
+a hardcoded list of contracts is stored in `./scripts/checks/check-frozen-files.sh`. Any change
+which affects the resulting init or source code of that contract will cause a failure in CI.
+
+In order to remove a file from the freeze it must be removed from the check file.
+
 ## Deployment
 
 The smart contracts are deployed using `foundry`. The `DEPLOYMENT_OUTFILE` env var will determine the filepath that the

@@ -11,8 +11,18 @@ You can:
   - **IMPORTANT**: If you believe your report impacts the security of this repository, refer to the canonical [Security Policy](https://github.com/ethereum-optimism/.github/blob/master/SECURITY.md) document.
 - Fix issues that are tagged as [`D-good-first-issue`](https://github.com/ethereum-optimism/optimism/labels/D-good-first-issue) or [`S-confirmed`](https://github.com/ethereum-optimism/optimism/labels/S-confirmed).
 - Larger projects are listed on [this project board](https://github.com/orgs/ethereum-optimism/projects/31/views/9). Please talk to us if you're considering working on one of these, they may not be fully specified so it will reduce risk to discuss the approach and ensure that it's still relevant.
-- Help improve the [Optimism Developer Docs](https://github.com/ethereum-optimism/docs) by reporting issues, fixing typos, or adding missing sections.
+- Help improve the [Optimism Docs] by reporting issues or adding missing sections.
 - Get involved in the protocol design process by joining discussions within the [OP Stack Specs](https://github.com/ethereum-optimism/specs/discussions) repository.
+
+[Optimism Docs]: https://github.com/ethereum-optimism/docs
+
+### Contributions Related to Spelling and Grammar
+
+At this time, we will not be accepting contributions that primarily fix
+spelling, stylistic or grammatical errors in documentation, code or elsewhere.
+
+Pull Requests that ignore this guideline will be closed,
+and may be aggregated into new Pull Requests without attribution.
 
 ## Code of Conduct
 

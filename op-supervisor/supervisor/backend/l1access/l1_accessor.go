@@ -39,9 +39,9 @@ type L1Accessor struct {
 
 	finalitySub ethereum.Subscription
 
-	// tipHeight is the height of the L1 chain tip
-	// used to block access to requests more recent than the confirmation depth
-	tipHeight uint64
+	// tip is the L1 chain tip. Used to block access to requests more recent than
+	// the confirmation depth, and to detect reorgs
+	tip       eth.BlockID
 	latestSub ethereum.Subscription
 	confDepth uint64
 
@@ -159,7 +159,26 @@ func (p *L1Accessor) onFinalized(ctx context.Context, ref eth.L1BlockRef) {
 }
 
 func (p *L1Accessor) onLatest(ctx context.Context, ref eth.L1BlockRef) {
-	p.tipHeight = ref.Number
+	// Stop if the block is the same or older than the tip
+	if ref.Hash == p.tip.Hash {
+		p.log.Info("Latest L1 block signal is the same as the tip", "ref", ref)
+		return
+	}
+	if ref.Number < p.tip.Number {
+		p.log.Warn("L1 block is older than the tip", "ref", ref)
+		return
+	}
+
+	// If the incoming block is not the child of the current tip, signal a potential reorg
+	if ref.ParentHash != p.tip.Hash {
+		p.emitter.Emit(superevents.RewindL1Event{
+			IncomingBlock: ref.ID(),
+		})
+		p.log.Info("Reorg detected", "ref", ref)
+	}
+
+	// Update the tip
+	p.tip = ref.ID()
 	p.log.Info("Updated latest known L1 block", "ref", ref)
 }
 
@@ -170,7 +189,7 @@ func (p *L1Accessor) L1BlockRefByNumber(ctx context.Context, number uint64) (eth
 		return eth.L1BlockRef{}, errors.New("no L1 source available")
 	}
 	// block access to requests more recent than the confirmation depth
-	if number > p.tipHeight-p.confDepth {
+	if number > p.tip.Number-p.confDepth {
 		return eth.L1BlockRef{}, ethereum.NotFound
 	}
 	return p.client.L1BlockRefByNumber(ctx, number)

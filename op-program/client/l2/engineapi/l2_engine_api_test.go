@@ -111,7 +111,7 @@ type stubCachingBackend struct {
 }
 
 func (s *stubCachingBackend) AssembleAndInsertBlockWithoutSetHead(processor *BlockProcessor) (*types.Block, error) {
-	block, err := processor.Assemble()
+	block, _, err := processor.Assemble()
 	if err != nil {
 		return nil, err
 	}
@@ -119,6 +119,10 @@ func (s *stubCachingBackend) AssembleAndInsertBlockWithoutSetHead(processor *Blo
 		return nil, err
 	}
 	return block, nil
+}
+
+func (s *stubCachingBackend) GetReceiptsByBlockHash(hash common.Hash) types.Receipts {
+	panic("unsupported")
 }
 
 var _ CachingEngineBackend = (*stubCachingBackend)(nil)

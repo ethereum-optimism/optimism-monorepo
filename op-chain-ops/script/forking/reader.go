@@ -31,6 +31,14 @@ func (f *forkStateReader) Storage(addr common.Address, slot common.Hash) (common
 	return common.Hash(v), nil
 }
 
+func (f *forkStateReader) Code(addr common.Address, codeHash common.Hash) ([]byte, error) {
+	return f.trie.ContractCode(addr, codeHash)
+}
+
+func (f *forkStateReader) CodeSize(addr common.Address, codeHash common.Hash) (int, error) {
+	return f.trie.ContractCodeSize(addr, codeHash)
+}
+
 func (f *forkStateReader) Copy() state.Reader {
 	return f
 }
