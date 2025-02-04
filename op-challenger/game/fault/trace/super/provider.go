@@ -32,11 +32,13 @@ type PreimagePrestateProvider interface {
 }
 type RootProvider interface {
 	SuperRootAtTimestamp(ctx context.Context, timestamp hexutil.Uint64) (eth.SuperRootResponse, error)
+	AllSafeDerivedAt(ctx context.Context, derivedFrom eth.BlockID) (map[eth.ChainID]eth.BlockID, error)
 }
 
 type SuperTraceProvider struct {
 	PreimagePrestateProvider
 	logger             log.Logger
+	rollupCfgs         *RollupConfigs
 	rootProvider       RootProvider
 	prestateTimestamp  uint64
 	poststateTimestamp uint64
@@ -44,10 +46,11 @@ type SuperTraceProvider struct {
 	gameDepth          types.Depth
 }
 
-func NewSuperTraceProvider(logger log.Logger, prestateProvider PreimagePrestateProvider, rootProvider RootProvider, l1Head eth.BlockID, gameDepth types.Depth, prestateTimestamp, poststateTimestamp uint64) *SuperTraceProvider {
+func NewSuperTraceProvider(logger log.Logger, rollupCfgs *RollupConfigs, prestateProvider PreimagePrestateProvider, rootProvider RootProvider, l1Head eth.BlockID, gameDepth types.Depth, prestateTimestamp, poststateTimestamp uint64) *SuperTraceProvider {
 	return &SuperTraceProvider{
-		PreimagePrestateProvider: prestateProvider,
 		logger:                   logger,
+		rollupCfgs:               rollupCfgs,
+		PreimagePrestateProvider: prestateProvider,
 		rootProvider:             rootProvider,
 		prestateTimestamp:        prestateTimestamp,
 		poststateTimestamp:       poststateTimestamp,
@@ -96,6 +99,15 @@ func (s *SuperTraceProvider) GetPreimageBytes(ctx context.Context, pos types.Pos
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve super root at timestamp %v: %w", nextTimestamp, err)
 	}
+
+	var safeHeads map[eth.ChainID]eth.BlockID
+	// If the next root is not cross safe, fetch the individual chain safe heads at L1Head to find which chains were unsafe
+	if nextRoot.CrossSafeDerivedFrom.Number > s.l1Head.Number {
+		safeHeads, err = s.rootProvider.AllSafeDerivedAt(ctx, s.l1Head)
+		if err != nil {
+			return nil, fmt.Errorf("failed to retrieve safe derived blocks at L1 head %v: %w", s.l1Head, err)
+		}
+	}
 	superV1 := responseToSuper(prevRoot)
 	expectedState := interopTypes.TransitionState{
 		SuperRoot:       superV1.Marshal(),
@@ -103,7 +115,24 @@ func (s *SuperTraceProvider) GetPreimageBytes(ctx context.Context, pos types.Pos
 		Step:            step,
 	}
 	for i := uint64(0); i < min(step, uint64(len(nextRoot.Chains))); i++ {
-		rawOutput, err := eth.UnmarshalOutput(nextRoot.Chains[i].Pending)
+		chainInfo := nextRoot.Chains[i]
+		if len(safeHeads) > 0 {
+			// Need to check if this chain's safe head included the block we need
+			rollupCfg, ok := s.rollupCfgs.Get(chainInfo.ChainID)
+			if !ok {
+				return nil, fmt.Errorf("rollup config unavailable for chain %d: %w", chainInfo.ChainID, err)
+			}
+			requiredBlockNum, err := rollupCfg.TargetBlockNumber(nextTimestamp)
+			if err != nil {
+				return nil, fmt.Errorf("no target block number for chain %v at %v: %w", chainInfo.ChainID, nextTimestamp, err)
+			}
+			if safeHead, ok := safeHeads[chainInfo.ChainID]; !ok {
+				return nil, fmt.Errorf("no safe head known for chain %v at %v: %w", chainInfo.ChainID, nextTimestamp, err)
+			} else if safeHead.Number < requiredBlockNum {
+				return InvalidTransition, nil
+			}
+		}
+		rawOutput, err := eth.UnmarshalOutput(chainInfo.Pending)
 		if err != nil {
 			return nil, fmt.Errorf("failed to unmarshal pending output %v at timestamp %v: %w", i, nextTimestamp, err)
 		}

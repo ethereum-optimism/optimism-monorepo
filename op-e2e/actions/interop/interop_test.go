@@ -560,9 +560,8 @@ func TestInteropFaultProofs(gt *testing.T) {
 			disputedClaim:      interop.InvalidTransition,
 			disputedTraceIndex: 0,
 			// The derivation reaches the L1 head before the next block can be created
-			l1Head:         actors.L1Miner.L1Chain().Genesis().Hash(),
-			expectValid:    true,
-			skipChallenger: true, // Challenger doesn't yet check if blocks were safe
+			l1Head:      actors.L1Miner.L1Chain().Genesis().Hash(),
+			expectValid: true,
 		},
 		{
 			name:               "SecondChainReachesL1Head",
@@ -572,17 +571,16 @@ func TestInteropFaultProofs(gt *testing.T) {
 			// The derivation reaches the L1 head before the next block can be created
 			l1Head:         actors.L1Miner.L1Chain().Genesis().Hash(),
 			expectValid:    true,
-			skipChallenger: true, // Challenger doesn't yet check if blocks were safe
+			skipChallenger: true, // test's agreedClaim is incorrect - first chain is also invalid
 		},
 		{
 			name:               "SuperRootInvalidIfUnsupportedByL1Data",
-			agreedClaim:        step1Expected,
-			disputedClaim:      step2Expected,
-			disputedTraceIndex: 1,
+			agreedClaim:        start.Marshal(),
+			disputedClaim:      step1Expected,
+			disputedTraceIndex: 0,
 			// The derivation reaches the L1 head before the next block can be created
-			l1Head:         actors.L1Miner.L1Chain().Genesis().Hash(),
-			expectValid:    false,
-			skipChallenger: true, // Challenger doesn't yet check if blocks were safe
+			l1Head:      actors.L1Miner.L1Chain().Genesis().Hash(),
+			expectValid: false,
 		},
 		{
 			name:               "FromInvalidTransitionHash",
@@ -590,9 +588,8 @@ func TestInteropFaultProofs(gt *testing.T) {
 			disputedClaim:      interop.InvalidTransition,
 			disputedTraceIndex: 2,
 			// The derivation reaches the L1 head before the next block can be created
-			l1Head:         actors.L1Miner.L1Chain().Genesis().Hash(),
-			expectValid:    true,
-			skipChallenger: true, // Challenger doesn't yet check if blocks were safe
+			l1Head:      actors.L1Miner.L1Chain().Genesis().Hash(),
+			expectValid: true,
 		},
 	}
 
@@ -638,7 +635,9 @@ func TestInteropFaultProofs(gt *testing.T) {
 				l1Head = eth.ToBlockID(actors.L1Miner.L1Chain().GetBlockByHash(test.l1Head))
 			}
 			gameDepth := challengerTypes.Depth(30)
-			provider := super.NewSuperTraceProvider(logger, prestateProvider, &actors.Supervisor.QueryFrontend, l1Head, gameDepth, startTimestamp, endTimestamp)
+			rollupCfgs, err := super.NewRollupConfigsFromParsed(actors.ChainA.RollupCfg, actors.ChainB.RollupCfg)
+			require.NoError(t, err)
+			provider := super.NewSuperTraceProvider(logger, rollupCfgs, prestateProvider, &actors.Supervisor.QueryFrontend, l1Head, gameDepth, startTimestamp, endTimestamp)
 			var agreedPrestate []byte
 			if test.disputedTraceIndex > 0 {
 				agreedPrestate, err = provider.GetPreimageBytes(ctx, challengerTypes.NewPosition(gameDepth, big.NewInt(test.disputedTraceIndex-1)))
@@ -911,7 +910,9 @@ func TestInteropFaultProofsInvalidBlock(gt *testing.T) {
 				l1Head = eth.ToBlockID(actors.L1Miner.L1Chain().GetBlockByHash(test.l1Head))
 			}
 			gameDepth := challengerTypes.Depth(30)
-			provider := super.NewSuperTraceProvider(logger, prestateProvider, &actors.Supervisor.QueryFrontend, l1Head, gameDepth, startTimestamp, endTimestamp)
+			rollupCfgs, err := super.NewRollupConfigsFromParsed(actors.ChainA.RollupCfg, actors.ChainB.RollupCfg)
+			require.NoError(t, err)
+			provider := super.NewSuperTraceProvider(logger, rollupCfgs, prestateProvider, &actors.Supervisor.QueryFrontend, l1Head, gameDepth, startTimestamp, endTimestamp)
 			var agreedPrestate []byte
 			if test.disputedTraceIndex > 0 {
 				agreedPrestate, err = provider.GetPreimageBytes(ctx, challengerTypes.NewPosition(gameDepth, big.NewInt(test.disputedTraceIndex-1)))

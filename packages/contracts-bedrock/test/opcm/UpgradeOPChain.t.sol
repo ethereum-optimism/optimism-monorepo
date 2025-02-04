@@ -2,7 +2,6 @@
 pragma solidity 0.8.15;
 
 import { Test } from "forge-std/Test.sol";
-import { Claim } from "src/dispute/lib/Types.sol";
 
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 import { IProxyAdmin } from "interfaces/universal/IProxyAdmin.sol";
@@ -54,8 +53,7 @@ contract UpgradeOPChainInput_Test is Test {
 
         configs[0] = OPContractsManager.OpChainConfig({
             systemConfigProxy: ISystemConfig(systemConfig1),
-            proxyAdmin: IProxyAdmin(proxyAdmin1),
-            absolutePrestate: Claim.wrap(bytes32(uint256(1)))
+            proxyAdmin: IProxyAdmin(proxyAdmin1)
         });
 
         // Setup mock addresses and contracts for second config
@@ -66,20 +64,13 @@ contract UpgradeOPChainInput_Test is Test {
 
         configs[1] = OPContractsManager.OpChainConfig({
             systemConfigProxy: ISystemConfig(systemConfig2),
-            proxyAdmin: IProxyAdmin(proxyAdmin2),
-            absolutePrestate: Claim.wrap(bytes32(uint256(2)))
+            proxyAdmin: IProxyAdmin(proxyAdmin2)
         });
 
         input.set(input.opChainConfigs.selector, configs);
 
         bytes memory storedConfigs = input.opChainConfigs();
         assertEq(storedConfigs, abi.encode(configs));
-
-        // Additional verification of stored claims if needed
-        OPContractsManager.OpChainConfig[] memory decodedConfigs =
-            abi.decode(storedConfigs, (OPContractsManager.OpChainConfig[]));
-        assertEq(Claim.unwrap(decodedConfigs[0].absolutePrestate), bytes32(uint256(1)));
-        assertEq(Claim.unwrap(decodedConfigs[1].absolutePrestate), bytes32(uint256(2)));
     }
 
     function test_setAddress_withZeroAddress_reverts() public {
@@ -110,8 +101,7 @@ contract UpgradeOPChainInput_Test is Test {
 
         configs[0] = OPContractsManager.OpChainConfig({
             systemConfigProxy: ISystemConfig(mockSystemConfig),
-            proxyAdmin: IProxyAdmin(mockProxyAdmin),
-            absolutePrestate: Claim.wrap(bytes32(uint256(1)))
+            proxyAdmin: IProxyAdmin(mockProxyAdmin)
         });
 
         vm.expectRevert("UpgradeOPCMInput: unknown selector");
@@ -120,14 +110,10 @@ contract UpgradeOPChainInput_Test is Test {
 }
 
 contract MockOPCM {
-    event UpgradeCalled(address indexed sysCfgProxy, address indexed proxyAdmin, bytes32 indexed absolutePrestate);
+    event UpgradeCalled(address indexed sysCfgProxy, address indexed proxyAdmin);
 
     function upgrade(OPContractsManager.OpChainConfig[] memory _opChainConfigs) public {
-        emit UpgradeCalled(
-            address(_opChainConfigs[0].systemConfigProxy),
-            address(_opChainConfigs[0].proxyAdmin),
-            Claim.unwrap(_opChainConfigs[0].absolutePrestate)
-        );
+        emit UpgradeCalled(address(_opChainConfigs[0].systemConfigProxy), address(_opChainConfigs[0].proxyAdmin));
     }
 }
 
@@ -138,7 +124,7 @@ contract UpgradeOPChain_Test is Test {
     UpgradeOPChain upgradeOPChain;
     address prank;
 
-    event UpgradeCalled(address indexed sysCfgProxy, address indexed proxyAdmin, bytes32 indexed absolutePrestate);
+    event UpgradeCalled(address indexed sysCfgProxy, address indexed proxyAdmin);
 
     function setUp() public virtual {
         mockOPCM = new MockOPCM();
@@ -146,8 +132,7 @@ contract UpgradeOPChain_Test is Test {
         uoci.set(uoci.opcm.selector, address(mockOPCM));
         config = OPContractsManager.OpChainConfig({
             systemConfigProxy: ISystemConfig(makeAddr("systemConfigProxy")),
-            proxyAdmin: IProxyAdmin(makeAddr("proxyAdmin")),
-            absolutePrestate: Claim.wrap(keccak256("absolutePrestate"))
+            proxyAdmin: IProxyAdmin(makeAddr("proxyAdmin"))
         });
         OPContractsManager.OpChainConfig[] memory configs = new OPContractsManager.OpChainConfig[](1);
         configs[0] = config;
@@ -160,9 +145,7 @@ contract UpgradeOPChain_Test is Test {
     function test_upgrade_succeeds() public {
         // UpgradeCalled should be emitted by the prank since it's a delegate call.
         vm.expectEmit(true, true, false, false, address(prank));
-        emit UpgradeCalled(
-            address(config.systemConfigProxy), address(config.proxyAdmin), Claim.unwrap(config.absolutePrestate)
-        );
+        emit UpgradeCalled(address(config.systemConfigProxy), address(config.proxyAdmin));
         upgradeOPChain.run(uoci);
     }
 }

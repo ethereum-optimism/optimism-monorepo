@@ -49,7 +49,6 @@ FROZEN_FILES=(
   "src/L1/L1CrossDomainMessenger.sol"
   "src/L1/L1ERC721Bridge.sol"
   "src/L1/L1StandardBridge.sol"
-  "src/L1/OPContractsManager.sol"
   "src/L1/OptimismPortal2.sol"
   "src/L1/ProtocolVersions.sol"
   "src/L1/SuperchainConfig.sol"
@@ -61,7 +60,8 @@ FROZEN_FILES=(
   "src/dispute/PermissionedDisputeGame.sol"
   "src/cannon/MIPS.sol"
   "src/cannon/MIPS2.sol"
-  "src/cannon/MIPS64.sol"
+# TODO(#14116): Add MIPS64 back when development is finished
+#  "src/cannon/MIPS64.sol"
   "src/cannon/PreimageOracle.sol"
 )
 

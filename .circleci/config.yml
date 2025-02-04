@@ -1249,9 +1249,6 @@ jobs:
 
   bedrock-go-tests: # just a helper, that depends on all the actual test jobs
     docker:
-      # Use a smaller base image to avoid pulling the huge ci-builder
-      # image which is not needed for this job and sometimes misses
-      # the cache.
       - image: <<pipeline.parameters.default_docker_image>>
     resource_class: medium
     steps:
@@ -1589,7 +1586,7 @@ workflows:
           type: approval
           filters:
             tags:
-              only: /^(da-server|ci-builder(-rust)?|proofs-tools|cannon|ufm-[a-z0-9\-]*|op-[a-z0-9\-]*)\/v.*/
+              only: /^(da-server|proofs-tools|cannon|ufm-[a-z0-9\-]*|op-[a-z0-9\-]*)\/v.*/
             branches:
               ignore: /.*/
       # Standard (medium) cross-platform docker images go here
@@ -1655,8 +1652,6 @@ workflows:
           matrix:
             parameters:
               docker_name:
-                - ci-builder
-                - ci-builder-rust
                 - proofs-tools
           name: <<matrix.docker_name>>-docker-release
           resource_class: xlarge

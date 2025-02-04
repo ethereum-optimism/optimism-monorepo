@@ -14,7 +14,7 @@ import { Enum } from "safe-contracts/common/Enum.sol";
 import { ForgeArtifacts } from "scripts/libraries/ForgeArtifacts.sol";
 
 // Libraries
-import { GameTypes, Claim } from "src/dispute/lib/Types.sol";
+import { GameTypes } from "src/dispute/lib/Types.sol";
 import { EIP1967Helper } from "test/mocks/EIP1967Helper.sol";
 
 // Interfaces
@@ -179,11 +179,7 @@ contract ForkLive is Deployer, SafeTestTools {
         vm.label(owner, "ProxyAdmin Owner");
 
         IOPContractsManager.OpChainConfig[] memory opChains = new IOPContractsManager.OpChainConfig[](1);
-        opChains[0] = IOPContractsManager.OpChainConfig({
-            systemConfigProxy: systemConfig,
-            proxyAdmin: proxyAdmin,
-            absolutePrestate: Claim.wrap(bytes32(keccak256("absolutePrestate")))
-        });
+        opChains[0] = IOPContractsManager.OpChainConfig({ systemConfigProxy: systemConfig, proxyAdmin: proxyAdmin });
 
         // Create a Safe with 3 owners and a threshold of 2
         (, uint256[] memory keys) = SafeTestLib.makeAddrsAndKeys("ForkLive", 3);

@@ -495,7 +495,7 @@ contract DeployImplementations is Script {
             disputeGameFactoryImpl: address(_dio.disputeGameFactoryImpl()),
             anchorStateRegistryImpl: address(_dio.anchorStateRegistryImpl()),
             delayedWETHImpl: address(_dio.delayedWETHImpl()),
-            mips64Impl: address(_dio.mipsSingleton())
+            mipsImpl: address(_dio.mipsSingleton())
         });
 
         vm.broadcast(msg.sender);
@@ -887,7 +887,7 @@ contract DeployImplementationsInterop is DeployImplementations {
             disputeGameFactoryImpl: address(_dio.disputeGameFactoryImpl()),
             anchorStateRegistryImpl: address(_dio.anchorStateRegistryImpl()),
             delayedWETHImpl: address(_dio.delayedWETHImpl()),
-            mips64Impl: address(_dio.mipsSingleton())
+            mipsImpl: address(_dio.mipsSingleton())
         });
 
         vm.broadcast(msg.sender);
