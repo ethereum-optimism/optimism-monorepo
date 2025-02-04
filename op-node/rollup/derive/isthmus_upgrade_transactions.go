@@ -1,12 +1,9 @@
 package derive
 
 import (
-	"bytes"
-	"fmt"
 	"math/big"
 
 	"github.com/ethereum-optimism/optimism/op-service/predeploys"
-	"github.com/ethereum-optimism/optimism/op-service/solabi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -40,12 +37,6 @@ var (
 	// Enable Isthmus Parameters
 	enableIsthmusSource = UpgradeDepositSource{Intent: "Isthmus: Gas Price Oracle Set Isthmus"}
 	enableIsthmusInput  = crypto.Keccak256([]byte("setIsthmus()"))[:4]
-
-	operatorFeeVaultEncodedArgs = encodeFeeVaultConstructorArgs(
-		predeploys.BaseFeeVaultAddr,
-		big.NewInt(0),
-		uint8(1), // L2
-	)
 
 	BlockHashDeployerAddress    = common.HexToAddress("0xE9f0662359Bb2c8111840eFFD73B9AFA77CbDE10")
 	blockHashDeployerSource     = UpgradeDepositSource{Intent: "Isthmus: EIP-2935 Contract Deployment"}
@@ -117,7 +108,7 @@ func IsthmusNetworkUpgradeTransactions() ([]hexutil.Bytes, error) {
 		Value:               big.NewInt(0),
 		Gas:                 500_000,
 		IsSystemTransaction: false,
-		Data:                append(operatorFeeVaultDeploymentBytecode, operatorFeeVaultEncodedArgs...),
+		Data:                operatorFeeVaultDeploymentBytecode,
 	}).MarshalBinary()
 
 	if err != nil {
@@ -199,18 +190,4 @@ func IsthmusNetworkUpgradeTransactions() ([]hexutil.Bytes, error) {
 	upgradeTxns = append(upgradeTxns, enableIsthmus)
 
 	return upgradeTxns, nil
-}
-
-func encodeFeeVaultConstructorArgs(address common.Address, minWithdrawalAmount *big.Int, withdrawalNetwork uint8) []byte {
-	buf := bytes.NewBuffer(make([]byte, 0, 20+64+8))
-	if err := solabi.WriteAddress(buf, address); err != nil {
-		panic(fmt.Errorf("failed to write address argument: %w", err))
-	}
-	if err := solabi.WriteUint256(buf, minWithdrawalAmount); err != nil {
-		panic(fmt.Errorf("failed to write min withdrawal amount argument: %w", err))
-	}
-	if err := solabi.WriteUint8(buf, withdrawalNetwork); err != nil {
-		panic(fmt.Errorf("failed to write withdrawal network argument: %w", err))
-	}
-	return buf.Bytes()
 }
