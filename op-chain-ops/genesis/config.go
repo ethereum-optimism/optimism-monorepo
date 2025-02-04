@@ -149,9 +149,6 @@ type L2VaultsDeployConfig struct {
 	// SequencerFeeVaultRecipient represents the recipient of fees accumulated in the SequencerFeeVault.
 	// Can be an account on L1 or L2, depending on the SequencerFeeVaultWithdrawalNetwork value.
 	SequencerFeeVaultRecipient common.Address `json:"sequencerFeeVaultRecipient"`
-	// OperatorFeeVaultRecipient represents the recipient of fees accumulated in the OperatorFeeVault.
-	// Can be an account on L1 or L2, depending on the OperatorFeeVaultWithdrawalNetwork value.
-	OperatorFeeVaultRecipient common.Address `json:"operatorFeeVaultRecipient"`
 	// BaseFeeVaultMinimumWithdrawalAmount represents the minimum withdrawal amount for the BaseFeeVault.
 	BaseFeeVaultMinimumWithdrawalAmount *hexutil.Big `json:"baseFeeVaultMinimumWithdrawalAmount"`
 	// L1FeeVaultMinimumWithdrawalAmount represents the minimum withdrawal amount for the L1FeeVault.
@@ -159,15 +156,11 @@ type L2VaultsDeployConfig struct {
 	// SequencerFeeVaultMinimumWithdrawalAmount represents the minimum withdrawal amount for the SequencerFeeVault.
 	SequencerFeeVaultMinimumWithdrawalAmount *hexutil.Big `json:"sequencerFeeVaultMinimumWithdrawalAmount"`
 	// OperatorFeeVaultMinimumWithdrawalAmount represents the minimum withdrawal amount for the OperatorFeeVault.
-	OperatorFeeVaultMinimumWithdrawalAmount *hexutil.Big `json:"operatorFeeVaultMinimumWithdrawalAmount"`
-	// BaseFeeVaultWithdrawalNetwork represents the withdrawal network for the BaseFeeVault.
 	BaseFeeVaultWithdrawalNetwork WithdrawalNetwork `json:"baseFeeVaultWithdrawalNetwork"`
 	// L1FeeVaultWithdrawalNetwork represents the withdrawal network for the L1FeeVault.
 	L1FeeVaultWithdrawalNetwork WithdrawalNetwork `json:"l1FeeVaultWithdrawalNetwork"`
 	// SequencerFeeVaultWithdrawalNetwork represents the withdrawal network for the SequencerFeeVault.
 	SequencerFeeVaultWithdrawalNetwork WithdrawalNetwork `json:"sequencerFeeVaultWithdrawalNetwork"`
-	// OperatorFeeVaultWithdrawalNetwork represents the withdrawal network for the OperatorFeeVault.
-	OperatorFeeVaultWithdrawalNetwork WithdrawalNetwork `json:"operatorFeeVaultWithdrawalNetwork"`
 }
 
 var _ ConfigChecker = (*L2VaultsDeployConfig)(nil)
@@ -190,9 +183,6 @@ func (d *L2VaultsDeployConfig) Check(log log.Logger) error {
 	}
 	if !d.SequencerFeeVaultWithdrawalNetwork.Valid() {
 		return fmt.Errorf("%w: SequencerFeeVaultWithdrawalNetwork can only be 0 (L1) or 1 (L2)", ErrInvalidDeployConfig)
-	}
-	if !d.OperatorFeeVaultWithdrawalNetwork.Valid() {
-		return fmt.Errorf("%w: OperatorFeeVaultWithdrawalNetwork can only be 0 (L1) or 1 (L2)", ErrInvalidDeployConfig)
 	}
 
 	return nil
