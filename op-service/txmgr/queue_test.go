@@ -304,5 +304,5 @@ func TestMaxPending(t *testing.T) {
 		backend.mine(k.(*common.Hash), v.(*types.Transaction).GasFeeCap(), nil)
 		txs.Delete(k)
 		return true
-	})å
+	})
 }
