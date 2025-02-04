@@ -218,8 +218,8 @@ library Encoding {
             _blobBaseFee,
             _hash,
             _batcherHash,
-            _operatorFeeConstant,
-            _operatorFeeScalar
+            _operatorFeeScalar,
+            _operatorFeeConstant
         );
     }
 
