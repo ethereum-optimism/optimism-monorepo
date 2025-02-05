@@ -345,7 +345,7 @@ contract Initializer_Test is CommonTest {
     function test_cannotReinitialize_succeeds() public {
         // Collect exclusions.
         uint256 j = 0;
-        string[] memory excludes = new string[](10);
+        string[] memory excludes = new string[](9);
         // TODO: Neither of these contracts are labeled properly in the deployment script. Both are
         //       currently being labeled as their non-interop versions. Remove these exclusions once
         //       the deployment script is fixed.
@@ -363,7 +363,6 @@ contract Initializer_Test is CommonTest {
         excludes[j++] = "src/dispute/PermissionedDisputeGame.sol";
         // TODO: Eventually remove this exclusion. Same reason as above dispute contracts.
         excludes[j++] = "src/L1/OPContractsManager.sol";
-        excludes[j++] = "src/L1/OPContractsManagerInterop.sol";
         // L2 contract initialization is tested in Predeploys.t.sol
         excludes[j++] = "src/L2/*";
         // Exclude SharedLockbox since using OZv5 initializer
