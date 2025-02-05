@@ -214,20 +214,20 @@ func (db *ChainsDB) Finalized(chainID eth.ChainID) (types.BlockSeal, error) {
 		db.logger.Warn("Finalized L1 block is newer than the latest L1 for this chain. Assuming latest L2 is finalized",
 			"chain", chainID,
 			"finalizedL1", finalizedL1.Number,
-			"latestDerivedFrom", latest.Source.Number,
+			"latestSource", latest.Source.Number,
 			"latestDerived", latest.Source)
 		return latest.Derived, nil
 	}
 
 	// otherwise, use the finalized L1 block to determine the final L2 block that was derived from it
-	derived, err := db.LastCrossDerivedFrom(chainID, finalizedL1.ID())
+	derived, err := db.CrossSourceToLastDerived(chainID, finalizedL1.ID())
 	if err != nil {
 		return types.BlockSeal{}, fmt.Errorf("could not find what was last derived in L2 chain %s from the finalized L1 block %s: %w", chainID, finalizedL1, err)
 	}
 	return derived, nil
 }
 
-func (db *ChainsDB) LastCrossDerivedFrom(chainID eth.ChainID, derivedFrom eth.BlockID) (derived types.BlockSeal, err error) {
+func (db *ChainsDB) CrossSourceToLastDerived(chainID eth.ChainID, derivedFrom eth.BlockID) (derived types.BlockSeal, err error) {
 	crossDB, ok := db.crossDBs.Get(chainID)
 	if !ok {
 		return types.BlockSeal{}, types.ErrUnknownChain
@@ -235,9 +235,8 @@ func (db *ChainsDB) LastCrossDerivedFrom(chainID eth.ChainID, derivedFrom eth.Bl
 	return crossDB.SourceToLastDerived(derivedFrom)
 }
 
-// CrossDerivedFromBlockRef returns the block that the given block was derived from, if it exists in the cross derived-from storage.
-// This includes the parent-block lookup. Use CrossDerivedFrom if no parent-block info is needed.
-func (db *ChainsDB) CrossDerivedFromBlockRef(chainID eth.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error) {
+// CrossDerivedToSourceRef returns the block that the given block was derived from, if it exists in the cross derived-from storage.
+func (db *ChainsDB) CrossDerivedToSourceRef(chainID eth.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error) {
 	xdb, ok := db.crossDBs.Get(chainID)
 	if !ok {
 		return eth.BlockRef{}, types.ErrUnknownChain
@@ -247,8 +246,8 @@ func (db *ChainsDB) CrossDerivedFromBlockRef(chainID eth.ChainID, derived eth.Bl
 		return eth.BlockRef{}, err
 	}
 	parent, err := xdb.PreviousSource(res.ID())
-	// if we are working with the first item in the database, PreviousDerivedFrom will return ErrPreviousToFirst
-	// in which case we can attach a zero parent to the cross-derived-from block, as the parent block is unknown
+	// if we are working with the first item in the database, PreviousSource will return ErrPreviousToFirst
+	// in which case we can attach a zero parent to the block, as the parent block is unknown
 	if errors.Is(err, types.ErrPreviousToFirst) {
 		return res.ForceWithParent(eth.BlockID{}), nil
 	} else if err != nil {
@@ -277,9 +276,9 @@ func (db *ChainsDB) OpenBlock(chainID eth.ChainID, blockNum uint64) (seal eth.Bl
 	return logDB.OpenBlock(blockNum)
 }
 
-// LocalDerivedFrom returns the block that the given block was derived from, if it exists in the local derived-from storage.
+// LocalDerivedToFirstSource returns the block that the given block was derived from, if it exists in the local derived-from storage.
 // it routes the request to the appropriate localDB.
-func (db *ChainsDB) LocalDerivedFrom(chain eth.ChainID, derived eth.BlockID) (derivedFrom types.BlockSeal, err error) {
+func (db *ChainsDB) LocalDerivedToFirstSource(chain eth.ChainID, derived eth.BlockID) (derivedFrom types.BlockSeal, err error) {
 	lDB, ok := db.localDBs.Get(chain)
 	if !ok {
 		return types.BlockSeal{}, types.ErrUnknownChain
@@ -287,9 +286,9 @@ func (db *ChainsDB) LocalDerivedFrom(chain eth.ChainID, derived eth.BlockID) (de
 	return lDB.DerivedToFirstSource(derived)
 }
 
-// CrossDerivedFrom returns the block that the given block was derived from, if it exists in the cross derived-from storage.
+// CrossDerivedToFirstSource returns the block that the given block was derived from, if it exists in the cross derived-from storage.
 // it routes the request to the appropriate crossDB.
-func (db *ChainsDB) CrossDerivedFrom(chain eth.ChainID, derived eth.BlockID) (derivedFrom types.BlockSeal, err error) {
+func (db *ChainsDB) CrossDerivedToFirstSource(chain eth.ChainID, derived eth.BlockID) (derivedFrom types.BlockSeal, err error) {
 	xDB, ok := db.crossDBs.Get(chain)
 	if !ok {
 		return types.BlockSeal{}, types.ErrUnknownChain
@@ -340,7 +339,7 @@ func (db *ChainsDB) CandidateCrossSafe(chain eth.ChainID) (result types.DerivedB
 			derivedFromRef, err := first.Source.WithParent(eth.BlockID{})
 			if err != nil {
 				// if the first derivedFrom isn't the genesis block, just warn and continue anyway
-				db.logger.Warn("First DerivedFrom is not genesis block")
+				db.logger.Warn("First Source is not genesis block")
 				derivedFromRef = first.Source.ForceWithParent(eth.BlockID{})
 			}
 			// the first derived must be the genesis block, panic otherwise
@@ -371,34 +370,34 @@ func (db *ChainsDB) CandidateCrossSafe(chain eth.ChainID) (result types.DerivedB
 
 	candidateRef := candidatePair.Derived.MustWithParent(crossSafe.Derived.ID())
 
-	parentDerivedFrom, err := lDB.PreviousSource(candidatePair.Source.ID())
-	// if we are working with the first item in the database, PreviousDerivedFrom will return ErrPreviousToFirst
+	parentSource, err := lDB.PreviousSource(candidatePair.Source.ID())
+	// if we are working with the first item in the database, PreviousSource will return ErrPreviousToFirst
 	// in which case we can attach a zero parent to the cross-derived-from block, as the parent block is unknown
 	if errors.Is(err, types.ErrPreviousToFirst) {
-		parentDerivedFrom = types.BlockSeal{}
+		parentSource = types.BlockSeal{}
 	} else if err != nil {
 		return types.DerivedBlockRefPair{}, fmt.Errorf("failed to find parent-block of derived-from %s: %w", candidatePair.Source, err)
 	}
-	candidateFromRef := candidatePair.Source.MustWithParent(parentDerivedFrom.ID())
+	candidateFromRef := candidatePair.Source.MustWithParent(parentSource.ID())
 
 	// Allow increment of DA by 1, if we know the floor (due to local safety) is 1 ahead of the current cross-safe L1 scope.
 	if candidatePair.Source.Number > crossSafe.Source.Number+1 {
 		// If we are not ready to process the candidate block,
 		// then we need to stick to the current scope, so the caller can bump up from there.
-		var crossDerivedFromRef eth.BlockRef
+		var crossSourceRef eth.BlockRef
 		parent, err := lDB.PreviousSource(crossSafe.Source.ID())
-		// if we are working with the first item in the database, PreviousDerivedFrom will return ErrPreviousToFirst
+		// if we are working with the first item in the database, PreviousSource will return ErrPreviousToFirst
 		// in which case we can attach a zero parent to the cross-derived-from block, as the parent block is unknown
 		if errors.Is(err, types.ErrPreviousToFirst) {
-			crossDerivedFromRef = crossSafe.Source.ForceWithParent(eth.BlockID{})
+			crossSourceRef = crossSafe.Source.ForceWithParent(eth.BlockID{})
 		} else if err != nil {
 			return types.DerivedBlockRefPair{},
 				fmt.Errorf("failed to find parent-block of cross-derived-from %s: %w", crossSafe.Source, err)
 		} else {
-			crossDerivedFromRef = crossSafe.Source.MustWithParent(parent.ID())
+			crossSourceRef = crossSafe.Source.MustWithParent(parent.ID())
 		}
 		return types.DerivedBlockRefPair{
-				Source:  crossDerivedFromRef,
+				Source:  crossSourceRef,
 				Derived: eth.BlockRef{},
 			},
 			fmt.Errorf("candidate is from %s, while current scope is %s: %w",
@@ -418,7 +417,7 @@ func (db *ChainsDB) PreviousDerived(chain eth.ChainID, derived eth.BlockID) (pre
 	return lDB.PreviousDerived(derived)
 }
 
-func (db *ChainsDB) PreviousSource(chain eth.ChainID, derivedFrom eth.BlockID) (prevDerivedFrom types.BlockSeal, err error) {
+func (db *ChainsDB) PreviousSource(chain eth.ChainID, derivedFrom eth.BlockID) (prevSource types.BlockSeal, err error) {
 	lDB, ok := db.localDBs.Get(chain)
 	if !ok {
 		return types.BlockSeal{}, types.ErrUnknownChain
@@ -426,7 +425,7 @@ func (db *ChainsDB) PreviousSource(chain eth.ChainID, derivedFrom eth.BlockID) (
 	return lDB.PreviousSource(derivedFrom)
 }
 
-func (db *ChainsDB) NextDerivedFrom(chain eth.ChainID, derivedFrom eth.BlockID) (after eth.BlockRef, err error) {
+func (db *ChainsDB) NextSource(chain eth.ChainID, derivedFrom eth.BlockID) (after eth.BlockRef, err error) {
 	lDB, ok := db.localDBs.Get(chain)
 	if !ok {
 		return eth.BlockRef{}, types.ErrUnknownChain

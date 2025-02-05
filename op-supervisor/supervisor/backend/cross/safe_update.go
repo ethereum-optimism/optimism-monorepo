@@ -19,7 +19,7 @@ type CrossSafeDeps interface {
 	SafeStartDeps
 
 	CandidateCrossSafe(chain eth.ChainID) (candidate types.DerivedBlockRefPair, err error)
-	NextDerivedFrom(chain eth.ChainID, derivedFrom eth.BlockID) (after eth.BlockRef, err error)
+	NextSource(chain eth.ChainID, derivedFrom eth.BlockID) (after eth.BlockRef, err error)
 	PreviousDerived(chain eth.ChainID, derived eth.BlockID) (prevDerived types.BlockSeal, err error)
 
 	OpenBlock(chainID eth.ChainID, blockNum uint64) (ref eth.BlockRef, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error)
@@ -61,7 +61,7 @@ func CrossSafeUpdate(logger log.Logger, chainID eth.ChainID, d CrossSafeDeps) er
 	}
 	logger.Debug("Cross-safe updating ran out of L1 scope", "scope", candidate.Source, "err", err)
 	// bump the L1 scope up, and repeat the prev L2 block, not the candidate
-	newScope, err := d.NextDerivedFrom(chainID, candidate.Source.ID())
+	newScope, err := d.NextSource(chainID, candidate.Source.ID())
 	if err != nil {
 		return fmt.Errorf("failed to identify new L1 scope to expand to after %s: %w", candidate.Source, err)
 	}

@@ -13,7 +13,7 @@ import (
 func FuzzRoundtripLinkEntry(f *testing.F) {
 	f.Fuzz(func(t *testing.T, aHash []byte, aNum uint64, aTimestamp uint64, bHash []byte, bNum uint64, bTimestamp uint64) {
 		x := LinkEntry{
-			derivedFrom: types.BlockSeal{
+			source: types.BlockSeal{
 				Hash:      common.BytesToHash(aHash),
 				Number:    aNum,
 				Timestamp: aTimestamp,
@@ -25,7 +25,7 @@ func FuzzRoundtripLinkEntry(f *testing.F) {
 			},
 		}
 		entry := x.encode()
-		require.Equal(t, DerivedFromV0, entry.Type())
+		require.Equal(t, SourceV0, entry.Type())
 		var y LinkEntry
 		err := y.decode(entry)
 		require.NoError(t, err)

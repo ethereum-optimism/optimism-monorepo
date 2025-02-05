@@ -772,12 +772,12 @@ func setupTestChains(t *testing.T, chainIDs ...eth.ChainID) *testSetup {
 		// Create and open the local derived-from DB
 		localDB, err := fromda.NewFromFile(logger, &stubMetrics{}, filepath.Join(chainDir, "local_safe.db"))
 		require.NoError(t, err)
-		chainsDB.AddLocalDerivedFromDB(chainID, localDB)
+		chainsDB.AddLocalDerivationDB(chainID, localDB)
 
 		// Create and open the cross derived-from DB
 		crossDB, err := fromda.NewFromFile(logger, &stubMetrics{}, filepath.Join(chainDir, "cross_safe.db"))
 		require.NoError(t, err)
-		chainsDB.AddCrossDerivedFromDB(chainID, crossDB)
+		chainsDB.AddCrossDerivationDB(chainID, crossDB)
 
 		// Add cross-unsafe tracker
 		chainsDB.AddCrossUnsafeTracker(chainID)

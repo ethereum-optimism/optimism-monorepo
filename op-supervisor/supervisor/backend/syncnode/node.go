@@ -288,16 +288,6 @@ func (m *ManagedNode) onDerivationUpdate(pair types.DerivedBlockRefPair) {
 		ChainID: m.chainID,
 		Derived: pair,
 	})
-	// TODO: keep synchronous local-safe DB update feedback?
-	// We'll still need more async ways of doing this for reorg handling.
-
-	// ctx, cancel := context.WithTimeout(m.ctx, internalTimeout)
-	// defer cancel()
-	// if err := m.backend.UpdateLocalSafe(ctx, m.chainID, pair.DerivedFrom, pair.Derived); err != nil {
-	//	m.log.Warn("Backend failed to process local-safe update",
-	//		"derived", pair.Derived, "derivedFrom", pair.DerivedFrom, "err", err)
-	//	m.resetSignal(err, pair.DerivedFrom)
-	// }
 }
 
 func (m *ManagedNode) onDerivationOriginUpdate(origin eth.BlockRef) {

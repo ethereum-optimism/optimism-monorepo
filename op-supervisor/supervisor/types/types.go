@@ -303,7 +303,7 @@ func (seals *DerivedBlockSealPair) IDs() DerivedIDPair {
 	}
 }
 
-// DerivedIDPair is a pair of block IDs, where Derived (L2) is derived from DerivedFrom (L1).
+// DerivedIDPair is a pair of block IDs, where Derived (L2) is derived from Source (L1).
 type DerivedIDPair struct {
 	Source  eth.BlockID `json:"source"`
 	Derived eth.BlockID `json:"derived"`

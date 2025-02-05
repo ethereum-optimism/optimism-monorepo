@@ -133,23 +133,23 @@ func toRef(seal types.BlockSeal, parentHash common.Hash) eth.BlockRef {
 }
 
 func TestSingleEntryDB(t *testing.T) {
-	expectedDerivedFrom := mockL1(0)
+	expectedSource := mockL1(0)
 	expectedDerived := mockL2(2)
 	runDBTest(t,
 		func(t *testing.T, db *DB, m *stubMetrics) {
-			require.NoError(t, db.AddDerived(toRef(expectedDerivedFrom, mockL1(0).Hash), toRef(expectedDerived, mockL2(0).Hash)))
+			require.NoError(t, db.AddDerived(toRef(expectedSource, mockL1(0).Hash), toRef(expectedDerived, mockL2(0).Hash)))
 		},
 		func(t *testing.T, db *DB, m *stubMetrics) {
 			// First
 			pair, err := db.First()
 			require.NoError(t, err)
-			require.Equal(t, expectedDerivedFrom, pair.Source)
+			require.Equal(t, expectedSource, pair.Source)
 			require.Equal(t, expectedDerived, pair.Derived)
 
 			// Last
 			pair, err = db.Last()
 			require.NoError(t, err)
-			require.Equal(t, expectedDerivedFrom, pair.Source)
+			require.Equal(t, expectedSource, pair.Source)
 			require.Equal(t, expectedDerived, pair.Derived)
 
 			// Next after Last
@@ -159,28 +159,28 @@ func TestSingleEntryDB(t *testing.T) {
 			require.ErrorIs(t, err, types.ErrFuture)
 
 			// Last Derived
-			derived, err := db.SourceToLastDerived(expectedDerivedFrom.ID())
+			derived, err := db.SourceToLastDerived(expectedSource.ID())
 			require.NoError(t, err)
 			require.Equal(t, expectedDerived, derived)
 
 			// Last Derived with a non-existent Source
-			_, err = db.SourceToLastDerived(eth.BlockID{Hash: common.Hash{0xaa}, Number: expectedDerivedFrom.Number})
+			_, err = db.SourceToLastDerived(eth.BlockID{Hash: common.Hash{0xaa}, Number: expectedSource.Number})
 			require.ErrorIs(t, err, types.ErrConflict)
 
 			// Next with a non-existent block (derived and derivedFrom)
 			_, err = db.Next(types.DerivedIDPair{
-				Source:  eth.BlockID{Hash: common.Hash{0xaa}, Number: expectedDerivedFrom.Number},
+				Source:  eth.BlockID{Hash: common.Hash{0xaa}, Number: expectedSource.Number},
 				Derived: expectedDerived.ID()})
 			require.ErrorIs(t, err, types.ErrConflict)
 			_, err = db.Next(types.DerivedIDPair{
-				Source:  expectedDerivedFrom.ID(),
+				Source:  expectedSource.ID(),
 				Derived: eth.BlockID{Hash: common.Hash{0xaa}, Number: expectedDerived.Number}})
 			require.ErrorIs(t, err, types.ErrConflict)
 
 			// First Source
 			derivedFrom, err := db.DerivedToFirstSource(expectedDerived.ID())
 			require.NoError(t, err)
-			require.Equal(t, expectedDerivedFrom, derivedFrom)
+			require.Equal(t, expectedSource, derivedFrom)
 
 			// Source with a non-existent Derived
 			_, err = db.DerivedToFirstSource(eth.BlockID{Hash: common.Hash{0xbb}, Number: expectedDerived.Number})
@@ -192,7 +192,7 @@ func TestSingleEntryDB(t *testing.T) {
 			require.Equal(t, types.BlockSeal{}, prev, "zeroed seal before first entry")
 
 			// PreviousSource
-			prev, err = db.PreviousSource(expectedDerivedFrom.ID())
+			prev, err = db.PreviousSource(expectedSource.ID())
 			require.NoError(t, err)
 			require.Equal(t, types.BlockSeal{}, prev, "zeroed seal before first entry")
 
@@ -201,12 +201,12 @@ func TestSingleEntryDB(t *testing.T) {
 			require.ErrorIs(t, err, types.ErrFuture)
 
 			// NextSource
-			_, err = db.NextSource(expectedDerivedFrom.ID())
+			_, err = db.NextSource(expectedSource.ID())
 			require.ErrorIs(t, err, types.ErrFuture)
 
 			// Next
 			_, err = db.Next(types.DerivedIDPair{
-				Source:  expectedDerivedFrom.ID(),
+				Source:  expectedSource.ID(),
 				Derived: expectedDerived.ID()})
 			require.ErrorIs(t, err, types.ErrFuture)
 		})
@@ -214,12 +214,12 @@ func TestSingleEntryDB(t *testing.T) {
 
 func TestGap(t *testing.T) {
 	// mockL1 starts at block 1 to produce a gap
-	expectedDerivedFrom := mockL1(1)
+	expectedSource := mockL1(1)
 	// mockL2 starts at block 2 to produce a gap
 	expectedDerived := mockL2(2)
 	runDBTest(t,
 		func(t *testing.T, db *DB, m *stubMetrics) {
-			require.NoError(t, db.AddDerived(toRef(expectedDerivedFrom, mockL1(0).Hash), toRef(expectedDerived, mockL2(0).Hash)))
+			require.NoError(t, db.AddDerived(toRef(expectedSource, mockL1(0).Hash), toRef(expectedDerived, mockL2(0).Hash)))
 		},
 		func(t *testing.T, db *DB, m *stubMetrics) {
 			_, err := db.NextDerived(mockL2(0).ID())
@@ -593,14 +593,14 @@ func TestManyEntryDB(t *testing.T) {
 
 func testManyEntryDB(t *testing.T, offsetL1 uint64, offsetL2 uint64) {
 	// L2 -> first L1 occurrence
-	firstDerivedFrom := make(map[eth.BlockID]types.BlockSeal)
+	firstSource := make(map[eth.BlockID]types.BlockSeal)
 	// L1 -> last L2 occurrence
 	lastDerived := make(map[eth.BlockID]types.BlockSeal)
 
 	runDBTest(t, func(t *testing.T, db *DB, m *stubMetrics) {
 		// Insert genesis
 		require.NoError(t, db.AddDerived(toRef(mockL1(offsetL1), common.Hash{}), toRef(mockL2(offsetL2), common.Hash{})))
-		firstDerivedFrom[mockL2(offsetL2).ID()] = mockL1(offsetL1)
+		firstSource[mockL2(offsetL2).ID()] = mockL1(offsetL1)
 		lastDerived[mockL1(offsetL1).ID()] = mockL2(offsetL2)
 
 		rng := rand.New(rand.NewSource(1234))
@@ -621,8 +621,8 @@ func testManyEntryDB(t *testing.T, offsetL1 uint64, offsetL2 uint64) {
 			derivedFromRef := toRef(pair.Source, mockL1(pair.Source.Number-1).Hash)
 			derivedRef := toRef(pair.Derived, mockL2(pair.Derived.Number-1).Hash)
 			lastDerived[derivedFromRef.ID()] = pair.Derived
-			if _, ok := firstDerivedFrom[derivedRef.ID()]; !ok {
-				firstDerivedFrom[derivedRef.ID()] = pair.Source
+			if _, ok := firstSource[derivedRef.ID()]; !ok {
+				firstSource[derivedRef.ID()] = pair.Source
 			}
 			require.NoError(t, db.AddDerived(derivedFromRef, derivedRef))
 		}
@@ -645,8 +645,8 @@ func testManyEntryDB(t *testing.T, offsetL1 uint64, offsetL2 uint64) {
 			l2ID := mockL2(i).ID()
 			derivedFrom, err := db.DerivedToFirstSource(l2ID)
 			require.NoError(t, err)
-			require.Contains(t, firstDerivedFrom, l2ID)
-			require.Equal(t, firstDerivedFrom[l2ID], derivedFrom)
+			require.Contains(t, firstSource, l2ID)
+			require.Equal(t, firstSource[l2ID], derivedFrom)
 		}
 
 		// if not started at genesis, try to read older data, assert it's unavailable.

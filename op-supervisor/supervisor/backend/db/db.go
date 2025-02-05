@@ -166,7 +166,7 @@ func (db *ChainsDB) AddLogDB(chainID eth.ChainID, logDB LogStorage) {
 	db.logDBs.Set(chainID, logDB)
 }
 
-func (db *ChainsDB) AddLocalDerivedFromDB(chainID eth.ChainID, dfDB DerivationStorage) {
+func (db *ChainsDB) AddLocalDerivationDB(chainID eth.ChainID, dfDB DerivationStorage) {
 	if db.localDBs.Has(chainID) {
 		db.logger.Warn("overwriting existing local derived-from DB for chain", "chain", chainID)
 	}
@@ -174,7 +174,7 @@ func (db *ChainsDB) AddLocalDerivedFromDB(chainID eth.ChainID, dfDB DerivationSt
 	db.localDBs.Set(chainID, dfDB)
 }
 
-func (db *ChainsDB) AddCrossDerivedFromDB(chainID eth.ChainID, dfDB DerivationStorage) {
+func (db *ChainsDB) AddCrossDerivationDB(chainID eth.ChainID, dfDB DerivationStorage) {
 	if db.crossDBs.Has(chainID) {
 		db.logger.Warn("overwriting existing cross derived-from DB for chain", "chain", chainID)
 	}

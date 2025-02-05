@@ -125,7 +125,7 @@ func TestCrossSafeUpdate(t *testing.T) {
 			return eth.BlockRef{}, 0, nil, types.ErrOutOfScope
 		}
 		newScope := eth.BlockRef{Number: 3}
-		csd.nextDerivedFromFn = func(chain eth.ChainID, derivedFrom eth.BlockID) (after eth.BlockRef, err error) {
+		csd.nextSourceFn = func(chain eth.ChainID, derivedFrom eth.BlockID) (after eth.BlockRef, err error) {
 			return newScope, nil
 		}
 		currentCrossSafe := types.BlockSeal{Number: 5}
@@ -148,7 +148,7 @@ func TestCrossSafeUpdate(t *testing.T) {
 		}
 		// when scopedCrossSafeUpdate returns Out of Scope error,
 		// CrossSafeUpdate proceeds anyway and calls UpdateCrossSafe
-		// the update uses the new scope returned by NextDerivedFrom
+		// the update uses the new scope returned by NextSource
 		// and a crossSafeRef made from the current crossSafe and its parent
 		err := CrossSafeUpdate(logger, chainID, csd)
 		require.NoError(t, err)
@@ -157,7 +157,7 @@ func TestCrossSafeUpdate(t *testing.T) {
 		crossSafeRef := currentCrossSafe.MustWithParent(parent.ID())
 		require.Equal(t, crossSafeRef, updatingCandidate)
 	})
-	t.Run("NextDerivedFrom returns error", func(t *testing.T) {
+	t.Run("NextSource returns error", func(t *testing.T) {
 		logger := testlog.Logger(t, log.LevelDebug)
 		chainID := eth.ChainIDFromUInt64(0)
 		csd := &mockCrossSafeDeps{}
@@ -172,12 +172,12 @@ func TestCrossSafeUpdate(t *testing.T) {
 		csd.openBlockFn = func(chainID eth.ChainID, blockNum uint64) (ref eth.BlockRef, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error) {
 			return eth.BlockRef{}, 0, nil, types.ErrOutOfScope
 		}
-		csd.nextDerivedFromFn = func(chain eth.ChainID, derivedFrom eth.BlockID) (after eth.BlockRef, err error) {
+		csd.nextSourceFn = func(chain eth.ChainID, derivedFrom eth.BlockID) (after eth.BlockRef, err error) {
 			return eth.BlockRef{}, errors.New("some error")
 		}
 		csd.deps = mockDependencySet{}
 		// when scopedCrossSafeUpdate returns Out of Scope error,
-		// and NextDerivedFrom returns an error,
+		// and NextSource returns an error,
 		// the error is returned
 		err := CrossSafeUpdate(logger, chainID, csd)
 		require.ErrorContains(t, err, "some error")
@@ -455,7 +455,7 @@ type mockCrossSafeDeps struct {
 	candidateCrossSafeFn  func() (candidate types.DerivedBlockRefPair, err error)
 	openBlockFn           func(chainID eth.ChainID, blockNum uint64) (ref eth.BlockRef, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error)
 	updateCrossSafeFn     func(chain eth.ChainID, l1View eth.BlockRef, lastCrossDerived eth.BlockRef) error
-	nextDerivedFromFn     func(chain eth.ChainID, derivedFrom eth.BlockID) (after eth.BlockRef, err error)
+	nextSourceFn          func(chain eth.ChainID, derivedFrom eth.BlockID) (after eth.BlockRef, err error)
 	previousDerivedFn     func(chain eth.ChainID, derived eth.BlockID) (prevDerived types.BlockSeal, err error)
 	checkFn               func(chainID eth.ChainID, blockNum uint64, logIdx uint32, logHash common.Hash) (types.BlockSeal, error)
 	invalidateLocalSafeFn func(chainID eth.ChainID, candidate types.DerivedBlockRefPair) error
@@ -481,7 +481,7 @@ func (m *mockCrossSafeDeps) DependencySet() depset.DependencySet {
 	return m.deps
 }
 
-func (m *mockCrossSafeDeps) CrossDerivedFrom(chainID eth.ChainID, derived eth.BlockID) (derivedFrom types.BlockSeal, err error) {
+func (m *mockCrossSafeDeps) CrossDerivedToFirstSource(chainID eth.ChainID, derived eth.BlockID) (derivedFrom types.BlockSeal, err error) {
 	return types.BlockSeal{}, nil
 }
 
@@ -492,9 +492,9 @@ func (m *mockCrossSafeDeps) Contains(chainID eth.ChainID, q types.ContainsQuery)
 	return types.BlockSeal{}, nil
 }
 
-func (m *mockCrossSafeDeps) NextDerivedFrom(chain eth.ChainID, derivedFrom eth.BlockID) (after eth.BlockRef, err error) {
-	if m.nextDerivedFromFn != nil {
-		return m.nextDerivedFromFn(chain, derivedFrom)
+func (m *mockCrossSafeDeps) NextSource(chain eth.ChainID, derivedFrom eth.BlockID) (after eth.BlockRef, err error) {
+	if m.nextSourceFn != nil {
+		return m.nextSourceFn(chain, derivedFrom)
 	}
 	return eth.BlockRef{}, nil
 }
