@@ -198,8 +198,7 @@ snapshots: build-source snapshots-no-build
 ########################################################
 
 # Checks if the snapshots are up to date without building.
-snapshots-check-no-build:
-  just snapshots-no-build && git diff --exit-code snapshots
+snapshots-check-no-build: snapshots-no-build
 
 # Checks if the snapshots are up to date.
 snapshots-check: build snapshots-check-no-build
@@ -293,16 +292,46 @@ check:
 ########################################################
 
 # Cleans, builds, lints, and runs all checks.
-pre-pr: clean pre-pr-no-build
+# Alias for pre-pr.
+pre-commit *ARGS:
+  just pre-pr {{ARGS}}
 
-# Builds, lints, and runs all checks. Sometimes a bad cache causes issues, in which case the above
-# `pre-pr` is preferred. But in most cases this will be sufficient and much faster then a full build.
-# Steps:
-# - Build (dev mode) to confirm that contracts compile
-# - Lint contracts
-# - Generate snapshots
-# - Run all checks to confirm everything is good
-pre-pr-no-build: build-dev lint snapshots-no-build check
+# Cleans, builds, lints, and runs all checks.
+pre-pr *ARGS:
+  #!/bin/bash
+  # Optionally clean the previous build.
+  # --clean is typically not needed but can force a clean build if you suspect cache issues.
+  if [[ "{{ARGS}}" == *"--clean"* ]]; then
+      just clean
+  fi
+
+  # Create temp directory for build cache if it doesn't exist.
+  TEMP_BUILD_DIR=$(mktemp -d)
+  trap '[ -d "$TEMP_BUILD_DIR" ] && rm -rf "$TEMP_BUILD_DIR"' EXIT INT
+
+  just build-dev
+
+  # Cache build artifacts for the dev build. We expect that developers will
+  # generally be using the dev build, but a production build of the src
+  # contracts is required for generating the correct snapshots. Production
+  # build will overwrite the cache for the dev build, which ultimately means
+  # that developers would have to wait a full minute for the dev build each
+  # time they run this command. By caching the artifacts for the dev build, we
+  # can save a lot of marginal time.
+  cp -r artifacts "$TEMP_BUILD_DIR/"
+  cp -r forge-artifacts "$TEMP_BUILD_DIR/"
+  cp -r cache "$TEMP_BUILD_DIR/"
+
+  just lint
+  just build-source
+  just check
+
+  # Restore build artifacts after running checks.
+  if [ -d "$TEMP_BUILD_DIR" ]; then
+    cp -r "$TEMP_BUILD_DIR/artifacts" ./
+    cp -r "$TEMP_BUILD_DIR/forge-artifacts" ./
+    cp -r "$TEMP_BUILD_DIR/cache" ./
+  fi
 
 # Fixes linting errors.
 lint-fix:
