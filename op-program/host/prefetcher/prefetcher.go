@@ -228,8 +228,6 @@ func (p *Prefetcher) prefetchState(ctx context.Context, hint string) error {
 		return err
 	}
 
-	fmt.Println("last bulk", p.lastBulkHint)
-
 	// some L2 state data can be fetched in bulk from block execution witnesses instead of direction from the MPT
 	// if we have a bulk hint, we should use it instead of the last hint (will fallback to last hint after bulk hint is cleared and request is retried)
 	if p.lastBulkHint != "" && cl.ExperimentalEnabled() {
