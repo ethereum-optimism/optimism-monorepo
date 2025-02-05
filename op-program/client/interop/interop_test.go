@@ -508,6 +508,7 @@ func (t *stubTasks) ExpectBuildDepositOnlyBlock(
 		mock.Anything,
 		mock.Anything,
 		mock.Anything,
+		mock.Anything,
 	).Once().Return(depositOnlyBlockHash, depositOnlyOutputRoot, nil)
 }
 
