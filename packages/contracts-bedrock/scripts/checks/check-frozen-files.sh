@@ -105,7 +105,7 @@ ALLOWED_FILES=(
   "src/universal/StorageSetter.sol"
   "src/vendor/asterisc/RISCV.sol"
   "src/vendor/eas/EAS.sol"
-  "src/vendor/eas/SchemaRegistry.sol
+  "src/vendor/eas/SchemaRegistry.sol"
 )
 
 MATCHED_FILES=()
