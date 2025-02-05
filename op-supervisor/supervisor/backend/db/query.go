@@ -161,7 +161,7 @@ func (db *ChainsDB) AcceptedBlock(chainID eth.ChainID, id eth.BlockID) error {
 					types.ErrAwaitReplacementBlock)
 			}
 			// If it's older, we should check if the local-safe DB matches.
-			return localDB.IsCanonical(id)
+			return localDB.ContainsDerived(id)
 		} else {
 			return fmt.Errorf("failed to read latest local-safe block: %w", err)
 		}
@@ -170,7 +170,7 @@ func (db *ChainsDB) AcceptedBlock(chainID eth.ChainID, id eth.BlockID) error {
 		return nil
 	}
 	// If it's older, we should check if the local-safe DB matches.
-	return localDB.IsCanonical(id)
+	return localDB.ContainsDerived(id)
 }
 
 func (db *ChainsDB) LocalSafe(chainID eth.ChainID) (pair types.DerivedBlockSealPair, err error) {

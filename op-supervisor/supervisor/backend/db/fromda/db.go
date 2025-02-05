@@ -176,11 +176,11 @@ func (db *DB) NextDerived(derived eth.BlockID) (pair types.DerivedBlockSealPair,
 	return next.sealOrErr()
 }
 
-// IsCanonical checks if the given block is canonical for the given chain.
+// ContainsDerived checks if the given block is canonical for the given chain.
 // This returns an ErrFuture if the block is not known yet.
 // An ErrConflict if there is a different block.
 // Or an ErrAwaitReplacementBlock if it was invalidated.
-func (db *DB) IsCanonical(derived eth.BlockID) error {
+func (db *DB) ContainsDerived(derived eth.BlockID) error {
 	db.rwLock.RLock()
 	defer db.rwLock.RUnlock()
 	// Take the last entry: this will be the latest canonical view,

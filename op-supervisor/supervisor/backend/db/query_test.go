@@ -42,7 +42,7 @@ func (m *mockDerivedFromStorage) RewindAndInvalidate(invalidated types.DerivedBl
 func (m *mockDerivedFromStorage) SourceToLastDerived(source eth.BlockID) (derived types.BlockSeal, err error) {
 	return types.BlockSeal{}, nil
 }
-func (m *mockDerivedFromStorage) IsCanonical(derived eth.BlockID) error {
+func (m *mockDerivedFromStorage) ContainsDerived(derived eth.BlockID) error {
 	return nil
 }
 func (m *mockDerivedFromStorage) DerivedToFirstSource(derived eth.BlockID) (source types.BlockSeal, err error) {

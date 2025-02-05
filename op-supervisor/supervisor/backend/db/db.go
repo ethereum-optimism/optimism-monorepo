@@ -69,7 +69,7 @@ type DerivationStorage interface {
 
 	// type-specific
 	Invalidated() (pair types.DerivedBlockSealPair, err error)
-	IsCanonical(derived eth.BlockID) error
+	ContainsDerived(derived eth.BlockID) error
 
 	// writing
 	AddDerived(source eth.BlockRef, derived eth.BlockRef) error
