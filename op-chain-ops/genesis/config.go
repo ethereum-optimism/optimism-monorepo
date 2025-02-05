@@ -158,7 +158,7 @@ type L2VaultsDeployConfig struct {
 	L1FeeVaultMinimumWithdrawalAmount *hexutil.Big `json:"l1FeeVaultMinimumWithdrawalAmount"`
 	// SequencerFeeVaultMinimumWithdrawalAmount represents the minimum withdrawal amount for the SequencerFeeVault.
 	SequencerFeeVaultMinimumWithdrawalAmount *hexutil.Big `json:"sequencerFeeVaultMinimumWithdrawalAmount"`
-	// OperatorFeeVaultMinimumWithdrawalAmount represents the minimum withdrawal amount for the OperatorFeeVault.
+	// BaseFeeVaultWithdrawalNetwork represents the withdrawal network for the BaseFeeVault.
 	BaseFeeVaultWithdrawalNetwork WithdrawalNetwork `json:"baseFeeVaultWithdrawalNetwork"`
 	// L1FeeVaultWithdrawalNetwork represents the withdrawal network for the L1FeeVault.
 	L1FeeVaultWithdrawalNetwork WithdrawalNetwork `json:"l1FeeVaultWithdrawalNetwork"`
@@ -187,7 +187,6 @@ func (d *L2VaultsDeployConfig) Check(log log.Logger) error {
 	if !d.SequencerFeeVaultWithdrawalNetwork.Valid() {
 		return fmt.Errorf("%w: SequencerFeeVaultWithdrawalNetwork can only be 0 (L1) or 1 (L2)", ErrInvalidDeployConfig)
 	}
-
 	return nil
 }
 
