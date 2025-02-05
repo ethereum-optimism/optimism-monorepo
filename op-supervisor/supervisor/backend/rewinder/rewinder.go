@@ -88,6 +88,8 @@ func (r *Rewinder) handleRewindL1Event(ev superevents.RewindL1Event) {
 // If it doesn't match, we need to rewind the logs DB to the common ancestor between
 // the LocalUnsafe head and the new LocalSafe block
 func (r *Rewinder) handleLocalDerivedEvent(ev superevents.LocalSafeUpdateEvent) {
+	r.log.Debug("Local derivation update signal", "chain", ev.ChainID, "newSafe", ev.NewLocalSafe.Derived, "derivedFrom", ev.NewLocalSafe.DerivedFrom)
+
 	// Get the block at the derived height from our unsafe chain
 	newSafeHead := ev.NewLocalSafe.Derived
 	unsafeVersion, err := r.db.FindSealedBlock(ev.ChainID, newSafeHead.Number)
@@ -98,21 +100,28 @@ func (r *Rewinder) handleLocalDerivedEvent(ev superevents.LocalSafeUpdateEvent) 
 
 	// If the block hashes match, our unsafe chain is still valid
 	if unsafeVersion.Hash == newSafeHead.Hash {
+		r.log.Debug("No rewind needed - unsafe chain matches new safe block", "chain", ev.ChainID, "block", newSafeHead)
 		return
 	}
 
-	// Try rewinding the logs DB to the parent of the new safe head
-	// If it fails with a data conflict walk back through the chain
-	// until we find a common ancestor or reach the finalized block
+	r.log.Debug("Unsafe chain mismatch detected", "chain", ev.ChainID, "unsafe", unsafeVersion, "newSafe", newSafeHead)
+
+	// Get the finalized block as our lower bound
 	finalized, err := r.db.Finalized(ev.ChainID)
 	if err != nil {
 		if errors.Is(err, types.ErrFuture) {
 			finalized = types.BlockSeal{Number: 0}
+			r.log.Debug("No finalized block found, using genesis", "chain", ev.ChainID)
 		} else {
 			r.log.Error("failed to get finalized block", "chain", ev.ChainID, "err", err)
 			return
 		}
 	}
+	r.log.Debug("Found finalized block as lower bound", "chain", ev.ChainID, "finalized", finalized)
+
+	// Try rewinding the logs DB to the parent of the new safe head
+	// If it fails with a data conflict walk back through the chain
+	// until we find a common ancestor or reach the finalized block
 	var target types.BlockSeal
 	for height := int64(newSafeHead.Number - 1); height >= int64(finalized.Number); height-- {
 		// Get the block at this height
@@ -122,9 +131,12 @@ func (r *Rewinder) handleLocalDerivedEvent(ev superevents.LocalSafeUpdateEvent) 
 			return
 		}
 
+		r.log.Debug("Checking potential rewind target", "chain", ev.ChainID, "target", target)
+
 		_, err := r.db.LocalDerivedFrom(ev.ChainID, target.ID())
 		if err != nil {
 			if errors.Is(err, types.ErrConflict) || errors.Is(err, types.ErrFuture) {
+				r.log.Debug("Target block has derivation conflict, trying earlier block", "chain", ev.ChainID, "target", target, "err", err)
 				continue
 			}
 
@@ -132,15 +144,17 @@ func (r *Rewinder) handleLocalDerivedEvent(ev superevents.LocalSafeUpdateEvent) 
 			return
 		}
 
+		r.log.Debug("Found valid rewind target", "chain", ev.ChainID, "target", target)
 		break
 	}
 
 	// Try to rewind and stop if it succeeds
 	err = r.db.RewindLogs(ev.ChainID, target)
 	if err != nil {
-		r.log.Error("failed to rewind logs DB", "chain", ev.ChainID, "err", err)
+		r.log.Error("failed to rewind logs DB", "chain", ev.ChainID, "target", target, "err", err)
 		return
 	}
+	r.log.Debug("Successfully rewound logs DB", "chain", ev.ChainID, "target", target)
 
 	// Emit event to trigger node reset with new heads
 	r.emitter.Emit(superevents.ChainRewoundEvent{ChainID: ev.ChainID})
