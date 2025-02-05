@@ -96,7 +96,9 @@ func TestEmptyDB(t *testing.T) {
 			_, err = db.NextSource(eth.BlockID{})
 			require.ErrorIs(t, err, types.ErrFuture)
 
-			_, err = db.Next(types.DerivedIDPair{eth.BlockID{}, eth.BlockID{}})
+			_, err = db.Next(types.DerivedIDPair{
+				Source:  eth.BlockID{},
+				Derived: eth.BlockID{}})
 			require.ErrorIs(t, err, types.ErrFuture)
 		})
 }
