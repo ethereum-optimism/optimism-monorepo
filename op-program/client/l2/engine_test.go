@@ -152,7 +152,7 @@ func TestL2OutputRootIsthmus(t *testing.T) {
 	t.Run("Header withdrawalsRoot without fetching state", func(t *testing.T) {
 		// should return without a panic since there's no need to fetch state when Isthmus is activate,
 		// StateAt() is not implemented in the stub
-		_, err := engine.L2OutputRoot(4)
+		_, _, err := engine.L2OutputRoot(4)
 		require.NoError(t, err)
 	})
 }
@@ -206,8 +206,7 @@ func createL2Block(t *testing.T, number int, setWithdrawalsRoot bool) *types.Blo
 	if setWithdrawalsRoot {
 		withdrawals = make([]*types.Withdrawal, 0)
 		body.Withdrawals = withdrawals
-		hash := common.HexToHash("0x1234")
-		header.WithdrawalsHash = &hash
+		header.WithdrawalsHash = &types.EmptyWithdrawalsHash
 		blockConfig = types.IsthmusBlockConfig
 	}
 	return types.NewBlock(header, body, nil, trie.NewStackTrie(nil), blockConfig)
