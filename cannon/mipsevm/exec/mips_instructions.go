@@ -467,7 +467,7 @@ func ExecuteMipsInstruction(insn uint32, opcode uint32, fun uint32, rs, rt, mem 
 }
 
 func SignExtend(dat Word, idx Word) Word {
-	isSigned := (dat >> (idx - 1)) != 0
+	isSigned := (dat>>(idx-1))&1 != 0
 	signed := ((Word(1) << (arch.WordSize - idx)) - 1) << idx
 	mask := (Word(1) << idx) - 1
 	if isSigned {
