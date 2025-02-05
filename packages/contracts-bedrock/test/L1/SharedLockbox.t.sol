@@ -61,6 +61,8 @@ contract SharedLockboxTest is CommonTest {
 
     /// @notice Tests the ETH is correctly locked when the caller is an authorized portal with different portals.
     function test_lockETHWithDifferentPortal_succeeds(address _portal, uint256 _amount) public {
+        vm.assume(_portal != address(sharedLockbox));
+
         // Mock the portal as an authorized portal
         vm.mockCall(
             address(superchainConfig),

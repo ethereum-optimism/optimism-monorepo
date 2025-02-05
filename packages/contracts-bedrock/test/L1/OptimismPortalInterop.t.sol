@@ -1910,6 +1910,7 @@ contract OptimismPortalInterop_InternalFunctions_Test is OptimismPortalInterop_B
         view
     {
         vm.assume(_target != address(sharedLockbox));
+        vm.assume(_target != address(_optimismPortal()));
 
         Types.WithdrawalTransaction memory wTx = Types.WithdrawalTransaction({
             nonce: _nonce,
