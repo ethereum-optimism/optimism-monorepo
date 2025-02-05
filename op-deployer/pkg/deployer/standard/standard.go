@@ -197,6 +197,17 @@ func GuardianAddressFor(chainID uint64) (common.Address, error) {
 	}
 }
 
+func ProtocolVersionsOwnerFor(chainID uint64) (common.Address, error) {
+	switch chainID {
+	case 1:
+		return common.HexToAddress("0x847B5c174615B1B7fDF770882256e2D3E95b9D92"), nil
+	case 11155111:
+		return common.HexToAddress("0xfd1D2e729aE8eEe2E146c033bf4400fE75284301"), nil
+	default:
+		return common.Address{}, fmt.Errorf("unsupported chain ID: %d", chainID)
+	}
+}
+
 func ChallengerAddressFor(chainID uint64) (common.Address, error) {
 	switch chainID {
 	case 1:
