@@ -294,6 +294,15 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
         }
     }
 
+    /// @notice Validates a withdrawal before it is proved or finalized.
+    /// @param _tx Withdrawal transaction to validate.
+    function _validateWithdrawal(Types.WithdrawalTransaction memory _tx) internal view virtual {
+        // Prevent users from creating a deposit transaction where this address is the message
+        // sender on L2. Because this is checked here, we do not need to check again in
+        // `finalizeWithdrawalTransaction`.
+        if (_tx.target == address(this)) revert BadTarget();
+    }
+
     /// @notice Proves a withdrawal transaction.
     /// @param _tx               Withdrawal transaction to finalize.
     /// @param _disputeGameIndex Index of the dispute game to prove the withdrawal against.
@@ -308,10 +317,8 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
         external
         whenNotPaused
     {
-        // Prevent users from creating a deposit transaction where this address is the message
-        // sender on L2. Because this is checked here, we do not need to check again in
-        // `finalizeWithdrawalTransaction`.
-        if (_tx.target == address(this)) revert BadTarget();
+        // Validate the withdrawal before it is proved.
+        _validateWithdrawal(_tx);
 
         // Fetch the dispute game proxy from the `DisputeGameFactory` contract.
         (GameType gameType,, IDisputeGame gameProxy) = disputeGameFactory.gameAtIndex(_disputeGameIndex);
@@ -402,6 +409,9 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
         public
         whenNotPaused
     {
+        // Validate the withdrawal before it is finalized.
+        _validateWithdrawal(_tx);
+
         // Make sure that the l2Sender has not yet been set. The l2Sender is set to a value other
         // than the default value when a withdrawal transaction is being finalized. This check is
         // a defacto reentrancy guard.

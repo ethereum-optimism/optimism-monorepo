@@ -1709,6 +1709,10 @@ contract OptimismPortalInteropMock is OptimismPortalInterop {
         OptimismPortalInterop(_proofMaturityDelaySeconds, _disputeGameFinalityDelaySeconds)
     { }
 
+    function exposed_validateWithdrawal(Types.WithdrawalTransaction memory _tx) external view {
+        _validateWithdrawal(_tx);
+    }
+
     function exposed_lockETH() external payable {
         _lockETH();
     }
@@ -1870,8 +1874,8 @@ contract OptimismPortalInterop_InternalFunctions_Test is OptimismPortalInterop_B
         assertEq(address(sharedLockbox).balance, 0);
     }
 
-    /// @dev Tests _unlockETH reverts when target is sharedLockbox
-    function testFuzz_unlockETH_targetIsSharedLockbox_reverts(
+    /// @dev Tests _validateWithdrawal reverts when target is sharedLockbox
+    function testFuzz_validateWithdrawal_targetIsSharedLockbox_reverts(
         uint256 _nonce,
         address _sender,
         uint256 _value,
@@ -1880,8 +1884,6 @@ contract OptimismPortalInterop_InternalFunctions_Test is OptimismPortalInterop_B
     )
         external
     {
-        vm.assume(_value > 0);
-
         Types.WithdrawalTransaction memory wTx = Types.WithdrawalTransaction({
             nonce: _nonce,
             sender: _sender,
@@ -1892,7 +1894,34 @@ contract OptimismPortalInterop_InternalFunctions_Test is OptimismPortalInterop_B
         });
 
         vm.expectRevert(IOptimismPortalInterop.MessageTargetSharedLockbox.selector);
-        _mockPortal().exposed_unlockETH(wTx);
+        _mockPortal().exposed_validateWithdrawal(wTx);
+    }
+
+    /// @dev Tests _validateWithdrawal not reverts when target is not sharedLockbox
+    function testFuzz_validateWithdrawal_targetIsNotSharedLockbox_succeeds(
+        uint256 _nonce,
+        address _sender,
+        address _target,
+        uint256 _value,
+        uint256 _gasLimit,
+        bytes memory _data
+    )
+        external
+        view
+    {
+        vm.assume(_target != address(sharedLockbox));
+
+        Types.WithdrawalTransaction memory wTx = Types.WithdrawalTransaction({
+            nonce: _nonce,
+            sender: _sender,
+            target: _target,
+            value: _value,
+            gasLimit: _gasLimit,
+            data: _data
+        });
+
+        // Should not revert
+        _mockPortal().exposed_validateWithdrawal(wTx);
     }
 
     /// @dev Tests _unlockETH when value is zero
