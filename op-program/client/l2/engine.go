@@ -65,6 +65,9 @@ func (o *OracleEngine) l2OutputAtHeader(header *types.Header) (*eth.OutputV0, er
 	// if Isthmus is active, we don't need to compute the storage root, we can use the header
 	// withdrawalRoot which is the storage root for the L2ToL1MessagePasser contract
 	if o.rollupCfg.IsIsthmus(header.Time) {
+		if header.WithdrawalsHash == nil {
+			return nil, fmt.Errorf("unexpected nil withdrawalsHash in isthmus header for block %v", blockHash)
+		}
 		storageRoot = *header.WithdrawalsHash
 	} else {
 		stateDB, err := o.backend.StateAt(header.Root)
