@@ -172,14 +172,14 @@ commands:
             user=$(whoami)
             echo "$user" > .executor-user
             echo "Set executor user to $user."
-            
+
             if [[ "$user" == "root" ]]; then
               # Self-hosted runners will persist this cache between runs. Cleaning it up means that we
               # preserve the semantics of the cache regardless of executor type. It's also much faster
               # to delete the cache and recreate it than it is to overwrite it in place.
               rm -rf /data/mise-data
               echo "Cleaned up cache data."
-            
+
               mkdir -p /data/mise-data
               echo "Created Mise data dir."
               mkdir -p ~/.cache
@@ -206,7 +206,7 @@ commands:
             else
               curl https://mise.run | sh
             fi
-            
+
             echo "export PATH=\"$HOME/.local/bin:\$PATH\"" >> "$BASH_ENV"
             echo "export MISE_DATA_DIR=/data/mise-data" >> "$BASH_ENV"
             echo "export MISE_JOBS=$(nproc)" >> "$BASH_ENV"
@@ -670,10 +670,14 @@ jobs:
       - install-contracts-dependencies
       - check-changed:
           patterns: contracts-bedrock
-      - run:
-          name: Check frozen files
-          command: just check-frozen-code
-          working_directory: packages/contracts-bedrock
+      - when:
+          condition:
+            equal: ['develop', << pipeline.git.branch >>]
+          steps:
+            - run:
+                name: Check frozen files
+                command: just check-frozen-code
+                working_directory: packages/contracts-bedrock
 
   contracts-bedrock-tests:
     machine: true
