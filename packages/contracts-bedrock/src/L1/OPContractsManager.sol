@@ -266,8 +266,6 @@ contract OPContractsManager is ISemver {
 
         // -------- Deploy Chain Singletons --------
 
-        // The ProxyAdmin is the owner of all proxies for the chain. We temporarily set the owner to
-        // this contract, and then transfer ownership to the specified owner at the end of deployment.
         // The AddressManager is used to store the implementation for the L1CrossDomainMessenger
         // due to it's usage of the legacy ResolvedDelegateProxy.
         output.addressManager = IAddressManager(
@@ -275,12 +273,17 @@ contract OPContractsManager is ISemver {
                 blueprint.addressManager, computeSalt(l2ChainId, saltMixer, "AddressManager"), abi.encode()
             )
         );
+        // The ProxyAdmin is the owner of all proxies for the chain. We temporarily set the owner to
+        // this contract, and then transfer ownership to the specified owner at the end of deployment.
         output.opChainProxyAdmin = IProxyAdmin(
             Blueprint.deployFrom(
                 blueprint.proxyAdmin, computeSalt(l2ChainId, saltMixer, "ProxyAdmin"), abi.encode(address(this))
             )
         );
+        // Set the AddressManager on the ProxyAdmin.
         output.opChainProxyAdmin.setAddressManager(output.addressManager);
+        // Transfer ownership of the AddressManager to the ProxyAdmin.
+        transferOwnership(address(output.addressManager), address(output.opChainProxyAdmin));
 
         // -------- Deploy Proxy Contracts --------
 
@@ -322,8 +325,6 @@ contract OPContractsManager is ISemver {
             address(output.l1CrossDomainMessengerProxy), IProxyAdmin.ProxyType.RESOLVED
         );
         output.opChainProxyAdmin.setImplementationName(address(output.l1CrossDomainMessengerProxy), contractName);
-        // Now that all proxies are deployed, we can transfer ownership of the AddressManager to the ProxyAdmin.
-        transferOwnership(address(output.addressManager), address(output.opChainProxyAdmin));
 
         // Eventually we will switch from DelayedWETHPermissionedGameProxy to DelayedWETHPermissionlessGameProxy.
         output.delayedWETHPermissionedGameProxy = IDelayedWETH(
