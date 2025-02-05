@@ -760,6 +760,7 @@ jobs:
       - notify-failures-on-develop
 
   contracts-bedrock-coverage:
+    circleci_ip_ranges: true
     docker:
         - image: <<pipeline.parameters.default_docker_image>>
     resource_class: 2xlarge
