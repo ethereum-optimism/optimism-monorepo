@@ -91,7 +91,7 @@ func TestFees(t *testing.T) {
 		cfg.DeployConfig.L2GenesisFjordTimeOffset = new(hexutil.Uint64)
 		cfg.DeployConfig.L2GenesisHoloceneTimeOffset = new(hexutil.Uint64)
 		cfg.DeployConfig.L2GenesisIsthmusTimeOffset = new(hexutil.Uint64)
-		cfg.DeployConfig.GasPriceOracleOperatorFeeScalar = 5000000
+		cfg.DeployConfig.GasPriceOracleOperatorFeeScalar = 5000
 		cfg.DeployConfig.GasPriceOracleOperatorFeeConstant = 200
 		testFees(t, cfg)
 	})
@@ -292,9 +292,12 @@ func testFees(t *testing.T, cfg e2esys.SystemConfig) {
 	if sys.RollupConfig.IsIsthmus(header.Time) {
 		require.Equal(t,
 			new(big.Int).Add(
-				new(big.Int).Mul(
-					gasUsed,
-					new(big.Int).SetUint64(uint64(cfg.DeployConfig.GasPriceOracleOperatorFeeScalar)/1e6),
+				new(big.Int).Div(
+					new(big.Int).Mul(
+						gasUsed,
+						new(big.Int).SetUint64(uint64(cfg.DeployConfig.GasPriceOracleOperatorFeeScalar)),
+					),
+					new(big.Int).SetUint64(uint64(1e6)),
 				),
 				new(big.Int).SetUint64(cfg.DeployConfig.GasPriceOracleOperatorFeeConstant),
 			),
