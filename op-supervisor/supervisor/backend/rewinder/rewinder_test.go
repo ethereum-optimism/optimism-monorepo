@@ -14,7 +14,6 @@ import (
 	"github.com/ethereum-optimism/optimism/op-node/rollup/event"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
-	"github.com/ethereum-optimism/optimism/op-supervisor/metrics"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/db"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/db/fromda"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/db/logs"
@@ -746,7 +745,7 @@ func setupTestChains(t *testing.T, chainIDs ...eth.ChainID) *testSetup {
 	require.NoError(t, err)
 
 	// Create ChainsDB with mock emitter
-	chainsDB := db.NewChainsDB(logger, depSet, metrics.NoopMetrics)
+	chainsDB := db.NewChainsDB(logger, depSet)
 	chainsDB.AttachEmitter(&mockEmitter{})
 
 	setup := &testSetup{
