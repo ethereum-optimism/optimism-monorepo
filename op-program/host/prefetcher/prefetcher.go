@@ -458,5 +458,5 @@ func parseHint(hint string) (string, []byte, error) {
 }
 
 func getPrecompiledContract(address common.Address) vm.PrecompiledContract {
-	return vm.PrecompiledContractsCancun[address]
+	return vm.PrecompiledContractsPrague[address]
 }
