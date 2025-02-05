@@ -159,7 +159,7 @@ contract UpgradeOPChain_Test is Test {
 
     function test_upgrade_succeeds() public {
         // UpgradeCalled should be emitted by the prank since it's a delegate call.
-        vm.expectEmit(true, true, false, false, address(prank));
+        vm.expectEmit(address(prank));
         emit UpgradeCalled(
             address(config.systemConfigProxy), address(config.proxyAdmin), Claim.unwrap(config.absolutePrestate)
         );
