@@ -141,7 +141,7 @@ coverage-lcov-upgrade *ARGS: build-go-ffi
 # Runs coverage-lcov and coverage-lcov-upgrade and merges their output files info one file
 coverage-lcov-all *ARGS:
   just coverage-lcov {{ARGS}} && \
-  just coverage-lcov-upgrade {{ARGS}} && \
+  just coverage-lcov-upgrade --match-contract OPContractsManager_Upgrade_Test {{ARGS}} && \
   lcov -a lcov.info -a lcov-upgrade.info -o lcov-all.info
 
 ########################################################
