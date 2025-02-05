@@ -198,6 +198,15 @@ contract OPContractsManager is ISemver {
     /// @param upgrader Address that initiated the upgrade
     event Upgraded(uint256 indexed l2ChainId, ISystemConfig indexed systemConfig, address indexed upgrader);
 
+    /// @notice Emitted when a new game type is added to a chain
+    /// @param l2ChainId Chain ID of the chain
+    /// @param gameType Type of the game being added
+    /// @param disputeGame Address of the deployed dispute game
+    /// @param delayedWETH Address of the WETH contract used by the game
+    event GameTypeAdded(
+        uint256 indexed l2ChainId, GameType indexed gameType, IDisputeGame disputeGame, IDelayedWETH delayedWETH
+    );
+
     // -------- Errors --------
 
     /// @notice Thrown when an address other than the upgrade controller calls the setRC function.
@@ -706,6 +715,11 @@ contract OPContractsManager is ISemver {
             IDisputeGameFactory dgf = getDisputeGameFactory(gameConfig.systemConfig);
             setDGFImplementation(dgf, gameConfig.disputeGameType, IDisputeGame(address(outputs[i].faultDisputeGame)));
             dgf.setInitBond(gameConfig.disputeGameType, gameConfig.initialBond);
+
+            // Emit event for the newly added game type
+            emit GameTypeAdded(
+                l2ChainId, gameConfig.disputeGameType, outputs[i].faultDisputeGame, outputs[i].delayedWETH
+            );
         }
 
         return outputs;
