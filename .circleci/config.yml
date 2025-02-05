@@ -760,8 +760,9 @@ jobs:
       - notify-failures-on-develop
 
   contracts-bedrock-coverage:
-    machine: true
-    resource_class: ethereum-optimism/latitude-1
+    docker:
+        - image: <<pipeline.parameters.default_docker_image>>
+    resource_class: 2xlarge
     parameters:
       test_flags:
         description: Additional flags to pass to the test command
