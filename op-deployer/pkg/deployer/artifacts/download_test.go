@@ -145,18 +145,20 @@ func TestCreateArtifactsTmpdir(t *testing.T) {
 		require.NoError(t, os.WriteFile(tmpDir+"/test", []byte("test"), 0o644))
 		require.FileExists(t, tmpDir+"/test")
 
-		path, err := createArtifactsTmpdir(u)
+		path, created, err := createArtifactsTmpdir(u)
 		require.NoError(t, err)
 		// Path should have been recreated
 		require.DirExists(t, path)
-		// File should have been deleted
-		require.NoFileExists(t, path+"/test")
+		// File should exist
+		require.FileExists(t, path+"/test")
+		require.False(t, created)
 	})
 
 	t.Run("path does not exist", func(t *testing.T) {
-		path, err := createArtifactsTmpdir(u)
+		path, created, err := createArtifactsTmpdir(u)
 		require.NoError(t, err)
 		// Path should have been created
 		require.DirExists(t, path)
+		require.False(t, created)
 	})
 }

@@ -72,6 +72,8 @@ func Download(ctx context.Context, loc *Locator, progressor DownloadProgressor) 
 	return artifactsFS.(foundry.StatDirFs), nil
 }
 
+var downloadMtx sync.Mutex
+
 func downloadHTTP(ctx context.Context, u *url.URL, progressor DownloadProgressor, checker integrityChecker) (fs.FS, error) {
 	cacher := &CachingDownloader{
 		d: new(HTTPDownloader),
@@ -81,34 +83,43 @@ func downloadHTTP(ctx context.Context, u *url.URL, progressor DownloadProgressor
 	if err != nil {
 		return nil, fmt.Errorf("failed to download artifacts: %w", err)
 	}
-	tmpDir, err := createArtifactsTmpdir(u.String())
+
+	// This is a bit racy: multiple op-deployers processes (such as those running in CI)
+	// could download the same tarball at the same time and ignore the mutex. In practice
+	// this is unlikely to be a problem because most people won't be running multiple
+	// OP Deployer instances at once.
+
+	tmpDir, created, err := createArtifactsTmpdir(u.String())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create temp artifacts dir: %w", err)
 	}
-	extractor := &TarballExtractor{
-		checker: checker,
-	}
-	if err := extractor.Extract(tarballPath, tmpDir); err != nil {
-		return nil, fmt.Errorf("failed to extract tarball: %w", err)
+
+	if created {
+		downloadMtx.Lock()
+		defer downloadMtx.Unlock()
+		extractor := &TarballExtractor{
+			checker: checker,
+		}
+		if err := extractor.Extract(tarballPath, tmpDir); err != nil {
+			return nil, fmt.Errorf("failed to extract tarball: %w", err)
+		}
 	}
 	return os.DirFS(path.Join(tmpDir, "forge-artifacts")), nil
 }
 
-func createArtifactsTmpdir(u string) (string, error) {
+func createArtifactsTmpdir(u string) (string, bool, error) {
 	tmpDir := fmt.Sprintf("/tmp/op-deployer-artifacts-%x", sha256.Sum256([]byte(u)))
 	stat, err := os.Stat(tmpDir)
 	if err == nil && stat.IsDir() {
-		if err := os.RemoveAll(tmpDir); err != nil {
-			return "", fmt.Errorf("failed to remove existing temp artifacts dir: %w", err)
-		}
+		return tmpDir, false, nil
 	}
 	if err != nil && !os.IsNotExist(err) {
-		return "", fmt.Errorf("failed to stat temp artifacts dir: %w", err)
+		return "", false, fmt.Errorf("failed to stat temp artifacts dir: %w", err)
 	}
 	if err := os.MkdirAll(tmpDir, 0755); err != nil {
-		return "", fmt.Errorf("failed to create temp artifacts dir: %w", err)
+		return "", false, fmt.Errorf("failed to create temp artifacts dir: %w", err)
 	}
-	return tmpDir, nil
+	return tmpDir, true, nil
 }
 
 type HTTPDownloader struct{}
