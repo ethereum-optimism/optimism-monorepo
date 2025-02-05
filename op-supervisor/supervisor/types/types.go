@@ -308,9 +308,10 @@ type BlockReplacement struct {
 // ManagedEvent is an event sent by the managed node to the supervisor,
 // to share an update. One of the fields will be non-null; different kinds of updates may be sent.
 type ManagedEvent struct {
-	Reset            *string              `json:"reset,omitempty"`
-	UnsafeBlock      *eth.BlockRef        `json:"unsafeBlock,omitempty"`
-	DerivationUpdate *DerivedBlockRefPair `json:"derivationUpdate,omitempty"`
-	ExhaustL1        *DerivedBlockRefPair `json:"exhaustL1,omitempty"`
-	ReplaceBlock     *BlockReplacement    `json:"replaceBlock,omitempty"`
+	Reset                  *string              `json:"reset,omitempty"`
+	UnsafeBlock            *eth.BlockRef        `json:"unsafeBlock,omitempty"`
+	DerivationUpdate       *DerivedBlockRefPair `json:"derivationUpdate,omitempty"`
+	ExhaustL1              *DerivedBlockRefPair `json:"exhaustL1,omitempty"`
+	ReplaceBlock           *BlockReplacement    `json:"replaceBlock,omitempty"`
+	DerivationOriginUpdate *DerivedBlockRefPair `json:"derivationOriginUpdate,omitempty"`
 }

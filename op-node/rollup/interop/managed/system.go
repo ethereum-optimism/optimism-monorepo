@@ -124,10 +124,16 @@ func (m *ManagedMode) OnEvent(ev event.Event) bool {
 		}})
 	case derive.DeriverL1StatusEvent:
 		m.log.Info("Emitting local safe update because of L1 traversal", "derivedFrom", x.Origin, "derived", x.LastL2)
-		m.events.Send(&supervisortypes.ManagedEvent{DerivationUpdate: &supervisortypes.DerivedBlockRefPair{
-			DerivedFrom: x.Origin,
-			Derived:     x.LastL2.BlockRef(),
-		}})
+		m.events.Send(&supervisortypes.ManagedEvent{
+			DerivationUpdate: &supervisortypes.DerivedBlockRefPair{
+				DerivedFrom: x.Origin,
+				Derived:     x.LastL2.BlockRef(),
+			},
+			DerivationOriginUpdate: &supervisortypes.DerivedBlockRefPair{
+				DerivedFrom: x.Origin,
+				Derived:     x.LastL2.BlockRef(),
+			},
+		})
 	case derive.ExhaustedL1Event:
 		m.log.Info("Exhausted L1 data", "derivedFrom", x.L1Ref, "derived", x.LastL2)
 		m.events.Send(&supervisortypes.ManagedEvent{ExhaustL1: &supervisortypes.DerivedBlockRefPair{

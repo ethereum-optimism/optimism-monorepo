@@ -221,6 +221,9 @@ func (m *ManagedNode) onNodeEvent(ev *types.ManagedEvent) {
 	if ev.ReplaceBlock != nil {
 		m.onReplaceBlock(*ev.ReplaceBlock)
 	}
+	if ev.DerivationOriginUpdate != nil {
+		m.onDerivationOriginUpdate(*ev.DerivationOriginUpdate)
+	}
 }
 
 func (m *ManagedNode) onResetEvent(errStr string) {
@@ -295,6 +298,14 @@ func (m *ManagedNode) onDerivationUpdate(pair types.DerivedBlockRefPair) {
 	//		"derived", pair.Derived, "derivedFrom", pair.DerivedFrom, "err", err)
 	//	m.resetSignal(err, pair.DerivedFrom)
 	// }
+}
+
+func (m *ManagedNode) onDerivationOriginUpdate(pair types.DerivedBlockRefPair) {
+	m.log.Info("Node derived new origin", "derived", pair.Derived, "derivedFrom", pair.DerivedFrom)
+	m.emitter.Emit(superevents.LocalDerivedOriginUpdateEvent{
+		ChainID: m.chainID,
+		Derived: pair,
+	})
 }
 
 func (m *ManagedNode) resetSignal(errSignal error, l1Ref eth.BlockRef) {

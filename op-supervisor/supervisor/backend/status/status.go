@@ -9,13 +9,18 @@ import (
 )
 
 type StatusTracker struct {
-	statuses map[eth.ChainID]*eth.SupervisorChainStatus
+	statuses map[eth.ChainID]*NodeSyncStatus
 	mu       sync.RWMutex
+}
+
+type NodeSyncStatus struct {
+	CurrentL1   eth.L1BlockRef
+	LocalUnsafe eth.BlockRef
 }
 
 func NewStatusTracker() *StatusTracker {
 	return &StatusTracker{
-		statuses: make(map[eth.ChainID]*eth.SupervisorChainStatus),
+		statuses: make(map[eth.ChainID]*NodeSyncStatus),
 	}
 }
 
@@ -23,37 +28,42 @@ func (su *StatusTracker) OnEvent(ev event.Event) bool {
 	su.mu.Lock()
 	defer su.mu.Unlock()
 
-	loadStatus := func(chainID eth.ChainID) *eth.SupervisorChainStatus {
+	loadStatusRef := func(chainID eth.ChainID) *NodeSyncStatus {
 		v := su.statuses[chainID]
 		if v == nil {
-			v = &eth.SupervisorChainStatus{}
+			v = &NodeSyncStatus{}
+			su.statuses[chainID] = v
 		}
 		return v
 	}
 	switch x := ev.(type) {
-	case superevents.LocalDerivedEvent:
-		v := loadStatus(x.ChainID)
-		v.LocalDerived = x.Derived.Derived
-		v.LocalDerivedFrom = x.Derived.DerivedFrom
-		su.statuses[x.ChainID] = v
+	case superevents.LocalDerivedOriginUpdateEvent:
+		status := loadStatusRef(x.ChainID)
+		status.CurrentL1 = x.Derived.DerivedFrom
 	case superevents.LocalUnsafeUpdateEvent:
-		v := loadStatus(x.ChainID)
-		v.LocalUnsafe = x.NewLocalUnsafe
-		su.statuses[x.ChainID] = v
+		status := loadStatusRef(x.ChainID)
+		status.LocalUnsafe = x.NewLocalUnsafe
 	default:
 		return false
 	}
 	return true
 }
 
-func (su *StatusTracker) SyncStatus() map[eth.ChainID]*eth.SupervisorChainStatus {
+func (su *StatusTracker) SyncStatus() eth.SupervisorStatus {
 	su.mu.RLock()
 	defer su.mu.RUnlock()
-	ret := make(map[eth.ChainID]*eth.SupervisorChainStatus)
-	for chainID, status := range su.statuses {
-		clone := new(eth.SupervisorChainStatus)
-		*clone = *status
-		ret[chainID] = clone
+
+	var supervisorStatus eth.SupervisorStatus
+	for _, nodeStatus := range su.statuses {
+		if supervisorStatus.MinSyncedL1 == (eth.L1BlockRef{}) || supervisorStatus.MinSyncedL1.Number < nodeStatus.CurrentL1.Number {
+			supervisorStatus.MinSyncedL1 = nodeStatus.CurrentL1
+		}
 	}
-	return ret
+	supervisorStatus.Chains = make(map[eth.ChainID]*eth.SupervisorChainStatus)
+	for chainID, nodeStatus := range su.statuses {
+		supervisorStatus.Chains[chainID] = &eth.SupervisorChainStatus{
+			LocalUnsafe: nodeStatus.LocalUnsafe,
+		}
+	}
+	return supervisorStatus
 }
