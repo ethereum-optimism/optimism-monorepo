@@ -868,7 +868,7 @@ func (m *l2Client) ExperimentalEnabled() bool {
 	return m.experimental
 }
 
-func (m *l2Client) PayloadExecutionWitness(ctx context.Context, parentBlockHash common.Hash, payloadAttributes eth.PayloadAttributes) (*eth.ExecutionWitness, error) {
+func (m *l2Client) PayloadExecutionWitness(ctx context.Context, parentHash common.Hash, payloadAttributes eth.PayloadAttributes) (*eth.ExecutionWitness, error) {
 	return nil, hostcommon.ErrExperimentalPrefetchFailed
 }
 

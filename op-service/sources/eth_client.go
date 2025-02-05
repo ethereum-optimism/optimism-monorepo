@@ -325,10 +325,10 @@ func (s *EthClient) FetchReceipts(ctx context.Context, blockHash common.Hash) (e
 }
 
 // PayloadExecutionWitness generates a block from a payload and returns execution witness data.
-func (s *EthClient) PayloadExecutionWitness(ctx context.Context, blockHash common.Hash, payloadAttributes eth.PayloadAttributes) (*eth.ExecutionWitness, error) {
+func (s *EthClient) PayloadExecutionWitness(ctx context.Context, parentHash common.Hash, payloadAttributes eth.PayloadAttributes) (*eth.ExecutionWitness, error) {
 	var witness *eth.ExecutionWitness
 
-	err := s.client.CallContext(ctx, &witness, "debug_executePayload", blockHash, payloadAttributes)
+	err := s.client.CallContext(ctx, &witness, "debug_executePayload", parentHash, payloadAttributes)
 	if err != nil {
 		return nil, err
 	}

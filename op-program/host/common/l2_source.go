@@ -134,16 +134,16 @@ func (l *L2Source) OutputByNumber(ctx context.Context, blockNum uint64) (eth.Out
 }
 
 // PayloadExecutionWitness implements prefetcher.L2Source.
-func (l *L2Source) PayloadExecutionWitness(ctx context.Context, blockHash common.Hash, payloadAttributes eth.PayloadAttributes) (*eth.ExecutionWitness, error) {
+func (l *L2Source) PayloadExecutionWitness(ctx context.Context, parentHash common.Hash, payloadAttributes eth.PayloadAttributes) (*eth.ExecutionWitness, error) {
 	if !l.ExperimentalEnabled() {
-		l.logger.Error("Experimental source is not enabled, cannot fetch execution witness", "blockHash", blockHash)
+		l.logger.Error("Experimental source is not enabled, cannot fetch execution witness", "parentHash", parentHash)
 		return nil, ErrExperimentalPrefetchDisabled
 	}
 
 	// log errors, but return standard error so we know to retry with legacy source
-	witness, err := l.experimentalClient.PayloadExecutionWitness(ctx, blockHash, payloadAttributes)
+	witness, err := l.experimentalClient.PayloadExecutionWitness(ctx, parentHash, payloadAttributes)
 	if err != nil {
-		l.logger.Error("Failed to fetch execution witness from experimental source", "blockHash", blockHash, "err", err)
+		l.logger.Error("Failed to fetch execution witness from experimental source", "parentHash", parentHash, "err", err)
 		return nil, ErrExperimentalPrefetchFailed
 	}
 	return witness, nil
