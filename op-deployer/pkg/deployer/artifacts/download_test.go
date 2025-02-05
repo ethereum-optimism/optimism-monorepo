@@ -131,3 +131,32 @@ func TestDownloadArtifacts_TaggedVersions(t *testing.T) {
 		})
 	}
 }
+
+func TestCreateArtifactsTmpdir(t *testing.T) {
+	u := "http://example.com"
+	tmpDir := fmt.Sprintf("/tmp/op-deployer-artifacts-%x", sha256.Sum256([]byte(u)))
+
+	t.Cleanup(func() {
+		require.NoError(t, os.RemoveAll(tmpDir))
+	})
+
+	t.Run("path exists", func(t *testing.T) {
+		require.NoError(t, os.MkdirAll(tmpDir, 0o755))
+		require.NoError(t, os.WriteFile(tmpDir+"/test", []byte("test"), 0o644))
+		require.FileExists(t, tmpDir+"/test")
+
+		path, err := createArtifactsTmpdir(u)
+		require.NoError(t, err)
+		// Path should have been recreated
+		require.DirExists(t, path)
+		// File should have been deleted
+		require.NoFileExists(t, path+"/test")
+	})
+
+	t.Run("path does not exist", func(t *testing.T) {
+		path, err := createArtifactsTmpdir(u)
+		require.NoError(t, err)
+		// Path should have been created
+		require.DirExists(t, path)
+	})
+}

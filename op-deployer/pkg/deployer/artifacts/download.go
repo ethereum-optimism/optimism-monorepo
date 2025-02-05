@@ -81,9 +81,9 @@ func downloadHTTP(ctx context.Context, u *url.URL, progressor DownloadProgressor
 	if err != nil {
 		return nil, fmt.Errorf("failed to download artifacts: %w", err)
 	}
-	tmpDir, err := os.MkdirTemp("", "op-deployer-artifacts-*")
+	tmpDir, err := createArtifactsTmpdir(u.String())
 	if err != nil {
-		return nil, fmt.Errorf("failed to create temp dir: %w", err)
+		return nil, fmt.Errorf("failed to create temp artifacts dir: %w", err)
 	}
 	extractor := &TarballExtractor{
 		checker: checker,
@@ -92,6 +92,23 @@ func downloadHTTP(ctx context.Context, u *url.URL, progressor DownloadProgressor
 		return nil, fmt.Errorf("failed to extract tarball: %w", err)
 	}
 	return os.DirFS(path.Join(tmpDir, "forge-artifacts")), nil
+}
+
+func createArtifactsTmpdir(u string) (string, error) {
+	tmpDir := fmt.Sprintf("/tmp/op-deployer-artifacts-%x", sha256.Sum256([]byte(u)))
+	stat, err := os.Stat(tmpDir)
+	if err == nil && stat.IsDir() {
+		if err := os.RemoveAll(tmpDir); err != nil {
+			return "", fmt.Errorf("failed to remove existing temp artifacts dir: %w", err)
+		}
+	}
+	if err != nil && !os.IsNotExist(err) {
+		return "", fmt.Errorf("failed to stat temp artifacts dir: %w", err)
+	}
+	if err := os.MkdirAll(tmpDir, 0755); err != nil {
+		return "", fmt.Errorf("failed to create temp artifacts dir: %w", err)
+	}
+	return tmpDir, nil
 }
 
 type HTTPDownloader struct{}
