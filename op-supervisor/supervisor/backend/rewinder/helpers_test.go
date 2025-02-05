@@ -41,7 +41,8 @@ type testChainSetup struct {
 
 // setupTestChains creates multiple test chains with their own DBs and sync nodes
 func setupTestChains(t *testing.T, chainIDs ...eth.ChainID) *testSetup {
-	logger := testlog.Logger(t, log.LvlInfo)
+	// logger := testlog.Logger(t, log.LvlInfo)
+	logger := testlog.Logger(t, log.LvlDebug)
 	dataDir := t.TempDir()
 
 	// Create dependency set for all chains

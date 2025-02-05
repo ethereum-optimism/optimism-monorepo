@@ -163,12 +163,15 @@ func (r *Rewinder) handleLocalDerivedEvent(ev superevents.LocalSafeUpdateEvent) 
 // rewindL1ChainIfReorged rewinds the L1 chain for the given chain ID if a reorg is detected
 // It checks the local-safe head against the canonical L1 block at the same height
 func (r *Rewinder) rewindL1ChainIfReorged(chainID eth.ChainID, newTip eth.BlockID) error {
+	r.log.Debug("L1 rewind signal", "chain", chainID, "newTip", newTip)
+
 	// Get the current LocalSafe head and its L1 block
 	localSafe, err := r.db.LocalSafe(chainID)
 	if err != nil {
 		return fmt.Errorf("failed to get local safe for chain %s: %w", chainID, err)
 	}
 	localSafeL1 := localSafe.DerivedFrom
+	r.log.Debug("Current local safe", "chain", chainID, "l1", localSafeL1, "l2", localSafe.Derived)
 
 	// Get the canonical L1 block at our local head's height
 	canonicalL1, err := r.l1Node.L1BlockRefByNumber(context.Background(), localSafeL1.Number)
@@ -178,8 +181,11 @@ func (r *Rewinder) rewindL1ChainIfReorged(chainID eth.ChainID, newTip eth.BlockI
 
 	// If we're still on the canonical chain, nothing to do
 	if canonicalL1.Hash == localSafeL1.Hash {
+		r.log.Debug("No l1 rewind needed", "chain", chainID, "l1", canonicalL1, "l2", localSafe.Derived)
 		return nil
 	}
+
+	r.log.Debug("Rewinding to new canonical l1", "chain", chainID, "l1", canonicalL1)
 
 	// Get the finalized block as our lower bound
 	finalized, err := r.db.Finalized(chainID)
