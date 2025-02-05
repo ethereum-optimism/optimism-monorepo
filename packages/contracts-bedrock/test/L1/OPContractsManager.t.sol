@@ -239,8 +239,8 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
         );
 
         // Retrieve the l2ChainId, which was read from the superchain-registry, and saved in Artifacts
-        // encoded as an address. Casting through bytes20 keeps the value in lower 160 bits.
-        l2ChainId = uint160(bytes20(address(artifacts.mustGetAddress("L2ChainId"))));
+        // encoded as an address.
+        l2ChainId = uint256(uint160(address(artifacts.mustGetAddress("L2ChainId"))));
 
         delayedWETHPermissionedGameProxy =
             IDelayedWETH(payable(artifacts.mustGetAddress("PermissionedDelayedWETHProxy")));
