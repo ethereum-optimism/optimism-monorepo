@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/url"
 
+	"github.com/ethereum-optimism/superchain-registry/validation"
+
 	"github.com/ethereum/go-ethereum/superchain"
 
 	"github.com/ethereum-optimism/optimism/op-chain-ops/genesis"
@@ -274,6 +276,17 @@ func L1ProxyAdminOwner(chainID uint64) (common.Address, error) {
 		return common.HexToAddress("0x5a0Aae59D09fccBdDb6C6CcEB07B7279367C3d2A"), nil
 	case 11155111:
 		return common.HexToAddress("0x1Eb2fFc903729a0F03966B917003800b145F56E2"), nil
+	default:
+		return common.Address{}, fmt.Errorf("unsupported chain ID: %d", chainID)
+	}
+}
+
+func ProtocolVersionsOwner(chainID uint64) (common.Address, error) {
+	switch chainID {
+	case 1:
+		return common.Address(validation.StandardConfigRolesMainnet.ProtocolVersionsOwner), nil
+	case 11155111:
+		return common.Address(validation.StandardConfigRolesSepolia.ProtocolVersionsOwner), nil
 	default:
 		return common.Address{}, fmt.Errorf("unsupported chain ID: %d", chainID)
 	}
