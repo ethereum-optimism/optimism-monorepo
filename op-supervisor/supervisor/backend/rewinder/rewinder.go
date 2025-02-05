@@ -35,7 +35,7 @@ type rewinderDB interface {
 	FindSealedBlock(eth.ChainID, uint64) (types.BlockSeal, error)
 	Finalized(eth.ChainID) (types.BlockSeal, error)
 
-	LocalDerivedToFirstSource(chain eth.ChainID, derived eth.BlockID) (derivedFrom types.BlockSeal, err error)
+	LocalDerivedToSource(chain eth.ChainID, derived eth.BlockID) (derivedFrom types.BlockSeal, err error)
 }
 
 // Rewinder is responsible for handling the rewinding of databases to the latest common ancestor between
@@ -121,7 +121,7 @@ func (r *Rewinder) handleLocalDerivedEvent(ev superevents.LocalSafeUpdateEvent) 
 			return
 		}
 
-		_, err := r.db.LocalDerivedToFirstSource(ev.ChainID, target.ID())
+		_, err := r.db.LocalDerivedToSource(ev.ChainID, target.ID())
 		if err != nil {
 			if errors.Is(err, types.ErrConflict) || errors.Is(err, types.ErrFuture) {
 				continue

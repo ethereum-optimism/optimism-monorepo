@@ -236,6 +236,7 @@ func (db *ChainsDB) CrossSourceToLastDerived(chainID eth.ChainID, derivedFrom et
 }
 
 // CrossDerivedToSourceRef returns the block that the given block was derived from, if it exists in the cross derived-from storage.
+// This call requires the block to have a parent to be turned into a Ref. Use CrossDerivedToSource if the parent is not needed.
 func (db *ChainsDB) CrossDerivedToSourceRef(chainID eth.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error) {
 	xdb, ok := db.crossDBs.Get(chainID)
 	if !ok {
@@ -276,9 +277,9 @@ func (db *ChainsDB) OpenBlock(chainID eth.ChainID, blockNum uint64) (seal eth.Bl
 	return logDB.OpenBlock(blockNum)
 }
 
-// LocalDerivedToFirstSource returns the block that the given block was derived from, if it exists in the local derived-from storage.
+// LocalDerivedToSource returns the block that the given block was derived from, if it exists in the local derived-from storage.
 // it routes the request to the appropriate localDB.
-func (db *ChainsDB) LocalDerivedToFirstSource(chain eth.ChainID, derived eth.BlockID) (derivedFrom types.BlockSeal, err error) {
+func (db *ChainsDB) LocalDerivedToSource(chain eth.ChainID, derived eth.BlockID) (derivedFrom types.BlockSeal, err error) {
 	lDB, ok := db.localDBs.Get(chain)
 	if !ok {
 		return types.BlockSeal{}, types.ErrUnknownChain
@@ -286,9 +287,9 @@ func (db *ChainsDB) LocalDerivedToFirstSource(chain eth.ChainID, derived eth.Blo
 	return lDB.DerivedToFirstSource(derived)
 }
 
-// CrossDerivedToFirstSource returns the block that the given block was derived from, if it exists in the cross derived-from storage.
+// CrossDerivedToSource returns the block that the given block was derived from, if it exists in the cross derived-from storage.
 // it routes the request to the appropriate crossDB.
-func (db *ChainsDB) CrossDerivedToFirstSource(chain eth.ChainID, derived eth.BlockID) (derivedFrom types.BlockSeal, err error) {
+func (db *ChainsDB) CrossDerivedToSource(chain eth.ChainID, derived eth.BlockID) (derivedFrom types.BlockSeal, err error) {
 	xDB, ok := db.crossDBs.Get(chain)
 	if !ok {
 		return types.BlockSeal{}, types.ErrUnknownChain

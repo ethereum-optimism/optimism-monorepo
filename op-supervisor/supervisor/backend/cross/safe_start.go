@@ -12,7 +12,7 @@ import (
 type SafeStartDeps interface {
 	Contains(chain eth.ChainID, query types.ContainsQuery) (includedIn types.BlockSeal, err error)
 
-	CrossDerivedToFirstSource(chainID eth.ChainID, derived eth.BlockID) (derivedFrom types.BlockSeal, err error)
+	CrossDerivedToSource(chainID eth.ChainID, derived eth.BlockID) (derivedFrom types.BlockSeal, err error)
 
 	DependencySet() depset.DependencySet
 }
@@ -69,7 +69,7 @@ func CrossSafeHazards(d SafeStartDeps, chainID eth.ChainID, inL1Source eth.Block
 			if err != nil {
 				return nil, fmt.Errorf("executing msg %s failed check: %w", msg, err)
 			}
-			initSource, err := d.CrossDerivedToFirstSource(initChainID, includedIn.ID())
+			initSource, err := d.CrossDerivedToSource(initChainID, includedIn.ID())
 			if err != nil {
 				return nil, fmt.Errorf("msg %s included in non-cross-safe block %s: %w", msg, includedIn, err)
 			}

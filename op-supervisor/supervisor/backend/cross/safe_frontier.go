@@ -12,7 +12,7 @@ import (
 type SafeFrontierCheckDeps interface {
 	CandidateCrossSafe(chain eth.ChainID) (candidate types.DerivedBlockRefPair, err error)
 
-	CrossDerivedToFirstSource(chainID eth.ChainID, derived eth.BlockID) (derivedFrom types.BlockSeal, err error)
+	CrossDerivedToSource(chainID eth.ChainID, derived eth.BlockID) (derivedFrom types.BlockSeal, err error)
 
 	DependencySet() depset.DependencySet
 }
@@ -31,7 +31,7 @@ func HazardSafeFrontierChecks(d SafeFrontierCheckDeps, inL1Source eth.BlockID, h
 			}
 			return err
 		}
-		initSource, err := d.CrossDerivedToFirstSource(hazardChainID, hazardBlock.ID())
+		initSource, err := d.CrossDerivedToSource(hazardChainID, hazardBlock.ID())
 		if err != nil {
 			if errors.Is(err, types.ErrFuture) {
 				// If not in cross-safe scope, then check if it's the candidate cross-safe block.

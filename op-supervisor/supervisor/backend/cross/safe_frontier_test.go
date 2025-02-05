@@ -154,7 +154,7 @@ func (m *mockSafeFrontierCheckDeps) CandidateCrossSafe(chain eth.ChainID) (candi
 	return types.DerivedBlockRefPair{}, nil
 }
 
-func (m *mockSafeFrontierCheckDeps) CrossDerivedToFirstSource(chainID eth.ChainID, derived eth.BlockID) (derivedFrom types.BlockSeal, err error) {
+func (m *mockSafeFrontierCheckDeps) CrossDerivedToSource(chainID eth.ChainID, derived eth.BlockID) (derivedFrom types.BlockSeal, err error) {
 	if m.crossSourceFn != nil {
 		return m.crossSourceFn()
 	}

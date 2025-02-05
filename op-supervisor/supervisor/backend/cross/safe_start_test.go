@@ -223,13 +223,13 @@ func TestCrossSafeHazards(t *testing.T) {
 		require.ErrorContains(t, err, "some error")
 		require.Empty(t, hazards)
 	})
-	t.Run("timestamp is less, CrossDerivedFrom returns error", func(t *testing.T) {
+	t.Run("timestamp is less, DerivedToSource returns error", func(t *testing.T) {
 		ssd := &mockSafeStartDeps{}
 		sampleBlockSeal := types.BlockSeal{Number: 3, Hash: common.BytesToHash([]byte{0x02})}
 		ssd.checkFn = func() (includedIn types.BlockSeal, err error) {
 			return sampleBlockSeal, nil
 		}
-		ssd.derivedFromFn = func() (derivedFrom types.BlockSeal, err error) {
+		ssd.derivedToSrcFn = func() (derivedFrom types.BlockSeal, err error) {
 			return types.BlockSeal{}, errors.New("some error")
 		}
 		ssd.deps = mockDependencySet{}
@@ -239,20 +239,20 @@ func TestCrossSafeHazards(t *testing.T) {
 		em1 := &types.ExecutingMessage{Chain: types.ChainIndex(0), Timestamp: 1}
 		execMsgs := []*types.ExecutingMessage{em1}
 		// when there is one execMsg, and the timestamp is less than the candidate,
-		// and CrossDerivedFrom returns aan error,
+		// and DerivedToSource returns aan error,
 		// that error is returned
 		hazards, err := CrossSafeHazards(ssd, chainID, inL1Source, candidate, execMsgs)
 		require.ErrorContains(t, err, "some error")
 		require.Empty(t, hazards)
 	})
-	t.Run("timestamp is less, CrossDerivedFrom Number is greater", func(t *testing.T) {
+	t.Run("timestamp is less, DerivedToSource Number is greater", func(t *testing.T) {
 		ssd := &mockSafeStartDeps{}
 		sampleBlockSeal := types.BlockSeal{Number: 3, Hash: common.BytesToHash([]byte{0x02})}
 		ssd.checkFn = func() (includedIn types.BlockSeal, err error) {
 			return sampleBlockSeal, nil
 		}
 		sampleSource := types.BlockSeal{Number: 4, Hash: common.BytesToHash([]byte{0x03})}
-		ssd.derivedFromFn = func() (derivedFrom types.BlockSeal, err error) {
+		ssd.derivedToSrcFn = func() (derivedFrom types.BlockSeal, err error) {
 			return sampleSource, nil
 		}
 		ssd.deps = mockDependencySet{}
@@ -262,20 +262,20 @@ func TestCrossSafeHazards(t *testing.T) {
 		em1 := &types.ExecutingMessage{Chain: types.ChainIndex(0), Timestamp: 1}
 		execMsgs := []*types.ExecutingMessage{em1}
 		// when there is one execMsg, and the timestamp is less than the candidate,
-		// and CrossDerivedFrom returns a BlockSeal with a greater Number than the inL1Source,
+		// and DerivedToSource returns a BlockSeal with a greater Number than the inL1Source,
 		// an error is returned as a ErrOutOfScope
 		hazards, err := CrossSafeHazards(ssd, chainID, inL1Source, candidate, execMsgs)
 		require.ErrorIs(t, err, types.ErrOutOfScope)
 		require.Empty(t, hazards)
 	})
-	t.Run("timestamp is less, CrossDerivedFrom Number less", func(t *testing.T) {
+	t.Run("timestamp is less, DerivedToSource Number less", func(t *testing.T) {
 		ssd := &mockSafeStartDeps{}
 		sampleBlockSeal := types.BlockSeal{Number: 3, Hash: common.BytesToHash([]byte{0x02})}
 		ssd.checkFn = func() (includedIn types.BlockSeal, err error) {
 			return sampleBlockSeal, nil
 		}
 		sampleSource := types.BlockSeal{Number: 1, Hash: common.BytesToHash([]byte{0x03})}
-		ssd.derivedFromFn = func() (derivedFrom types.BlockSeal, err error) {
+		ssd.derivedToSrcFn = func() (derivedFrom types.BlockSeal, err error) {
 			return sampleSource, nil
 		}
 		ssd.deps = mockDependencySet{}
@@ -285,20 +285,20 @@ func TestCrossSafeHazards(t *testing.T) {
 		em1 := &types.ExecutingMessage{Chain: types.ChainIndex(0), Timestamp: 1}
 		execMsgs := []*types.ExecutingMessage{em1}
 		// when there is one execMsg, and the timestamp is less than the candidate,
-		// and CrossDerivedFrom returns a BlockSeal with a smaller Number than the inL1Source,
+		// and DerivedToSource returns a BlockSeal with a smaller Number than the inL1Source,
 		// no error is returned
 		hazards, err := CrossSafeHazards(ssd, chainID, inL1Source, candidate, execMsgs)
 		require.NoError(t, err)
 		require.Empty(t, hazards)
 	})
-	t.Run("timestamp is less, CrossDerivedFrom Number equal", func(t *testing.T) {
+	t.Run("timestamp is less, DerivedToSource Number equal", func(t *testing.T) {
 		ssd := &mockSafeStartDeps{}
 		sampleBlockSeal := types.BlockSeal{Number: 3, Hash: common.BytesToHash([]byte{0x02})}
 		ssd.checkFn = func() (includedIn types.BlockSeal, err error) {
 			return sampleBlockSeal, nil
 		}
 		sampleSource := types.BlockSeal{Number: 1, Hash: common.BytesToHash([]byte{0x03})}
-		ssd.derivedFromFn = func() (derivedFrom types.BlockSeal, err error) {
+		ssd.derivedToSrcFn = func() (derivedFrom types.BlockSeal, err error) {
 			return sampleSource, nil
 		}
 		ssd.deps = mockDependencySet{}
@@ -308,7 +308,7 @@ func TestCrossSafeHazards(t *testing.T) {
 		em1 := &types.ExecutingMessage{Chain: types.ChainIndex(0), Timestamp: 1}
 		execMsgs := []*types.ExecutingMessage{em1}
 		// when there is one execMsg, and the timestamp is less than the candidate,
-		// and CrossDerivedFrom returns a BlockSeal with a equal to the Number of inL1Source,
+		// and DerivedToSource returns a BlockSeal with a equal to the Number of inL1Source,
 		// no error is returned
 		hazards, err := CrossSafeHazards(ssd, chainID, inL1Source, candidate, execMsgs)
 		require.NoError(t, err)
@@ -317,9 +317,9 @@ func TestCrossSafeHazards(t *testing.T) {
 }
 
 type mockSafeStartDeps struct {
-	deps          mockDependencySet
-	checkFn       func() (includedIn types.BlockSeal, err error)
-	derivedFromFn func() (derivedFrom types.BlockSeal, err error)
+	deps           mockDependencySet
+	checkFn        func() (includedIn types.BlockSeal, err error)
+	derivedToSrcFn func() (derivedFrom types.BlockSeal, err error)
 }
 
 func (m *mockSafeStartDeps) Contains(chain eth.ChainID, q types.ContainsQuery) (includedIn types.BlockSeal, err error) {
@@ -329,9 +329,9 @@ func (m *mockSafeStartDeps) Contains(chain eth.ChainID, q types.ContainsQuery) (
 	return types.BlockSeal{}, nil
 }
 
-func (m *mockSafeStartDeps) CrossDerivedToFirstSource(chainID eth.ChainID, derived eth.BlockID) (derivedFrom types.BlockSeal, err error) {
-	if m.derivedFromFn != nil {
-		return m.derivedFromFn()
+func (m *mockSafeStartDeps) CrossDerivedToSource(chainID eth.ChainID, derived eth.BlockID) (derivedFrom types.BlockSeal, err error) {
+	if m.derivedToSrcFn != nil {
+		return m.derivedToSrcFn()
 	}
 	return types.BlockSeal{}, nil
 }

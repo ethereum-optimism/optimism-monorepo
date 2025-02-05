@@ -570,7 +570,7 @@ func (su *SupervisorBackend) SuperRootAtTimestamp(ctx context.Context, timestamp
 		if err != nil {
 			return eth.SuperRootResponse{}, err
 		}
-		derivedFrom, err := su.chainDBs.CrossDerivedToFirstSource(chainID, ref.ID())
+		derivedFrom, err := su.chainDBs.CrossDerivedToSource(chainID, ref.ID())
 		if err != nil {
 			return eth.SuperRootResponse{}, err
 		}
