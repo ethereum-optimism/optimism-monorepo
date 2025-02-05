@@ -152,8 +152,8 @@ func TestSignExtend_32bit(t *testing.T) {
 func signExtend64(w Word) Word {
 	// If bit at index 31 == 1, then sign extend the higher bits on 64-bit architectures
 	if !arch.IsMips32 && (w>>31)&1 == 1 {
-		upperBits := Word(0xFFFF_FFFF)
-		return (upperBits << 32) | w
+		upperBits := uint64(0xFFFF_FFFF_0000_0000)
+		return Word(upperBits) | w
 	}
 	return w
 }
