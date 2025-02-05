@@ -156,6 +156,7 @@ func DeploySuperchainToL1(l1Host *script.Host, superCfg *SuperchainConfig) (*Sup
 		Paused:                     superCfg.Paused,
 		RequiredProtocolVersion:    superCfg.RequiredProtocolVersion,
 		RecommendedProtocolVersion: superCfg.RecommendedProtocolVersion,
+		IsInterop:                  superCfg.Implementations.UseInterop,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to deploy Superchain contracts: %w", err)
@@ -187,6 +188,8 @@ func DeploySuperchainToL1(l1Host *script.Host, superCfg *SuperchainConfig) (*Sup
 		ProtocolVersionsProxy: superDeployment.ProtocolVersionsProxy,
 		SuperchainConfig:      superDeployment.SuperchainConfigImpl,
 		SuperchainConfigProxy: superDeployment.SuperchainConfigProxy,
+		SharedLockbox:         superDeployment.SharedLockboxImpl,
+		SharedLockboxProxy:    superDeployment.SharedLockboxProxy,
 	}, nil
 }
 

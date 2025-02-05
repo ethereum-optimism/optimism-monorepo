@@ -85,15 +85,12 @@ func DeployImplementations(
 	}
 	defer cleanupDeploy()
 
-	opcmContract := "OPContractsManager"
-	if err := host.RememberOnLabel("OPContractsManager", opcmContract+".sol", opcmContract); err != nil {
-		return output, fmt.Errorf("failed to link OPContractsManager label: %w", err)
+	optimismPortal := "OptimismPortal2"
+	if input.UseInterop {
+		optimismPortal = "OptimismPortalInterop"
 	}
-
-	// So we can see in detail where the SystemConfig interop initializer fails
-	sysConfig := "SystemConfig"
-	if err := host.RememberOnLabel("SystemConfigImpl", sysConfig+".sol", sysConfig); err != nil {
-		return output, fmt.Errorf("failed to link SystemConfig label: %w", err)
+	if err := host.RememberOnLabel("OptimismPortalImpl", optimismPortal+".sol", optimismPortal); err != nil {
+		return output, fmt.Errorf("failed to link OptimismPortal label: %w", err)
 	}
 
 	if err := deployScript.Run(inputAddr, outputAddr); err != nil {
