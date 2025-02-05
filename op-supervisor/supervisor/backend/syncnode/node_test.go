@@ -79,7 +79,7 @@ func TestEventResponse(t *testing.T) {
 		syncCtrl.subscribeEvents.Send(&types.ManagedEvent{
 			ExhaustL1: &types.DerivedBlockRefPair{Source: eth.BlockRef{Number: 1}, Derived: eth.BlockRef{Number: 2}}})
 		syncCtrl.subscribeEvents.Send(&types.ManagedEvent{
-			DerivationOriginUpdate: &types.DerivedBlockRefPair{Source: eth.BlockRef{Number: 1}, Derived: eth.BlockRef{Number: 2}}})
+			DerivationOriginUpdate: &eth.BlockRef{Number: 1}})
 
 		require.NoError(t, ex.Drain())
 

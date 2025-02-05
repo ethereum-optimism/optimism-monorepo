@@ -322,5 +322,5 @@ type ManagedEvent struct {
 	DerivationUpdate       *DerivedBlockRefPair `json:"derivationUpdate,omitempty"`
 	ExhaustL1              *DerivedBlockRefPair `json:"exhaustL1,omitempty"`
 	ReplaceBlock           *BlockReplacement    `json:"replaceBlock,omitempty"`
-	DerivationOriginUpdate *DerivedBlockRefPair `json:"derivationOriginUpdate,omitempty"`
+	DerivationOriginUpdate *eth.BlockRef        `json:"derivationOriginUpdate,omitempty"`
 }

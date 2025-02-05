@@ -300,11 +300,11 @@ func (m *ManagedNode) onDerivationUpdate(pair types.DerivedBlockRefPair) {
 	// }
 }
 
-func (m *ManagedNode) onDerivationOriginUpdate(pair types.DerivedBlockRefPair) {
-	m.log.Info("Node derived new origin", "derived", pair.Derived, "derivedFrom", pair.Source)
+func (m *ManagedNode) onDerivationOriginUpdate(origin eth.BlockRef) {
+	m.log.Info("Node derived new origin", "origin", origin)
 	m.emitter.Emit(superevents.LocalDerivedOriginUpdateEvent{
 		ChainID: m.chainID,
-		Derived: pair,
+		Origin:  origin,
 	})
 }
 
