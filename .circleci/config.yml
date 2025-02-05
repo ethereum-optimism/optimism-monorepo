@@ -780,11 +780,6 @@ jobs:
         type: string
         default: ci
     steps:
-      - run:
-          name: Skip (temporary)
-          command: |
-            echo "Skipping coverage tests"
-            circleci-agent step halt
       - checkout-with-mise
       - attach_workspace: { at: "." }
       - install-contracts-dependencies
