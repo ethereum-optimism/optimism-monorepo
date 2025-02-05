@@ -368,9 +368,6 @@ contract OPContractsManager is ISemver {
             output.opChainProxyAdmin, address(output.optimismPortalProxy), implementation.optimismPortalImpl, data
         );
 
-        // First we upgrade the implementation so it's version can be retrieved, then we initialize
-        // it afterwards. See the comments in encodeSystemConfigInitializer to learn more.
-        upgradeTo(output.opChainProxyAdmin, payable(address(output.systemConfigProxy)), implementation.systemConfigImpl);
         data = encodeSystemConfigInitializer(_input, output);
         upgradeToAndCall(
             output.opChainProxyAdmin, address(output.systemConfigProxy), implementation.systemConfigImpl, data
@@ -919,12 +916,7 @@ contract OPContractsManager is ISemver {
         virtual
         returns (IResourceMetering.ResourceConfig memory resourceConfig_, ISystemConfig.Addresses memory opChainAddrs_)
     {
-        // We use assembly to easily convert from IResourceMetering.ResourceConfig to ResourceMetering.ResourceConfig.
-        // This is required because we have not yet fully migrated the codebase to be interface-based.
-        IResourceMetering.ResourceConfig memory resourceConfig = Constants.DEFAULT_RESOURCE_CONFIG();
-        assembly ("memory-safe") {
-            resourceConfig_ := resourceConfig
-        }
+        resourceConfig_ = Constants.DEFAULT_RESOURCE_CONFIG();
 
         opChainAddrs_ = ISystemConfig.Addresses({
             l1CrossDomainMessenger: address(_output.l1CrossDomainMessengerProxy),
