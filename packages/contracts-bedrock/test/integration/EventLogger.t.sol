@@ -4,7 +4,6 @@ pragma solidity ^0.8.0;
 import { Test } from "forge-std/Test.sol";
 
 import { Identifier as IfaceIdentifier } from "interfaces/L2/ICrossL2Inbox.sol";
-import { IL1BlockInterop } from "interfaces/L2/IL1BlockInterop.sol";
 
 import { EventLogger } from "../../src/integration/EventLogger.sol";
 
@@ -92,7 +91,7 @@ contract EventLoggerTest is EventLogger_Initializer {
     }
 
     /// @notice It should revert if called with 5 topics
-    function test_emitLog_reverts() external {
+    function test_emitLog_5topics_reverts() external {
         bytes32[] memory topics = new bytes32[](5); // 5 or more topics: not possible to log
         bytes memory empty = new bytes(0);
         vm.expectRevert(empty);
