@@ -303,9 +303,10 @@ func (m *SimpleTxManager) SendAsync(ctx context.Context, candidate TxCandidate, 
 	m.metr.RecordPendingTx(m.pending.Add(1))
 
 	go func() {
+		defer func() { m.metr.RecordPendingTx(m.pending.Add(-1)) }()
 		defer cancel()
 		receipt, err := m.sendTx(ctx, tx)
-		m.metr.RecordPendingTx(m.pending.Add(-1))
+
 		if err != nil {
 			m.resetNonce()
 		}
