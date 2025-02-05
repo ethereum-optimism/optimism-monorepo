@@ -44,7 +44,7 @@ type Metricer interface {
 	RecordProcessedEvent(eventName string, deriver string, duration time.Duration)
 	RecordEventsRateLimited()
 	RecordReceivedUnsafePayload(payload *eth.ExecutionPayloadEnvelope)
-	RecordRef(layer string, name string, num uint64, timestamp uint64, h common.Hash, labels ...string)
+	RecordRef(layer string, name string, num uint64, timestamp uint64, h common.Hash)
 	RecordL1Ref(name string, ref eth.L1BlockRef)
 	RecordL2Ref(name string, ref eth.L2BlockRef)
 	RecordUnsafePayloadsBuffer(length uint64, memSize uint64, next eth.BlockID)
@@ -728,7 +728,7 @@ func (n *noopMetricer) RecordEventsRateLimited() {
 func (n *noopMetricer) RecordReceivedUnsafePayload(payload *eth.ExecutionPayloadEnvelope) {
 }
 
-func (n *noopMetricer) RecordRef(layer string, name string, num uint64, timestamp uint64, h common.Hash, labels ...string) {
+func (n *noopMetricer) RecordRef(layer string, name string, num uint64, timestamp uint64, h common.Hash) {
 }
 
 func (n *noopMetricer) RecordL1Ref(name string, ref eth.L1BlockRef) {

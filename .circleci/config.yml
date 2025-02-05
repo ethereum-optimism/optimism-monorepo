@@ -1074,7 +1074,8 @@ jobs:
             gotestsum --format=testname \
               --junitfile=./tmp/test-results/results.xml \
               --jsonfile=./tmp/testlogs/log.json \
-              --rerun-fails=2 \
+              --rerun-fails=3 \
+              --rerun-fails-max-failures=50 \
               --packages="$formatted_packages" \
               -- -parallel=$PARALLEL -coverprofile=coverage.out -timeout=<<parameters.test_timeout>>
       - codecov/upload:
@@ -1499,6 +1500,8 @@ workflows:
           uses_artifacts: true
           requires: ["contracts-bedrock-build"]
       - go-tests:
+          environment_overrides: |
+            export PARALLEL=48
           packages: |
             op-alt-da
             op-batcher
