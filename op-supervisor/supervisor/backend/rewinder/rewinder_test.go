@@ -910,6 +910,13 @@ func TestLocalDerivationSafeMismatch(t *testing.T) {
 	s.verifyLogsHead(chainID, block3B.ID(), "should now have block3B as latest sealed block")
 	s.verifyLocalSafe(chainID, block3A.ID(), "block3B should be new local-safe head")
 	s.verifyCrossSafe(chainID, block3A.ID(), "block3B should be new cross-safe head")
+
+	/*
+
+		Problem: 3A is still the safe head but 3B is the newest derived block
+
+		This is a bug correct?
+	*/
 }
 
 // TestChainWithUnsafeBlocks tests chain behavior with unsafe blocks.
