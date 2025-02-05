@@ -584,7 +584,7 @@ func (su *SupervisorBackend) SuperRootAtTimestamp(ctx context.Context, timestamp
 	}, nil
 }
 
-func (su *SupervisorBackend) SyncStatus() (eth.SupervisorStatus, error) {
+func (su *SupervisorBackend) SyncStatus() (eth.SupervisorSyncStatus, error) {
 	return su.statusTracker.SyncStatus(), nil
 }
 

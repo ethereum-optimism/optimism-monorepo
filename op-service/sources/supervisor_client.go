@@ -174,8 +174,8 @@ func (cl *SupervisorClient) AllSafeDerivedAt(ctx context.Context, derivedFrom et
 	return result, err
 }
 
-func (cl *SupervisorClient) SyncStatus(ctx context.Context) (eth.SupervisorStatus, error) {
-	var result eth.SupervisorStatus
+func (cl *SupervisorClient) SyncStatus(ctx context.Context) (eth.SupervisorSyncStatus, error) {
+	var result eth.SupervisorSyncStatus
 	err := cl.client.CallContext(
 		ctx,
 		&result,

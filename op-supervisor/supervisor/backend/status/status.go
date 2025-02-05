@@ -49,19 +49,19 @@ func (su *StatusTracker) OnEvent(ev event.Event) bool {
 	return true
 }
 
-func (su *StatusTracker) SyncStatus() eth.SupervisorStatus {
+func (su *StatusTracker) SyncStatus() eth.SupervisorSyncStatus {
 	su.mu.RLock()
 	defer su.mu.RUnlock()
 
-	var supervisorStatus eth.SupervisorStatus
+	var supervisorStatus eth.SupervisorSyncStatus
 	for _, nodeStatus := range su.statuses {
 		if supervisorStatus.MinSyncedL1 == (eth.L1BlockRef{}) || supervisorStatus.MinSyncedL1.Number < nodeStatus.CurrentL1.Number {
 			supervisorStatus.MinSyncedL1 = nodeStatus.CurrentL1
 		}
 	}
-	supervisorStatus.Chains = make(map[eth.ChainID]*eth.SupervisorChainStatus)
+	supervisorStatus.Chains = make(map[eth.ChainID]*eth.SupervisorChainSyncStatus)
 	for chainID, nodeStatus := range su.statuses {
-		supervisorStatus.Chains[chainID] = &eth.SupervisorChainStatus{
+		supervisorStatus.Chains[chainID] = &eth.SupervisorChainSyncStatus{
 			LocalUnsafe: nodeStatus.LocalUnsafe,
 		}
 	}
