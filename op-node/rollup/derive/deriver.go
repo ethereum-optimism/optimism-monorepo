@@ -3,6 +3,7 @@ package derive
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
@@ -18,8 +19,29 @@ func (d DeriverIdleEvent) String() string {
 	return "derivation-idle"
 }
 
+// ExhaustedL1Event is returned when no additional L1 information is available
+type ExhaustedL1Event struct {
+	L1Ref  eth.L1BlockRef
+	LastL2 eth.L2BlockRef
+}
+
+func (d ExhaustedL1Event) String() string {
+	return "exhausted-l1"
+}
+
+// ProvideL1Traversal is accepted to override the next L1 block to traverse into.
+// This block must fit on the previous L1 block, or a ResetEvent may be emitted.
+type ProvideL1Traversal struct {
+	NextL1 eth.L1BlockRef
+}
+
+func (d ProvideL1Traversal) String() string {
+	return "provide-l1-traversal"
+}
+
 type DeriverL1StatusEvent struct {
 	Origin eth.L1BlockRef
+	LastL2 eth.L2BlockRef
 }
 
 func (d DeriverL1StatusEvent) String() string {
@@ -63,6 +85,18 @@ func (ev PipelineStepEvent) String() string {
 	return "pipeline-step"
 }
 
+// DepositsOnlyPayloadAttributesRequestEvent requests a deposits-only version of the attributes from
+// the pipeline. It is sent by the engine deriver and received by the PipelineDeriver.
+// This event got introduced with Holocene.
+type DepositsOnlyPayloadAttributesRequestEvent struct {
+	Parent      eth.BlockID
+	DerivedFrom eth.L1BlockRef
+}
+
+func (ev DepositsOnlyPayloadAttributesRequestEvent) String() string {
+	return "deposits-only-payload-attributes-request"
+}
+
 type PipelineDeriver struct {
 	pipeline *DerivationPipeline
 
@@ -86,7 +120,7 @@ func (d *PipelineDeriver) AttachEmitter(em event.Emitter) {
 
 func (d *PipelineDeriver) OnEvent(ev event.Event) bool {
 	switch x := ev.(type) {
-	case rollup.ResetEvent:
+	case rollup.ForceResetEvent:
 		d.pipeline.Reset()
 	case PipelineStepEvent:
 		// Don't generate attributes if there are already attributes in-flight
@@ -99,11 +133,12 @@ func (d *PipelineDeriver) OnEvent(ev event.Event) bool {
 		attrib, err := d.pipeline.Step(d.ctx, x.PendingSafe)
 		postOrigin := d.pipeline.Origin()
 		if preOrigin != postOrigin {
-			d.emitter.Emit(DeriverL1StatusEvent{Origin: postOrigin})
+			d.emitter.Emit(DeriverL1StatusEvent{Origin: postOrigin, LastL2: x.PendingSafe})
 		}
 		if err == io.EOF {
 			d.pipeline.log.Debug("Derivation process went idle", "progress", d.pipeline.Origin(), "err", err)
 			d.emitter.Emit(DeriverIdleEvent{Origin: d.pipeline.Origin()})
+			d.emitter.Emit(ExhaustedL1Event{L1Ref: d.pipeline.Origin(), LastL2: x.PendingSafe})
 		} else if err != nil && errors.Is(err, EngineELSyncing) {
 			d.pipeline.log.Debug("Derivation process went idle because the engine is syncing", "progress", d.pipeline.Origin(), "err", err)
 			d.emitter.Emit(DeriverIdleEvent{Origin: d.pipeline.Origin()})
@@ -121,8 +156,7 @@ func (d *PipelineDeriver) OnEvent(ev event.Event) bool {
 			d.emitter.Emit(rollup.EngineTemporaryErrorEvent{Err: err})
 		} else {
 			if attrib != nil {
-				d.needAttributesConfirmation = true
-				d.emitter.Emit(DerivedAttributesEvent{Attributes: attrib})
+				d.emitDerivedAttributesEvent(attrib)
 			} else {
 				d.emitter.Emit(DeriverMoreEvent{}) // continue with the next step if we can
 			}
@@ -131,8 +165,37 @@ func (d *PipelineDeriver) OnEvent(ev event.Event) bool {
 		d.pipeline.ConfirmEngineReset()
 	case ConfirmReceivedAttributesEvent:
 		d.needAttributesConfirmation = false
+	case DepositsOnlyPayloadAttributesRequestEvent:
+		d.pipeline.log.Warn("Deriving deposits-only attributes", "origin", d.pipeline.Origin())
+		attrib, err := d.pipeline.DepositsOnlyAttributes(x.Parent, x.DerivedFrom)
+		if err != nil {
+			d.emitter.Emit(rollup.CriticalErrorEvent{Err: fmt.Errorf("deriving deposits-only attributes: %w", err)})
+			return true
+		}
+		d.emitDerivedAttributesEvent(attrib)
+	case ProvideL1Traversal:
+		if l1t, ok := d.pipeline.traversal.(ManagedL1Traversal); ok {
+			if err := l1t.ProvideNextL1(d.ctx, x.NextL1); err != nil {
+				if err != nil && errors.Is(err, ErrReset) {
+					d.emitter.Emit(rollup.ResetEvent{Err: err})
+				} else if err != nil && errors.Is(err, ErrTemporary) {
+					d.emitter.Emit(rollup.L1TemporaryErrorEvent{Err: err})
+				} else if err != nil && errors.Is(err, ErrCritical) {
+					d.emitter.Emit(rollup.CriticalErrorEvent{Err: err})
+				} else {
+					d.emitter.Emit(rollup.L1TemporaryErrorEvent{Err: err})
+				}
+			}
+		} else {
+			d.pipeline.log.Warn("Ignoring ProvideL1Traversal event, L1 traversal derivation stage does not support it")
+		}
 	default:
 		return false
 	}
 	return true
+}
+
+func (d *PipelineDeriver) emitDerivedAttributesEvent(attrib *AttributesWithParent) {
+	d.needAttributesConfirmation = true
+	d.emitter.Emit(DerivedAttributesEvent{Attributes: attrib})
 }

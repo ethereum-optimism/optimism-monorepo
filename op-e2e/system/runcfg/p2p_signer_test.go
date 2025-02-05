@@ -40,7 +40,7 @@ func TestRuntimeConfigReload(t *testing.T) {
 	require.NoError(t, err)
 	newUnsafeBlocksSigner := common.Address{0x12, 0x23, 0x45}
 	require.NotEqual(t, initialRuntimeConfig.P2PSequencerAddress(), newUnsafeBlocksSigner, "changing to a different address")
-	opts, err := bind.NewKeyedTransactorWithChainID(cfg.Secrets.SysCfgOwner, cfg.L1ChainIDBig())
+	opts, err := bind.NewKeyedTransactorWithChainID(cfg.Secrets.Deployer, cfg.L1ChainIDBig())
 	require.Nil(t, err)
 	// the unsafe signer address is part of the runtime config
 	tx, err := sysCfgContract.SetUnsafeBlockSigner(opts, newUnsafeBlocksSigner)

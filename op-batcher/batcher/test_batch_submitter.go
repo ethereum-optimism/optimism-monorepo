@@ -27,13 +27,13 @@ func (l *TestBatchSubmitter) JamTxPool(ctx context.Context) error {
 	}
 	var candidate *txmgr.TxCandidate
 	var err error
-	cc := l.state.cfgProvider.ChannelConfig()
+	cc := l.channelMgr.cfgProvider.ChannelConfig(true)
 	if cc.UseBlobs {
 		candidate = l.calldataTxCandidate([]byte{})
 	} else if candidate, err = l.blobTxCandidate(emptyTxData); err != nil {
 		return err
 	}
-	if candidate.GasLimit, err = core.IntrinsicGas(candidate.TxData, nil, false, true, true, false); err != nil {
+	if candidate.GasLimit, err = core.IntrinsicGas(candidate.TxData, nil, nil, false, true, true, false); err != nil {
 		return err
 	}
 

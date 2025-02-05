@@ -18,8 +18,10 @@ import (
 	"github.com/ethereum-optimism/optimism/op-node/rollup/derive"
 	"github.com/ethereum-optimism/optimism/op-service/client"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
+	"github.com/ethereum-optimism/optimism/op-service/predeploys"
 	"github.com/ethereum-optimism/optimism/op-service/sources"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -56,20 +58,11 @@ type OpGeth struct {
 func NewOpGeth(t testing.TB, ctx context.Context, cfg *e2esys.SystemConfig) (*OpGeth, error) {
 	logger := testlog.Logger(t, log.LevelCrit)
 
-	l1Genesis, err := genesis.BuildL1DeveloperGenesis(cfg.DeployConfig, config.L1Allocs, config.L1Deployments)
+	l1Genesis, err := genesis.BuildL1DeveloperGenesis(cfg.DeployConfig, config.L1Allocs(config.AllocTypeStandard), config.L1Deployments(config.AllocTypeStandard))
 	require.NoError(t, err)
 	l1Block := l1Genesis.ToBlock()
-
-	var allocsMode genesis.L2AllocsMode
-	allocsMode = genesis.L2AllocsDelta
-	if graniteTime := cfg.DeployConfig.GraniteTime(l1Block.Time()); graniteTime != nil && *graniteTime <= 0 {
-		allocsMode = genesis.L2AllocsGranite
-	} else if fjordTime := cfg.DeployConfig.FjordTime(l1Block.Time()); fjordTime != nil && *fjordTime <= 0 {
-		allocsMode = genesis.L2AllocsFjord
-	} else if ecotoneTime := cfg.DeployConfig.EcotoneTime(l1Block.Time()); ecotoneTime != nil && *ecotoneTime <= 0 {
-		allocsMode = genesis.L2AllocsEcotone
-	}
-	l2Allocs := config.L2Allocs(allocsMode)
+	allocsMode := e2eutils.GetL2AllocsMode(cfg.DeployConfig, l1Block.Time())
+	l2Allocs := config.L2Allocs(config.AllocTypeStandard, allocsMode)
 	l2Genesis, err := genesis.BuildL2Genesis(cfg.DeployConfig, l2Allocs, l1Block.Header())
 	require.NoError(t, err)
 	l2GenesisBlock := l2Genesis.ToBlock()
@@ -88,20 +81,10 @@ func NewOpGeth(t testing.TB, ctx context.Context, cfg *e2esys.SystemConfig) (*Op
 	}
 
 	var node services.EthInstance
-	if cfg.ExternalL2Shim == "" {
-		gethNode, err := geth.InitL2("l2", l2Genesis, cfg.JWTFilePath)
-		require.NoError(t, err)
-		require.NoError(t, gethNode.Node.Start())
-		node = gethNode
-	} else {
-		externalNode := (&e2esys.ExternalRunner{
-			Name:    "l2",
-			BinPath: cfg.ExternalL2Shim,
-			Genesis: l2Genesis,
-			JWTPath: cfg.JWTFilePath,
-		}).Run(t)
-		node = externalNode
-	}
+	gethNode, err := geth.InitL2("l2", l2Genesis, cfg.JWTFilePath)
+	require.NoError(t, err)
+	require.NoError(t, gethNode.Node.Start())
+	node = gethNode
 
 	auth := rpc.WithHTTPAuth(gn.NewJWTAuth(cfg.JWTSecret))
 	l2Node, err := client.NewRPC(ctx, logger, node.AuthRPC().RPC(), client.WithGethRPCOptions(auth))
@@ -122,7 +105,12 @@ func NewOpGeth(t testing.TB, ctx context.Context, cfg *e2esys.SystemConfig) (*Op
 	l2Client, err := ethclient.Dial(node.UserRPC().RPC())
 	require.NoError(t, err)
 
-	genesisPayload, err := eth.BlockAsPayload(l2GenesisBlock, cfg.DeployConfig.CanyonTime(l2GenesisBlock.Time()))
+	// Note: Using CanyonTime here because for OP Stack chains, Shanghai must be activated at the same time as Canyon.
+	chainCfg := params.ChainConfig{
+		CanyonTime: cfg.DeployConfig.CanyonTime(l2GenesisBlock.Time()),
+	}
+
+	genesisPayload, err := eth.BlockAsPayload(l2GenesisBlock, &chainCfg)
 
 	require.NoError(t, err)
 	return &OpGeth{
@@ -166,6 +154,21 @@ func (d *OpGeth) AddL2Block(ctx context.Context, txs ...*types.Transaction) (*et
 	}
 	if !reflect.DeepEqual(payload.Transactions, attrs.Transactions) {
 		return nil, errors.New("required transactions were not included")
+	}
+
+	// if we are at Isthmus, set the withdrawalsRoot in the execution payload to the storage root of the message passer contract
+	if d.L2ChainConfig.IsIsthmus(uint64(payload.Timestamp)) {
+		var getProofResponse *eth.AccountResult
+		rpcClient := d.l2Engine.RPC
+		err := rpcClient.CallContext(ctx, &getProofResponse, "eth_getProof", predeploys.L2ToL1MessagePasserAddr, []common.Hash{}, payload.BlockHash.String())
+		if err != nil {
+			return nil, err
+		}
+		if getProofResponse == nil {
+			return nil, ethereum.NotFound
+		}
+		storageHash := getProofResponse.StorageHash
+		payload.WithdrawalsRoot = &storageHash
 	}
 
 	status, err := d.l2Engine.NewPayload(ctx, payload, envelope.ParentBeaconBlockRoot)
@@ -252,6 +255,10 @@ func (d *OpGeth) CreatePayloadAttributes(txs ...*types.Transaction) (*eth.Payloa
 		GasLimit:              (*eth.Uint64Quantity)(&d.SystemConfig.GasLimit),
 		Withdrawals:           withdrawals,
 		ParentBeaconBlockRoot: parentBeaconBlockRoot,
+	}
+	if d.L2ChainConfig.IsHolocene(uint64(timestamp)) {
+		attrs.EIP1559Params = new(eth.Bytes8)
+		*attrs.EIP1559Params = d.SystemConfig.EIP1559Params
 	}
 	return &attrs, nil
 }

@@ -13,7 +13,15 @@ contract TestERC1271Wallet is Ownable, IERC1271 {
         transferOwnership(originalOwner);
     }
 
-    function isValidSignature(bytes32 hash, bytes memory signature) public view override returns (bytes4 magicValue) {
-        return ECDSA.recover(hash, signature) == owner() ? this.isValidSignature.selector : bytes4(0);
+    function isValidSignature(
+        bytes32 _hash,
+        bytes memory _signature
+    )
+        public
+        view
+        override
+        returns (bytes4 magicValue_)
+    {
+        return ECDSA.recover(_hash, _signature) == owner() ? this.isValidSignature.selector : bytes4(0);
     }
 }

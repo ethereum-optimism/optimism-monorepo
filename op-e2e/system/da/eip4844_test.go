@@ -10,6 +10,7 @@ import (
 
 	op_e2e "github.com/ethereum-optimism/optimism/op-e2e"
 
+	"github.com/ethereum-optimism/optimism/op-e2e/bindings"
 	"github.com/ethereum-optimism/optimism/op-e2e/system/e2esys"
 	"github.com/ethereum-optimism/optimism/op-e2e/system/helpers"
 
@@ -17,7 +18,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	batcherFlags "github.com/ethereum-optimism/optimism/op-batcher/flags"
-	"github.com/ethereum-optimism/optimism/op-e2e/bindings"
 	gethutils "github.com/ethereum-optimism/optimism/op-e2e/e2eutils/geth"
 	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/transactions"
 	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/wait"
@@ -25,6 +25,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
 	"github.com/ethereum-optimism/optimism/op-service/testutils"
+	"github.com/ethereum-optimism/optimism/op-service/txmgr"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -34,13 +35,19 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 )
 
-// TestSystem4844E2E runs the SystemE2E test with 4844 enabled on L1, and active on the rollup in
+// TestSystem4844E2E* run the SystemE2E test with 4844 enabled on L1, and active on the rollup in
 // the op-batcher and verifier.  It submits a txpool-blocking transaction before running
 // each test to ensure the batcher is able to clear it.
-func TestSystem4844E2E(t *testing.T) {
-	t.Run("calldata", func(t *testing.T) { testSystem4844E2E(t, false, batcherFlags.CalldataType) })
-	t.Run("single-blob", func(t *testing.T) { testSystem4844E2E(t, false, batcherFlags.BlobsType) })
-	t.Run("multi-blob", func(t *testing.T) { testSystem4844E2E(t, true, batcherFlags.BlobsType) })
+func TestSystem4844E2E_Calldata(t *testing.T) {
+	testSystem4844E2E(t, false, batcherFlags.CalldataType)
+}
+
+func TestSystem4844E2E_SingleBlob(t *testing.T) {
+	testSystem4844E2E(t, false, batcherFlags.BlobsType)
+}
+
+func TestSystem4844E2E_MultiBlob(t *testing.T) {
+	testSystem4844E2E(t, true, batcherFlags.BlobsType)
 }
 
 func testSystem4844E2E(t *testing.T, multiBlob bool, daType batcherFlags.DataAvailabilityType) {
@@ -51,7 +58,6 @@ func testSystem4844E2E(t *testing.T, multiBlob bool, daType batcherFlags.DataAva
 	cfg.BatcherBatchType = derive.SpanBatchType
 	cfg.DeployConfig.L1GenesisBlockBaseFeePerGas = (*hexutil.Big)(big.NewInt(7000))
 
-	const maxBlobs = eth.MaxBlobsPerBlobTx
 	var maxL1TxSize int
 	if multiBlob {
 		cfg.BatcherTargetNumFrames = eth.MaxBlobsPerBlobTx
@@ -68,7 +74,7 @@ func testSystem4844E2E(t *testing.T, multiBlob bool, daType batcherFlags.DataAva
 	// is started, as is required by the function.
 	var jamChan chan error
 	jamCtx, jamCancel := context.WithTimeout(context.Background(), 20*time.Second)
-	action := e2esys.SystemConfigOption{
+	action := e2esys.StartOption{
 		Key: "beforeBatcherStart",
 		Action: func(cfg *e2esys.SystemConfig, s *e2esys.System) {
 			driver := s.BatchSubmitter.TestDriver()
@@ -87,6 +93,7 @@ func testSystem4844E2E(t *testing.T, multiBlob bool, daType batcherFlags.DataAva
 		}
 	}()
 
+	cfg.DisableProposer = true // disable L2 output submission for this test
 	sys, err := cfg.Start(t, action)
 	require.NoError(t, err, "Error starting up system")
 
@@ -114,7 +121,7 @@ func testSystem4844E2E(t *testing.T, multiBlob bool, daType batcherFlags.DataAva
 	require.NoError(t, err)
 	mintAmount := big.NewInt(1_000_000_000_000)
 	opts.Value = mintAmount
-	helpers.SendDepositTx(t, cfg, l1Client, l2Verif, opts, func(l2Opts *helpers.DepositTxOpts) {})
+	helpers.SendDepositTx(t, cfg, l1Client, l2Verif, opts, nil)
 
 	// Confirm balance
 	ctx2, cancel2 := context.WithTimeout(context.Background(), 20*time.Second)
@@ -132,7 +139,7 @@ func testSystem4844E2E(t *testing.T, multiBlob bool, daType batcherFlags.DataAva
 		opts.ToAddr = &common.Address{0xff, 0xff}
 		// put some random data in the tx to make it fill up eth.MaxBlobsPerBlobTx blobs (multi-blob case)
 		opts.Data = testutils.RandomData(rand.New(rand.NewSource(420)), 400)
-		opts.Gas, err = core.IntrinsicGas(opts.Data, nil, false, true, true, false)
+		opts.Gas, err = core.IntrinsicGas(opts.Data, nil, nil, false, true, true, false)
 		require.NoError(t, err)
 		opts.VerifyOnClients(l2Verif)
 	})
@@ -208,7 +215,8 @@ func testSystem4844E2E(t *testing.T, multiBlob bool, daType batcherFlags.DataAva
 	if !multiBlob {
 		require.NotZero(t, numBlobs, "single-blob: expected to find L1 blob tx")
 	} else {
-		require.Equal(t, maxBlobs, numBlobs, fmt.Sprintf("multi-blob: expected to find L1 blob tx with %d blobs", eth.MaxBlobsPerBlobTx))
+		const maxBlobs = eth.MaxBlobsPerBlobTx
+		require.Equal(t, maxBlobs, numBlobs, fmt.Sprintf("multi-blob: expected to find L1 blob tx with %d blobs", maxBlobs))
 		// blob tx should have filled up all but last blob
 		bcl := sys.L1BeaconHTTPClient()
 		hashes := toIndexedBlobHashes(blobTx.BlobHashes()...)
@@ -244,63 +252,53 @@ func toIndexedBlobHashes(hs ...common.Hash) []eth.IndexedBlobHash {
 // gas price. The L1 blob gas limit is set to a low value to speed up this process.
 func TestBatcherAutoDA(t *testing.T) {
 	op_e2e.InitParallel(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
 
-	cfg := e2esys.EcotoneSystemConfig(t, new(hexutil.Uint64))
+	// System setup
+	cfg := e2esys.HoloceneSystemConfig(t, new(hexutil.Uint64))
+	cfg.DeployConfig.L1PragueTimeOffset = new(hexutil.Uint64) // activate prague to get higher calldata cost
 	cfg.DataAvailabilityType = batcherFlags.AutoType
 	// We set the genesis fee values and block gas limit such that calldata txs are initially cheaper,
-	// but then drive up the base fee over the coming L1 blocks such that blobs become cheaper again.
-	cfg.DeployConfig.L1GenesisBlockBaseFeePerGas = (*hexutil.Big)(big.NewInt(7500))
-	// 100 blob targets leads to 130_393 starting blob base fee, which is ~ 16 * 8_150
+	// but then manipulate the fee markets over the coming L1 blocks such that blobs become cheaper again.
+	cfg.DeployConfig.L1GenesisBlockBaseFeePerGas = (*hexutil.Big)(big.NewInt(3100))
+	// 100 blob targets leads to 130_393 starting blob base fee, which is ~ 42 * 2_000 (equilibrium is ~16x or ~40x under Pectra)
 	cfg.DeployConfig.L1GenesisBlockExcessBlobGas = (*hexutil.Uint64)(u64Ptr(100 * params.BlobTxTargetBlobGasPerBlock))
 	cfg.DeployConfig.L1GenesisBlockBlobGasUsed = (*hexutil.Uint64)(u64Ptr(0))
-	cfg.DeployConfig.L1GenesisBlockGasLimit = 2_500_000 // low block gas limit to drive up gas price more quickly
-	t.Logf("L1BlockTime: %d, L2BlockTime: %d", cfg.DeployConfig.L1BlockTime, cfg.DeployConfig.L2BlockTime)
-
+	cfg.DeployConfig.L1GenesisBlockGasLimit = 2_500_000
 	cfg.BatcherTargetNumFrames = eth.MaxBlobsPerBlobTx
-
 	sys, err := cfg.Start(t)
 	require.NoError(t, err, "Error starting up system")
-
 	log := testlog.Logger(t, log.LevelInfo)
 	log.Info("genesis", "l2", sys.RollupConfig.Genesis.L2, "l1", sys.RollupConfig.Genesis.L1, "l2_time", sys.RollupConfig.Genesis.L2Time)
 
+	// Constants
 	l1Client := sys.NodeClient("l1")
-
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
 	ethPrivKey := cfg.Secrets.Alice
-	fromAddr := cfg.Secrets.Addresses().Alice
-
-	// Send deposit transactions in a loop to drive up L1 base fee
+	depositContract, err := bindings.NewOptimismPortal(cfg.L1Deployments.OptimismPortalProxy, l1Client)
+	require.NoError(t, err)
 	depAmount := big.NewInt(1_000_000_000_000)
-	const numDeps = 3
-	txs := make([]*types.Transaction, 0, numDeps)
-	t.Logf("Sending %d deposits...", numDeps)
-	for i := int64(0); i < numDeps; i++ {
-		opts, err := bind.NewKeyedTransactorWithChainID(ethPrivKey, cfg.L1ChainIDBig())
-		require.NoError(t, err)
-		opts.Value = depAmount
-		opts.Nonce = big.NewInt(i)
-		depositContract, err := bindings.NewOptimismPortal(cfg.L1Deployments.OptimismPortalProxy, l1Client)
-		require.NoError(t, err)
+	opts, err := bind.NewKeyedTransactorWithChainID(ethPrivKey, cfg.L1ChainIDBig())
+	require.NoError(t, err)
+	opts.Value = depAmount
+	fromAddr := cfg.Secrets.Addresses().Alice
+	const numTxs = 25
 
-		tx, err := transactions.PadGasEstimate(opts, 2, func(opts *bind.TransactOpts) (*types.Transaction, error) {
-			return depositContract.DepositTransaction(opts, fromAddr, depAmount, 1_000_000, false, nil)
-		})
-		require.NoErrorf(t, err, "failed to send deposit tx[%d]", i)
-		t.Logf("Deposit submitted[%d]: tx hash: %v", i, tx.Hash())
-		txs = append(txs, tx)
+	// Helpers
+	mustGetFees := func() (*big.Int, *big.Int, *big.Int, float64) {
+		tip, baseFee, blobFee, err := txmgr.DefaultGasPriceEstimatorFn(ctx, l1Client)
+		require.NoError(t, err)
+		feeRatio := float64(blobFee.Int64()) / float64(baseFee.Int64()+tip.Int64())
+		t.Logf("L1 fees are: baseFee(%d), tip(%d), blobBaseFee(%d). feeRatio: %f", baseFee, tip, blobFee, feeRatio)
+		return tip, baseFee, blobFee, feeRatio
 	}
-	require.Len(t, txs, numDeps)
-
 	requireEventualBatcherTxType := func(txType uint8, timeout time.Duration, strict bool) {
 		var foundOtherTxType bool
 		require.Eventually(t, func() bool {
 			b, err := l1Client.BlockByNumber(ctx, nil)
 			require.NoError(t, err)
 			for _, tx := range b.Transactions() {
-				if tx.To().Cmp(cfg.DeployConfig.BatchInboxAddress) != 0 {
+				if tx.To() == nil || tx.To().Cmp(cfg.DeployConfig.BatchInboxAddress) != 0 {
 					continue
 				}
 				if typ := tx.Type(); typ == txType {
@@ -313,16 +311,51 @@ func TestBatcherAutoDA(t *testing.T) {
 		}, timeout, time.Second, "expected batcher tx type didn't arrive")
 		require.False(t, foundOtherTxType, "unexpected batcher tx type found")
 	}
+
+	// Check markets are set up as expected.
+	_, _, _, feeRatio := mustGetFees()
+	require.Greater(t, feeRatio, 41.0, "expected feeRatio to be greater than 41 (calldata should be cheaper, even with Pectra)")
+
+	// Market manipulations:
+	// Send deposit transactions in a loop to shore up L1 base fee
+	// as blobBaseFee drops (batcher uses calldata initially so the blob market is quiet).
+	txs := make([]*types.Transaction, 0, numTxs)
+	t.Logf("Sending %d l1 txs...", numTxs)
+	for i := int64(0); i < numTxs; i++ {
+		opts.Nonce = big.NewInt(i)
+		tx, err := transactions.PadGasEstimate(opts, 2, func(opts *bind.TransactOpts) (*types.Transaction, error) {
+			return depositContract.DepositTransaction(opts, fromAddr, depAmount, 800_000, false, nil)
+		})
+		require.NoErrorf(t, err, "failed to send deposit tx[%d]", i)
+		t.Logf("Deposit submitted[%d]: tx hash: %v", i, tx.Hash())
+		txs = append(txs, tx)
+	}
+
 	// At this point, we didn't wait on any blocks yet, so we can check that
 	// the first batcher tx used calldata.
 	requireEventualBatcherTxType(types.DynamicFeeTxType, 8*time.Second, true)
 
-	t.Logf("Confirming %d deposits on L1...", numDeps)
+	// Now wait for txs to confirm on L1:
+	t.Logf("Confirming %d txs on L1...", numTxs)
+	blockNum := 0
 	for i, tx := range txs {
 		rec, err := wait.ForReceiptOK(ctx, l1Client, tx.Hash())
-		require.NoErrorf(t, err, "Waiting for deposit[%d] tx on L1", i)
-		t.Logf("Deposit confirmed[%d]: L1 block num: %v, gas used: %d", i, rec.BlockNumber, rec.GasUsed)
+		require.NoErrorf(t, err, "Waiting for tx[%d] on L1", i)
+		t.Logf("Tx confirmed[%d]: L1 block num: %v, gas used: %d", i, rec.BlockNumber, rec.GasUsed)
+		if rec.BlockNumber.Int64() > int64(blockNum) {
+			blockNum = int(rec.BlockNumber.Int64())
+			block, err := l1Client.BlockByNumber(ctx, rec.BlockNumber)
+			require.NoError(t, err)
+			t.Logf("gas used %d/%d", block.GasUsed(), block.GasLimit())
+			_, _, _, feeRatio = mustGetFees()
+			if feeRatio < 16.0 {
+				break
+			}
+		}
 	}
+
+	// Check we managed to manipulate the markets correctly.
+	require.Less(t, feeRatio, 16.0, "expected fee ratio to be less than 16 (blobspace should be cheaper, even without Pectra)")
 
 	// Now wait for batcher to have switched to blob txs.
 	requireEventualBatcherTxType(types.BlobTxType, 8*time.Second, false)

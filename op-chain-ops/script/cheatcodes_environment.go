@@ -67,6 +67,10 @@ func (c *CheatCodesPrecompile) Load(account common.Address, slot [32]byte) [32]b
 // Etch implements https://book.getfoundry.sh/cheatcodes/etch
 func (c *CheatCodesPrecompile) Etch(who common.Address, code []byte) {
 	c.h.state.SetCode(who, bytes.Clone(code)) // important to clone; geth EVM will reuse the calldata memory.
+	if len(code) > 0 {
+		// if we're not just zeroing out the account: allow it to access cheatcodes
+		c.h.AllowCheatcodes(who)
+	}
 }
 
 // Deal implements https://book.getfoundry.sh/cheatcodes/deal

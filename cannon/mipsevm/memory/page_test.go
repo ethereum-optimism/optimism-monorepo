@@ -29,16 +29,16 @@ func TestCachedPage(t *testing.T) {
 	post := p.MerkleRoot()
 	require.Equal(t, pre, post, "no change expected until cache is invalidated")
 
-	p.Invalidate(42)
+	p.invalidate(42)
 	post2 := p.MerkleRoot()
 	require.NotEqual(t, post, post2, "change after cache invalidation")
 
 	p.Data[2000] = 0xef
-	p.Invalidate(42)
+	p.invalidate(42)
 	post3 := p.MerkleRoot()
 	require.Equal(t, post2, post3, "local invalidation is not global invalidation")
 
-	p.Invalidate(2000)
+	p.invalidate(2000)
 	post4 := p.MerkleRoot()
 	require.NotEqual(t, post3, post4, "can see the change now")
 

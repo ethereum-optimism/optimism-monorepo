@@ -9,6 +9,8 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/holiman/uint256"
+
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -352,6 +354,8 @@ type ABIInt256 big.Int
 
 var abiInt256Type = typeFor[ABIInt256]()
 
+var abiUint256Type = typeFor[uint256.Int]()
+
 // goTypeToSolidityType converts a Go type to the solidity ABI type definition.
 // The "internalType" is a quirk of the Geth ABI utils, for nested structures.
 // Unfortunately we have to convert to string, not directly to ABI type structure,
@@ -364,6 +368,9 @@ func goTypeToSolidityType(typ reflect.Type) (typeDef, internalType string, err e
 		reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		return strings.ToLower(typ.Kind().String()), "", nil
 	case reflect.Array:
+		if typ.AssignableTo(abiUint256Type) { // uint256.Int underlying Go type is [4]uint64
+			return "uint256", "", nil
+		}
 		if typ.Elem().Kind() == reflect.Uint8 {
 			if typ.Len() == 20 && typ.Name() == "Address" {
 				return "address", "", nil

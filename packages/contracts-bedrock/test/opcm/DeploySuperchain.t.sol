@@ -7,8 +7,8 @@ import { stdToml } from "forge-std/StdToml.sol";
 import { ProxyAdmin } from "src/universal/ProxyAdmin.sol";
 import { Proxy } from "src/universal/Proxy.sol";
 import { SuperchainConfig } from "src/L1/SuperchainConfig.sol";
-import { ProtocolVersions, ProtocolVersion } from "src/L1/ProtocolVersions.sol";
-import { DeploySuperchainInput, DeploySuperchain, DeploySuperchainOutput } from "scripts/DeploySuperchain.s.sol";
+import { IProtocolVersions, ProtocolVersion } from "interfaces/L1/IProtocolVersions.sol";
+import { DeploySuperchainInput, DeploySuperchain, DeploySuperchainOutput } from "scripts/deploy/DeploySuperchain.s.sol";
 
 contract DeploySuperchainInput_Test is Test {
     DeploySuperchainInput dsi;
@@ -24,7 +24,7 @@ contract DeploySuperchainInput_Test is Test {
         dsi = new DeploySuperchainInput();
     }
 
-    function test_getters_whenNotSet_revert() public {
+    function test_getters_whenNotSet_reverts() public {
         vm.expectRevert("DeploySuperchainInput: superchainProxyAdminOwner not set");
         dsi.superchainProxyAdminOwner();
 
@@ -58,8 +58,8 @@ contract DeploySuperchainOutput_Test is Test {
         ProxyAdmin superchainProxyAdmin = ProxyAdmin(makeAddr("superchainProxyAdmin"));
         SuperchainConfig superchainConfigImpl = SuperchainConfig(makeAddr("superchainConfigImpl"));
         SuperchainConfig superchainConfigProxy = SuperchainConfig(makeAddr("superchainConfigProxy"));
-        ProtocolVersions protocolVersionsImpl = ProtocolVersions(makeAddr("protocolVersionsImpl"));
-        ProtocolVersions protocolVersionsProxy = ProtocolVersions(makeAddr("protocolVersionsProxy"));
+        IProtocolVersions protocolVersionsImpl = IProtocolVersions(makeAddr("protocolVersionsImpl"));
+        IProtocolVersions protocolVersionsProxy = IProtocolVersions(makeAddr("protocolVersionsProxy"));
 
         // Ensure each address has code, since these are expected to be contracts.
         vm.etch(address(superchainProxyAdmin), hex"01");
@@ -83,7 +83,7 @@ contract DeploySuperchainOutput_Test is Test {
         assertEq(address(protocolVersionsProxy), address(dso.protocolVersionsProxy()), "500");
     }
 
-    function test_getters_whenNotSet_revert() public {
+    function test_getters_whenNotSet_reverts() public {
         vm.expectRevert("DeployUtils: zero address");
         dso.superchainConfigImpl();
 
@@ -194,7 +194,7 @@ contract DeploySuperchain_Test is Test {
         dso.checkOutput(dsi);
     }
 
-    function test_run_NullInput_reverts() public {
+    function test_run_nullInput_reverts() public {
         // Set default values for all inputs.
         dsi.set(dsi.superchainProxyAdminOwner.selector, defaultProxyAdminOwner);
         dsi.set(dsi.protocolVersionsOwner.selector, defaultProtocolVersionsOwner);
@@ -232,6 +232,15 @@ contract DeploySuperchain_Test is Test {
         vm.expectRevert("DeploySuperchainInput: recommendedProtocolVersion not set");
         deploySuperchain.run(dsi, dso);
         vm.store(address(dsi), bytes32(slot), bytes32(unwrap(defaultRecommendedProtocolVersion)));
+    }
+
+    function test_deploySuperchainImplementationContracts_reuseAddresses_succeeds() public {
+        deploySuperchain.deploySuperchainImplementationContracts(dsi, dso);
+        address originalConfig = address(dso.superchainConfigImpl());
+        address originalProtocolVersions = address(dso.protocolVersionsImpl());
+        deploySuperchain.deploySuperchainImplementationContracts(dsi, dso);
+        assertEq(address(dso.superchainConfigImpl()), originalConfig, "100");
+        assertEq(address(dso.protocolVersionsImpl()), originalProtocolVersions, "200");
     }
 
     function zeroOutSlotForSelector(bytes4 _selector) internal returns (uint256 slot_) {

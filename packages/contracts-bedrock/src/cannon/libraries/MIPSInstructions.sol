@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.15;
+pragma solidity ^0.8.0;
 
+// Libraries
 import { MIPSMemory } from "src/cannon/libraries/MIPSMemory.sol";
 import { MIPSState as st } from "src/cannon/libraries/MIPSState.sol";
 
 library MIPSInstructions {
     uint32 internal constant OP_LOAD_LINKED = 0x30;
     uint32 internal constant OP_STORE_CONDITIONAL = 0x38;
+    uint32 internal constant REG_RA = 31;
 
     struct CoreStepLogicParams {
         /// @param opcode The opcode value parsed from insn_.
@@ -378,11 +380,11 @@ library MIPSInstructions {
                 }
                 // lb
                 else if (_opcode == 0x20) {
-                    return signExtend((_mem >> (24 - (_rs & 3) * 8)) & 0xFF, 8);
+                    return selectSubWord(_rs, _mem, 1, true);
                 }
                 // lh
                 else if (_opcode == 0x21) {
-                    return signExtend((_mem >> (16 - (_rs & 2) * 8)) & 0xFFFF, 16);
+                    return selectSubWord(_rs, _mem, 2, true);
                 }
                 // lwl
                 else if (_opcode == 0x22) {
@@ -392,15 +394,15 @@ library MIPSInstructions {
                 }
                 // lw
                 else if (_opcode == 0x23) {
-                    return _mem;
+                    return selectSubWord(_rs, _mem, 4, true);
                 }
                 // lbu
                 else if (_opcode == 0x24) {
-                    return (_mem >> (24 - (_rs & 3) * 8)) & 0xFF;
+                    return selectSubWord(_rs, _mem, 1, false);
                 }
                 //  lhu
                 else if (_opcode == 0x25) {
-                    return (_mem >> (16 - (_rs & 2) * 8)) & 0xFFFF;
+                    return selectSubWord(_rs, _mem, 2, false);
                 }
                 //  lwr
                 else if (_opcode == 0x26) {
@@ -410,15 +412,11 @@ library MIPSInstructions {
                 }
                 //  sb
                 else if (_opcode == 0x28) {
-                    uint32 val = (_rt & 0xFF) << (24 - (_rs & 3) * 8);
-                    uint32 mask = 0xFFFFFFFF ^ uint32(0xFF << (24 - (_rs & 3) * 8));
-                    return (_mem & mask) | val;
+                    return updateSubWord(_rs, _mem, 1, _rt);
                 }
                 //  sh
                 else if (_opcode == 0x29) {
-                    uint32 val = (_rt & 0xFFFF) << (16 - (_rs & 2) * 8);
-                    uint32 mask = 0xFFFFFFFF ^ uint32(0xFFFF << (16 - (_rs & 2) * 8));
-                    return (_mem & mask) | val;
+                    return updateSubWord(_rs, _mem, 2, _rt);
                 }
                 //  swl
                 else if (_opcode == 0x2a) {
@@ -428,7 +426,7 @@ library MIPSInstructions {
                 }
                 //  sw
                 else if (_opcode == 0x2b) {
-                    return _rt;
+                    return updateSubWord(_rs, _mem, 4, _rt);
                 }
                 //  swr
                 else if (_opcode == 0x2e) {
@@ -498,8 +496,18 @@ library MIPSInstructions {
                 if (rtv == 0) {
                     shouldBranch = int32(_rs) < 0;
                 }
+                // bltzal
+                if (rtv == 0x10) {
+                    shouldBranch = int32(_rs) < 0;
+                    _registers[31] = _cpu.pc + 8; // always set regardless of branch taken
+                }
                 if (rtv == 1) {
                     shouldBranch = int32(_rs) >= 0;
+                }
+                // bgezal (i.e. bal mnemonic)
+                if (rtv == 0x11) {
+                    shouldBranch = int32(_rs) >= 0;
+                    _registers[REG_RA] = _cpu.pc + 8; // always set regardless of branch taken
                 }
             }
 
@@ -660,5 +668,70 @@ library MIPSInstructions {
             _cpu.pc = _cpu.nextPC;
             _cpu.nextPC = _cpu.nextPC + 4;
         }
+    }
+
+    /// @notice Selects a subword of byteLength size contained in memWord based on the low-order bits of vaddr
+    /// @param _vaddr The virtual address of the the subword.
+    /// @param _memWord The full word to select a subword from.
+    /// @param _byteLength The size of the subword.
+    /// @param _signExtend Whether to sign extend the selected subwrod.
+    function selectSubWord(
+        uint32 _vaddr,
+        uint32 _memWord,
+        uint32 _byteLength,
+        bool _signExtend
+    )
+        internal
+        pure
+        returns (uint32 retval_)
+    {
+        (uint32 dataMask, uint32 bitOffset, uint32 bitLength) = calculateSubWordMaskAndOffset(_vaddr, _byteLength);
+        retval_ = (_memWord >> bitOffset) & dataMask;
+        if (_signExtend) {
+            retval_ = signExtend(retval_, bitLength);
+        }
+        return retval_;
+    }
+
+    /// @notice Returns a word that has been updated by the specified subword at bit positions determined by the virtual
+    /// address
+    /// @param _vaddr The virtual address of the subword.
+    /// @param _memWord The full word to update.
+    /// @param _byteLength The size of the subword.
+    /// @param _value The subword that updates _memWord.
+    function updateSubWord(
+        uint32 _vaddr,
+        uint32 _memWord,
+        uint32 _byteLength,
+        uint32 _value
+    )
+        internal
+        pure
+        returns (uint32 word_)
+    {
+        (uint32 dataMask, uint32 bitOffset,) = calculateSubWordMaskAndOffset(_vaddr, _byteLength);
+        uint32 subWordValue = dataMask & _value;
+        uint32 memUpdateMask = dataMask << bitOffset;
+        return subWordValue << bitOffset | (~memUpdateMask) & _memWord;
+    }
+
+    function calculateSubWordMaskAndOffset(
+        uint32 _vaddr,
+        uint32 _byteLength
+    )
+        internal
+        pure
+        returns (uint32 dataMask_, uint32 bitOffset_, uint32 bitLength_)
+    {
+        uint32 bitLength = _byteLength << 3;
+        uint32 dataMask = ~uint32(0) >> (32 - bitLength);
+
+        // Figure out sub-word index based on the low-order bits in vaddr
+        uint32 byteIndexMask = _vaddr & 0x3 & ~(_byteLength - 1);
+        uint32 maxByteShift = 4 - _byteLength;
+        uint32 byteIndex = _vaddr & byteIndexMask;
+        uint32 bitOffset = (maxByteShift - byteIndex) << 3;
+
+        return (dataMask, bitOffset, bitLength);
     }
 }

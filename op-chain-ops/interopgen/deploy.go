@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/opcm"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
 
-	"github.com/ethereum-optimism/optimism/op-chain-ops/deployer/opcm"
 	"github.com/ethereum-optimism/optimism/op-chain-ops/foundry"
 	"github.com/ethereum-optimism/optimism/op-chain-ops/genesis"
 	"github.com/ethereum-optimism/optimism/op-chain-ops/genesis/beacondeposit"
@@ -111,7 +112,7 @@ func CreateL1(logger log.Logger, fa *foundry.ArtifactsFS, srcFS *foundry.SourceM
 		PrevRandao:   cfg.L1GenesisBlockMixHash,
 		BlobHashes:   nil,
 	}
-	l1Host := script.NewHost(logger.New("role", "l1", "chain", cfg.ChainID), fa, srcFS, l1Context)
+	l1Host := script.NewHost(logger.New("role", "l1", "chain", cfg.ChainID), fa, srcFS, l1Context, script.WithCreate2Deployer())
 	return l1Host
 }
 
@@ -129,11 +130,11 @@ func CreateL2(logger log.Logger, fa *foundry.ArtifactsFS, srcFS *foundry.SourceM
 	}
 	l2Host := script.NewHost(logger.New("role", "l2", "chain", l2Cfg.L2ChainID), fa, srcFS, l2Context)
 	l2Host.SetEnvVar("OUTPUT_MODE", "none") // we don't use the cheatcode, but capture the state outside of EVM execution
-	l2Host.SetEnvVar("FORK", "granite")     // latest fork
+	l2Host.SetEnvVar("FORK", "holocene")    // latest fork
 	return l2Host
 }
 
-// prepareInitialL1 deploys basics such as preinstalls to L1  (incl. EIP-4788)
+// PrepareInitialL1 deploys basics such as preinstalls to L1  (incl. EIP-4788)
 func PrepareInitialL1(l1Host *script.Host, cfg *L1Config) (*L1Deployment, error) {
 	l1Host.SetTxOrigin(sysGenesisDeployer)
 
@@ -166,12 +167,12 @@ func DeploySuperchainToL1(l1Host *script.Host, superCfg *SuperchainConfig) (*Sup
 		ChallengePeriodSeconds:          superCfg.Implementations.FaultProof.ChallengePeriodSeconds,
 		ProofMaturityDelaySeconds:       superCfg.Implementations.FaultProof.ProofMaturityDelaySeconds,
 		DisputeGameFinalityDelaySeconds: superCfg.Implementations.FaultProof.DisputeGameFinalityDelaySeconds,
-		Release:                         superCfg.Implementations.Release,
+		MipsVersion:                     superCfg.Implementations.FaultProof.MipsVersion,
+		L1ContractsRelease:              superCfg.Implementations.L1ContractsRelease,
 		SuperchainConfigProxy:           superDeployment.SuperchainConfigProxy,
 		ProtocolVersionsProxy:           superDeployment.ProtocolVersionsProxy,
-		OpcmProxyOwner:                  superDeployment.SuperchainProxyAdmin,
+		UpgradeController:               superCfg.ProxyAdminOwner,
 		UseInterop:                      superCfg.Implementations.UseInterop,
-		StandardVersionsToml:            opcm.StandardVersionsMainnetData,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to deploy Implementations contracts: %w", err)
@@ -197,17 +198,24 @@ func DeployL2ToL1(l1Host *script.Host, superCfg *SuperchainConfig, superDeployme
 	l1Host.SetTxOrigin(cfg.Deployer)
 
 	output, err := opcm.DeployOPChain(l1Host, opcm.DeployOPChainInput{
-		OpChainProxyAdminOwner: cfg.ProxyAdminOwner,
-		SystemConfigOwner:      cfg.SystemConfigOwner,
-		Batcher:                cfg.BatchSenderAddress,
-		UnsafeBlockSigner:      cfg.P2PSequencerAddress,
-		Proposer:               cfg.Proposer,
-		Challenger:             cfg.Challenger,
-		BasefeeScalar:          cfg.GasPriceOracleBaseFeeScalar,
-		BlobBaseFeeScalar:      cfg.GasPriceOracleBlobBaseFeeScalar,
-		L2ChainId:              new(big.Int).SetUint64(cfg.L2ChainID),
-		OpcmProxy:              superDeployment.OpcmProxy,
-		SaltMixer:              cfg.SaltMixer,
+		OpChainProxyAdminOwner:  cfg.ProxyAdminOwner,
+		SystemConfigOwner:       cfg.SystemConfigOwner,
+		Batcher:                 cfg.BatchSenderAddress,
+		UnsafeBlockSigner:       cfg.P2PSequencerAddress,
+		Proposer:                cfg.Proposer,
+		Challenger:              cfg.Challenger,
+		BasefeeScalar:           cfg.GasPriceOracleBaseFeeScalar,
+		BlobBaseFeeScalar:       cfg.GasPriceOracleBlobBaseFeeScalar,
+		L2ChainId:               new(big.Int).SetUint64(cfg.L2ChainID),
+		Opcm:                    superDeployment.Opcm,
+		SaltMixer:               cfg.SaltMixer,
+		GasLimit:                cfg.GasLimit,
+		DisputeGameType:         cfg.DisputeGameType,
+		DisputeAbsolutePrestate: cfg.DisputeAbsolutePrestate,
+		DisputeMaxGameDepth:     cfg.DisputeMaxGameDepth,
+		DisputeSplitDepth:       cfg.DisputeSplitDepth,
+		DisputeClockExtension:   cfg.DisputeClockExtension,
+		DisputeMaxClockDuration: cfg.DisputeMaxClockDuration,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to deploy L2 OP chain: %w", err)

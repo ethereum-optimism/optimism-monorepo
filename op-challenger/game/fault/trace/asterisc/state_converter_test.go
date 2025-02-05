@@ -1,83 +1,79 @@
 package asterisc
 
 import (
-	"compress/gzip"
-	_ "embed"
+	"context"
 	"encoding/json"
-	"os"
-	"path/filepath"
+	"errors"
 	"testing"
 
+	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/trace/vm"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
 )
 
-//go:embed test_data/state.json
-var testState []byte
+const testBinary = "./somewhere/asterisc"
 
-func TestLoadState(t *testing.T) {
-	t.Run("Uncompressed", func(t *testing.T) {
-		dir := t.TempDir()
-		path := filepath.Join(dir, "state.json")
-		require.NoError(t, os.WriteFile(path, testState, 0644))
-
-		state, err := parseState(path)
-		require.NoError(t, err)
-
-		var expected VMState
-		require.NoError(t, json.Unmarshal(testState, &expected))
-		require.Equal(t, &expected, state)
-	})
-
-	t.Run("Gzipped", func(t *testing.T) {
-		dir := t.TempDir()
-		path := filepath.Join(dir, "state.json.gz")
-		f, err := os.OpenFile(path, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0644)
-		require.NoError(t, err)
-		defer f.Close()
-		writer := gzip.NewWriter(f)
-		_, err = writer.Write(testState)
-		require.NoError(t, err)
-		require.NoError(t, writer.Close())
-
-		state, err := parseState(path)
-		require.NoError(t, err)
-
-		var expected VMState
-		require.NoError(t, json.Unmarshal(testState, &expected))
-		require.Equal(t, &expected, state)
-	})
-
-	t.Run("InvalidStateWitness", func(t *testing.T) {
-		invalidWitnessLen := asteriscWitnessLen - 1
-		state := &VMState{
-			Step:    10,
-			Exited:  true,
-			Witness: make([]byte, invalidWitnessLen),
+func TestStateConverter(t *testing.T) {
+	setup := func(t *testing.T) (*StateConverter, *capturingExecutor) {
+		vmCfg := vm.Config{
+			VmBin: testBinary,
 		}
-		err := state.validateState()
-		require.ErrorContains(t, err, "invalid witness")
+		executor := &capturingExecutor{}
+		converter := NewStateConverter(vmCfg)
+		converter.cmdExecutor = executor.exec
+		return converter, executor
+	}
+
+	t.Run("Valid", func(t *testing.T) {
+		converter, executor := setup(t)
+		data := VMState{
+			Witness:   []byte{1, 2, 3, 4},
+			StateHash: common.Hash{0xab},
+			Step:      42,
+			Exited:    true,
+			PC:        11,
+		}
+		ser, err := json.Marshal(data)
+		require.NoError(t, err)
+		executor.stdOut = string(ser)
+		proof, step, exited, err := converter.ConvertStateToProof(context.Background(), "foo.json")
+		require.NoError(t, err)
+		require.Equal(t, data.Exited, exited)
+		require.Equal(t, data.Step, step)
+		require.Equal(t, data.StateHash, proof.ClaimValue)
+		require.Equal(t, data.Witness, proof.StateData)
+		require.NotNil(t, proof.ProofData, "later validations require this to be non-nil")
+
+		require.Equal(t, testBinary, executor.binary)
+		require.Equal(t, []string{"witness", "--input", "foo.json"}, executor.args)
 	})
 
-	t.Run("InvalidStateHash", func(t *testing.T) {
-		state := &VMState{
-			Step:    10,
-			Exited:  true,
-			Witness: make([]byte, asteriscWitnessLen),
-		}
-		// Unknown exit code
-		state.StateHash[0] = 37
-		err := state.validateState()
-		require.ErrorContains(t, err, "invalid stateHash: unknown exitCode")
-		// Exited but ExitCode is VMStatusUnfinished
-		state.StateHash[0] = 3
-		err = state.validateState()
-		require.ErrorContains(t, err, "invalid stateHash: invalid exitCode")
-		// Not Exited but ExitCode is not VMStatusUnfinished
-		state.Exited = false
-		for exitCode := 0; exitCode < 3; exitCode++ {
-			state.StateHash[0] = byte(exitCode)
-			err = state.validateState()
-			require.ErrorContains(t, err, "invalid stateHash: invalid exitCode")
-		}
+	t.Run("CommandError", func(t *testing.T) {
+		converter, executor := setup(t)
+		executor.err = errors.New("boom")
+		_, _, _, err := converter.ConvertStateToProof(context.Background(), "foo.json")
+		require.ErrorIs(t, err, executor.err)
 	})
+
+	t.Run("InvalidOutput", func(t *testing.T) {
+		converter, executor := setup(t)
+		executor.stdOut = "blah blah"
+		_, _, _, err := converter.ConvertStateToProof(context.Background(), "foo.json")
+		require.ErrorContains(t, err, "failed to parse state data")
+	})
+}
+
+type capturingExecutor struct {
+	binary string
+	args   []string
+
+	stdOut string
+	stdErr string
+	err    error
+}
+
+func (c *capturingExecutor) exec(_ context.Context, binary string, args ...string) (string, string, error) {
+	c.binary = binary
+	c.args = args
+	return c.stdOut, c.stdErr, c.err
 }

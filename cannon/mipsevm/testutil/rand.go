@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"math/rand"
 
+	"github.com/ethereum-optimism/optimism/cannon/mipsevm/arch"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
 )
@@ -19,6 +20,14 @@ func NewRandHelper(seed int64) *RandHelper {
 
 func (h *RandHelper) Uint32() uint32 {
 	return h.r.Uint32()
+}
+
+func (h *RandHelper) Word() arch.Word {
+	if arch.IsMips32 {
+		return arch.Word(h.r.Uint32())
+	} else {
+		return arch.Word(h.r.Uint64())
+	}
 }
 
 func (h *RandHelper) Fraction() float64 {
@@ -57,10 +66,10 @@ func (h *RandHelper) RandHint() []byte {
 	return bytes
 }
 
-func (h *RandHelper) RandRegisters() *[32]uint32 {
-	registers := new([32]uint32)
+func (h *RandHelper) RandRegisters() *[32]arch.Word {
+	registers := new([32]arch.Word)
 	for i := 0; i < 32; i++ {
-		registers[i] = h.r.Uint32()
+		registers[i] = h.Word()
 	}
 	return registers
 }
@@ -73,8 +82,8 @@ func (h *RandHelper) RandomBytes(t require.TestingT, length int) []byte {
 	return randBytes
 }
 
-func (h *RandHelper) RandPC() uint32 {
-	return AlignPC(h.r.Uint32())
+func (h *RandHelper) RandPC() arch.Word {
+	return AlignPC(h.Word())
 }
 
 func (h *RandHelper) RandStep() uint64 {

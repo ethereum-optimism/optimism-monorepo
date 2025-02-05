@@ -14,7 +14,7 @@ import (
 
 func TestRecordSafeHeadUpdates(gt *testing.T) {
 	t := actionsHelpers.NewDefaultTesting(gt)
-	sd, miner, sequencer, verifier, verifierEng, batcher := helpers.SetupSafeDBTest(t, actionsHelpers.DefaultRollupTestParams)
+	sd, miner, sequencer, verifier, verifierEng, batcher := helpers.SetupSafeDBTest(t, actionsHelpers.DefaultRollupTestParams())
 	verifEngClient := verifierEng.EngineClient(t, sd.RollupCfg)
 
 	sequencer.ActL2PipelineFull(t)

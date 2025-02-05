@@ -9,10 +9,12 @@ import (
 	"strings"
 
 	preimage "github.com/ethereum-optimism/optimism/op-preimage"
+	clientTypes "github.com/ethereum-optimism/optimism/op-program/client/interop/types"
 	"github.com/ethereum-optimism/optimism/op-program/client/l1"
 	"github.com/ethereum-optimism/optimism/op-program/client/l2"
 	"github.com/ethereum-optimism/optimism/op-program/client/mpt"
 	"github.com/ethereum-optimism/optimism/op-program/host/kvstore"
+	hosttypes "github.com/ethereum-optimism/optimism/op-program/host/types"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -26,6 +28,8 @@ import (
 var (
 	precompileSuccess = [1]byte{1}
 	precompileFailure = [1]byte{0}
+
+	ErrAgreedPrestateUnavailable = errors.New("agreed prestate unavailable")
 )
 
 var acceleratedPrecompiles = []common.Address{
@@ -45,35 +49,54 @@ type L1BlobSource interface {
 	GetBlobs(ctx context.Context, ref eth.L1BlockRef, hashes []eth.IndexedBlobHash) ([]*eth.Blob, error)
 }
 
-type L2Source interface {
-	InfoAndTxsByHash(ctx context.Context, blockHash common.Hash) (eth.BlockInfo, types.Transactions, error)
-	NodeByHash(ctx context.Context, hash common.Hash) ([]byte, error)
-	CodeByHash(ctx context.Context, hash common.Hash) ([]byte, error)
-	OutputByRoot(ctx context.Context, root common.Hash) (eth.Output, error)
-}
-
 type Prefetcher struct {
-	logger        log.Logger
-	l1Fetcher     L1Source
-	l1BlobFetcher L1BlobSource
-	l2Fetcher     L2Source
-	lastHint      string
-	kvStore       kvstore.KV
+	logger         log.Logger
+	l1Fetcher      L1Source
+	l1BlobFetcher  L1BlobSource
+	defaultChainID eth.ChainID
+	l2Sources      hosttypes.L2Sources
+	lastHint       string
+	kvStore        kvstore.KV
+	// l2Head is the L2 block hash to retrieve output root from if interop is disabled
+	l2Head common.Hash
+
+	// Used to run the program for native block execution
+	executor       ProgramExecutor
+	agreedPrestate []byte
 }
 
-func NewPrefetcher(logger log.Logger, l1Fetcher L1Source, l1BlobFetcher L1BlobSource, l2Fetcher L2Source, kvStore kvstore.KV) *Prefetcher {
+func NewPrefetcher(
+	logger log.Logger,
+	l1Fetcher L1Source,
+	l1BlobFetcher L1BlobSource,
+	defaultChainID eth.ChainID,
+	l2Sources hosttypes.L2Sources,
+	kvStore kvstore.KV,
+	executor ProgramExecutor,
+	l2Head common.Hash,
+	agreedPrestate []byte,
+) *Prefetcher {
 	return &Prefetcher{
-		logger:        logger,
-		l1Fetcher:     NewRetryingL1Source(logger, l1Fetcher),
-		l1BlobFetcher: NewRetryingL1BlobSource(logger, l1BlobFetcher),
-		l2Fetcher:     NewRetryingL2Source(logger, l2Fetcher),
-		kvStore:       kvStore,
+		logger:         logger,
+		l1Fetcher:      NewRetryingL1Source(logger, l1Fetcher),
+		l1BlobFetcher:  NewRetryingL1BlobSource(logger, l1BlobFetcher),
+		defaultChainID: defaultChainID,
+		l2Sources:      l2Sources,
+		kvStore:        kvStore,
+		executor:       executor,
+		l2Head:         l2Head,
+		agreedPrestate: agreedPrestate,
 	}
 }
 
 func (p *Prefetcher) Hint(hint string) error {
 	p.logger.Trace("Received hint", "hint", hint)
 	p.lastHint = hint
+
+	// This is a special case to force block execution in order to populate the cache with preimage data
+	if hintType, _, err := parseHint(hint); err == nil && hintType == l2.HintL2BlockData {
+		return p.prefetch(context.Background(), hint)
+	}
 	return nil
 }
 
@@ -236,11 +259,15 @@ func (p *Prefetcher) prefetch(ctx context.Context, hint string) error {
 		}
 		return p.kvStore.Put(preimage.PrecompileKey(inputHash).PreimageKey(), result)
 	case l2.HintL2BlockHeader, l2.HintL2Transactions:
-		if len(hintBytes) != 32 {
-			return fmt.Errorf("invalid L2 header/tx hint: %x", hint)
+		hash, chainID, err := p.parseHashAndChainID("L2 header/tx", hintBytes)
+		if err != nil {
+			return err
 		}
-		hash := common.Hash(hintBytes)
-		header, txs, err := p.l2Fetcher.InfoAndTxsByHash(ctx, hash)
+		source, err := p.l2Sources.ForChainID(chainID)
+		if err != nil {
+			return err
+		}
+		header, txs, err := source.InfoAndTxsByHash(ctx, hash)
 		if err != nil {
 			return fmt.Errorf("failed to fetch L2 block %s: %w", hash, err)
 		}
@@ -254,37 +281,132 @@ func (p *Prefetcher) prefetch(ctx context.Context, hint string) error {
 		}
 		return p.storeTransactions(txs)
 	case l2.HintL2StateNode:
-		if len(hintBytes) != 32 {
-			return fmt.Errorf("invalid L2 state node hint: %x", hint)
+		hash, chainID, err := p.parseHashAndChainID("L2 state node", hintBytes)
+		if err != nil {
+			return err
 		}
-		hash := common.Hash(hintBytes)
-		node, err := p.l2Fetcher.NodeByHash(ctx, hash)
+		source, err := p.l2Sources.ForChainID(chainID)
+		if err != nil {
+			return err
+		}
+		node, err := source.NodeByHash(ctx, hash)
 		if err != nil {
 			return fmt.Errorf("failed to fetch L2 state node %s: %w", hash, err)
 		}
 		return p.kvStore.Put(preimage.Keccak256Key(hash).PreimageKey(), node)
-	case l2.HintL2Code:
-		if len(hintBytes) != 32 {
-			return fmt.Errorf("invalid L2 code hint: %x", hint)
+	case l2.HintL2Receipts:
+		hash, chainID, err := p.parseHashAndChainID("L2 receipts", hintBytes)
+		if err != nil {
+			return err
 		}
-		hash := common.Hash(hintBytes)
-		code, err := p.l2Fetcher.CodeByHash(ctx, hash)
+		source, err := p.l2Sources.ForChainID(chainID)
+		if err != nil {
+			return err
+		}
+		_, receipts, err := source.FetchReceipts(ctx, hash)
+		if err != nil {
+			return fmt.Errorf("failed to fetch L1 block %s receipts: %w", hash, err)
+		}
+		return p.storeReceipts(receipts)
+	case l2.HintL2Code:
+		hash, chainID, err := p.parseHashAndChainID("L2 code", hintBytes)
+		if err != nil {
+			return err
+		}
+		source, err := p.l2Sources.ForChainID(chainID)
+		if err != nil {
+			return err
+		}
+		code, err := source.CodeByHash(ctx, hash)
 		if err != nil {
 			return fmt.Errorf("failed to fetch L2 contract code %s: %w", hash, err)
 		}
 		return p.kvStore.Put(preimage.Keccak256Key(hash).PreimageKey(), code)
 	case l2.HintL2Output:
-		if len(hintBytes) != 32 {
-			return fmt.Errorf("invalid L2 output hint: %x", hint)
-		}
-		hash := common.Hash(hintBytes)
-		output, err := p.l2Fetcher.OutputByRoot(ctx, hash)
+		requestedHash, chainID, err := p.parseHashAndChainID("L2 output", hintBytes)
 		if err != nil {
-			return fmt.Errorf("failed to fetch L2 output root %s: %w", hash, err)
+			return err
 		}
-		return p.kvStore.Put(preimage.Keccak256Key(hash).PreimageKey(), output.Marshal())
+		source, err := p.l2Sources.ForChainID(chainID)
+		if err != nil {
+			return err
+		}
+		if len(p.agreedPrestate) == 0 {
+			output, err := source.OutputByRoot(ctx, p.l2Head)
+			if err != nil {
+				return fmt.Errorf("failed to fetch L2 output root for block %s: %w", p.l2Head, err)
+			}
+			hash := common.Hash(eth.OutputRoot(output))
+			if requestedHash != hash {
+				return fmt.Errorf("output root %v from block %v does not match requested root: %v", hash, p.l2Head, requestedHash)
+			}
+			return p.kvStore.Put(preimage.Keccak256Key(hash).PreimageKey(), output.Marshal())
+		} else {
+			prestate, err := clientTypes.UnmarshalTransitionState(p.agreedPrestate)
+			if err != nil {
+				return fmt.Errorf("cannot fetch output root, invalid agreed prestate: %w", err)
+			}
+			superRoot, err := eth.UnmarshalSuperRoot(prestate.SuperRoot)
+			if err != nil {
+				return fmt.Errorf("cannot fetch output root, invalid super root in prestate: %w", err)
+			}
+			superV1, ok := superRoot.(*eth.SuperV1)
+			if !ok {
+				return fmt.Errorf("cannot fetch output root, unsupported super root version in prestate: %v", superRoot.Version())
+			}
+			blockNum, err := source.RollupConfig().TargetBlockNumber(superV1.Timestamp)
+			if err != nil {
+				return fmt.Errorf("cannot fetch output root, failed to calculate block number at timestamp %v: %w", superV1.Timestamp, err)
+			}
+			output, err := source.OutputByNumber(ctx, blockNum)
+			if err != nil {
+				return fmt.Errorf("failed to fetch L2 output root for block %v: %w", blockNum, err)
+			}
+			return p.kvStore.Put(preimage.Keccak256Key(eth.OutputRoot(output)).PreimageKey(), output.Marshal())
+		}
+	case l2.HintL2BlockData:
+		if p.executor == nil {
+			return fmt.Errorf("this prefetcher does not support native block execution")
+		}
+		if len(hintBytes) != 32+32+8 {
+			return fmt.Errorf("invalid L2 block data hint: %x", hint)
+		}
+		agreedBlockHash := common.Hash(hintBytes[:32])
+		blockHash := common.Hash(hintBytes[32:64])
+		chainID := eth.ChainIDFromUInt64(binary.BigEndian.Uint64(hintBytes[64:72]))
+		key := BlockDataKey(blockHash)
+		if _, err := p.kvStore.Get(key.Key()); err == nil {
+			return nil
+		}
+		if err := p.nativeReExecuteBlock(ctx, agreedBlockHash, blockHash, chainID); err != nil {
+			return fmt.Errorf("failed to re-execute block: %w", err)
+		}
+		return p.kvStore.Put(BlockDataKey(blockHash).Key(), []byte{1})
+	case l2.HintAgreedPrestate:
+		if len(p.agreedPrestate) == 0 {
+			return ErrAgreedPrestateUnavailable
+		}
+		hash := crypto.Keccak256Hash(p.agreedPrestate)
+		return p.kvStore.Put(preimage.Keccak256Key(hash).PreimageKey(), p.agreedPrestate)
 	}
 	return fmt.Errorf("unknown hint type: %v", hintType)
+}
+
+func (p *Prefetcher) parseHashAndChainID(hintType string, hintBytes []byte) (common.Hash, eth.ChainID, error) {
+	switch len(hintBytes) {
+	case 32:
+		return common.Hash(hintBytes), p.defaultChainID, nil
+	case 40:
+		return common.Hash(hintBytes[0:32]), eth.ChainIDFromUInt64(binary.BigEndian.Uint64(hintBytes[32:])), nil
+	default:
+		return common.Hash{}, eth.ChainID{}, fmt.Errorf("invalid %s hint: %x", hintType, hintBytes)
+	}
+}
+
+type BlockDataKey [32]byte
+
+func (p BlockDataKey) Key() [32]byte {
+	return crypto.Keccak256Hash([]byte("block_data"), p[:])
 }
 
 func (p *Prefetcher) storeReceipts(receipts types.Receipts) error {

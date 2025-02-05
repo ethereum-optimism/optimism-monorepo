@@ -5,7 +5,6 @@ import { StandardBridge } from "src/universal/StandardBridge.sol";
 import { CommonTest } from "test/setup/CommonTest.sol";
 import { OptimismMintableERC20, ILegacyMintableERC20 } from "src/universal/OptimismMintableERC20.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { Constants } from "src/libraries/Constants.sol";
 
 /// @title StandardBridgeTester
 /// @notice Simple wrapper around the StandardBridge contract that exposes
@@ -21,16 +20,12 @@ contract StandardBridgeTester is StandardBridge {
         return _isCorrectTokenPair(_mintableToken, _otherToken);
     }
 
-    function gasPayingToken() internal pure override returns (address, uint8) {
-        return (Constants.ETHER, 18);
-    }
-
     receive() external payable override { }
 }
 
 /// @title LegacyMintable
 /// @notice Simple implementation of the legacy OptimismMintableERC20.
-contract LegacyMintable is ERC20, ILegacyMintableERC20 {
+contract LegacyMintable is ERC20 {
     constructor(string memory _name, string memory _ticker) ERC20(_name, _ticker) { }
 
     function l1Token() external pure returns (address) {

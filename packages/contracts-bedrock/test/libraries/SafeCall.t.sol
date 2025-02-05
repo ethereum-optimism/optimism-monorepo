@@ -1,20 +1,20 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
-// Testing utilities
+// Forge
 import { Test } from "forge-std/Test.sol";
+import { VmSafe } from "forge-std/Vm.sol";
 import { StdCheatsSafe } from "forge-std/StdCheats.sol";
 
-// Target contract
+// Libraries
+import { LibString } from "@solady/utils/LibString.sol";
 import { SafeCall } from "src/libraries/SafeCall.sol";
 
 contract SafeCall_Test is Test {
     /// @notice Helper function to deduplicate code. Makes all assumptions required for these tests.
     function assumeNot(address _addr) internal {
-        vm.assume(_addr.balance == 0);
+        vm.deal(_addr, 0);
         vm.assume(_addr != address(this));
-        vm.assume(uint256(uint160(_addr)) > uint256(256)); // TODO temp fix until new forge-std release with modern
-            // precompiles: https://github.com/foundry-rs/forge-std/pull/594
         assumeAddressIsNot(_addr, StdCheatsSafe.AddressType.ForgeAddress, StdCheatsSafe.AddressType.Precompile);
     }
 
@@ -54,7 +54,7 @@ contract SafeCall_Test is Test {
 
     /// @dev Tests that the `send` function with value succeeds.
     function testFuzz_sendWithGas_succeeds(address _from, address _to, uint64 _gas, uint256 _value) external {
-        vm.assume(_gas != 0);
+        _gas = uint64(bound(_gas, 1, type(uint64).max));
         sendTest({ _from: _from, _to: _to, _gas: _gas, _value: _value });
     }
 
@@ -124,12 +124,35 @@ contract SafeCall_Test is Test {
         for (uint64 i = 40_000; i < 100_000; i++) {
             uint256 snapshot = vm.snapshot();
 
-            // 65_907 is the exact amount of gas required to make the safe call
-            // successfully.
-            if (i < 65_907) {
+            // The values below are best gotten by setting the value to a high number and running the test with a
+            // verbosity of `-vvv` then setting the value to the value (gas arg) of the failed assertion.
+            // A faster way to do this for forge coverage cases, is to comment out the optimizer and optimizer runs in
+            // the foundry.toml file and then run forge test. This is faster because forge test only compiles modified
+            // contracts unlike forge coverage.
+            uint256 expected;
+
+            // Because forge coverage always runs with the optimizer disabled,
+            // if forge coverage is run before testing this with forge test or forge snapshot, forge clean should be
+            // run first so that it recompiles the contracts using the foundry.toml optimizer settings.
+            if (
+                vm.isContext(VmSafe.ForgeContext.Coverage)
+                    || LibString.eq(vm.envOr("FOUNDRY_PROFILE", string("default")), "lite")
+            ) {
+                // 66_290 is the exact amount of gas required to make the safe call
+                // successfully with the optimizer disabled (ran via forge coverage)
+                expected = 66_290;
+            } else if (vm.isContext(VmSafe.ForgeContext.Test) || vm.isContext(VmSafe.ForgeContext.Snapshot)) {
+                // 65_922 is the exact amount of gas required to make the safe call
+                // successfully with the foundry.toml optimizer settings.
+                expected = 65_922;
+            } else {
+                revert("SafeCall_Test: unknown context");
+            }
+
+            if (i < expected) {
                 assertFalse(caller.makeSafeCall(i, 25_000));
             } else {
-                vm.expectCallMinGas(address(caller), 0, 25_000, abi.encodeWithSelector(caller.setA.selector, 1));
+                vm.expectCallMinGas(address(caller), 0, 25_000, abi.encodeCall(caller.setA, (1)));
                 assertTrue(caller.makeSafeCall(i, 25_000));
             }
 
@@ -144,12 +167,35 @@ contract SafeCall_Test is Test {
         for (uint64 i = 15_200_000; i < 15_300_000; i++) {
             uint256 snapshot = vm.snapshot();
 
-            // 15_278_606 is the exact amount of gas required to make the safe call
-            // successfully.
-            if (i < 15_278_606) {
+            // The values below are best gotten by setting the value to a high number and running the test with a
+            // verbosity of `-vvv` then setting the value to the value (gas arg) of the failed assertion.
+            // A faster way to do this for forge coverage cases, is to comment out the optimizer and optimizer runs in
+            // the foundry.toml file and then run forge test. This is faster because forge test only compiles modified
+            // contracts unlike forge coverage.
+            uint256 expected;
+
+            // Because forge coverage always runs with the optimizer disabled,
+            // if forge coverage is run before testing this with forge test or forge snapshot, forge clean should be
+            // run first so that it recompiles the contracts using the foundry.toml optimizer settings.
+            if (
+                vm.isContext(VmSafe.ForgeContext.Coverage)
+                    || LibString.eq(vm.envOr("FOUNDRY_PROFILE", string("default")), "lite")
+            ) {
+                // 15_278_989 is the exact amount of gas required to make the safe call
+                // successfully with the optimizer disabled (ran via forge coverage)
+                expected = 15_278_989;
+            } else if (vm.isContext(VmSafe.ForgeContext.Test) || vm.isContext(VmSafe.ForgeContext.Snapshot)) {
+                // 15_278_621 is the exact amount of gas required to make the safe call
+                // successfully with the foundry.toml optimizer settings.
+                expected = 15_278_621;
+            } else {
+                revert("SafeCall_Test: unknown context");
+            }
+
+            if (i < expected) {
                 assertFalse(caller.makeSafeCall(i, 15_000_000));
             } else {
-                vm.expectCallMinGas(address(caller), 0, 15_000_000, abi.encodeWithSelector(caller.setA.selector, 1));
+                vm.expectCallMinGas(address(caller), 0, 15_000_000, abi.encodeCall(caller.setA, (1)));
                 assertTrue(caller.makeSafeCall(i, 15_000_000));
             }
 
@@ -162,11 +208,11 @@ contract SimpleSafeCaller {
     uint256 public a;
 
     function makeSafeCall(uint64 gas, uint64 minGas) external returns (bool) {
-        return SafeCall.call(address(this), gas, 0, abi.encodeWithSelector(this.makeSafeCallMinGas.selector, minGas));
+        return SafeCall.call(address(this), gas, 0, abi.encodeCall(this.makeSafeCallMinGas, (minGas)));
     }
 
     function makeSafeCallMinGas(uint64 minGas) external returns (bool) {
-        return SafeCall.callWithMinGas(address(this), minGas, 0, abi.encodeWithSelector(this.setA.selector, 1));
+        return SafeCall.callWithMinGas(address(this), minGas, 0, abi.encodeCall(this.setA, (1)));
     }
 
     function setA(uint256 _a) external {

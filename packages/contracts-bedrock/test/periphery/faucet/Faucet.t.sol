@@ -103,6 +103,24 @@ contract FaucetTest is Faucet_Initializer {
         assertEq(faucet.ADMIN(), faucetContractAdmin);
     }
 
+    function test_configure_whenAdmin_succeeds() external {
+        vm.startPrank(faucetContractAdmin);
+        faucet.configure(optimistNftFam, Faucet.ModuleConfig("OptimistNftModule", true, 1 days, 1 ether));
+
+        (string memory name, bool enabled, uint256 ttl, uint256 amount) = faucet.modules(optimistNftFam);
+        assertEq(name, "OptimistNftModule");
+        assertEq(enabled, true);
+        assertEq(ttl, 1 days);
+        assertEq(amount, 1 ether);
+
+        assertTrue(faucet.isModuleEnabled(optimistNftFam));
+    }
+
+    function test_configure_whenNotAdmin_reverts() external {
+        vm.expectRevert("Faucet: function can only be called by admin");
+        faucet.configure(optimistNftFam, Faucet.ModuleConfig("OptimistNftModule", true, 1 days, 1 ether));
+    }
+
     function test_authAdmin_drip_succeeds() external {
         _enableFaucetAuthModules();
         bytes32 nonce = faucetHelper.consumeNonce();

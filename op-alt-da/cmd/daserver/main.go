@@ -13,7 +13,7 @@ import (
 	oplog "github.com/ethereum-optimism/optimism/op-service/log"
 )
 
-var Version = "v0.0.1"
+var Version = "v0.0.0"
 
 func main() {
 	oplog.SetupDefaults()

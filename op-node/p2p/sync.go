@@ -346,6 +346,9 @@ func (s *SyncClient) AddPeer(id peer.ID) {
 func (s *SyncClient) RemovePeer(id peer.ID) {
 	s.peersLock.Lock()
 	defer s.peersLock.Unlock()
+	if s.closingPeers {
+		return
+	}
 	cancel, ok := s.peers[id]
 	if !ok {
 		s.log.Warn("cannot remove peer from sync duties, peer was not registered", "peer", id)
@@ -700,7 +703,8 @@ func (s *SyncClient) doRequest(ctx context.Context, id peer.ID, expectedBlockNum
 
 	version := binary.LittleEndian.Uint32(versionData[:])
 	isCanyon := s.cfg.IsCanyon(s.cfg.TimestampForBlock(expectedBlockNum))
-	envelope, err := readExecutionPayload(version, data, isCanyon)
+	isIsthmus := s.cfg.IsIsthmus(s.cfg.TimestampForBlock(expectedBlockNum))
+	envelope, err := readExecutionPayload(version, data, isCanyon, isIsthmus)
 	if err != nil {
 		return err
 	}
@@ -732,7 +736,7 @@ func panicGuard[T, S, U any](fn func(T, S, U) error) func(T, S, U) error {
 }
 
 // readExecutionPayload will unmarshal the supplied data into an ExecutionPayloadEnvelope.
-func readExecutionPayload(version uint32, data []byte, isCanyon bool) (*eth.ExecutionPayloadEnvelope, error) {
+func readExecutionPayload(version uint32, data []byte, isCanyon, isIsthmus bool) (*eth.ExecutionPayloadEnvelope, error) {
 	switch version {
 	case 0:
 		blockVersion := eth.BlockV1
@@ -746,7 +750,11 @@ func readExecutionPayload(version uint32, data []byte, isCanyon bool) (*eth.Exec
 		return &eth.ExecutionPayloadEnvelope{ExecutionPayload: &res}, nil
 	case 1:
 		envelope := &eth.ExecutionPayloadEnvelope{}
-		if err := envelope.UnmarshalSSZ(uint32(len(data)), bytes.NewReader(data)); err != nil {
+		blockVersion := eth.BlockV3
+		if isIsthmus {
+			blockVersion = eth.BlockV4
+		}
+		if err := envelope.UnmarshalSSZ(blockVersion, uint32(len(data)), bytes.NewReader(data)); err != nil {
 			return nil, fmt.Errorf("failed to decode execution payload envelope response: %w", err)
 		}
 		return envelope, nil

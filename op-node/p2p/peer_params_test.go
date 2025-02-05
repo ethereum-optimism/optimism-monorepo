@@ -43,14 +43,14 @@ func (testSuite *PeerParamsTestSuite) TestNewPeerScoreThresholds() {
 
 // TestGetPeerScoreParams validates the peer score parameters.
 func (testSuite *PeerParamsTestSuite) TestGetPeerScoreParams_None() {
-	params, err := GetScoringParams("none", chaincfg.Sepolia)
+	params, err := GetScoringParams("none", chaincfg.OPSepolia())
 	testSuite.NoError(err)
 	testSuite.Nil(params)
 }
 
 // TestLightPeerScoreParams validates the light peer score params.
 func (testSuite *PeerParamsTestSuite) TestGetPeerScoreParams_Light() {
-	cfg := chaincfg.Sepolia
+	cfg := chaincfg.OPSepolia()
 	cfg.BlockTime = 1
 	slot := time.Duration(cfg.BlockTime) * time.Second
 	epoch := 6 * slot
@@ -98,7 +98,7 @@ func (testSuite *PeerParamsTestSuite) TestGetPeerScoreParams_Light() {
 
 // TestParamsZeroBlockTime validates peer score params use default slot for 0 block time.
 func (testSuite *PeerParamsTestSuite) TestParamsZeroBlockTime() {
-	cfg := chaincfg.Sepolia
+	cfg := chaincfg.OPSepolia()
 	cfg.BlockTime = 0
 	slot := 2 * time.Second
 	params, err := GetScoringParams("light", cfg)

@@ -2,7 +2,6 @@
 pragma solidity ^0.8.15;
 
 // Testing
-import { Test } from "forge-std/Test.sol";
 import { CommonTest } from "test/setup/CommonTest.sol";
 
 // Libraries
@@ -18,11 +17,10 @@ contract DelayedWETH_Init is CommonTest {
     event Unwrap(address indexed src, uint256 wad);
 
     function setUp() public virtual override {
-        super.enableFaultProofs();
         super.setUp();
 
         // Transfer ownership of delayed WETH to the test contract.
-        vm.prank(deploy.mustGetAddress("SystemOwnerSafe"));
+        vm.prank(delayedWeth.owner());
         delayedWeth.transferOwnership(address(this));
     }
 }
@@ -65,6 +63,110 @@ contract DelayedWETH_Unlock_Test is DelayedWETH_Init {
 }
 
 contract DelayedWETH_Withdraw_Test is DelayedWETH_Init {
+    /// @dev Tests that withdrawing while unlocked and delay has passed is successful.
+    function test_withdraw_whileUnlocked_succeeds() public {
+        // Deposit some WETH.
+        vm.prank(alice);
+        delayedWeth.deposit{ value: 1 ether }();
+        uint256 balance = address(alice).balance;
+
+        // Unlock the withdrawal.
+        vm.prank(alice);
+        delayedWeth.unlock(alice, 1 ether);
+
+        // Wait for the delay.
+        vm.warp(block.timestamp + delayedWeth.delay() + 1);
+
+        // Withdraw the WETH.
+        vm.expectEmit(true, true, false, false);
+        emit Withdrawal(address(alice), 1 ether);
+        vm.prank(alice);
+        delayedWeth.withdraw(1 ether);
+        assertEq(address(alice).balance, balance + 1 ether);
+    }
+
+    /// @dev Tests that withdrawing when unlock was not called fails.
+    function test_withdraw_whileLocked_fails() public {
+        // Deposit some WETH.
+        vm.prank(alice);
+        delayedWeth.deposit{ value: 1 ether }();
+        uint256 balance = address(alice).balance;
+
+        // Withdraw fails when unlock not called.
+        vm.expectRevert("DelayedWETH: withdrawal not unlocked");
+        vm.prank(alice);
+        delayedWeth.withdraw(0 ether);
+        assertEq(address(alice).balance, balance);
+    }
+
+    /// @dev Tests that withdrawing while locked and delay has not passed fails.
+    function test_withdraw_whileLockedNotLongEnough_fails() public {
+        // Deposit some WETH.
+        vm.prank(alice);
+        delayedWeth.deposit{ value: 1 ether }();
+        uint256 balance = address(alice).balance;
+
+        // Call unlock.
+        vm.prank(alice);
+        delayedWeth.unlock(alice, 1 ether);
+
+        // Wait for the delay, but not long enough.
+        vm.warp(block.timestamp + delayedWeth.delay() - 1);
+
+        // Withdraw fails when delay not met.
+        vm.expectRevert("DelayedWETH: withdrawal delay not met");
+        vm.prank(alice);
+        delayedWeth.withdraw(1 ether);
+        assertEq(address(alice).balance, balance);
+    }
+
+    /// @dev Tests that withdrawing more than unlocked amount fails.
+    function test_withdraw_tooMuch_fails() public {
+        // Deposit some WETH.
+        vm.prank(alice);
+        delayedWeth.deposit{ value: 1 ether }();
+        uint256 balance = address(alice).balance;
+
+        // Unlock the withdrawal.
+        vm.prank(alice);
+        delayedWeth.unlock(alice, 1 ether);
+
+        // Wait for the delay.
+        vm.warp(block.timestamp + delayedWeth.delay() + 1);
+
+        // Withdraw too much fails.
+        vm.expectRevert("DelayedWETH: insufficient unlocked withdrawal");
+        vm.prank(alice);
+        delayedWeth.withdraw(2 ether);
+        assertEq(address(alice).balance, balance);
+    }
+
+    /// @dev Tests that withdrawing while paused fails.
+    function test_withdraw_whenPaused_fails() public {
+        // Deposit some WETH.
+        vm.prank(alice);
+        delayedWeth.deposit{ value: 1 ether }();
+
+        // Unlock the withdrawal.
+        vm.prank(alice);
+        delayedWeth.unlock(alice, 1 ether);
+
+        // Wait for the delay.
+        vm.warp(block.timestamp + delayedWeth.delay() + 1);
+
+        // Pause the contract.
+        address guardian = optimismPortal2.guardian();
+        vm.prank(guardian);
+        superchainConfig.pause("identifier");
+
+        // Withdraw fails.
+        vm.expectRevert("DelayedWETH: contract is paused");
+        vm.prank(alice);
+        delayedWeth.withdraw(1 ether);
+    }
+}
+
+contract DelayedWETH_WithdrawFrom_Test is DelayedWETH_Init {
     /// @dev Tests that withdrawing while unlocked and delay has passed is successful.
     function test_withdraw_whileUnlocked_succeeds() public {
         // Deposit some WETH.
@@ -157,7 +259,7 @@ contract DelayedWETH_Withdraw_Test is DelayedWETH_Init {
         vm.warp(block.timestamp + delayedWeth.delay() + 1);
 
         // Pause the contract.
-        address guardian = optimismPortal.guardian();
+        address guardian = optimismPortal2.guardian();
         vm.prank(guardian);
         superchainConfig.pause("identifier");
 
@@ -250,26 +352,48 @@ contract DelayedWETH_Recover_Test is DelayedWETH_Init {
 
 contract DelayedWETH_Hold_Test is DelayedWETH_Init {
     /// @dev Tests that holding WETH succeeds.
-    function test_hold_succeeds() public {
+    function test_hold_byOwner_succeeds() public {
         uint256 amount = 1 ether;
 
         // Pretend to be alice and deposit some WETH.
         vm.prank(alice);
         delayedWeth.deposit{ value: amount }();
 
+        // Get our balance before.
+        uint256 initialBalance = delayedWeth.balanceOf(address(this));
+
         // Hold some WETH.
         vm.expectEmit(true, true, true, false);
         emit Approval(alice, address(this), amount);
         delayedWeth.hold(alice, amount);
 
-        // Verify the allowance.
-        assertEq(delayedWeth.allowance(alice, address(this)), amount);
-
-        // We can transfer.
-        delayedWeth.transferFrom(alice, address(this), amount);
+        // Get our balance after.
+        uint256 finalBalance = delayedWeth.balanceOf(address(this));
 
         // Verify the transfer.
-        assertEq(delayedWeth.balanceOf(address(this)), amount);
+        assertEq(finalBalance, initialBalance + amount);
+    }
+
+    function test_hold_withoutAmount_succeeds() public {
+        uint256 amount = 1 ether;
+
+        // Pretend to be alice and deposit some WETH.
+        vm.prank(alice);
+        delayedWeth.deposit{ value: amount }();
+
+        // Get our balance before.
+        uint256 initialBalance = delayedWeth.balanceOf(address(this));
+
+        // Hold some WETH.
+        vm.expectEmit(true, true, true, false);
+        emit Approval(alice, address(this), amount);
+        delayedWeth.hold(alice); // without amount parameter
+
+        // Get our balance after.
+        uint256 finalBalance = delayedWeth.balanceOf(address(this));
+
+        // Verify the transfer.
+        assertEq(finalBalance, initialBalance + amount);
     }
 
     /// @dev Tests that holding WETH by non-owner fails.

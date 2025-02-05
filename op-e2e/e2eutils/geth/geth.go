@@ -9,6 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/core/txpool/blobpool"
+	"github.com/ethereum/go-ethereum/core/txpool/legacypool"
 	"github.com/ethereum/go-ethereum/eth"
 	"github.com/ethereum/go-ethereum/eth/catalyst"
 	"github.com/ethereum/go-ethereum/eth/ethconfig"
@@ -49,8 +50,8 @@ func InitL1(blockTime uint64, finalizedDistance uint64, genesis *core.Genesis, c
 		HTTPPort:    0,
 		WSHost:      "127.0.0.1",
 		WSPort:      0,
-		WSModules:   []string{"debug", "admin", "eth", "txpool", "net", "rpc", "web3", "personal", "engine"},
-		HTTPModules: []string{"debug", "admin", "eth", "txpool", "net", "rpc", "web3", "personal", "engine"},
+		WSModules:   []string{"debug", "admin", "eth", "txpool", "net", "rpc", "web3", "personal", "engine", "miner"},
+		HTTPModules: []string{"debug", "admin", "eth", "txpool", "net", "rpc", "web3", "personal", "engine", "miner"},
 	}
 
 	gethInstance, err := createGethNode(false, nodeConfig, ethConfig, opts...)
@@ -82,8 +83,8 @@ func defaultNodeConfig(name string, jwtPath string) *node.Config {
 		AuthPort:    0,
 		HTTPHost:    "127.0.0.1",
 		HTTPPort:    0,
-		WSModules:   []string{"debug", "admin", "eth", "txpool", "net", "rpc", "web3", "personal", "engine"},
-		HTTPModules: []string{"debug", "admin", "eth", "txpool", "net", "rpc", "web3", "personal", "engine"},
+		WSModules:   []string{"debug", "admin", "eth", "txpool", "net", "rpc", "web3", "personal", "engine", "miner"},
+		HTTPModules: []string{"debug", "admin", "eth", "txpool", "net", "rpc", "web3", "personal", "engine", "miner"},
 		JWTSecret:   jwtPath,
 	}
 }
@@ -103,6 +104,9 @@ func InitL2(name string, genesis *core.Genesis, jwtPath string, opts ...GethOpti
 			GasPrice:            nil,
 			// enough to build blocks within 1 second, but high enough to avoid unnecessary test CPU cycles.
 			Recommit: time.Millisecond * 400,
+		},
+		TxPool: legacypool.Config{
+			NoLocals: true,
 		},
 	}
 	nodeConfig := defaultNodeConfig(fmt.Sprintf("l2-geth-%v", name), jwtPath)

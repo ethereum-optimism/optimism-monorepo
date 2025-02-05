@@ -9,9 +9,11 @@ import (
 
 	gameTypes "github.com/ethereum-optimism/optimism/op-challenger/game/types"
 	monTypes "github.com/ethereum-optimism/optimism/op-dispute-mon/mon/types"
+	"github.com/ethereum-optimism/optimism/op-service/clock"
 	"github.com/ethereum-optimism/optimism/op-service/sources/batching/rpcblock"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
+	"golang.org/x/exp/maps"
 )
 
 var (
@@ -29,20 +31,23 @@ type Enricher interface {
 
 type Extractor struct {
 	logger         log.Logger
+	clock          clock.Clock
 	createContract CreateGameCaller
 	fetchGames     FactoryGameFetcher
 	maxConcurrency int
 	enrichers      []Enricher
 	ignoredGames   map[common.Address]bool
+	latestGameData map[common.Address]*monTypes.EnrichedGameData
 }
 
-func NewExtractor(logger log.Logger, creator CreateGameCaller, fetchGames FactoryGameFetcher, ignoredGames []common.Address, maxConcurrency uint, enrichers ...Enricher) *Extractor {
+func NewExtractor(logger log.Logger, cl clock.Clock, creator CreateGameCaller, fetchGames FactoryGameFetcher, ignoredGames []common.Address, maxConcurrency uint, enrichers ...Enricher) *Extractor {
 	ignored := make(map[common.Address]bool)
 	for _, game := range ignoredGames {
 		ignored[game] = true
 	}
 	return &Extractor{
 		logger:         logger,
+		clock:          cl,
 		createContract: creator,
 		fetchGames:     fetchGames,
 		maxConcurrency: int(maxConcurrency),
@@ -61,7 +66,6 @@ func (e *Extractor) Extract(ctx context.Context, blockHash common.Hash, minTimes
 }
 
 func (e *Extractor) enrichGames(ctx context.Context, blockHash common.Hash, games []gameTypes.GameMetadata) ([]*monTypes.EnrichedGameData, int, int) {
-	var enrichedGames []*monTypes.EnrichedGameData
 	var ignored atomic.Int32
 	var failed atomic.Int32
 
@@ -101,8 +105,14 @@ func (e *Extractor) enrichGames(ctx context.Context, blockHash common.Hash, game
 		}()
 	}
 
-	// Push each game into the channel
+	// Create a new store for game data. This ensures any games no longer in the monitoring set are dropped.
+	updatedGameData := make(map[common.Address]*monTypes.EnrichedGameData)
+	// Push each game into the channel and store the latest cached game data as a default if fetching fails
 	for _, game := range games {
+		previousData := e.latestGameData[game.Proxy]
+		if previousData != nil {
+			updatedGameData[game.Proxy] = previousData
+		}
 		gameCh <- game
 	}
 	close(gameCh)
@@ -112,9 +122,10 @@ func (e *Extractor) enrichGames(ctx context.Context, blockHash common.Hash, game
 
 	// Read the results
 	for enrichedGame := range enrichedCh {
-		enrichedGames = append(enrichedGames, enrichedGame)
+		updatedGameData[enrichedGame.Proxy] = enrichedGame
 	}
-	return enrichedGames, int(ignored.Load()), int(failed.Load())
+	e.latestGameData = updatedGameData
+	return maps.Values(updatedGameData), int(ignored.Load()), int(failed.Load())
 }
 
 func (e *Extractor) enrichGame(ctx context.Context, blockHash common.Hash, game gameTypes.GameMetadata) (*monTypes.EnrichedGameData, error) {
@@ -138,6 +149,7 @@ func (e *Extractor) enrichGame(ctx context.Context, blockHash common.Hash, game 
 		enrichedClaims[i] = monTypes.EnrichedClaim{Claim: claim}
 	}
 	enrichedGame := &monTypes.EnrichedGameData{
+		LastUpdateTime:        e.clock.Now(),
 		GameMetadata:          game,
 		L1Head:                meta.L1Head,
 		L2BlockNumber:         meta.L2BlockNum,

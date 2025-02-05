@@ -7,6 +7,7 @@ import (
 	"time"
 
 	op_e2e "github.com/ethereum-optimism/optimism/op-e2e"
+	"github.com/ethereum-optimism/optimism/op-e2e/config"
 
 	"github.com/ethereum-optimism/optimism/op-e2e/bindings"
 	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/geth"
@@ -16,9 +17,9 @@ import (
 )
 
 func TestL2OutputSubmitter(t *testing.T) {
-	op_e2e.InitParallel(t, op_e2e.SkipOnFaultProofs)
+	op_e2e.InitParallel(t)
 
-	cfg := e2esys.DefaultSystemConfig(t)
+	cfg := e2esys.DefaultSystemConfig(t, e2esys.WithAllocType(config.AllocTypeL2OO))
 	cfg.NonFinalizedProposals = true // speed up the time till we see output proposals
 
 	sys, err := cfg.Start(t)
@@ -41,7 +42,7 @@ func TestL2OutputSubmitter(t *testing.T) {
 	// for that block and subsequently reorgs to match what the verifier derives when running the
 	// reconcillation process.
 	l2Verif := sys.NodeClient("verifier")
-	_, err = geth.WaitForBlock(big.NewInt(6), l2Verif, 10*time.Duration(cfg.DeployConfig.L2BlockTime)*time.Second)
+	_, err = geth.WaitForBlock(big.NewInt(6), l2Verif)
 	require.Nil(t, err)
 
 	// Wait for batch submitter to update L2 output oracle.

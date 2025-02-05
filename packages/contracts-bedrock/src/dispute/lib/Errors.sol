@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.15;
 
-import "src/dispute/lib/LibUDT.sol";
+// Libraries
+import { GameType, Hash, Claim } from "src/dispute/lib/LibUDT.sol";
 
 ////////////////////////////////////////////////////////////////
 //                `DisputeGameFactory` Errors                 //
@@ -120,19 +121,21 @@ error BlockNumberMatches();
 /// @notice Thrown when the L2 block number claim has already been challenged.
 error L2BlockNumberChallenged();
 
+/// @notice Thrown when the game is not yet finalized.
+error GameNotFinalized();
+
+/// @notice Thrown when an invalid bond distribution mode is supplied.
+error InvalidBondDistributionMode();
+
+/// @notice Thrown when the game is not yet resolved.
+error GameNotResolved();
+
+/// @notice Thrown when a reserved game type is used.
+error ReservedGameType();
+
 ////////////////////////////////////////////////////////////////
 //              `PermissionedDisputeGame` Errors              //
 ////////////////////////////////////////////////////////////////
 
 /// @notice Thrown when an unauthorized address attempts to interact with the game.
 error BadAuth();
-
-////////////////////////////////////////////////////////////////
-//              `AnchorStateRegistry` Errors                  //
-////////////////////////////////////////////////////////////////
-
-/// @notice Thrown when attempting to set an anchor state using an unregistered game.
-error UnregisteredGame();
-
-/// @notice Thrown when attempting to set an anchor state using an invalid game result.
-error InvalidGameStatus();

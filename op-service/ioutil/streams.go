@@ -1,8 +1,10 @@
 package ioutil
 
 import (
+	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 )
 
 var (
@@ -18,6 +20,20 @@ type OutputTarget func() (io.Writer, io.Closer, Aborter, error)
 func NoOutputStream() OutputTarget {
 	return func() (io.Writer, io.Closer, Aborter, error) {
 		return nil, nil, nil, nil
+	}
+}
+
+func ToBasicFile(path string, perm os.FileMode) OutputTarget {
+	return func() (io.Writer, io.Closer, Aborter, error) {
+		outDir := filepath.Dir(path)
+		if err := os.MkdirAll(outDir, perm); err != nil {
+			return nil, nil, nil, fmt.Errorf("failed to create dir %q: %w", outDir, err)
+		}
+		f, err := os.OpenFile(path, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, perm)
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("failed to open %q: %w", path, err)
+		}
+		return f, f, func() {}, nil
 	}
 }
 

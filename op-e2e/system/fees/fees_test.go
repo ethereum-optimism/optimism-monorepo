@@ -4,7 +4,6 @@ import (
 	"context"
 	"math/big"
 	"testing"
-	"time"
 
 	op_e2e "github.com/ethereum-optimism/optimism/op-e2e"
 
@@ -90,7 +89,7 @@ func testFees(t *testing.T, cfg e2esys.SystemConfig) {
 	l1 := sys.NodeClient("l1")
 
 	// Wait for first block after genesis. The genesis block has zero L1Block values and will throw off the GPO checks
-	_, err = geth.WaitForBlock(big.NewInt(1), l2Verif, time.Minute)
+	_, err = geth.WaitForBlock(big.NewInt(1), l2Verif)
 	require.NoError(t, err)
 
 	config := sys.L2Genesis().Config

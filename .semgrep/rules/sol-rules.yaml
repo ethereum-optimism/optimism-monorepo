@@ -1,0 +1,233 @@
+rules:
+  - id: sol-safety-deployutils-args
+    languages: [solidity]
+    severity: ERROR
+    message: _args parameter should be wrapped with DeployUtils.encodeConstructor
+    pattern-regex: DeployUtils\.(create1|create2|create1AndSave|create2AndSave)\s*\(\s*\{[^}]*?_args\s*:\s*(?!\s*DeployUtils\.encodeConstructor\()\s*[^}]*?\}\s*\)
+
+  - id: sol-safety-expectrevert-before-ll-call
+    languages: [solidity]
+    severity: ERROR
+    message: vm.expectRevert is followed by a low-level call but not followed by assertion expecting revert
+    patterns:
+      - pattern-either:
+          - pattern: |
+              vm.expectRevert(...);
+              $CALL
+              $CHECK
+          - pattern: |
+              vm.expectRevert(...);
+              $CALL
+      - metavariable-pattern:
+          metavariable: $CALL
+          patterns:
+            - pattern-regex: \.call\(.*\)|\.delegatecall\(.*\)
+      - pattern-not-inside:
+          patterns:
+            - pattern: |
+                vm.expectRevert(...);
+                $CALL;
+                assertTrue(revertsAsExpected);
+
+  - id: sol-safety-expectrevert-no-args
+    languages: [solidity]
+    severity: ERROR
+    message: vm.expectRevert() must specify the revert reason
+    patterns:
+      - pattern: vm.expectRevert()
+    paths:
+      exclude:
+        - packages/contracts-bedrock/test/dispute/WETH98.t.sol
+
+  - id: sol-safety-natspec-semver-match
+    languages: [generic]
+    severity: ERROR
+    message: Semgrep defined in contract must match natspec $VERSION1 $VERSION2
+    patterns:
+      - pattern-either:
+          - pattern-regex: /// @custom:semver
+              (?P<VERSION1>[0-9]+\.[0-9]+\.[0-9]+(?:-[a-zA-Z0-9.]+)?)\s+string
+              public constant version =
+              "(?P<VERSION2>[0-9]+\.[0-9]+\.[0-9]+(?:-[a-zA-Z0-9.]+)?)";
+          - pattern-regex: /// @custom:semver
+              (?P<VERSION1>[0-9]+\.[0-9]+\.[0-9]+(?:-[a-zA-Z0-9.]+)?)\s+function
+              version\(\) public pure virtual returns \(string memory\)
+              \{\s+return
+              "(?P<VERSION2>[0-9]+\.[0-9]+\.[0-9]+(?:-[a-zA-Z0-9.]+)?)";
+          - pattern-regex:
+              /// @custom:semver (?P<VERSION1>[a-zA-Z0-9.+-]+)\s+function
+              version\(\) public pure override returns \(string memory\)
+              \{\s+return string\.concat\(super\.version\(\),
+              "(?P<VERSION2>[a-zA-Z0-9.+-]+)"\);
+      - metavariable-comparison:
+          comparison: $VERSION1 != $VERSION2
+          metavariable: $VERSION1
+    paths:
+      include:
+        - packages/contracts-bedrock/src
+
+  - id: sol-safety-no-public-in-libraries
+    languages: [generic]
+    severity: ERROR
+    message: Public functions in libraries are not allowed
+    patterns:
+      - pattern-inside: |
+          library $LIBRARY {
+              ...
+          }
+      - pattern-regex: function\s+\w+\s*\([^)]*\)\s+(?:.*\s+)?(public|external)\s+.*\{
+
+  - id: sol-style-input-arg-fmt
+    languages: [solidity]
+    severity: ERROR
+    message: Named inputs to functions must be prepended with an underscore
+    pattern-regex: function\s+\w+\s*\(\s*([^)]*?\b\w+\s+(?!_)(?!memory\b)(?!calldata\b)(?!storage\b)(?!payable\b)\w+\s*(?=,|\)))
+    paths:
+      exclude:
+        - op-chain-ops/script/testdata/scripts/ScriptExample.s.sol
+        - packages/contracts-bedrock/test
+        - packages/contracts-bedrock/interfaces
+        - packages/contracts-bedrock/scripts/libraries/Solarray.sol
+        - packages/contracts-bedrock/src/universal/WETH98.sol
+        - packages/contracts-bedrock/src/L2/SuperchainWETH.sol
+        - packages/contracts-bedrock/src/governance/GovernanceToken.sol
+
+  - id: sol-style-return-arg-fmt
+    languages: [solidity]
+    severity: ERROR
+    message: Named return arguments to functions must be appended with an underscore
+    pattern-regex: returns\s*(\w+\s*)?\(\s*([^)]*?\b\w+\s+(?!memory\b)(?!calldata\b)(?!storage\b)(?!payable\b)\w+(?<!_)\s*(?=,|\)))
+    paths:
+      exclude:
+        - packages/contracts-bedrock/interfaces/dispute/IDelayedWETH.sol
+        - op-chain-ops/script/testdata/scripts/ScriptExample.s.sol
+        - packages/contracts-bedrock/interfaces
+        - packages/contracts-bedrock/test/safe-tools
+        - packages/contracts-bedrock/scripts/libraries/Solarray.sol
+        - packages/contracts-bedrock/scripts/interfaces/IGnosisSafe.sol
+
+  - id: sol-style-doc-comment
+    languages: [solidity]
+    severity: ERROR
+    message: Javadoc-style comments are not allowed, use `///` style doc comments instead
+    pattern-regex: (\/\*\*\n(\s+\*\s.*\n)+\s+\*\/)
+    paths:
+      exclude:
+        - packages/contracts-bedrock/test/safe-tools/CompatibilityFallbackHandler_1_3_0.sol
+
+  - id: sol-style-malformed-require
+    languages: [solidity]
+    severity: ERROR
+    message: Require statement style is malformed
+    patterns:
+      - pattern: require(..., $ERR);
+      - pattern-not: require($ERR);
+      - focus-metavariable: $ERR
+      - pattern-not-regex: \"(\w+:\s[^"]+)\"
+      - pattern-not-regex: string\.concat\(\"(\w+:\s[^"]+)\"\,[^"]+\)
+      - pattern-not-regex: \"([a-zA-Z0-9\s]+-[a-zA-Z0-9\s]+)\"
+      - pattern-not-regex: \"([a-zA-Z0-9\s]+-[a-zA-Z0-9\s]+-[a-zA-Z0-9\s]+)\"
+    paths:
+      exclude:
+        - packages/contracts-bedrock/src/libraries/Bytes.sol
+        - packages/contracts-bedrock/src/legacy/LegacyMintableERC20.sol
+        - packages/contracts-bedrock/src/cannon/MIPS.sol
+        - packages/contracts-bedrock/src/cannon/MIPS2.sol
+        - packages/contracts-bedrock/src/cannon/libraries/MIPSMemory.sol
+        - packages/contracts-bedrock/src/cannon/libraries/MIPSInstructions.sol
+
+  - id: sol-style-malformed-revert
+    languages: [solidity]
+    severity: ERROR
+    message: Revert statement style is malformed
+    patterns:
+      - pattern: revert($MSG);
+      - pattern-not: revert $ERR(...);
+      - focus-metavariable: $MSG
+      - pattern-not-regex: \"(\w+:\s[^"]+)\"
+      - pattern-not-regex: string\.concat\(\"(\w+:\s[^"]+)\"\,[^"]+\)
+      - pattern-not-regex: \"([a-zA-Z0-9\s]+-[a-zA-Z0-9\s]+)\"
+      - pattern-not-regex: \"([a-zA-Z0-9\s]+-[a-zA-Z0-9\s]+-[a-zA-Z0-9\s]+)\"
+    paths:
+      exclude:
+        - packages/contracts-bedrock/src/cannon/libraries/MIPSInstructions.sol
+
+  - id: sol-style-use-abi-encodecall
+    languages: [solidity]
+    severity: ERROR
+    message: Use abi.encodeCall instead of abi.encodeWithSelector
+    patterns:
+      - pattern-either:
+          - pattern: |
+              abi.encodeWithSelector(...);
+          - pattern: |
+              abi.encodeWithSignature(...);
+      - pattern-not: vm.expectRevert(abi.encodeWithSelector(...));
+    paths:
+      exclude:
+        - packages/contracts-bedrock/src/L1/OPContractsManager.sol
+        - packages/contracts-bedrock/src/L1/OPContractsManagerInterop.sol
+        - packages/contracts-bedrock/src/legacy/L1ChugSplashProxy.sol
+
+  - id: sol-style-enforce-require-msg
+    languages: [solidity]
+    severity: ERROR
+    message: Require statement must have an error message
+    patterns:
+      - pattern: require($ERR);
+      - pattern-not: require($ERR, $MSG);
+    paths:
+      exclude:
+        - packages/contracts-bedrock/src/universal/WETH98.sol
+
+  - id: sol-style-no-bare-imports
+    languages: [solidity]
+    severity: ERROR
+    message: Import specific components instead of the entire file
+    pattern-regex: import\s+"[^"]+"\s*;
+    paths:
+      exclude:
+        - packages/contracts-bedrock/test
+
+  - id: sol-safety-use-disable-initializer
+    languages: [solidity]
+    severity: ERROR
+    message: Proxied contracts (excluding predeploys) must disable initializers in constructor
+    patterns:
+      - pattern-regex: "///\\s*@custom:proxied\\s+true(?P<CONTRACT>[\\s\\S]*)"
+      - pattern-not-regex: "///\\s*@custom:predeploy.*(?P<REST>[\\s\\S]*)"
+      - focus-metavariable: $CONTRACT
+      - pattern: |
+          constructor(...) {
+            ...
+          }
+      - pattern-not: |
+          constructor(...) {
+            ...
+            _disableInitializers();
+            ...
+          }
+    paths:
+      exclude:
+        - packages/contracts-bedrock/src/L1/SystemConfigInterop.sol
+        - packages/contracts-bedrock/src/L1/OptimismPortalInterop.sol
+
+  - id: sol-safety-proper-initializer
+    languages: [solidity]
+    severity: ERROR
+    message: Proxied contracts must have an initialize function with the initializer modifier and external visibility
+    patterns:
+      - pattern-regex: "///\\s*@custom:proxied\\s+true(?P<CONTRACT>[\\s\\S]*)"
+      - focus-metavariable: $CONTRACT
+      - pattern: |
+          function initialize(...) {
+            ...
+          }
+      - pattern-not: |
+          function initialize(...) external initializer {
+            ...
+          }
+    paths:
+      exclude:
+        - packages/contracts-bedrock/src/L1/SystemConfig.sol
+        - packages/contracts-bedrock/src/L1/SystemConfigInterop.sol

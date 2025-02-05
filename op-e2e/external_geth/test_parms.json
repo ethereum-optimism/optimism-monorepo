@@ -1,5 +1,0 @@
-{
-  "skip_tests":{
-    "TestPendingGasLimit":"This test requires directly modifying go structures and cannot be implemented with flags"
-  }
-}

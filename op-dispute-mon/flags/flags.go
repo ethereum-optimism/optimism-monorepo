@@ -2,9 +2,11 @@ package flags
 
 import (
 	"fmt"
+	"strings"
 
-	challengerFlags "github.com/ethereum-optimism/optimism/op-challenger/flags"
+	"github.com/ethereum-optimism/optimism/op-node/chaincfg"
 	"github.com/ethereum-optimism/optimism/op-service/flags"
+	"github.com/ethereum/go-ethereum/superchain"
 	"github.com/urfave/cli/v2"
 
 	"github.com/ethereum-optimism/optimism/op-dispute-mon/config"
@@ -115,7 +117,7 @@ func NewConfigFromCLI(ctx *cli.Context) (*config.Config, error) {
 	if err := CheckRequired(ctx); err != nil {
 		return nil, err
 	}
-	gameFactoryAddress, err := challengerFlags.FactoryAddress(ctx)
+	gameFactoryAddress, err := FactoryAddress(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -164,4 +166,32 @@ func NewConfigFromCLI(ctx *cli.Context) (*config.Config, error) {
 		MetricsConfig: metricsConfig,
 		PprofConfig:   pprofConfig,
 	}, nil
+}
+
+func FactoryAddress(ctx *cli.Context) (common.Address, error) {
+	// Use FactoryAddressFlag in preference to Network. Allows overriding the default dispute game factory.
+	if ctx.IsSet(GameFactoryAddressFlag.Name) {
+		gameFactoryAddress, err := opservice.ParseAddress(ctx.String(GameFactoryAddressFlag.Name))
+		if err != nil {
+			return common.Address{}, err
+		}
+		return gameFactoryAddress, nil
+	}
+	if ctx.IsSet(flags.NetworkFlagName) {
+		chainName := ctx.String(flags.NetworkFlagName)
+		chain := chaincfg.ChainByName(chainName)
+		if chain == nil {
+			var opts []string
+			for _, cfg := range superchain.Chains {
+				opts = append(opts, cfg.Name+"-"+cfg.Network)
+			}
+			return common.Address{}, fmt.Errorf("unknown chain: %v (Valid options: %v)", chainName, strings.Join(opts, ", "))
+		}
+		addrs := chain.Addresses
+		if addrs.DisputeGameFactoryProxy == nil {
+			return common.Address{}, fmt.Errorf("dispute factory proxy not available for chain %v", chainName)
+		}
+		return *addrs.DisputeGameFactoryProxy, nil
+	}
+	return common.Address{}, fmt.Errorf("flag %v or %v is required", GameFactoryAddressFlag.Name, flags.NetworkFlagName)
 }

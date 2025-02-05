@@ -283,7 +283,7 @@ func TestEthClient_FetchReceipts(t *testing.T) {
 		{
 			name:         "infura",
 			providerKind: RPCKindInfura,
-			setup:        fallbackCase(4, EthGetTransactionReceiptBatch),
+			setup:        fallbackCase(4, EthGetBlockReceipts, EthGetTransactionReceiptBatch),
 		},
 		{
 			name:         "nethermind",

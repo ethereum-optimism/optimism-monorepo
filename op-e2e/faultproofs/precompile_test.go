@@ -1,17 +1,20 @@
 package faultproofs
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"math"
 	"math/big"
+	"os/exec"
 	"path/filepath"
 	"testing"
 
 	op_e2e "github.com/ethereum-optimism/optimism/op-e2e"
+	e2e_config "github.com/ethereum-optimism/optimism/op-e2e/config"
 	"github.com/ethereum-optimism/optimism/op-e2e/system/e2esys"
 	"github.com/ethereum-optimism/optimism/op-e2e/system/helpers"
 
-	"github.com/ethereum-optimism/optimism/cannon/mipsevm/versions"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -29,7 +32,15 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
 )
 
-func TestPrecompiles(t *testing.T) {
+func TestPrecompiles_Standard(t *testing.T) {
+	testPrecompiles(t, e2e_config.AllocTypeStandard)
+}
+
+func TestPrecompiles_Multithreaded(t *testing.T) {
+	testPrecompiles(t, e2e_config.AllocTypeMTCannon)
+}
+
+func testPrecompiles(t *testing.T, allocType e2e_config.AllocType) {
 	op_e2e.InitParallel(t, op_e2e.UsesCannon)
 	// precompile test vectors copied from go-ethereum
 	tests := []struct {
@@ -78,12 +89,9 @@ func TestPrecompiles(t *testing.T) {
 			op_e2e.InitParallel(t, op_e2e.UsesCannon)
 			ctx := context.Background()
 			genesisTime := hexutil.Uint64(0)
-			cfg := e2esys.EcotoneSystemConfig(t, &genesisTime)
+			cfg := e2esys.EcotoneSystemConfig(t, &genesisTime, e2esys.WithAllocType(allocType))
 			// We don't need a verifier - just the sequencer is enough
 			delete(cfg.Nodes, "verifier")
-			// Use a small sequencer window size to avoid test timeout while waiting for empty blocks
-			// But not too small to ensure that our claim and subsequent state change is published
-			cfg.DeployConfig.SequencerWindowSize = 16
 
 			sys, err := cfg.Start(t)
 			require.Nil(t, err, "Error starting up system")
@@ -139,7 +147,7 @@ func TestPrecompiles(t *testing.T) {
 				t.Skipf("%v is not accelerated so no preimgae to upload", test.name)
 			}
 			ctx := context.Background()
-			sys, _ := StartFaultDisputeSystem(t, WithBlobBatches())
+			sys, _ := StartFaultDisputeSystem(t, WithBlobBatches(), WithAllocType(allocType))
 
 			l2Seq := sys.NodeClient("sequencer")
 			aliceKey := sys.Cfg.Secrets.Alice
@@ -173,16 +181,21 @@ func TestPrecompiles(t *testing.T) {
 	}
 }
 
-func TestGranitePrecompiles(t *testing.T) {
+func TestGranitePrecompiles_Standard(t *testing.T) {
+	testGranitePrecompiles(t, e2e_config.AllocTypeStandard)
+}
+
+func TestGranitePrecompiles_Multithreaded(t *testing.T) {
+	testGranitePrecompiles(t, e2e_config.AllocTypeMTCannon)
+}
+
+func testGranitePrecompiles(t *testing.T, allocType e2e_config.AllocType) {
 	op_e2e.InitParallel(t, op_e2e.UsesCannon)
 	ctx := context.Background()
 	genesisTime := hexutil.Uint64(0)
-	cfg := e2esys.GraniteSystemConfig(t, &genesisTime)
+	cfg := e2esys.GraniteSystemConfig(t, &genesisTime, e2esys.WithAllocType(allocType))
 	// We don't need a verifier - just the sequencer is enough
 	delete(cfg.Nodes, "verifier")
-	// Use a small sequencer window size to avoid test timeout while waiting for empty blocks
-	// But not too small to ensure that our claim and subsequent state change is published
-	cfg.DeployConfig.SequencerWindowSize = 16
 
 	sys, err := cfg.Start(t)
 	require.Nil(t, err, "Error starting up system")
@@ -250,22 +263,43 @@ func runCannon(t *testing.T, ctx context.Context, sys *e2esys.System, inputs uti
 	l1Beacon := sys.L1BeaconEndpoint().RestHTTP()
 	rollupEndpoint := sys.RollupEndpoint("sequencer").RPC()
 	l2Endpoint := sys.NodeEndpoint("sequencer").RPC()
-	cannonOpts := challenger.WithCannon(t, sys.RollupCfg(), sys.L2Genesis())
+	cannonOpts := challenger.WithCannon(t, sys)
 	dir := t.TempDir()
 	proofsDir := filepath.Join(dir, "cannon-proofs")
 	cfg := config.NewConfig(common.Address{}, l1Endpoint, l1Beacon, rollupEndpoint, l2Endpoint, dir)
+	cfg.Cannon.L2Custom = true
 	cannonOpts(&cfg)
 
 	logger := testlog.Logger(t, log.LevelInfo).New("role", "cannon")
-	executor := vm.NewExecutor(logger, metrics.NoopMetrics.VmMetrics("cannon"), cfg.Cannon, vm.NewOpProgramServerExecutor(), cfg.CannonAbsolutePreState, inputs)
+	executor := vm.NewExecutor(logger, metrics.NoopMetrics.ToTypedVmMetrics("cannon"), cfg.Cannon, vm.NewOpProgramServerExecutor(logger), cfg.CannonAbsolutePreState, inputs)
 
 	t.Log("Running cannon")
 	err := executor.DoGenerateProof(ctx, proofsDir, math.MaxUint, math.MaxUint, extraVmArgs...)
 	require.NoError(t, err, "failed to generate proof")
 
-	state, err := versions.LoadStateFromFile(vm.FinalStatePath(proofsDir, cfg.Cannon.BinarySnapshots))
-	require.NoError(t, err, "failed to parse state")
-	require.True(t, state.GetExited(), "cannon did not exit")
-	require.Zero(t, state.GetExitCode(), "cannon failed with exit code %d", state.GetExitCode())
-	t.Logf("Completed in %d steps", state.GetStep())
+	stdOut, _, err := runCmd(ctx, cfg.Cannon.VmBin, "witness", "--input", vm.FinalStatePath(proofsDir, cfg.Cannon.BinarySnapshots))
+	require.NoError(t, err, "failed to run witness cmd")
+	type stateData struct {
+		Step     uint64 `json:"step"`
+		ExitCode uint8  `json:"exitCode"`
+		Exited   bool   `json:"exited"`
+	}
+	var data stateData
+	err = json.Unmarshal([]byte(stdOut), &data)
+	require.NoError(t, err, "failed to parse state data")
+	require.True(t, data.Exited, "cannon did not exit")
+	require.Zero(t, data.ExitCode, "cannon failed with exit code %d", data.ExitCode)
+	t.Logf("Completed in %d steps", data.Step)
+}
+
+func runCmd(ctx context.Context, binary string, args ...string) (stdOut string, stdErr string, err error) {
+	var outBuf bytes.Buffer
+	var errBuf bytes.Buffer
+	cmd := exec.CommandContext(ctx, binary, args...)
+	cmd.Stdout = &outBuf
+	cmd.Stderr = &errBuf
+	err = cmd.Run()
+	stdOut = outBuf.String()
+	stdErr = errBuf.String()
+	return
 }

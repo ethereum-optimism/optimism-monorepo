@@ -16,10 +16,11 @@ kontrol_build() {
   notif "Kontrol Build"
   # shellcheck disable=SC2086
   run kontrol build \
-    --verbose \
     --require $lemmas \
     --module-import $module \
-    $rekompile
+    --no-metadata \
+    ${rekompile} \
+    ${regen}
   return $?
 }
 
@@ -36,9 +37,16 @@ kontrol_prove() {
     $break_on_calls \
     $break_every_step \
     $tests \
-    --init-node-from $state_diff \
-    --kore-rpc-command 'kore-rpc-booster --equation-max-recursion 100' \
-    --xml-test-report
+    --init-node-from-diff $state_diff \
+    --kore-rpc-command 'kore-rpc-booster --no-post-exec-simplify --equation-max-recursion 100 --equation-max-iterations 1000' \
+    --xml-test-report \
+    --maintenance-rate 16 \
+    --assume-defined \
+    --no-log-rewrites \
+    --smt-timeout 16000 \
+    --smt-retry-limit 0 \
+    --no-stack-checks \
+    --remove-old-proofs
   return $?
 }
 
@@ -105,29 +113,15 @@ on_failure() {
 # empty assignment to activate/deactivate the corresponding flag
 lemmas=test/kontrol/pausability-lemmas.md
 base_module=PAUSABILITY-LEMMAS
-module=OptimismPortalKontrol:$base_module
+module=OptimismPortal2Kontrol:$base_module
 rekompile=--rekompile
-rekompile=
+# rekompile=
 regen=--regen
-# shellcheck disable=SC2034
-regen=
+# regen=
 
 #################################
 # Tests to symbolically execute #
 #################################
-# Temporarily unexecuted tests
-# "OptimismPortalKontrol.prove_proveWithdrawalTransaction_paused0" \
-# "OptimismPortalKontrol.prove_proveWithdrawalTransaction_paused1(" \
-# "OptimismPortalKontrol.prove_proveWithdrawalTransaction_paused2" \
-# "OptimismPortalKontrol.prove_proveWithdrawalTransaction_paused3" \
-# "OptimismPortalKontrol.prove_proveWithdrawalTransaction_paused4" \
-# "OptimismPortalKontrol.prove_proveWithdrawalTransaction_paused5" \
-# "OptimismPortalKontrol.prove_proveWithdrawalTransaction_paused6" \
-# "OptimismPortalKontrol.prove_proveWithdrawalTransaction_paused7" \
-# "OptimismPortalKontrol.prove_proveWithdrawalTransaction_paused8" \
-# "OptimismPortalKontrol.prove_proveWithdrawalTransaction_paused9" \
-# "OptimismPortalKontrol.prove_proveWithdrawalTransaction_paused10" \
-
 test_list=()
 if [ "$SCRIPT_TESTS" == true ]; then
   test_list=(
@@ -189,29 +183,23 @@ trap clean_docker EXIT
 conditionally_start_docker
 
 results=()
+
 # Run kontrol_build and store the result
 kontrol_build
 results[0]=$?
+if [ "${results[0]}" -ne 0 ]; then
+  echo "Kontrol Build Failed"
+  exit 1
+fi
 
 # Run kontrol_prove and store the result
 kontrol_prove
 results[1]=$?
-
-get_log_results
-
-# Now you can use ${results[0]} and ${results[1]}
-# to check the results of kontrol_build and kontrol_prove, respectively
-if [ ${results[0]} -ne 0 ] && [ ${results[1]} -ne 0 ]; then
-  echo "Kontrol Build and Prove Failed"
-  exit 1
-elif [ ${results[0]} -ne 0 ]; then
-  echo "Kontrol Build Failed"
-  exit 1
-elif [ ${results[1]} -ne 0 ]; then
+if [ "${results[1]}" -ne 0 ]; then
   echo "Kontrol Prove Failed"
   exit 2
-else
-  echo "Kontrol Passed"
 fi
 
+get_log_results
+echo "Kontrol Passed"
 notif "DONE"

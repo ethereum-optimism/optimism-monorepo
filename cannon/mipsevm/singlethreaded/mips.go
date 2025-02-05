@@ -6,43 +6,45 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 
+	"github.com/ethereum-optimism/optimism/cannon/mipsevm/arch"
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/exec"
-	"github.com/ethereum-optimism/optimism/cannon/mipsevm/program"
 )
 
-func (m *InstrumentedState) handleSyscall() error {
-	syscallNum, a0, a1, a2, _ := exec.GetSyscallArgs(&m.state.Registers)
+type Word = arch.Word
 
-	v0 := uint32(0)
-	v1 := uint32(0)
+func (m *InstrumentedState) handleSyscall() error {
+	syscallNum, a0, a1, a2 := exec.GetSyscallArgs(&m.state.Registers)
+
+	v0 := Word(0)
+	v1 := Word(0)
 
 	//fmt.Printf("syscall: %d\n", syscallNum)
 	switch syscallNum {
-	case exec.SysMmap:
-		var newHeap uint32
+	case arch.SysMmap:
+		var newHeap Word
 		v0, v1, newHeap = exec.HandleSysMmap(a0, a1, m.state.Heap)
 		m.state.Heap = newHeap
-	case exec.SysBrk:
-		v0 = program.PROGRAM_BREAK
-	case exec.SysClone: // clone (not supported)
+	case arch.SysBrk:
+		v0 = arch.ProgramBreak
+	case arch.SysClone: // clone (not supported)
 		v0 = 1
-	case exec.SysExitGroup:
+	case arch.SysExitGroup:
 		m.state.Exited = true
 		m.state.ExitCode = uint8(a0)
 		return nil
-	case exec.SysRead:
-		var newPreimageOffset uint32
+	case arch.SysRead:
+		var newPreimageOffset Word
 		v0, v1, newPreimageOffset, _, _ = exec.HandleSysRead(a0, a1, a2, m.state.PreimageKey, m.state.PreimageOffset, m.preimageOracle, m.state.Memory, m.memoryTracker)
 		m.state.PreimageOffset = newPreimageOffset
-	case exec.SysWrite:
+	case arch.SysWrite:
 		var newLastHint hexutil.Bytes
 		var newPreimageKey common.Hash
-		var newPreimageOffset uint32
+		var newPreimageOffset Word
 		v0, v1, newLastHint, newPreimageKey, newPreimageOffset = exec.HandleSysWrite(a0, a1, a2, m.state.LastHint, m.state.PreimageKey, m.state.PreimageOffset, m.preimageOracle, m.state.Memory, m.memoryTracker, m.stdOut, m.stdErr)
 		m.state.LastHint = newLastHint
 		m.state.PreimageKey = newPreimageKey
 		m.state.PreimageOffset = newPreimageOffset
-	case exec.SysFcntl:
+	case arch.SysFcntl:
 		v0, v1 = exec.HandleSysFcntl(a0, a1)
 	}
 
@@ -78,19 +80,19 @@ func (m *InstrumentedState) mipsStep() error {
 func (m *InstrumentedState) handleRMWOps(insn, opcode uint32) error {
 	baseReg := (insn >> 21) & 0x1F
 	base := m.state.Registers[baseReg]
-	rtReg := (insn >> 16) & 0x1F
+	rtReg := Word((insn >> 16) & 0x1F)
 	offset := exec.SignExtendImmediate(insn)
 
-	effAddr := (base + offset) & 0xFFFFFFFC
+	effAddr := (base + offset) & arch.AddressMask
 	m.memoryTracker.TrackMemAccess(effAddr)
-	mem := m.state.Memory.GetMemory(effAddr)
+	mem := m.state.Memory.GetWord(effAddr)
 
-	var retVal uint32
+	var retVal Word
 	if opcode == exec.OpLoadLinked {
 		retVal = mem
 	} else if opcode == exec.OpStoreConditional {
 		rt := m.state.Registers[rtReg]
-		m.state.Memory.SetMemory(effAddr, rt)
+		m.state.Memory.SetWord(effAddr, rt)
 		retVal = 1 // 1 for success
 	} else {
 		panic(fmt.Sprintf("Invalid instruction passed to handleRMWOps (opcode %08x)", opcode))

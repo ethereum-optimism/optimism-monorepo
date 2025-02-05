@@ -1,6 +1,7 @@
 package rollup
 
 import (
+	"fmt"
 	"math/big"
 
 	"github.com/ethereum-optimism/optimism/op-node/params"
@@ -40,20 +41,50 @@ const (
 	Fjord    ForkName = "fjord"
 	Granite  ForkName = "granite"
 	Holocene ForkName = "holocene"
+	Isthmus  ForkName = "isthmus"
 	Interop  ForkName = "interop"
-	None     ForkName = "none"
+	// ADD NEW FORKS TO AllForks BELOW!
+	None ForkName = "none"
 )
 
-var nextFork = map[ForkName]ForkName{
-	Bedrock:  Regolith,
-	Regolith: Canyon,
-	Canyon:   Delta,
-	Delta:    Ecotone,
-	Ecotone:  Fjord,
-	Fjord:    Granite,
-	Granite:  Holocene,
-	Holocene: Interop,
-	Interop:  None,
+var AllForks = []ForkName{
+	Bedrock,
+	Regolith,
+	Canyon,
+	Delta,
+	Ecotone,
+	Fjord,
+	Granite,
+	Holocene,
+	Isthmus,
+	Interop,
+	// ADD NEW FORKS HERE!
+}
+
+func ForksFrom(fork ForkName) []ForkName {
+	for i, f := range AllForks {
+		if f == fork {
+			return AllForks[i:]
+		}
+	}
+	panic(fmt.Sprintf("invalid fork: %s", fork))
+}
+
+var nextFork = func() map[ForkName]ForkName {
+	m := make(map[ForkName]ForkName, len(AllForks))
+	for i, f := range AllForks {
+		if i == len(AllForks)-1 {
+			m[f] = None
+			break
+		}
+		m[f] = AllForks[i+1]
+	}
+	return m
+}()
+
+func IsValidFork(fork ForkName) bool {
+	_, ok := nextFork[fork]
+	return ok
 }
 
 type ChainSpec struct {
@@ -78,6 +109,16 @@ func (s *ChainSpec) L2GenesisTime() uint64 {
 // IsCanyon returns true if t >= canyon_time
 func (s *ChainSpec) IsCanyon(t uint64) bool {
 	return s.config.IsCanyon(t)
+}
+
+// IsHolocene returns true if t >= holocene_time
+func (s *ChainSpec) IsHolocene(t uint64) bool {
+	return s.config.IsHolocene(t)
+}
+
+// IsIsthmus returns true if t >= isthmus_time
+func (s *ChainSpec) IsIsthmus(t uint64) bool {
+	return s.config.IsIsthmus(t)
 }
 
 // MaxChannelBankSize returns the maximum number of bytes the can allocated inside the channel bank
@@ -151,6 +192,9 @@ func (s *ChainSpec) CheckForkActivation(log log.Logger, block eth.L2BlockRef) {
 		if s.config.IsHolocene(block.Time) {
 			s.currentFork = Holocene
 		}
+		if s.config.IsIsthmus(block.Time) {
+			s.currentFork = Isthmus
+		}
 		if s.config.IsInterop(block.Time) {
 			s.currentFork = Interop
 		}
@@ -175,6 +219,8 @@ func (s *ChainSpec) CheckForkActivation(log log.Logger, block eth.L2BlockRef) {
 		foundActivationBlock = s.config.IsGraniteActivationBlock(block.Time)
 	case Holocene:
 		foundActivationBlock = s.config.IsHoloceneActivationBlock(block.Time)
+	case Isthmus:
+		foundActivationBlock = s.config.IsIsthmusActivationBlock(block.Time)
 	case Interop:
 		foundActivationBlock = s.config.IsInteropActivationBlock(block.Time)
 	}

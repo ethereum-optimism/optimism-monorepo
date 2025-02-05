@@ -169,7 +169,38 @@ func TestRandomConfigDescription(t *testing.T) {
 		out := config.Description(nil)
 		require.Contains(t, out, "Regolith: @ genesis")
 	})
-	t.Run("regolith date", func(t *testing.T) {
+	t.Run("optimism forks check,  date", func(t *testing.T) {
+		config := randConfig()
+		r := uint64(1677119335)
+		config.RegolithTime = &r
+		c := uint64(1677119336)
+		config.CanyonTime = &c
+		d := uint64(1677119337)
+		config.DeltaTime = &d
+		e := uint64(1677119338)
+		config.EcotoneTime = &e
+		f := uint64(1677119339)
+		config.FjordTime = &f
+		h := uint64(1677119340)
+		config.HoloceneTime = &h
+		i := uint64(1677119341)
+		config.IsthmusTime = &i
+		it := uint64(1677119342)
+		config.InteropTime = &it
+
+		out := config.Description(nil)
+		// Don't check human-readable part of the date, it's timezone-dependent.
+		// Don't make this test fail only in Australia :')
+		require.Contains(t, out, fmt.Sprintf("Regolith: @ %d ~ ", r))
+		require.Contains(t, out, fmt.Sprintf("Canyon: @ %d ~ ", c))
+		require.Contains(t, out, fmt.Sprintf("Delta: @ %d ~ ", d))
+		require.Contains(t, out, fmt.Sprintf("Ecotone: @ %d ~ ", e))
+		require.Contains(t, out, fmt.Sprintf("Fjord: @ %d ~ ", f))
+		require.Contains(t, out, fmt.Sprintf("Holocene: @ %d ~ ", h))
+		require.Contains(t, out, fmt.Sprintf("Isthmus: @ %d ~ ", i))
+		require.Contains(t, out, fmt.Sprintf("Interop: @ %d ~ ", it))
+	})
+	t.Run("holocene & isthmus date", func(t *testing.T) {
 		config := randConfig()
 		x := uint64(1677119335)
 		config.RegolithTime = &x
@@ -239,6 +270,24 @@ func TestActivations(t *testing.T) {
 			},
 			checkEnabled: func(t uint64, c *Config) bool {
 				return c.IsGranite(t)
+			},
+		},
+		{
+			name: "Holocene",
+			setUpgradeTime: func(t *uint64, c *Config) {
+				c.HoloceneTime = t
+			},
+			checkEnabled: func(t uint64, c *Config) bool {
+				return c.IsHolocene(t)
+			},
+		},
+		{
+			name: "Isthmus",
+			setUpgradeTime: func(t *uint64, c *Config) {
+				c.IsthmusTime = t
+			},
+			checkEnabled: func(t uint64, c *Config) bool {
+				return c.IsIsthmus(t)
 			},
 		},
 		{
@@ -509,10 +558,20 @@ func TestConfig_Check(t *testing.T) {
 				canyonTime := uint64(2)
 				deltaTime := uint64(3)
 				ecotoneTime := uint64(4)
+				fjordTime := uint64(5)
+				graniteTime := uint64(6)
+				holoceneTime := uint64(7)
+				isthmusTime := uint64(8)
+				interopTime := uint64(9)
 				cfg.RegolithTime = &regolithTime
 				cfg.CanyonTime = &canyonTime
 				cfg.DeltaTime = &deltaTime
 				cfg.EcotoneTime = &ecotoneTime
+				cfg.FjordTime = &fjordTime
+				cfg.GraniteTime = &graniteTime
+				cfg.HoloceneTime = &holoceneTime
+				cfg.IsthmusTime = &isthmusTime
+				cfg.InteropTime = &interopTime
 			},
 			expectedErr: nil,
 		},
@@ -634,6 +693,7 @@ func TestNewPayloadVersion(t *testing.T) {
 	tests := []struct {
 		name           string
 		ecotoneTime    uint64
+		isthmusTime    uint64
 		payloadTime    uint64
 		expectedMethod eth.EngineAPIMethod
 	}{
@@ -641,13 +701,22 @@ func TestNewPayloadVersion(t *testing.T) {
 			name:           "BeforeEcotone",
 			ecotoneTime:    10,
 			payloadTime:    5,
+			isthmusTime:    20,
 			expectedMethod: eth.NewPayloadV2,
 		},
 		{
 			name:           "Ecotone",
 			ecotoneTime:    10,
 			payloadTime:    15,
+			isthmusTime:    20,
 			expectedMethod: eth.NewPayloadV3,
+		},
+		{
+			name:           "Isthmus",
+			ecotoneTime:    10,
+			payloadTime:    25,
+			isthmusTime:    20,
+			expectedMethod: eth.NewPayloadV4,
 		},
 	}
 
@@ -655,6 +724,7 @@ func TestNewPayloadVersion(t *testing.T) {
 		test := test
 		t.Run(fmt.Sprintf("TestNewPayloadVersion_%s", test.name), func(t *testing.T) {
 			config.EcotoneTime = &test.ecotoneTime
+			config.IsthmusTime = &test.isthmusTime
 			assert.Equal(t, config.NewPayloadVersion(test.payloadTime), test.expectedMethod)
 		})
 	}
@@ -666,6 +736,7 @@ func TestGetPayloadVersion(t *testing.T) {
 	config.CanyonTime = &canyonTime
 	tests := []struct {
 		name           string
+		isthmusTime    uint64
 		ecotoneTime    uint64
 		payloadTime    uint64
 		expectedMethod eth.EngineAPIMethod
@@ -674,13 +745,22 @@ func TestGetPayloadVersion(t *testing.T) {
 			name:           "BeforeEcotone",
 			ecotoneTime:    10,
 			payloadTime:    5,
+			isthmusTime:    20,
 			expectedMethod: eth.GetPayloadV2,
 		},
 		{
 			name:           "Ecotone",
 			ecotoneTime:    10,
 			payloadTime:    15,
+			isthmusTime:    20,
 			expectedMethod: eth.GetPayloadV3,
+		},
+		{
+			name:           "Isthmus",
+			ecotoneTime:    10,
+			payloadTime:    25,
+			isthmusTime:    20,
+			expectedMethod: eth.GetPayloadV4,
 		},
 	}
 
@@ -688,7 +768,58 @@ func TestGetPayloadVersion(t *testing.T) {
 		test := test
 		t.Run(fmt.Sprintf("TestGetPayloadVersion_%s", test.name), func(t *testing.T) {
 			config.EcotoneTime = &test.ecotoneTime
+			config.IsthmusTime = &test.isthmusTime
 			assert.Equal(t, config.GetPayloadVersion(test.payloadTime), test.expectedMethod)
+		})
+	}
+}
+
+func TestConfig_IsActivationBlock(t *testing.T) {
+	ts := uint64(42)
+	// TODO(12490): Currently only supports Holocene. Will be modularized in a follow-up.
+	for _, fork := range []ForkName{Holocene} {
+		cfg := &Config{
+			HoloceneTime: &ts,
+		}
+		require.Equal(t, fork, cfg.IsActivationBlock(0, ts))
+		require.Equal(t, fork, cfg.IsActivationBlock(0, ts+64))
+		require.Equal(t, fork, cfg.IsActivationBlock(ts-1, ts))
+		require.Equal(t, fork, cfg.IsActivationBlock(ts-1, ts+1))
+		require.Zero(t, cfg.IsActivationBlock(0, ts-1))
+		require.Zero(t, cfg.IsActivationBlock(ts, ts+1))
+	}
+}
+
+func TestConfigImplementsBlockType(t *testing.T) {
+	config := randConfig()
+	isthmusTime := uint64(100)
+	config.IsthmusTime = &isthmusTime
+	tests := []struct {
+		name                       string
+		blockTime                  uint64
+		hasOptimismWithdrawalsRoot bool
+	}{
+		{
+			name:                       "BeforeIsthmus",
+			blockTime:                  uint64(99),
+			hasOptimismWithdrawalsRoot: false,
+		},
+		{
+			name:                       "AtIsthmus",
+			blockTime:                  uint64(100),
+			hasOptimismWithdrawalsRoot: true,
+		},
+		{
+			name:                       "AfterIsthmus",
+			blockTime:                  uint64(200),
+			hasOptimismWithdrawalsRoot: true,
+		},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(fmt.Sprintf("TestHasOptimismWithdrawalsRoot_%s", test.name), func(t *testing.T) {
+			assert.Equal(t, config.HasOptimismWithdrawalsRoot(test.blockTime), test.hasOptimismWithdrawalsRoot)
 		})
 	}
 }

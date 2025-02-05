@@ -12,26 +12,28 @@ import (
 )
 
 const (
-	TLSCaCertFlagName = "tls.ca"
-	TLSCertFlagName   = "tls.cert"
-	TLSKeyFlagName    = "tls.key"
+	TLSCaCertFlagName  = "tls.ca"
+	TLSCertFlagName    = "tls.cert"
+	TLSKeyFlagName     = "tls.key"
+	TLSEnabledFlagName = "tls.enabled"
 )
 
 // CLIFlags returns flags with env var envPrefix
 // This should be used for server TLS configs, or when client and server tls configs are the same
 func CLIFlags(envPrefix string) []cli.Flag {
-	return CLIFlagsWithFlagPrefix(envPrefix, "")
+	return CLIFlagsWithFlagPrefix(envPrefix, "", "")
 }
 
 var (
-	defaultTLSCaCert = "tls/ca.crt"
-	defaultTLSCert   = "tls/tls.crt"
-	defaultTLSKey    = "tls/tls.key"
+	defaultTLSCaCert  = "tls/ca.crt"
+	defaultTLSCert    = "tls/tls.crt"
+	defaultTLSKey     = "tls/tls.key"
+	defaultTLSEnabled = true
 )
 
 // CLIFlagsWithFlagPrefix returns flags with env var and cli flag prefixes
 // Should be used for client TLS configs when different from server on the same process
-func CLIFlagsWithFlagPrefix(envPrefix string, flagPrefix string) []cli.Flag {
+func CLIFlagsWithFlagPrefix(envPrefix string, flagPrefix string, category string) []cli.Flag {
 	prefixFunc := func(flagName string) string {
 		return strings.Trim(fmt.Sprintf("%s.%s", flagPrefix, flagName), ".")
 	}
@@ -39,23 +41,32 @@ func CLIFlagsWithFlagPrefix(envPrefix string, flagPrefix string) []cli.Flag {
 		return opservice.PrefixEnvVar(envPrefix, name)
 	}
 	return []cli.Flag{
-		&cli.StringFlag{
-			Name:    prefixFunc(TLSCaCertFlagName),
-			Usage:   "tls ca cert path",
-			Value:   defaultTLSCaCert,
-			EnvVars: prefixEnvVars("TLS_CA"),
+		&cli.BoolFlag{
+			Name:    prefixFunc(TLSEnabledFlagName),
+			Usage:   "Enable or disable TLS client authentication for the signer",
+			Value:   defaultTLSEnabled,
+			EnvVars: prefixEnvVars("TLS_ENABLED"),
 		},
 		&cli.StringFlag{
-			Name:    prefixFunc(TLSCertFlagName),
-			Usage:   "tls cert path",
-			Value:   defaultTLSCert,
-			EnvVars: prefixEnvVars("TLS_CERT"),
+			Name:     prefixFunc(TLSCaCertFlagName),
+			Usage:    "tls ca cert path",
+			Value:    defaultTLSCaCert,
+			EnvVars:  prefixEnvVars("TLS_CA"),
+			Category: category,
 		},
 		&cli.StringFlag{
-			Name:    prefixFunc(TLSKeyFlagName),
-			Usage:   "tls key",
-			Value:   defaultTLSKey,
-			EnvVars: prefixEnvVars("TLS_KEY"),
+			Name:     prefixFunc(TLSCertFlagName),
+			Usage:    "tls cert path",
+			Value:    defaultTLSCert,
+			EnvVars:  prefixEnvVars("TLS_CERT"),
+			Category: category,
+		},
+		&cli.StringFlag{
+			Name:     prefixFunc(TLSKeyFlagName),
+			Usage:    "tls key",
+			Value:    defaultTLSKey,
+			EnvVars:  prefixEnvVars("TLS_KEY"),
+			Category: category,
 		},
 	}
 }
@@ -64,6 +75,7 @@ type CLIConfig struct {
 	TLSCaCert string
 	TLSCert   string
 	TLSKey    string
+	Enabled   bool
 }
 
 func NewCLIConfig() CLIConfig {
@@ -71,6 +83,7 @@ func NewCLIConfig() CLIConfig {
 		TLSCaCert: defaultTLSCaCert,
 		TLSCert:   defaultTLSCert,
 		TLSKey:    defaultTLSKey,
+		Enabled:   true,
 	}
 }
 
@@ -83,7 +96,7 @@ func (c CLIConfig) Check() error {
 }
 
 func (c CLIConfig) TLSEnabled() bool {
-	return !(c.TLSCaCert == "" && c.TLSCert == "" && c.TLSKey == "")
+	return c.Enabled
 }
 
 // ReadCLIConfig reads tls cli configs
@@ -93,6 +106,7 @@ func ReadCLIConfig(ctx *cli.Context) CLIConfig {
 		TLSCaCert: ctx.String(TLSCaCertFlagName),
 		TLSCert:   ctx.String(TLSCertFlagName),
 		TLSKey:    ctx.String(TLSKeyFlagName),
+		Enabled:   ctx.Bool(TLSEnabledFlagName),
 	}
 }
 
@@ -106,5 +120,6 @@ func ReadCLIConfigWithPrefix(ctx *cli.Context, flagPrefix string) CLIConfig {
 		TLSCaCert: ctx.String(prefixFunc(TLSCaCertFlagName)),
 		TLSCert:   ctx.String(prefixFunc(TLSCertFlagName)),
 		TLSKey:    ctx.String(prefixFunc(TLSKeyFlagName)),
+		Enabled:   ctx.Bool(prefixFunc(TLSEnabledFlagName)),
 	}
 }

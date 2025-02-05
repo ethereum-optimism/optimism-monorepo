@@ -10,7 +10,6 @@ import (
 )
 
 func Run(ctx *cli.Context) error {
-	fmt.Printf("args %v\n", os.Args[:])
 	if len(os.Args) == 3 && os.Args[2] == "--help" {
 		if err := list(); err != nil {
 			return err

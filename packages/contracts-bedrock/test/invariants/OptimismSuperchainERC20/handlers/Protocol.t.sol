@@ -79,7 +79,7 @@ contract ProtocolHandler is TestBase, StdUtils, Actors {
         index = bound(index, 0, allSuperTokens.length - 1);
         address addr = allSuperTokens[index];
         vm.prank(BRIDGE);
-        OptimismSuperchainERC20(addr).mint(currentActor(), amount);
+        OptimismSuperchainERC20(addr).crosschainMint(currentActor(), amount);
         // currentValue will be zero if key is not present
         (, uint256 currentValue) = ghost_totalSupplyAcrossChains.tryGet(MESSENGER.superTokenInitDeploySalts(addr));
         ghost_totalSupplyAcrossChains.set(MESSENGER.superTokenInitDeploySalts(addr), currentValue + amount);
@@ -151,27 +151,29 @@ contract ProtocolHandler is TestBase, StdUtils, Actors {
         uint256 chainId
     )
         internal
-        returns (OptimismSuperchainERC20 supertoken)
+        returns (OptimismSuperchainERC20 supertoken_)
     {
         // this salt would be used in production. Tokens sharing it will be bridgable with each other
         bytes32 realSalt = keccak256(abi.encode(remoteToken, name, symbol, decimals));
         // Foundry invariant erroneously show other unrelated invariant breaking
         // when this deployment fails due to a create2 collision, so we revert eagerly instead
-        require(MESSENGER.superTokenAddresses(chainId, realSalt) == address(0), "skip duplicate deployment");
+        require(
+            MESSENGER.superTokenAddresses(chainId, realSalt) == address(0), "ProtocolHandler: skip duplicate deployment"
+        );
 
         // what we use in the tests to walk around two contracts needing two different addresses
         // tbf we could be using CREATE1, but this feels more verbose
         bytes32 hackySalt = keccak256(abi.encode(remoteToken, name, symbol, decimals, chainId));
-        supertoken = OptimismSuperchainERC20(
+        supertoken_ = OptimismSuperchainERC20(
             address(
-                // TODO: Use the SuperchainERC20 Beacon Proxy
+                // TODO: Use the OptimismSuperchainERC20 Beacon Proxy
                 new ERC1967Proxy{ salt: hackySalt }(
                     address(superchainERC20Impl),
                     abi.encodeCall(OptimismSuperchainERC20.initialize, (remoteToken, name, symbol, decimals))
                 )
             )
         );
-        MESSENGER.registerSupertoken(realSalt, chainId, address(supertoken));
-        allSuperTokens.push(address(supertoken));
+        MESSENGER.registerSupertoken(realSalt, chainId, address(supertoken_));
+        allSuperTokens.push(address(supertoken_));
     }
 }

@@ -2,7 +2,6 @@ package tests
 
 import (
 	"bytes"
-	"encoding/binary"
 	"math"
 	"os"
 	"testing"
@@ -10,6 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ethereum-optimism/optimism/cannon/mipsevm/arch"
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/exec"
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/memory"
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/program"
@@ -26,8 +26,8 @@ func FuzzStateSyscallBrk(f *testing.F) {
 			t.Run(v.Name, func(t *testing.T) {
 				goVm := v.VMFactory(nil, os.Stdout, os.Stderr, testutil.CreateLogger(), testutil.WithRandomization(seed))
 				state := goVm.GetState()
-				state.GetRegistersRef()[2] = exec.SysBrk
-				state.GetMemory().SetMemory(state.GetPC(), syscallInsn)
+				state.GetRegistersRef()[2] = arch.SysBrk
+				testutil.StoreInstruction(state.GetMemory(), state.GetPC(), syscallInsn)
 				step := state.GetStep()
 
 				expected := testutil.NewExpectedState(state)
@@ -42,7 +42,7 @@ func FuzzStateSyscallBrk(f *testing.F) {
 				require.False(t, stepWitness.HasPreimage())
 
 				expected.Validate(t, state)
-				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts, nil)
+				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
 			})
 		}
 	})
@@ -50,13 +50,13 @@ func FuzzStateSyscallBrk(f *testing.F) {
 
 func FuzzStateSyscallMmap(f *testing.F) {
 	// Add special cases for large memory allocation
-	f.Add(uint32(0), uint32(0x1000), uint32(program.HEAP_END), int64(1))
-	f.Add(uint32(0), uint32(1<<31), uint32(program.HEAP_START), int64(2))
+	f.Add(Word(0), Word(0x1000), Word(program.HEAP_END), int64(1))
+	f.Add(Word(0), Word(1<<31), Word(program.HEAP_START), int64(2))
 	// Check edge case - just within bounds
-	f.Add(uint32(0), uint32(0x1000), uint32(program.HEAP_END-4096), int64(3))
+	f.Add(Word(0), Word(0x1000), Word(program.HEAP_END-4096), int64(3))
 
 	versions := GetMipsVersionTestCases(f)
-	f.Fuzz(func(t *testing.T, addr uint32, siz uint32, heap uint32, seed int64) {
+	f.Fuzz(func(t *testing.T, addr Word, siz Word, heap Word, seed int64) {
 		for _, v := range versions {
 			t.Run(v.Name, func(t *testing.T) {
 				goVm := v.VMFactory(nil, os.Stdout, os.Stderr, testutil.CreateLogger(),
@@ -64,10 +64,10 @@ func FuzzStateSyscallMmap(f *testing.F) {
 				state := goVm.GetState()
 				step := state.GetStep()
 
-				state.GetRegistersRef()[2] = exec.SysMmap
+				state.GetRegistersRef()[2] = arch.SysMmap
 				state.GetRegistersRef()[4] = addr
 				state.GetRegistersRef()[5] = siz
-				state.GetMemory().SetMemory(state.GetPC(), syscallInsn)
+				testutil.StoreInstruction(state.GetMemory(), state.GetPC(), syscallInsn)
 
 				expected := testutil.NewExpectedState(state)
 				expected.Step += 1
@@ -97,7 +97,7 @@ func FuzzStateSyscallMmap(f *testing.F) {
 				require.False(t, stepWitness.HasPreimage())
 
 				expected.Validate(t, state)
-				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts, nil)
+				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
 			})
 		}
 	})
@@ -111,9 +111,9 @@ func FuzzStateSyscallExitGroup(f *testing.F) {
 				goVm := v.VMFactory(nil, os.Stdout, os.Stderr, testutil.CreateLogger(),
 					testutil.WithRandomization(seed))
 				state := goVm.GetState()
-				state.GetRegistersRef()[2] = exec.SysExitGroup
-				state.GetRegistersRef()[4] = uint32(exitCode)
-				state.GetMemory().SetMemory(state.GetPC(), syscallInsn)
+				state.GetRegistersRef()[2] = arch.SysExitGroup
+				state.GetRegistersRef()[4] = Word(exitCode)
+				testutil.StoreInstruction(state.GetMemory(), state.GetPC(), syscallInsn)
 				step := state.GetStep()
 
 				expected := testutil.NewExpectedState(state)
@@ -126,7 +126,7 @@ func FuzzStateSyscallExitGroup(f *testing.F) {
 				require.False(t, stepWitness.HasPreimage())
 
 				expected.Validate(t, state)
-				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts, nil)
+				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
 			})
 		}
 	})
@@ -134,23 +134,33 @@ func FuzzStateSyscallExitGroup(f *testing.F) {
 
 func FuzzStateSyscallFcntl(f *testing.F) {
 	versions := GetMipsVersionTestCases(f)
-	f.Fuzz(func(t *testing.T, fd uint32, cmd uint32, seed int64) {
+	f.Fuzz(func(t *testing.T, fd Word, cmd Word, seed int64) {
 		for _, v := range versions {
 			t.Run(v.Name, func(t *testing.T) {
 				goVm := v.VMFactory(nil, os.Stdout, os.Stderr, testutil.CreateLogger(),
 					testutil.WithRandomization(seed))
 				state := goVm.GetState()
-				state.GetRegistersRef()[2] = exec.SysFcntl
+				state.GetRegistersRef()[2] = arch.SysFcntl
 				state.GetRegistersRef()[4] = fd
 				state.GetRegistersRef()[5] = cmd
-				state.GetMemory().SetMemory(state.GetPC(), syscallInsn)
+				testutil.StoreInstruction(state.GetMemory(), state.GetPC(), syscallInsn)
 				step := state.GetStep()
 
 				expected := testutil.NewExpectedState(state)
 				expected.Step += 1
 				expected.PC = state.GetCpu().NextPC
 				expected.NextPC = state.GetCpu().NextPC + 4
-				if cmd == 3 {
+				if cmd == 1 {
+					switch fd {
+					case exec.FdStdin, exec.FdStdout, exec.FdStderr,
+						exec.FdPreimageRead, exec.FdHintRead, exec.FdPreimageWrite, exec.FdHintWrite:
+						expected.Registers[2] = 0
+						expected.Registers[7] = 0
+					default:
+						expected.Registers[2] = ^Word(0)
+						expected.Registers[7] = exec.MipsEBADF
+					}
+				} else if cmd == 3 {
 					switch fd {
 					case exec.FdStdin, exec.FdPreimageRead, exec.FdHintRead:
 						expected.Registers[2] = 0
@@ -159,11 +169,11 @@ func FuzzStateSyscallFcntl(f *testing.F) {
 						expected.Registers[2] = 1
 						expected.Registers[7] = 0
 					default:
-						expected.Registers[2] = 0xFF_FF_FF_FF
+						expected.Registers[2] = ^Word(0)
 						expected.Registers[7] = exec.MipsEBADF
 					}
 				} else {
-					expected.Registers[2] = 0xFF_FF_FF_FF
+					expected.Registers[2] = ^Word(0)
 					expected.Registers[7] = exec.MipsEINVAL
 				}
 
@@ -172,7 +182,7 @@ func FuzzStateSyscallFcntl(f *testing.F) {
 				require.False(t, stepWitness.HasPreimage())
 
 				expected.Validate(t, state)
-				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts, nil)
+				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
 			})
 		}
 	})
@@ -180,7 +190,7 @@ func FuzzStateSyscallFcntl(f *testing.F) {
 
 func FuzzStateHintRead(f *testing.F) {
 	versions := GetMipsVersionTestCases(f)
-	f.Fuzz(func(t *testing.T, addr uint32, count uint32, seed int64) {
+	f.Fuzz(func(t *testing.T, addr Word, count Word, seed int64) {
 		for _, v := range versions {
 			t.Run(v.Name, func(t *testing.T) {
 				preimageData := []byte("hello world")
@@ -190,11 +200,11 @@ func FuzzStateHintRead(f *testing.F) {
 				goVm := v.VMFactory(oracle, os.Stdout, os.Stderr, testutil.CreateLogger(),
 					testutil.WithRandomization(seed), testutil.WithPreimageKey(preimageKey))
 				state := goVm.GetState()
-				state.GetRegistersRef()[2] = exec.SysRead
+				state.GetRegistersRef()[2] = arch.SysRead
 				state.GetRegistersRef()[4] = exec.FdHintRead
 				state.GetRegistersRef()[5] = addr
 				state.GetRegistersRef()[6] = count
-				state.GetMemory().SetMemory(state.GetPC(), syscallInsn)
+				testutil.StoreInstruction(state.GetMemory(), state.GetPC(), syscallInsn)
 				step := state.GetStep()
 
 				expected := testutil.NewExpectedState(state)
@@ -209,7 +219,7 @@ func FuzzStateHintRead(f *testing.F) {
 				require.False(t, stepWitness.HasPreimage())
 
 				expected.Validate(t, state)
-				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts, nil)
+				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
 			})
 		}
 	})
@@ -217,15 +227,15 @@ func FuzzStateHintRead(f *testing.F) {
 
 func FuzzStatePreimageRead(f *testing.F) {
 	versions := GetMipsVersionTestCases(f)
-	f.Fuzz(func(t *testing.T, addr uint32, pc uint32, count uint32, preimageOffset uint32, seed int64) {
+	f.Fuzz(func(t *testing.T, addr arch.Word, pc arch.Word, count arch.Word, preimageOffset arch.Word, seed int64) {
 		for _, v := range versions {
 			t.Run(v.Name, func(t *testing.T) {
-				effAddr := addr & 0xFF_FF_FF_FC
-				pc = pc & 0xFF_FF_FF_FC
-				preexistingMemoryVal := [4]byte{0xFF, 0xFF, 0xFF, 0xFF}
+				effAddr := addr & arch.AddressMask
+				pc = pc & arch.AddressMask
+				preexistingMemoryVal := ^arch.Word(0)
 				preimageValue := []byte("hello world")
 				preimageData := testutil.AddPreimageLengthPrefix(preimageValue)
-				if preimageOffset >= uint32(len(preimageData)) || pc == effAddr {
+				if preimageOffset >= Word(len(preimageData)) || pc == effAddr {
 					t.SkipNow()
 				}
 				preimageKey := preimage.Keccak256Key(crypto.Keccak256Hash(preimageValue)).PreimageKey()
@@ -234,21 +244,21 @@ func FuzzStatePreimageRead(f *testing.F) {
 				goVm := v.VMFactory(oracle, os.Stdout, os.Stderr, testutil.CreateLogger(),
 					testutil.WithRandomization(seed), testutil.WithPreimageKey(preimageKey), testutil.WithPreimageOffset(preimageOffset), testutil.WithPCAndNextPC(pc))
 				state := goVm.GetState()
-				state.GetRegistersRef()[2] = exec.SysRead
+				state.GetRegistersRef()[2] = arch.SysRead
 				state.GetRegistersRef()[4] = exec.FdPreimageRead
 				state.GetRegistersRef()[5] = addr
 				state.GetRegistersRef()[6] = count
-				state.GetMemory().SetMemory(state.GetPC(), syscallInsn)
-				state.GetMemory().SetMemory(effAddr, binary.BigEndian.Uint32(preexistingMemoryVal[:]))
+				testutil.StoreInstruction(state.GetMemory(), state.GetPC(), syscallInsn)
+				state.GetMemory().SetWord(effAddr, preexistingMemoryVal)
 				step := state.GetStep()
 
-				alignment := addr & 3
-				writeLen := 4 - alignment
+				alignment := addr & arch.ExtMask
+				writeLen := arch.WordSizeBytes - alignment
 				if count < writeLen {
 					writeLen = count
 				}
 				// Cap write length to remaining bytes of the preimage
-				preimageDataLen := uint32(len(preimageData))
+				preimageDataLen := Word(len(preimageData))
 				if preimageOffset+writeLen > preimageDataLen {
 					writeLen = preimageDataLen - preimageOffset
 				}
@@ -262,9 +272,10 @@ func FuzzStatePreimageRead(f *testing.F) {
 				expected.PreimageOffset += writeLen
 				if writeLen > 0 {
 					// Expect a memory write
-					expectedMemory := preexistingMemoryVal
+					var expectedMemory []byte
+					expectedMemory = arch.ByteOrderWord.AppendWord(expectedMemory, preexistingMemoryVal)
 					copy(expectedMemory[alignment:], preimageData[preimageOffset:preimageOffset+writeLen])
-					expected.ExpectMemoryWrite(effAddr, binary.BigEndian.Uint32(expectedMemory[:]))
+					expected.ExpectMemoryWriteWord(effAddr, arch.ByteOrderWord.Word(expectedMemory[:]))
 				}
 
 				stepWitness, err := goVm.Step(true)
@@ -272,7 +283,7 @@ func FuzzStatePreimageRead(f *testing.F) {
 				require.True(t, stepWitness.HasPreimage())
 
 				expected.Validate(t, state)
-				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts, nil)
+				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
 			})
 		}
 	})
@@ -280,11 +291,11 @@ func FuzzStatePreimageRead(f *testing.F) {
 
 func FuzzStateHintWrite(f *testing.F) {
 	versions := GetMipsVersionTestCases(f)
-	f.Fuzz(func(t *testing.T, addr uint32, count uint32, hint1, hint2, hint3 []byte, randSeed int64) {
+	f.Fuzz(func(t *testing.T, addr Word, count Word, hint1, hint2, hint3 []byte, randSeed int64) {
 		for _, v := range versions {
 			t.Run(v.Name, func(t *testing.T) {
 				// Make sure pc does not overlap with hint data in memory
-				pc := uint32(0)
+				pc := Word(0)
 				if addr <= 8 {
 					addr += 8
 				}
@@ -313,14 +324,14 @@ func FuzzStateHintWrite(f *testing.F) {
 				goVm := v.VMFactory(oracle, os.Stdout, os.Stderr, testutil.CreateLogger(),
 					testutil.WithRandomization(randSeed), testutil.WithLastHint(lastHint), testutil.WithPCAndNextPC(pc))
 				state := goVm.GetState()
-				state.GetRegistersRef()[2] = exec.SysWrite
+				state.GetRegistersRef()[2] = arch.SysWrite
 				state.GetRegistersRef()[4] = exec.FdHintWrite
 				state.GetRegistersRef()[5] = addr
 				state.GetRegistersRef()[6] = count
 				step := state.GetStep()
 				err := state.GetMemory().SetMemoryRange(addr, bytes.NewReader(hintData[int(lastHintLen):]))
 				require.NoError(t, err)
-				state.GetMemory().SetMemory(state.GetPC(), syscallInsn)
+				testutil.StoreInstruction(state.GetMemory(), state.GetPC(), syscallInsn)
 
 				// Set up expectations
 				expected := testutil.NewExpectedState(state)
@@ -354,7 +365,7 @@ func FuzzStateHintWrite(f *testing.F) {
 				// Validate
 				require.Equal(t, expectedHints, oracle.Hints())
 				expected.Validate(t, state)
-				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts, nil)
+				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
 			})
 		}
 	})
@@ -362,16 +373,16 @@ func FuzzStateHintWrite(f *testing.F) {
 
 func FuzzStatePreimageWrite(f *testing.F) {
 	versions := GetMipsVersionTestCases(f)
-	f.Fuzz(func(t *testing.T, addr uint32, count uint32, seed int64) {
+	f.Fuzz(func(t *testing.T, addr arch.Word, count arch.Word, seed int64) {
 		for _, v := range versions {
 			t.Run(v.Name, func(t *testing.T) {
 				// Make sure pc does not overlap with preimage data in memory
-				pc := uint32(0)
+				pc := Word(0)
 				if addr <= 8 {
 					addr += 8
 				}
-				effAddr := addr & 0xFF_FF_FF_FC
-				preexistingMemoryVal := [4]byte{0x12, 0x34, 0x56, 0x78}
+				effAddr := addr & arch.AddressMask
+				preexistingMemoryVal := [8]byte{0x12, 0x34, 0x56, 0x78, 0x87, 0x65, 0x43, 0x21}
 				preimageData := []byte("hello world")
 				preimageKey := preimage.Keccak256Key(crypto.Keccak256Hash(preimageData)).PreimageKey()
 				oracle := testutil.StaticOracle(t, preimageData)
@@ -379,17 +390,17 @@ func FuzzStatePreimageWrite(f *testing.F) {
 				goVm := v.VMFactory(oracle, os.Stdout, os.Stderr, testutil.CreateLogger(),
 					testutil.WithRandomization(seed), testutil.WithPreimageKey(preimageKey), testutil.WithPreimageOffset(128), testutil.WithPCAndNextPC(pc))
 				state := goVm.GetState()
-				state.GetRegistersRef()[2] = exec.SysWrite
+				state.GetRegistersRef()[2] = arch.SysWrite
 				state.GetRegistersRef()[4] = exec.FdPreimageWrite
 				state.GetRegistersRef()[5] = addr
 				state.GetRegistersRef()[6] = count
-				state.GetMemory().SetMemory(state.GetPC(), syscallInsn)
-				state.GetMemory().SetMemory(effAddr, binary.BigEndian.Uint32(preexistingMemoryVal[:]))
+				testutil.StoreInstruction(state.GetMemory(), state.GetPC(), syscallInsn)
+				state.GetMemory().SetWord(effAddr, arch.ByteOrderWord.Word(preexistingMemoryVal[:]))
 				step := state.GetStep()
 
 				expectBytesWritten := count
-				alignment := addr & 0x3
-				sz := 4 - alignment
+				alignment := addr & arch.ExtMask
+				sz := arch.WordSizeBytes - alignment
 				if sz < expectBytesWritten {
 					expectBytesWritten = sz
 				}
@@ -414,7 +425,7 @@ func FuzzStatePreimageWrite(f *testing.F) {
 				require.False(t, stepWitness.HasPreimage())
 
 				expected.Validate(t, state)
-				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts, nil)
+				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
 			})
 		}
 	})

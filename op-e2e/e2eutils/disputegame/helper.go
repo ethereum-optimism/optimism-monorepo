@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum-optimism/optimism/op-e2e/config"
+
 	"github.com/ethereum-optimism/optimism/op-chain-ops/genesis"
 	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/contracts"
 	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/contracts/metrics"
@@ -81,6 +83,7 @@ type DisputeSystem interface {
 	L1Deployments() *genesis.L1Deployments
 	RollupCfg() *rollup.Config
 	L2Genesis() *core.Genesis
+	AllocType() config.AllocType
 
 	AdvanceTime(time.Duration)
 }
@@ -94,6 +97,7 @@ type FactoryHelper struct {
 	PrivKey     *ecdsa.PrivateKey
 	FactoryAddr common.Address
 	Factory     *bindings.DisputeGameFactory
+	AllocType   config.AllocType
 }
 
 type FactoryCfg struct {
@@ -113,6 +117,10 @@ func NewFactoryHelper(t *testing.T, ctx context.Context, system DisputeSystem, o
 	client := system.NodeClient("l1")
 	chainID, err := client.ChainID(ctx)
 	require.NoError(err)
+
+	allocType := system.AllocType()
+	require.True(allocType.UsesProofs(), "AllocType %v does not support proofs", allocType)
+
 	factoryCfg := &FactoryCfg{PrivKey: TestKey}
 	for _, opt := range opts {
 		opt(factoryCfg)
@@ -134,6 +142,7 @@ func NewFactoryHelper(t *testing.T, ctx context.Context, system DisputeSystem, o
 		PrivKey:     factoryCfg.PrivKey,
 		Factory:     factory,
 		FactoryAddr: factoryAddr,
+		AllocType:   allocType,
 	}
 }
 
@@ -208,7 +217,7 @@ func (h *FactoryHelper) startOutputCannonGameOfType(ctx context.Context, l2Node 
 	provider := outputs.NewTraceProvider(logger, prestateProvider, rollupClient, l2Client, l1Head, splitDepth, prestateBlock, poststateBlock)
 
 	return &OutputCannonGameHelper{
-		OutputGameHelper: *NewOutputGameHelper(h.T, h.Require, h.Client, h.Opts, h.PrivKey, game, h.FactoryAddr, createdEvent.DisputeProxy, provider, h.System),
+		OutputGameHelper: *NewOutputGameHelper(h.T, h.Require, h.Client, h.Opts, h.PrivKey, game, h.FactoryAddr, createdEvent.DisputeProxy, provider, h.System, h.AllocType),
 	}
 }
 
@@ -262,7 +271,7 @@ func (h *FactoryHelper) StartOutputAlphabetGame(ctx context.Context, l2Node stri
 	provider := outputs.NewTraceProvider(logger, prestateProvider, rollupClient, l2Client, l1Head, splitDepth, prestateBlock, poststateBlock)
 
 	return &OutputAlphabetGameHelper{
-		OutputGameHelper: *NewOutputGameHelper(h.T, h.Require, h.Client, h.Opts, h.PrivKey, game, h.FactoryAddr, createdEvent.DisputeProxy, provider, h.System),
+		OutputGameHelper: *NewOutputGameHelper(h.T, h.Require, h.Client, h.Opts, h.PrivKey, game, h.FactoryAddr, createdEvent.DisputeProxy, provider, h.System, h.AllocType),
 	}
 }
 
@@ -282,7 +291,7 @@ func (h *FactoryHelper) WaitForBlock(l2Node string, l2BlockNumber uint64, cfg *G
 
 	l2Client := h.System.NodeClient(l2Node)
 	if cfg.allowUnsafe {
-		_, err := geth.WaitForBlock(new(big.Int).SetUint64(l2BlockNumber), l2Client, 1*time.Minute)
+		_, err := geth.WaitForBlock(new(big.Int).SetUint64(l2BlockNumber), l2Client, geth.WithAbsoluteTimeout(time.Minute))
 		h.Require.NoErrorf(err, "Block number %v did not become unsafe", l2BlockNumber)
 	} else {
 		_, err := geth.WaitForBlockToBeSafe(new(big.Int).SetUint64(l2BlockNumber), l2Client, 1*time.Minute)

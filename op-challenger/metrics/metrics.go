@@ -2,14 +2,14 @@ package metrics
 
 import (
 	"io"
-	"time"
 
-	"github.com/ethereum-optimism/optimism/op-service/httputil"
-	"github.com/ethereum-optimism/optimism/op-service/sources/caching"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/ethereum-optimism/optimism/op-service/httputil"
+	"github.com/ethereum-optimism/optimism/op-service/sources/caching"
 
 	contractMetrics "github.com/ethereum-optimism/optimism/op-challenger/game/fault/contracts/metrics"
 	opmetrics "github.com/ethereum-optimism/optimism/op-service/metrics"
@@ -32,6 +32,9 @@ type Metricer interface {
 
 	// Record contract metrics
 	contractMetrics.ContractMetricer
+
+	// Record Vm metrics
+	VmMetricer
 
 	RecordActedL1Block(n uint64)
 
@@ -59,9 +62,7 @@ type Metricer interface {
 	IncIdleExecutors()
 	DecIdleExecutors()
 
-	// Record vm execution metrics
-	VmMetricer
-	VmMetrics(vmType string) *VmMetrics
+	ToTypedVmMetrics(vmType string) TypedVmMetricer
 }
 
 // Metrics implementation must implement RegistryMetricer to allow the metrics server to work.
@@ -75,11 +76,12 @@ type Metrics struct {
 	txmetrics.TxMetrics
 	*opmetrics.CacheMetrics
 	*contractMetrics.ContractMetrics
+	*VmMetrics
 
-	info prometheus.GaugeVec
+	info *prometheus.GaugeVec
 	up   prometheus.Gauge
 
-	executors prometheus.GaugeVec
+	executors *prometheus.GaugeVec
 
 	bondClaimFailures prometheus.Counter
 	bondsClaimed      prometheus.Counter
@@ -96,10 +98,8 @@ type Metrics struct {
 
 	claimResolutionTime prometheus.Histogram
 	gameActTime         prometheus.Histogram
-	vmExecutionTime     *prometheus.HistogramVec
-	vmMemoryUsed        *prometheus.HistogramVec
 
-	trackedGames  prometheus.GaugeVec
+	trackedGames  *prometheus.GaugeVec
 	inflightGames prometheus.Gauge
 }
 
@@ -124,7 +124,9 @@ func NewMetrics() *Metrics {
 
 		ContractMetrics: contractMetrics.MakeContractMetrics(Namespace, factory),
 
-		info: *factory.NewGaugeVec(prometheus.GaugeOpts{
+		VmMetrics: NewVmMetrics(Namespace, factory),
+
+		info: factory.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: Namespace,
 			Name:      "info",
 			Help:      "Pseudo-metric tracking version and config info",
@@ -136,7 +138,7 @@ func NewMetrics() *Metrics {
 			Name:      "up",
 			Help:      "1 if the op-challenger has finished starting up",
 		}),
-		executors: *factory.NewGaugeVec(prometheus.GaugeOpts{
+		executors: factory.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: Namespace,
 			Name:      "executors",
 			Help:      "Number of active and idle executors",
@@ -172,21 +174,6 @@ func NewMetrics() *Metrics {
 				[]float64{1.0, 2.0, 5.0, 10.0},
 				prometheus.ExponentialBuckets(30.0, 2.0, 14)...),
 		}),
-		vmExecutionTime: factory.NewHistogramVec(prometheus.HistogramOpts{
-			Namespace: Namespace,
-			Name:      "vm_execution_time",
-			Help:      "Time (in seconds) to execute the fault proof VM",
-			Buckets: append(
-				[]float64{1.0, 10.0},
-				prometheus.ExponentialBuckets(30.0, 2.0, 14)...),
-		}, []string{"vm"}),
-		vmMemoryUsed: factory.NewHistogramVec(prometheus.HistogramOpts{
-			Namespace: Namespace,
-			Name:      "vm_memory_used",
-			Help:      "Memory used (in bytes) to execute the fault proof VM",
-			// 100MiB increments from 0 to 1.5GiB
-			Buckets: prometheus.LinearBuckets(0, 1024*1024*100, 15),
-		}, []string{"vm"}),
 		bondClaimFailures: factory.NewCounter(prometheus.CounterOpts{
 			Namespace: Namespace,
 			Name:      "claim_failures",
@@ -212,7 +199,7 @@ func NewMetrics() *Metrics {
 			Name:      "preimage_count",
 			Help:      "Number of large preimage proposals being tracked by the challenger",
 		}),
-		trackedGames: *factory.NewGaugeVec(prometheus.GaugeOpts{
+		trackedGames: factory.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: Namespace,
 			Name:      "tracked_games",
 			Help:      "Number of games being tracked by the challenger",
@@ -292,14 +279,6 @@ func (m *Metrics) RecordBondClaimed(amount uint64) {
 	m.bondsClaimed.Add(float64(amount))
 }
 
-func (m *Metrics) RecordVmExecutionTime(vmType string, dur time.Duration) {
-	m.vmExecutionTime.WithLabelValues(vmType).Observe(dur.Seconds())
-}
-
-func (m *Metrics) RecordVmMemoryUsed(vmType string, memoryUsed uint64) {
-	m.vmMemoryUsed.WithLabelValues(vmType).Observe(float64(memoryUsed))
-}
-
 func (m *Metrics) RecordClaimResolutionTime(t float64) {
 	m.claimResolutionTime.Observe(t)
 }
@@ -342,6 +321,6 @@ func (m *Metrics) RecordGameUpdateCompleted() {
 	m.inflightGames.Sub(1)
 }
 
-func (m *Metrics) VmMetrics(vmType string) *VmMetrics {
-	return NewVmMetrics(m, vmType)
+func (m *Metrics) ToTypedVmMetrics(vmType string) TypedVmMetricer {
+	return NewTypedVmMetrics(m, vmType)
 }

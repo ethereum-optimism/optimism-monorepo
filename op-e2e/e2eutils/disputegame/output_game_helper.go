@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum-optimism/optimism/op-e2e/config"
+
 	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/contracts"
 	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/preimages"
 	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/trace/outputs"
@@ -43,7 +45,7 @@ type OutputGameHelper struct {
 }
 
 func NewOutputGameHelper(t *testing.T, require *require.Assertions, client *ethclient.Client, opts *bind.TransactOpts, privKey *ecdsa.PrivateKey,
-	game contracts.FaultDisputeGameContract, factoryAddr common.Address, addr common.Address, correctOutputProvider *outputs.OutputTraceProvider, system DisputeSystem) *OutputGameHelper {
+	game contracts.FaultDisputeGameContract, factoryAddr common.Address, addr common.Address, correctOutputProvider *outputs.OutputTraceProvider, system DisputeSystem, allocType config.AllocType) *OutputGameHelper {
 	return &OutputGameHelper{
 		T:                     t,
 		Require:               require,
@@ -364,6 +366,18 @@ func (g *OutputGameHelper) Status(ctx context.Context) gameTypes.GameStatus {
 	status, err := g.Game.GetStatus(ctx)
 	g.Require.NoError(err)
 	return status
+}
+
+func (g *OutputGameHelper) WaitForBondModeSet(ctx context.Context) {
+	g.T.Logf("Waiting for game %v to have bond mode set", g.Addr)
+	timedCtx, cancel := context.WithTimeout(ctx, defaultTimeout)
+	defer cancel()
+	err := wait.For(timedCtx, time.Second, func() (bool, error) {
+		bondMode, err := g.Game.BondDistributionMode(ctx)
+		g.Require.NoError(err)
+		return bondMode != 0, nil
+	})
+	g.Require.NoError(err, "Failed to wait for bond mode to be set")
 }
 
 func (g *OutputGameHelper) WaitForGameStatus(ctx context.Context, expected gameTypes.GameStatus) {

@@ -7,22 +7,25 @@ import (
 	"io"
 
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm"
+	"github.com/ethereum-optimism/optimism/cannon/mipsevm/arch"
 )
 
 const (
-	HEAP_START    = 0x05_00_00_00
-	HEAP_END      = 0x60_00_00_00
-	PROGRAM_BREAK = 0x40_00_00_00
+	HEAP_START    = arch.HeapStart
+	HEAP_END      = arch.HeapEnd
+	PROGRAM_BREAK = arch.ProgramBreak
 )
 
-type CreateInitialFPVMState[T mipsevm.FPVMState] func(pc, heapStart uint32) T
+type Word = arch.Word
+
+type CreateInitialFPVMState[T mipsevm.FPVMState] func(pc, heapStart Word) T
 
 func LoadELF[T mipsevm.FPVMState](f *elf.File, initState CreateInitialFPVMState[T]) (T, error) {
 	var empty T
-	s := initState(uint32(f.Entry), HEAP_START)
+	s := initState(Word(f.Entry), HEAP_START)
 
 	for i, prog := range f.Progs {
-		if prog.Type == 0x70000003 { // MIPS_ABIFLAGS
+		if prog.Type == elf.PT_MIPS_ABIFLAGS {
 			continue
 		}
 
@@ -39,13 +42,29 @@ func LoadELF[T mipsevm.FPVMState](f *elf.File, initState CreateInitialFPVMState[
 			}
 		}
 
-		if prog.Vaddr+prog.Memsz >= uint64(1<<32) {
-			return empty, fmt.Errorf("program %d out of 32-bit mem range: %x - %x (size: %x)", i, prog.Vaddr, prog.Vaddr+prog.Memsz, prog.Memsz)
+		if prog.Memsz == 0 {
+			// Nothing to do
+			continue
 		}
-		if prog.Vaddr+prog.Memsz >= HEAP_START {
-			return empty, fmt.Errorf("program %d overlaps with heap: %x - %x (size: %x). The heap start offset must be reconfigured", i, prog.Vaddr, prog.Vaddr+prog.Memsz, prog.Memsz)
+
+		// Calculate the architecture-specific last valid memory address
+		var lastMemoryAddr uint64
+		if arch.IsMips32 {
+			// 32-bit virtual address space
+			lastMemoryAddr = (1 << 32) - 1
+		} else {
+			// 48-bit virtual address space
+			lastMemoryAddr = (1 << 48) - 1
 		}
-		if err := s.GetMemory().SetMemoryRange(uint32(prog.Vaddr), r); err != nil {
+
+		lastByteToWrite := prog.Vaddr + prog.Memsz - 1
+		if lastByteToWrite > lastMemoryAddr || lastByteToWrite < prog.Vaddr {
+			return empty, fmt.Errorf("program %d out of memory range: %x - %x (size: %x)", i, prog.Vaddr, lastByteToWrite, prog.Memsz)
+		}
+		if lastByteToWrite >= HEAP_START {
+			return empty, fmt.Errorf("program %d overlaps with heap: %x - %x (size: %x). The heap start offset must be reconfigured", i, prog.Vaddr, lastByteToWrite, prog.Memsz)
+		}
+		if err := s.GetMemory().SetMemoryRange(Word(prog.Vaddr), r); err != nil {
 			return empty, fmt.Errorf("failed to read program segment %d: %w", i, err)
 		}
 	}

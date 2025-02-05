@@ -56,7 +56,7 @@ contract Blueprint_Test is Test {
     // --- We start with the test cases from ERC-5202 ---
 
     // An example (and trivial!) blueprint contract with no data section, whose initcode is just the STOP instruction.
-    function test_ERC5202_trivialBlueprint_succeeds() public view {
+    function test_trivialBlueprint_erc5202_succeeds() public view {
         bytes memory bytecode = hex"FE710000";
         Blueprint.Preamble memory preamble = blueprint.parseBlueprintPreamble(bytecode);
 
@@ -67,7 +67,7 @@ contract Blueprint_Test is Test {
 
     // An example blueprint contract whose initcode is the trivial STOP instruction and whose data
     // section contains the byte 0xFF repeated seven times.
-    function test_ERC5202_blueprintWithDataSection_succeeds() public view {
+    function test_blueprintWithDataSection_erc5202_succeeds() public view {
         // Here, 0xFE71 is the magic header, 0x01 means version 0 + 1 length bit, 0x07 encodes the
         // length in bytes of the data section. These are followed by the data section, and then the
         // initcode. For illustration, this code with delimiters would be:
@@ -82,7 +82,7 @@ contract Blueprint_Test is Test {
 
     // An example blueprint whose initcode is the trivial STOP instruction and whose data section
     // contains the byte 0xFF repeated 256 times.
-    function test_ERC5202_blueprintWithLargeDataSection_succeeds() public view {
+    function test_blueprintWithLargeDataSection_erc5205_succeeds() public view {
         // Delimited, this would be 0xFE71|02|0100|FF...FF|00
         bytes memory bytecode =
             hex"FE71020100FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00";

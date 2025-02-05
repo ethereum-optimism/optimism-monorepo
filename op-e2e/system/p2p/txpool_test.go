@@ -3,7 +3,6 @@ package p2p
 import (
 	"math/big"
 	"testing"
-	"time"
 
 	op_e2e "github.com/ethereum-optimism/optimism/op-e2e"
 
@@ -31,7 +30,7 @@ func TestTxGossip(t *testing.T) {
 	geth.ConnectP2P(t, seqClient, verifClient)
 
 	// This prevents the below tx-sending from flaking in CI
-	_, err = geth.WaitForBlock(big.NewInt(10), verifClient, time.Minute)
+	_, err = geth.WaitForBlock(big.NewInt(10), verifClient)
 	require.NoError(t, err)
 
 	// Send a transaction to the verifier and it should be gossiped to the sequencer and included in a block.

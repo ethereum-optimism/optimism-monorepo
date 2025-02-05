@@ -31,7 +31,7 @@ var (
 
 func TestFjordNetworkUpgradeTransactions(gt *testing.T) {
 	t := helpers.NewDefaultTesting(gt)
-	dp := e2eutils.MakeDeployParams(t, helpers.DefaultRollupTestParams)
+	dp := e2eutils.MakeDeployParams(t, helpers.DefaultRollupTestParams())
 	genesisBlock := hexutil.Uint64(0)
 	fjordOffset := hexutil.Uint64(2)
 
@@ -45,6 +45,8 @@ func TestFjordNetworkUpgradeTransactions(gt *testing.T) {
 	dp.DeployConfig.L2GenesisDeltaTimeOffset = &genesisBlock
 	dp.DeployConfig.L2GenesisEcotoneTimeOffset = &genesisBlock
 	dp.DeployConfig.L2GenesisFjordTimeOffset = &fjordOffset
+	dp.DeployConfig.L2GenesisGraniteTimeOffset = nil
+	dp.DeployConfig.L2GenesisHoloceneTimeOffset = nil
 	require.NoError(t, dp.DeployConfig.Check(log), "must have valid config")
 
 	sd := e2eutils.Setup(t, dp, helpers.DefaultAlloc)

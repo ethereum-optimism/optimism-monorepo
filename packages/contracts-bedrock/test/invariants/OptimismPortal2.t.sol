@@ -17,9 +17,9 @@ import "src/dispute/lib/Types.sol";
 import "src/libraries/PortalErrors.sol";
 
 // Interfaces
-import { IOptimismPortal2 } from "src/L1/interfaces/IOptimismPortal2.sol";
-import { IResourceMetering } from "src/L1/interfaces/IResourceMetering.sol";
-import { IFaultDisputeGame } from "src/dispute/interfaces/IFaultDisputeGame.sol";
+import { IOptimismPortal2 } from "interfaces/L1/IOptimismPortal2.sol";
+import { IResourceMetering } from "interfaces/L1/IResourceMetering.sol";
+import { IFaultDisputeGame } from "interfaces/dispute/IFaultDisputeGame.sol";
 
 contract OptimismPortal2_Depositor is StdUtils, ResourceMetering {
     Vm internal vm;
@@ -96,7 +96,6 @@ contract OptimismPortal2_Invariant_Harness is CommonTest {
     Types.OutputRootProof internal _outputRootProof;
 
     function setUp() public virtual override {
-        super.enableFaultProofs();
         super.setUp();
 
         _defaultTx = Types.WithdrawalTransaction({
@@ -118,6 +117,9 @@ contract OptimismPortal2_Invariant_Harness is CommonTest {
             messagePasserStorageRoot: _storageRoot,
             latestBlockhash: bytes32(uint256(0))
         });
+
+        // Warp forward in time to ensure that the game is created after the retirement timestamp.
+        vm.warp(optimismPortal2.respectedGameTypeUpdatedAt() + 1 seconds);
 
         // Create a dispute game with the output root we've proposed.
         _proposedBlockNumber = 0xFF;

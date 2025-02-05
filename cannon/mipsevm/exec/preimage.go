@@ -7,7 +7,7 @@ import (
 )
 
 type PreimageReader interface {
-	ReadPreimage(key [32]byte, offset uint32) (dat [32]byte, datLen uint32)
+	ReadPreimage(key [32]byte, offset Word) (dat [32]byte, datLen Word)
 }
 
 // TrackingPreimageOracleReader wraps around a PreimageOracle, implements the PreimageOracle interface, and adds tracking functionality.
@@ -22,8 +22,8 @@ type TrackingPreimageOracleReader struct {
 	lastPreimage []byte
 	// key for above preimage
 	lastPreimageKey [32]byte
-	// offset we last read from, or max uint32 if nothing is read this step
-	lastPreimageOffset uint32
+	// offset we last read from, or max Word if nothing is read this step
+	lastPreimageOffset Word
 }
 
 func NewTrackingPreimageOracleReader(po mipsevm.PreimageOracle) *TrackingPreimageOracleReader {
@@ -31,7 +31,7 @@ func NewTrackingPreimageOracleReader(po mipsevm.PreimageOracle) *TrackingPreimag
 }
 
 func (p *TrackingPreimageOracleReader) Reset() {
-	p.lastPreimageOffset = ^uint32(0)
+	p.lastPreimageOffset = ^Word(0)
 }
 
 func (p *TrackingPreimageOracleReader) Hint(v []byte) {
@@ -45,7 +45,7 @@ func (p *TrackingPreimageOracleReader) GetPreimage(k [32]byte) []byte {
 	return preimage
 }
 
-func (p *TrackingPreimageOracleReader) ReadPreimage(key [32]byte, offset uint32) (dat [32]byte, datLen uint32) {
+func (p *TrackingPreimageOracleReader) ReadPreimage(key [32]byte, offset Word) (dat [32]byte, datLen Word) {
 	preimage := p.lastPreimage
 	if key != p.lastPreimageKey {
 		p.lastPreimageKey = key
@@ -57,14 +57,14 @@ func (p *TrackingPreimageOracleReader) ReadPreimage(key [32]byte, offset uint32)
 		p.lastPreimage = preimage
 	}
 	p.lastPreimageOffset = offset
-	if offset >= uint32(len(preimage)) {
+	if offset >= Word(len(preimage)) {
 		panic("Preimage offset out-of-bounds")
 	}
-	datLen = uint32(copy(dat[:], preimage[offset:]))
+	datLen = Word(copy(dat[:], preimage[offset:]))
 	return
 }
 
-func (p *TrackingPreimageOracleReader) LastPreimage() ([32]byte, []byte, uint32) {
+func (p *TrackingPreimageOracleReader) LastPreimage() ([32]byte, []byte, Word) {
 	return p.lastPreimageKey, p.lastPreimage, p.lastPreimageOffset
 }
 

@@ -26,7 +26,6 @@ import (
 	"github.com/ethereum-optimism/optimism/op-chain-ops/crossdomain"
 	legacybindings "github.com/ethereum-optimism/optimism/op-e2e/bindings"
 	"github.com/ethereum-optimism/optimism/op-e2e/config"
-	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils"
 	e2ehelpers "github.com/ethereum-optimism/optimism/op-e2e/system/helpers"
 	"github.com/ethereum-optimism/optimism/op-node/bindings"
 	bindingspreview "github.com/ethereum-optimism/optimism/op-node/bindings/preview"
@@ -43,17 +42,18 @@ type L1Bindings struct {
 	DisputeGameFactory *bindings.DisputeGameFactory
 }
 
-func NewL1Bindings(t Testing, l1Cl *ethclient.Client) *L1Bindings {
-	optimismPortal, err := bindings.NewOptimismPortal(config.L1Deployments.OptimismPortalProxy, l1Cl)
+func NewL1Bindings(t Testing, l1Cl *ethclient.Client, allocType config.AllocType) *L1Bindings {
+	l1Deployments := config.L1Deployments(allocType)
+	optimismPortal, err := bindings.NewOptimismPortal(l1Deployments.OptimismPortalProxy, l1Cl)
 	require.NoError(t, err)
 
-	l2OutputOracle, err := bindings.NewL2OutputOracle(config.L1Deployments.L2OutputOracleProxy, l1Cl)
+	l2OutputOracle, err := bindings.NewL2OutputOracle(l1Deployments.L2OutputOracleProxy, l1Cl)
 	require.NoError(t, err)
 
-	optimismPortal2, err := bindingspreview.NewOptimismPortal2(config.L1Deployments.OptimismPortalProxy, l1Cl)
+	optimismPortal2, err := bindingspreview.NewOptimismPortal2(l1Deployments.OptimismPortalProxy, l1Cl)
 	require.NoError(t, err)
 
-	disputeGameFactory, err := bindings.NewDisputeGameFactory(config.L1Deployments.DisputeGameFactoryProxy, l1Cl)
+	disputeGameFactory, err := bindings.NewDisputeGameFactory(l1Deployments.DisputeGameFactoryProxy, l1Cl)
 	require.NoError(t, err)
 
 	return &L1Bindings{
@@ -309,9 +309,11 @@ type CrossLayerUser struct {
 	lastL1DepositTxHash common.Hash
 
 	lastL2WithdrawalTxHash common.Hash
+
+	allocType config.AllocType
 }
 
-func NewCrossLayerUser(log log.Logger, priv *ecdsa.PrivateKey, rng *rand.Rand) *CrossLayerUser {
+func NewCrossLayerUser(log log.Logger, priv *ecdsa.PrivateKey, rng *rand.Rand, allocType config.AllocType) *CrossLayerUser {
 	addr := crypto.PubkeyToAddress(priv.PublicKey)
 	return &CrossLayerUser{
 		L1: L1User{
@@ -330,6 +332,7 @@ func NewCrossLayerUser(log log.Logger, priv *ecdsa.PrivateKey, rng *rand.Rand) *
 				address: addr,
 			},
 		},
+		allocType: allocType,
 	}
 }
 
@@ -427,7 +430,7 @@ func (s *CrossLayerUser) getLatestWithdrawalParams(t Testing) (*withdrawals.Prov
 
 	var l2OutputBlockNr *big.Int
 	var l2OutputBlock *types.Block
-	if e2eutils.UseFaultProofs() {
+	if s.allocType.UsesProofs() {
 		latestGame, err := withdrawals.FindLatestGame(t.Ctx(), &s.L1.env.Bindings.DisputeGameFactory.DisputeGameFactoryCaller, &s.L1.env.Bindings.OptimismPortal2.OptimismPortal2Caller)
 		require.NoError(t, err)
 		l2OutputBlockNr = new(big.Int).SetBytes(latestGame.ExtraData[0:32])
@@ -444,7 +447,7 @@ func (s *CrossLayerUser) getLatestWithdrawalParams(t Testing) (*withdrawals.Prov
 		return nil, fmt.Errorf("the latest L2 output is %d and is not past L2 block %d that includes the withdrawal yet, no withdrawal can be proved yet", l2OutputBlock.NumberU64(), l2WithdrawalBlock.NumberU64())
 	}
 
-	if !e2eutils.UseFaultProofs() {
+	if !s.allocType.UsesProofs() {
 		finalizationPeriod, err := s.L1.env.Bindings.L2OutputOracle.FINALIZATIONPERIODSECONDS(&bind.CallOpts{})
 		require.NoError(t, err)
 		l1Head, err := s.L1.env.EthCl.HeaderByNumber(t.Ctx(), nil)
@@ -457,7 +460,7 @@ func (s *CrossLayerUser) getLatestWithdrawalParams(t Testing) (*withdrawals.Prov
 
 	header, err := s.L2.env.EthCl.HeaderByNumber(t.Ctx(), l2OutputBlockNr)
 	require.NoError(t, err)
-	params, err := e2ehelpers.ProveWithdrawalParameters(t.Ctx(), s.L2.env.Bindings.ProofClient, s.L2.env.EthCl, s.L2.env.EthCl, s.lastL2WithdrawalTxHash, header, &s.L1.env.Bindings.L2OutputOracle.L2OutputOracleCaller, &s.L1.env.Bindings.DisputeGameFactory.DisputeGameFactoryCaller, &s.L1.env.Bindings.OptimismPortal2.OptimismPortal2Caller)
+	params, err := e2ehelpers.ProveWithdrawalParameters(t.Ctx(), s.L2.env.Bindings.ProofClient, s.L2.env.EthCl, s.L2.env.EthCl, s.lastL2WithdrawalTxHash, header, &s.L1.env.Bindings.L2OutputOracle.L2OutputOracleCaller, &s.L1.env.Bindings.DisputeGameFactory.DisputeGameFactoryCaller, &s.L1.env.Bindings.OptimismPortal2.OptimismPortal2Caller, s.allocType)
 	require.NoError(t, err)
 
 	return &params, nil
@@ -473,7 +476,7 @@ func (s *CrossLayerUser) getDisputeGame(t Testing, params withdrawals.ProvenWith
 		Data:     params.Data,
 	}
 
-	portal2, err := bindingspreview.NewOptimismPortal2(config.L1Deployments.OptimismPortalProxy, s.L1.env.EthCl)
+	portal2, err := bindingspreview.NewOptimismPortal2(config.L1Deployments(s.allocType).OptimismPortalProxy, s.L1.env.EthCl)
 	require.Nil(t, err)
 
 	wdHash, err := wd.Hash()

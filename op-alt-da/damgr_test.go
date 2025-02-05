@@ -58,7 +58,7 @@ func TestFinalization(t *testing.T) {
 	state.Prune(bID(7))
 	require.Equal(t, eth.L1BlockRef{}, state.lastPrunedCommitment)
 	state.Prune(bID(8))
-	require.Equal(t, eth.L1BlockRef{}, state.lastPrunedCommitment)
+	require.Equal(t, l1Ref(bn1), state.lastPrunedCommitment)
 
 	// Track a commitment, challenge it, & then resolve it
 	c2 := RandomCommitment(rng)
@@ -84,11 +84,11 @@ func TestFinalization(t *testing.T) {
 
 	// Now finalize everything
 	state.Prune(bID(20))
-	require.Equal(t, eth.L1BlockRef{}, state.lastPrunedCommitment)
+	require.Equal(t, l1Ref(bn1), state.lastPrunedCommitment)
 	state.Prune(bID(28))
-	require.Equal(t, eth.L1BlockRef{}, state.lastPrunedCommitment)
+	require.Equal(t, l1Ref(bn1), state.lastPrunedCommitment)
 	state.Prune(bID(32))
-	require.Equal(t, eth.L1BlockRef{Number: bn2}, state.lastPrunedCommitment)
+	require.Equal(t, l1Ref(bn2), state.lastPrunedCommitment)
 }
 
 // TestExpireChallenges expires challenges and prunes the state for longer windows

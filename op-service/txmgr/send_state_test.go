@@ -58,7 +58,7 @@ func TestSendStateNoAbortAfterProcessOtherError(t *testing.T) {
 	require.Nil(t, sendState.CriticalError())
 }
 
-// TestSendStateAbortSafelyAfterNonceTooLowButNoTxMined asserts that we will abort after the very
+// TestSendStateAbortSafelyAfterNonceTooLowNoTxPublished asserts that we will abort after the very
 // first none-too-low error if a tx hasn't yet been published.
 func TestSendStateAbortSafelyAfterNonceTooLowNoTxPublished(t *testing.T) {
 	sendState := newSendState()

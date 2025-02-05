@@ -113,9 +113,9 @@ func TestL1InfoContract(t *testing.T) {
 
 	endVerifBlockNumber := big.NewInt(4)
 	endSeqBlockNumber := big.NewInt(6)
-	endVerifBlock, err := geth.WaitForBlock(endVerifBlockNumber, l2Verif, time.Minute)
+	endVerifBlock, err := geth.WaitForBlock(endVerifBlockNumber, l2Verif)
 	require.Nil(t, err)
-	endSeqBlock, err := geth.WaitForBlock(endSeqBlockNumber, l2Seq, time.Minute)
+	endSeqBlock, err := geth.WaitForBlock(endSeqBlockNumber, l2Seq)
 	require.Nil(t, err)
 
 	seqL1Info, err := bindings.NewL1Block(cfg.L1InfoPredeployAddress, l2Seq)

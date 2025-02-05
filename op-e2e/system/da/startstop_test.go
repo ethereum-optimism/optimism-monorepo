@@ -18,37 +18,28 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestSystemBatchType run each system e2e test case in singular batch mode and span batch mode.
+// TestSystemBatchType* run each system e2e test case in singular batch mode and span batch mode.
 // If the test case tests batch submission and advancing safe head, it should be tested in both singular and span batch mode.
-func TestSystemBatchType(t *testing.T) {
-	tests := []struct {
-		name string
-		f    func(*testing.T, func(*e2esys.SystemConfig))
-	}{
-		{"StopStartBatcher", StopStartBatcher},
-	}
-	for _, test := range tests {
-		test := test
-		t.Run(test.name+"_SingularBatch", func(t *testing.T) {
-			test.f(t, func(sc *e2esys.SystemConfig) {
-				sc.BatcherBatchType = derive.SingularBatchType
-			})
-		})
-		t.Run(test.name+"_SpanBatch", func(t *testing.T) {
-			test.f(t, func(sc *e2esys.SystemConfig) {
-				sc.BatcherBatchType = derive.SpanBatchType
-			})
-		})
-		t.Run(test.name+"_SpanBatchMaxBlocks", func(t *testing.T) {
-			test.f(t, func(sc *e2esys.SystemConfig) {
-				sc.BatcherBatchType = derive.SpanBatchType
-				sc.BatcherMaxBlocksPerSpanBatch = 2
-			})
-		})
-	}
+func TestSystemBatchType_SingularBatch(t *testing.T) {
+	testStartStopBatcher(t, func(sc *e2esys.SystemConfig) {
+		sc.BatcherBatchType = derive.SingularBatchType
+	})
 }
 
-func StopStartBatcher(t *testing.T, cfgMod func(*e2esys.SystemConfig)) {
+func TestSystemBatchType_SpanBatch(t *testing.T) {
+	testStartStopBatcher(t, func(sc *e2esys.SystemConfig) {
+		sc.BatcherBatchType = derive.SpanBatchType
+	})
+}
+
+func TestSystemBatchType_SpanBatchMaxBlocks(t *testing.T) {
+	testStartStopBatcher(t, func(sc *e2esys.SystemConfig) {
+		sc.BatcherBatchType = derive.SpanBatchType
+		sc.BatcherMaxBlocksPerSpanBatch = 2
+	})
+}
+
+func testStartStopBatcher(t *testing.T, cfgMod func(*e2esys.SystemConfig)) {
 	op_e2e.InitParallel(t)
 
 	cfg := e2esys.DefaultSystemConfig(t)
@@ -81,7 +72,7 @@ func StopStartBatcher(t *testing.T, cfgMod func(*e2esys.SystemConfig)) {
 
 	// wait until the block the tx was first included in shows up in the safe chain on the verifier
 	safeBlockInclusionDuration := time.Duration(6*cfg.DeployConfig.L1BlockTime) * time.Second
-	_, err = geth.WaitForBlock(receipt.BlockNumber, l2Verif, safeBlockInclusionDuration)
+	_, err = geth.WaitForBlock(receipt.BlockNumber, l2Verif)
 	require.NoError(t, err, "Waiting for block on verifier")
 	require.NoError(t, wait.ForProcessingFullBatch(context.Background(), rollupClient))
 
@@ -120,7 +111,7 @@ func StopStartBatcher(t *testing.T, cfgMod func(*e2esys.SystemConfig)) {
 	receipt = sendTx()
 
 	// wait until the block the tx was first included in shows up in the safe chain on the verifier
-	_, err = geth.WaitForBlock(receipt.BlockNumber, l2Verif, safeBlockInclusionDuration)
+	_, err = geth.WaitForBlock(receipt.BlockNumber, l2Verif)
 	require.NoError(t, err, "Waiting for block on verifier")
 	require.NoError(t, wait.ForProcessingFullBatch(context.Background(), rollupClient))
 

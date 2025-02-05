@@ -24,6 +24,7 @@ library LegacyCrossDomainUtils {
         pure
         returns (bytes memory)
     {
+        // nosemgrep: sol-style-use-abi-encodecall
         return abi.encodeWithSignature(
             "relayMessage(address,address,bytes,uint256)", _target, _sender, _message, _messageNonce
         );

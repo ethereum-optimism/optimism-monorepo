@@ -4,7 +4,6 @@ pragma solidity 0.8.15;
 import { Test } from "forge-std/Test.sol";
 import { GnosisSafe as Safe } from "safe-contracts/GnosisSafe.sol";
 import { OwnerManager } from "safe-contracts/base/OwnerManager.sol";
-import { Enum } from "safe-contracts/common/Enum.sol";
 import "test/safe-tools/SafeTestTools.sol";
 
 import { LivenessModule } from "src/safe/LivenessModule.sol";
@@ -147,7 +146,7 @@ contract LivenessModule_GetRequiredThreshold_Test is LivenessModule_TestInit {
         pure
         returns (uint256)
     {
-        require(_percentage > 0 && _percentage <= 100);
+        require(_percentage > 0 && _percentage <= 100, "LivenessModule: _percentage must be between 1 and 100");
         uint256 toAdd;
 
         // If the total multiplied by the percentage is not divisible by 100, we need to add 1 to the result to
@@ -489,7 +488,7 @@ contract LivenessModule_RemoveOwnersFuzz_Test is LivenessModule_TestInit {
     }
 
     /// @dev Tests if removing owners works correctly for various safe configurations and numbeers of live owners
-    function testFuzz_removeOwners(
+    function testFuzz_removeOwners_works(
         uint256 _numOwners,
         uint256 _minOwners,
         uint256 _numLiveOwners,

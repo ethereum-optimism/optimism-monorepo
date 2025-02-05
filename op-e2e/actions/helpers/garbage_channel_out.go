@@ -73,7 +73,7 @@ type Writer interface {
 type ChannelOutIface interface {
 	ID() derive.ChannelID
 	Reset() error
-	AddBlock(rollupCfg *rollup.Config, block *types.Block) error
+	AddBlock(rollupCfg *rollup.Config, block *types.Block) (*derive.L1BlockInfo, error)
 	ReadyBytes() int
 	Flush() error
 	Close() error
@@ -157,19 +157,19 @@ func (co *GarbageChannelOut) Reset() error {
 // error that it returns is ErrTooManyRLPBytes. If this error
 // is returned, the channel should be closed and a new one
 // should be made.
-func (co *GarbageChannelOut) AddBlock(rollupCfg *rollup.Config, block *types.Block) error {
+func (co *GarbageChannelOut) AddBlock(rollupCfg *rollup.Config, block *types.Block) (*derive.L1BlockInfo, error) {
 	if co.closed {
-		return errors.New("already closed")
+		return nil, errors.New("already closed")
 	}
-	batch, err := blockToBatch(rollupCfg, block)
+	batch, l1Info, err := blockToBatch(rollupCfg, block)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	// We encode to a temporary buffer to determine the encoded length to
 	// ensure that the total size of all RLP elements is less than or equal to MAX_RLP_BYTES_PER_CHANNEL
 	var buf bytes.Buffer
 	if err := rlp.Encode(&buf, batch); err != nil {
-		return err
+		return nil, err
 	}
 	if co.cfg.MalformRLP {
 		// Malform the RLP by incrementing the length prefix by 1.
@@ -182,13 +182,13 @@ func (co *GarbageChannelOut) AddBlock(rollupCfg *rollup.Config, block *types.Blo
 	chainSpec := rollup.NewChainSpec(rollupCfg)
 	maxRLPBytesPerChannel := chainSpec.MaxRLPBytesPerChannel(block.Time())
 	if co.rlpLength+buf.Len() > int(maxRLPBytesPerChannel) {
-		return fmt.Errorf("could not add %d bytes to channel of %d bytes, max is %d. err: %w",
+		return nil, fmt.Errorf("could not add %d bytes to channel of %d bytes, max is %d. err: %w",
 			buf.Len(), co.rlpLength, maxRLPBytesPerChannel, derive.ErrTooManyRLPBytes)
 	}
 	co.rlpLength += buf.Len()
 
 	_, err = io.Copy(co.compress, &buf)
-	return err
+	return l1Info, err
 }
 
 // ReadyBytes returns the number of bytes that the channel out can immediately output into a frame.
@@ -256,7 +256,7 @@ func (co *GarbageChannelOut) OutputFrame(w *bytes.Buffer, maxSize uint64) (uint1
 }
 
 // blockToBatch transforms a block into a batch object that can easily be RLP encoded.
-func blockToBatch(rollupCfg *rollup.Config, block *types.Block) (*derive.BatchData, error) {
+func blockToBatch(rollupCfg *rollup.Config, block *types.Block) (*derive.BatchData, *derive.L1BlockInfo, error) {
 	opaqueTxs := make([]hexutil.Bytes, 0, len(block.Transactions()))
 	for i, tx := range block.Transactions() {
 		if tx.Type() == types.DepositTxType {
@@ -264,17 +264,17 @@ func blockToBatch(rollupCfg *rollup.Config, block *types.Block) (*derive.BatchDa
 		}
 		otx, err := tx.MarshalBinary()
 		if err != nil {
-			return nil, fmt.Errorf("could not encode tx %v in block %v: %w", i, tx.Hash(), err)
+			return nil, nil, fmt.Errorf("could not encode tx %v in block %v: %w", i, tx.Hash(), err)
 		}
 		opaqueTxs = append(opaqueTxs, otx)
 	}
 	l1InfoTx := block.Transactions()[0]
 	if l1InfoTx.Type() != types.DepositTxType {
-		return nil, derive.ErrNotDepositTx
+		return nil, nil, derive.ErrNotDepositTx
 	}
 	l1Info, err := derive.L1BlockInfoFromBytes(rollupCfg, block.Time(), l1InfoTx.Data())
 	if err != nil {
-		return nil, fmt.Errorf("could not parse the L1 Info deposit: %w", err)
+		return nil, nil, fmt.Errorf("could not parse the L1 Info deposit: %w", err)
 	}
 
 	singularBatch := &derive.SingularBatch{
@@ -285,5 +285,5 @@ func blockToBatch(rollupCfg *rollup.Config, block *types.Block) (*derive.BatchDa
 		Transactions: opaqueTxs,
 	}
 
-	return derive.NewBatchData(singularBatch), nil
+	return derive.NewBatchData(singularBatch), l1Info, nil
 }

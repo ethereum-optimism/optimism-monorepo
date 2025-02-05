@@ -1,6 +1,7 @@
 package signer
 
 import (
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -18,6 +19,37 @@ func TestDefaultConfigIsValid(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestHeaderParsing(t *testing.T) {
+	testHeaders := []string{
+		"test-key=this:is:a:value",
+		"b64-test-key=value:dGVzdCBkYXRhIDE=$",
+	}
+
+	args := []string{"app", "--signer.header", testHeaders[0], "--signer.header", testHeaders[1]}
+	cfg := configForArgs(args...)
+
+	expectedHeaders := http.Header{}
+	expectedHeaders.Set("test-key", "this:is:a:value")
+	expectedHeaders.Set("b64-test-key", "value:dGVzdCBkYXRhIDE=$")
+
+	require.Equal(t, expectedHeaders, cfg.Headers)
+}
+
+func TestHeaderParsingWithComma(t *testing.T) {
+	testHeaders := []string{
+		"test-key=this:is:a:value,b64-test-key=value:dGVzdCBkYXRhIDE=$",
+	}
+
+	args := []string{"app", "--signer.header", testHeaders[0]}
+	cfg := configForArgs(args...)
+
+	expectedHeaders := http.Header{}
+	expectedHeaders.Set("test-key", "this:is:a:value")
+	expectedHeaders.Set("b64-test-key", "value:dGVzdCBkYXRhIDE=$")
+
+	require.Equal(t, expectedHeaders, cfg.Headers)
+}
+
 func TestInvalidConfig(t *testing.T) {
 	tests := []struct {
 		name         string
@@ -29,6 +61,7 @@ func TestInvalidConfig(t *testing.T) {
 			expected: "signer endpoint and address must both be set or not set",
 			configChange: func(config *CLIConfig) {
 				config.Address = "0x1234"
+				config.TLSConfig.Enabled = true
 			},
 		},
 		{
@@ -36,6 +69,7 @@ func TestInvalidConfig(t *testing.T) {
 			expected: "signer endpoint and address must both be set or not set",
 			configChange: func(config *CLIConfig) {
 				config.Endpoint = "http://localhost"
+				config.TLSConfig.Enabled = true
 			},
 		},
 		{
@@ -43,6 +77,7 @@ func TestInvalidConfig(t *testing.T) {
 			expected: "all tls flags must be set if at least one is set",
 			configChange: func(config *CLIConfig) {
 				config.TLSConfig.TLSKey = ""
+				config.TLSConfig.Enabled = true
 			},
 		},
 	}
@@ -58,7 +93,7 @@ func TestInvalidConfig(t *testing.T) {
 
 func configForArgs(args ...string) CLIConfig {
 	app := cli.NewApp()
-	app.Flags = CLIFlags("TEST_")
+	app.Flags = CLIFlags("TEST_", "")
 	app.Name = "test"
 	var config CLIConfig
 	app.Action = func(ctx *cli.Context) error {

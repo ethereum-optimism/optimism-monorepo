@@ -3,19 +3,18 @@ pragma solidity 0.8.15;
 
 // Testing utilities
 import { Test } from "forge-std/Test.sol";
-import { Bridge_Initializer } from "test/setup/Bridge_Initializer.sol";
-import { CallerCaller, Reverter } from "test/mocks/Callers.sol";
+import { CommonTest } from "test/setup/CommonTest.sol";
 
 // Libraries
 import { Predeploys } from "src/libraries/Predeploys.sol";
 import { Hashing } from "src/libraries/Hashing.sol";
 import { Encoding } from "src/libraries/Encoding.sol";
 
-import { IL1CrossDomainMessenger } from "src/L1/interfaces/IL1CrossDomainMessenger.sol";
+import { IL1CrossDomainMessenger } from "interfaces/L1/IL1CrossDomainMessenger.sol";
 
 // CrossDomainMessenger_Test is for testing functionality which is common to both the L1 and L2
 // CrossDomainMessenger contracts. For simplicity, we use the L1 Messenger as the test contract.
-contract CrossDomainMessenger_BaseGas_Test is Bridge_Initializer {
+contract CrossDomainMessenger_BaseGas_Test is CommonTest {
     /// @dev Ensure that baseGas passes for the max value of _minGasLimit,
     ///      this is about 4 Billion.
     function test_baseGas_succeeds() external view {
@@ -31,10 +30,13 @@ contract CrossDomainMessenger_BaseGas_Test is Bridge_Initializer {
     ///         or equal to the minimum gas limit value on the OptimismPortal.
     ///         This guarantees that the messengers will always pass sufficient
     ///         gas to the OptimismPortal.
-    function testFuzz_baseGas_portalMinGasLimit_succeeds(bytes memory _data, uint32 _minGasLimit) external view {
-        vm.assume(_data.length <= type(uint64).max);
+    function testFuzz_baseGas_portalMinGasLimit_succeeds(bytes calldata _data, uint32 _minGasLimit) external view {
+        if (_data.length > type(uint64).max) {
+            _data = _data[0:type(uint64).max];
+        }
+
         uint64 baseGas = l1CrossDomainMessenger.baseGas(_data, _minGasLimit);
-        uint64 minGasLimit = optimismPortal.minimumGasLimit(uint64(_data.length));
+        uint64 minGasLimit = optimismPortal2.minimumGasLimit(uint64(_data.length));
         assertTrue(baseGas >= minGasLimit);
     }
 }
@@ -100,7 +102,7 @@ contract ExternalRelay is Test {
 
     /// @notice Helper function to get the callData for an `externalCallWithMinGas
     function getCallData() public pure returns (bytes memory) {
-        return abi.encodeWithSelector(ExternalRelay.externalCallWithMinGas.selector);
+        return abi.encodeCall(ExternalRelay.externalCallWithMinGas, ());
     }
 
     /// @notice Helper function to set the fuzzed sender
@@ -111,7 +113,7 @@ contract ExternalRelay is Test {
 
 /// @title CrossDomainMessenger_RelayMessage_Test
 /// @notice Fuzz tests re-entrancy into the CrossDomainMessenger relayMessage function.
-contract CrossDomainMessenger_RelayMessage_Test is Bridge_Initializer {
+contract CrossDomainMessenger_RelayMessage_Test is CommonTest {
     // Storage slot of the l2Sender
     uint256 constant senderSlotIndex = 50;
 
@@ -119,7 +121,7 @@ contract CrossDomainMessenger_RelayMessage_Test is Bridge_Initializer {
 
     function setUp() public override {
         super.setUp();
-        er = new ExternalRelay(l1CrossDomainMessenger, address(optimismPortal));
+        er = new ExternalRelay(l1CrossDomainMessenger, address(optimismPortal2));
     }
 
     /// @dev This test mocks an OptimismPortal call to the L1CrossDomainMessenger via
@@ -151,8 +153,8 @@ contract CrossDomainMessenger_RelayMessage_Test is Bridge_Initializer {
         });
 
         // set the value of op.l2Sender() to be the L2 Cross Domain Messenger.
-        vm.store(address(optimismPortal), bytes32(senderSlotIndex), bytes32(abi.encode(sender)));
-        vm.prank(address(optimismPortal));
+        vm.store(address(optimismPortal2), bytes32(senderSlotIndex), bytes32(abi.encode(sender)));
+        vm.prank(address(optimismPortal2));
         l1CrossDomainMessenger.relayMessage({
             _nonce: Encoding.encodeVersionedNonce({ _nonce: 0, _version: 1 }),
             _sender: sender,

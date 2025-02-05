@@ -2,6 +2,7 @@ package vm
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"os"
@@ -10,21 +11,30 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/trace/utils"
-	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/types"
-	"github.com/ethereum-optimism/optimism/op-service/jsonutil"
+	"github.com/ethereum-optimism/optimism/op-node/chaincfg"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/log"
+
+	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/trace/utils"
+	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/types"
+	"github.com/ethereum-optimism/optimism/op-challenger/metrics"
+	"github.com/ethereum-optimism/optimism/op-service/jsonutil"
 )
 
 const (
 	debugFilename = "debug-info.json"
 )
 
-type Metricer interface {
-	RecordExecutionTime(t time.Duration)
-	RecordMemoryUsed(memoryUsed uint64)
-}
+var (
+	ErrMissingBin    = errors.New("missing bin")
+	ErrMissingServer = errors.New("missing server")
+
+	ErrMissingRollupConfig = errors.New("missing network or rollup config path")
+	ErrMissingL2Genesis    = errors.New("missing network or l2 genesis path")
+	ErrNetworkUnknown      = errors.New("unknown network")
+)
+
+type Metricer = metrics.TypedVmMetricer
 
 type Config struct {
 	// VM Configuration
@@ -36,13 +46,49 @@ type Config struct {
 	BinarySnapshots bool   // Whether to use binary snapshots instead of JSON
 
 	// Host Configuration
-	L1               string
-	L1Beacon         string
-	L2               string
-	Server           string // Path to the executable that provides the pre-image oracle server
-	Network          string
-	RollupConfigPath string
-	L2GenesisPath    string
+	L1                string
+	L1Beacon          string
+	L2s               []string
+	Server            string // Path to the executable that provides the pre-image oracle server
+	Networks          []string
+	L2Custom          bool
+	RollupConfigPaths []string
+	L2GenesisPaths    []string
+}
+
+func (c *Config) Check() error {
+	if c.VmBin == "" {
+		return ErrMissingBin
+	}
+	if c.Server == "" {
+		return ErrMissingServer
+	}
+
+	if _, err := os.Stat(c.VmBin); err != nil {
+		return fmt.Errorf("%w: %w", ErrMissingBin, err)
+	}
+	if _, err := os.Stat(c.Server); err != nil {
+		return fmt.Errorf("%w: %w", ErrMissingServer, err)
+	}
+
+	if len(c.Networks) == 0 {
+		if len(c.RollupConfigPaths) == 0 {
+			return ErrMissingRollupConfig
+		}
+		if len(c.L2GenesisPaths) == 0 {
+			return ErrMissingL2Genesis
+		}
+	} else {
+		for _, network := range c.Networks {
+			if ch := chaincfg.ChainByName(network); ch == nil {
+				// Check if this looks like a chain ID that could be a custom chain configuration.
+				if _, err := strconv.ParseUint(network, 10, 32); err != nil {
+					return fmt.Errorf("%w: %v", ErrNetworkUnknown, network)
+				}
+			}
+		}
+	}
+	return nil
 }
 
 type OracleServerExecutor interface {
@@ -138,8 +184,15 @@ func (e *Executor) DoGenerateProof(ctx context.Context, dir string, begin uint64
 		if info, err := jsonutil.LoadJSON[debugInfo](filepath.Join(dataDir, debugFilename)); err != nil {
 			e.logger.Warn("Failed to load debug metrics", "err", err)
 		} else {
-			e.metrics.RecordMemoryUsed(uint64(info.MemoryUsed))
 			memoryUsed = fmt.Sprintf("%d", uint64(info.MemoryUsed))
+			e.metrics.RecordMemoryUsed(uint64(info.MemoryUsed))
+			e.metrics.RecordSteps(info.Steps)
+			e.metrics.RecordRmwSuccessCount(info.RmwSuccessCount)
+			e.metrics.RecordRmwFailCount(info.RmwFailCount)
+			e.metrics.RecordMaxStepsBetweenLLAndSC(info.MaxStepsBetweenLLAndSC)
+			e.metrics.RecordReservationInvalidationCount(info.ReservationInvalidationCount)
+			e.metrics.RecordForcedPreemptionCount(info.ForcedPreemptionCount)
+			e.metrics.RecordIdleStepCountThread0(info.IdleStepCountThread0)
 		}
 	}
 	e.logger.Info("VM execution complete", "time", execTime, "memory", memoryUsed)
@@ -147,5 +200,12 @@ func (e *Executor) DoGenerateProof(ctx context.Context, dir string, begin uint64
 }
 
 type debugInfo struct {
-	MemoryUsed hexutil.Uint64 `json:"memory_used"`
+	MemoryUsed                   hexutil.Uint64 `json:"memory_used"`
+	Steps                        uint64         `json:"total_steps"`
+	RmwSuccessCount              uint64         `json:"rmw_success_count"`
+	RmwFailCount                 uint64         `json:"rmw_fail_count"`
+	MaxStepsBetweenLLAndSC       uint64         `json:"max_steps_between_ll_and_sc"`
+	ReservationInvalidationCount uint64         `json:"reservation_invalidation_count"`
+	ForcedPreemptionCount        uint64         `json:"forced_preemption_count"`
+	IdleStepCountThread0         uint64         `json:"idle_step_count_thread_0"`
 }

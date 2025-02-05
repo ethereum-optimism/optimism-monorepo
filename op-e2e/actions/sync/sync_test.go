@@ -67,7 +67,7 @@ func TestSyncBatchType(t *testing.T) {
 
 func DerivationWithFlakyL1RPC(gt *testing.T, deltaTimeOffset *hexutil.Uint64) {
 	t := actionsHelpers.NewDefaultTesting(gt)
-	dp := e2eutils.MakeDeployParams(t, actionsHelpers.DefaultRollupTestParams)
+	dp := e2eutils.MakeDeployParams(t, actionsHelpers.DefaultRollupTestParams())
 	upgradesHelpers.ApplyDeltaTimeOffset(dp, deltaTimeOffset)
 	sd := e2eutils.Setup(t, dp, actionsHelpers.DefaultAlloc)
 	log := testlog.Logger(t, log.LevelError) // mute all the temporary derivation errors that we forcefully create
@@ -107,7 +107,7 @@ func DerivationWithFlakyL1RPC(gt *testing.T, deltaTimeOffset *hexutil.Uint64) {
 
 func FinalizeWhileSyncing(gt *testing.T, deltaTimeOffset *hexutil.Uint64) {
 	t := actionsHelpers.NewDefaultTesting(gt)
-	dp := e2eutils.MakeDeployParams(t, actionsHelpers.DefaultRollupTestParams)
+	dp := e2eutils.MakeDeployParams(t, actionsHelpers.DefaultRollupTestParams())
 	upgradesHelpers.ApplyDeltaTimeOffset(dp, deltaTimeOffset)
 	sd := e2eutils.Setup(t, dp, actionsHelpers.DefaultAlloc)
 	log := testlog.Logger(t, log.LevelError) // mute all the temporary derivation errors that we forcefully create
@@ -153,7 +153,7 @@ func FinalizeWhileSyncing(gt *testing.T, deltaTimeOffset *hexutil.Uint64) {
 // TestUnsafeSync tests that a verifier properly imports unsafe blocks via gossip.
 func TestUnsafeSync(gt *testing.T) {
 	t := actionsHelpers.NewDefaultTesting(gt)
-	dp := e2eutils.MakeDeployParams(t, actionsHelpers.DefaultRollupTestParams)
+	dp := e2eutils.MakeDeployParams(t, actionsHelpers.DefaultRollupTestParams())
 	sd := e2eutils.Setup(t, dp, actionsHelpers.DefaultAlloc)
 	log := testlog.Logger(t, log.LevelInfo)
 
@@ -181,7 +181,7 @@ func TestUnsafeSync(gt *testing.T) {
 
 func TestBackupUnsafe(gt *testing.T) {
 	t := actionsHelpers.NewDefaultTesting(gt)
-	dp := e2eutils.MakeDeployParams(t, actionsHelpers.DefaultRollupTestParams)
+	dp := e2eutils.MakeDeployParams(t, actionsHelpers.DefaultRollupTestParams())
 	minTs := hexutil.Uint64(0)
 	// Activate Delta hardfork
 	upgradesHelpers.ApplyDeltaTimeOffset(dp, &minTs)
@@ -253,7 +253,7 @@ func TestBackupUnsafe(gt *testing.T) {
 			block = block.WithBody(types.Body{Transactions: []*types.Transaction{block.Transactions()[0], invalidTx}})
 		}
 		// Add A1, B2, B3, B4, B5 into the channel
-		err = channelOut.AddBlock(sd.RollupCfg, block)
+		_, err = channelOut.AddBlock(sd.RollupCfg, block)
 		require.NoError(t, err)
 	}
 
@@ -342,7 +342,7 @@ func TestBackupUnsafe(gt *testing.T) {
 
 func TestBackupUnsafeReorgForkChoiceInputError(gt *testing.T) {
 	t := actionsHelpers.NewDefaultTesting(gt)
-	dp := e2eutils.MakeDeployParams(t, actionsHelpers.DefaultRollupTestParams)
+	dp := e2eutils.MakeDeployParams(t, actionsHelpers.DefaultRollupTestParams())
 	minTs := hexutil.Uint64(0)
 	// Activate Delta hardfork
 	upgradesHelpers.ApplyDeltaTimeOffset(dp, &minTs)
@@ -414,7 +414,7 @@ func TestBackupUnsafeReorgForkChoiceInputError(gt *testing.T) {
 			block = block.WithBody(types.Body{Transactions: []*types.Transaction{block.Transactions()[0], invalidTx}})
 		}
 		// Add A1, B2, B3, B4, B5 into the channel
-		err = channelOut.AddBlock(sd.RollupCfg, block)
+		_, err = channelOut.AddBlock(sd.RollupCfg, block)
 		require.NoError(t, err)
 	}
 
@@ -475,7 +475,7 @@ func TestBackupUnsafeReorgForkChoiceInputError(gt *testing.T) {
 
 func TestBackupUnsafeReorgForkChoiceNotInputError(gt *testing.T) {
 	t := actionsHelpers.NewDefaultTesting(gt)
-	dp := e2eutils.MakeDeployParams(t, actionsHelpers.DefaultRollupTestParams)
+	dp := e2eutils.MakeDeployParams(t, actionsHelpers.DefaultRollupTestParams())
 	minTs := hexutil.Uint64(0)
 	// Activate Delta hardfork
 	upgradesHelpers.ApplyDeltaTimeOffset(dp, &minTs)
@@ -547,7 +547,7 @@ func TestBackupUnsafeReorgForkChoiceNotInputError(gt *testing.T) {
 			block = block.WithBody(types.Body{Transactions: []*types.Transaction{block.Transactions()[0], invalidTx}})
 		}
 		// Add A1, B2, B3, B4, B5 into the channel
-		err = channelOut.AddBlock(sd.RollupCfg, block)
+		_, err = channelOut.AddBlock(sd.RollupCfg, block)
 		require.NoError(t, err)
 	}
 
@@ -618,8 +618,8 @@ func TestBackupUnsafeReorgForkChoiceNotInputError(gt *testing.T) {
 	// check pendingSafe is reset
 	require.Equal(t, sequencer.L2PendingSafe().Number, uint64(0))
 	// check backupUnsafe is applied
-	require.Equal(t, sequencer.L2Unsafe().Hash, targetUnsafeHeadHash)
-	require.Equal(t, sequencer.L2Unsafe().Number, uint64(5))
+	require.Equal(t, uint64(5), sequencer.L2Unsafe().Number)
+	require.Equal(t, targetUnsafeHeadHash, sequencer.L2Unsafe().Hash)
 	// safe head cannot be advanced because batch contained invalid blocks
 	require.Equal(t, sequencer.L2Safe().Number, uint64(0))
 }
@@ -694,7 +694,7 @@ func BatchSubmitBlock(t actionsHelpers.Testing, miner *actionsHelpers.L1Miner, s
 // when passed a single unsafe block. op-geth can either snap sync or full sync here.
 func TestELSync(gt *testing.T) {
 	t := actionsHelpers.NewDefaultTesting(gt)
-	dp := e2eutils.MakeDeployParams(t, actionsHelpers.DefaultRollupTestParams)
+	dp := e2eutils.MakeDeployParams(t, actionsHelpers.DefaultRollupTestParams())
 	sd := e2eutils.Setup(t, dp, actionsHelpers.DefaultAlloc)
 	log := testlog.Logger(t, log.LevelInfo)
 
@@ -747,7 +747,7 @@ func PrepareELSyncedNode(t actionsHelpers.Testing, miner *actionsHelpers.L1Miner
 //  8. Create 1 more block & batch submit everything & assert that the verifier picked up those blocks
 func TestELSyncTransitionstoCL(gt *testing.T) {
 	t := actionsHelpers.NewDefaultTesting(gt)
-	dp := e2eutils.MakeDeployParams(t, actionsHelpers.DefaultRollupTestParams)
+	dp := e2eutils.MakeDeployParams(t, actionsHelpers.DefaultRollupTestParams())
 	sd := e2eutils.Setup(t, dp, actionsHelpers.DefaultAlloc)
 	logger := testlog.Logger(t, log.LevelInfo)
 
@@ -804,7 +804,7 @@ func TestELSyncTransitionstoCL(gt *testing.T) {
 
 func TestELSyncTransitionsToCLSyncAfterNodeRestart(gt *testing.T) {
 	t := actionsHelpers.NewDefaultTesting(gt)
-	dp := e2eutils.MakeDeployParams(t, actionsHelpers.DefaultRollupTestParams)
+	dp := e2eutils.MakeDeployParams(t, actionsHelpers.DefaultRollupTestParams())
 	sd := e2eutils.Setup(t, dp, actionsHelpers.DefaultAlloc)
 	logger := testlog.Logger(t, log.LevelInfo)
 
@@ -821,7 +821,7 @@ func TestELSyncTransitionsToCLSyncAfterNodeRestart(gt *testing.T) {
 	PrepareELSyncedNode(t, miner, sequencer, seqEng, verifier, verEng, seqEngCl, batcher, dp)
 
 	// Create a new verifier which is essentially a new op-node with the sync mode of ELSync and default geth engine kind.
-	verifier = actionsHelpers.NewL2Verifier(t, captureLog, miner.L1Client(t, sd.RollupCfg), miner.BlobStore(), altda.Disabled, verifier.Eng, sd.RollupCfg, &sync.Config{SyncMode: sync.ELSync}, actionsHelpers.DefaultVerifierCfg().SafeHeadListener, nil)
+	verifier = actionsHelpers.NewL2Verifier(t, captureLog, miner.L1Client(t, sd.RollupCfg), miner.BlobStore(), altda.Disabled, verifier.Eng, sd.RollupCfg, &sync.Config{SyncMode: sync.ELSync}, actionsHelpers.DefaultVerifierCfg().SafeHeadListener)
 
 	// Build another 10 L1 blocks on the sequencer
 	for i := 0; i < 10; i++ {
@@ -846,7 +846,7 @@ func TestELSyncTransitionsToCLSyncAfterNodeRestart(gt *testing.T) {
 
 func TestForcedELSyncCLAfterNodeRestart(gt *testing.T) {
 	t := actionsHelpers.NewDefaultTesting(gt)
-	dp := e2eutils.MakeDeployParams(t, actionsHelpers.DefaultRollupTestParams)
+	dp := e2eutils.MakeDeployParams(t, actionsHelpers.DefaultRollupTestParams())
 	sd := e2eutils.Setup(t, dp, actionsHelpers.DefaultAlloc)
 	logger := testlog.Logger(t, log.LevelInfo)
 
@@ -863,7 +863,7 @@ func TestForcedELSyncCLAfterNodeRestart(gt *testing.T) {
 	PrepareELSyncedNode(t, miner, sequencer, seqEng, verifier, verEng, seqEngCl, batcher, dp)
 
 	// Create a new verifier which is essentially a new op-node with the sync mode of ELSync and erigon engine kind.
-	verifier2 := actionsHelpers.NewL2Verifier(t, captureLog, miner.L1Client(t, sd.RollupCfg), miner.BlobStore(), altda.Disabled, verifier.Eng, sd.RollupCfg, &sync.Config{SyncMode: sync.ELSync, SupportsPostFinalizationELSync: true}, actionsHelpers.DefaultVerifierCfg().SafeHeadListener, nil)
+	verifier2 := actionsHelpers.NewL2Verifier(t, captureLog, miner.L1Client(t, sd.RollupCfg), miner.BlobStore(), altda.Disabled, verifier.Eng, sd.RollupCfg, &sync.Config{SyncMode: sync.ELSync, SupportsPostFinalizationELSync: true}, actionsHelpers.DefaultVerifierCfg().SafeHeadListener)
 
 	// Build another 10 L1 blocks on the sequencer
 	for i := 0; i < 10; i++ {
@@ -892,7 +892,7 @@ func TestForcedELSyncCLAfterNodeRestart(gt *testing.T) {
 
 func TestInvalidPayloadInSpanBatch(gt *testing.T) {
 	t := actionsHelpers.NewDefaultTesting(gt)
-	dp := e2eutils.MakeDeployParams(t, actionsHelpers.DefaultRollupTestParams)
+	dp := e2eutils.MakeDeployParams(t, actionsHelpers.DefaultRollupTestParams())
 	minTs := hexutil.Uint64(0)
 	// Activate Delta hardfork
 	upgradesHelpers.ApplyDeltaTimeOffset(dp, &minTs)
@@ -924,7 +924,7 @@ func TestInvalidPayloadInSpanBatch(gt *testing.T) {
 			block = block.WithBody(types.Body{Transactions: []*types.Transaction{block.Transactions()[0], invalidTx}})
 		}
 		// Add A1 ~ A12 into the channel
-		err = channelOut.AddBlock(sd.RollupCfg, block)
+		_, err = channelOut.AddBlock(sd.RollupCfg, block)
 		require.NoError(t, err)
 	}
 
@@ -956,7 +956,7 @@ func TestInvalidPayloadInSpanBatch(gt *testing.T) {
 			aliceNonce, err := seqEng.EthClient().PendingNonceAt(t.Ctx(), dp.Addresses.Alice)
 			require.NoError(t, err)
 			data := make([]byte, rand.Intn(100))
-			gas, err := core.IntrinsicGas(data, nil, false, true, true, false)
+			gas, err := core.IntrinsicGas(data, nil, nil, false, true, true, false)
 			require.NoError(t, err)
 			baseFee := seqEng.L2Chain().CurrentBlock().BaseFee
 			tx := types.MustSignNewTx(dp.Secrets.Alice, signer, &types.DynamicFeeTx{
@@ -973,7 +973,7 @@ func TestInvalidPayloadInSpanBatch(gt *testing.T) {
 			block = block.WithBody(types.Body{Transactions: []*types.Transaction{block.Transactions()[0], tx}})
 		}
 		// Add B1, A2 ~ A12 into the channel
-		err = channelOut.AddBlock(sd.RollupCfg, block)
+		_, err = channelOut.AddBlock(sd.RollupCfg, block)
 		require.NoError(t, err)
 	}
 	// Submit span batch(B1, A2, ... A12)
@@ -997,7 +997,7 @@ func TestInvalidPayloadInSpanBatch(gt *testing.T) {
 
 func TestSpanBatchAtomicity_Consolidation(gt *testing.T) {
 	t := actionsHelpers.NewDefaultTesting(gt)
-	dp := e2eutils.MakeDeployParams(t, actionsHelpers.DefaultRollupTestParams)
+	dp := e2eutils.MakeDeployParams(t, actionsHelpers.DefaultRollupTestParams())
 	minTs := hexutil.Uint64(0)
 	// Activate Delta hardfork
 	upgradesHelpers.ApplyDeltaTimeOffset(dp, &minTs)
@@ -1065,7 +1065,7 @@ func TestSpanBatchAtomicity_Consolidation(gt *testing.T) {
 
 func TestSpanBatchAtomicity_ForceAdvance(gt *testing.T) {
 	t := actionsHelpers.NewDefaultTesting(gt)
-	dp := e2eutils.MakeDeployParams(t, actionsHelpers.DefaultRollupTestParams)
+	dp := e2eutils.MakeDeployParams(t, actionsHelpers.DefaultRollupTestParams())
 	minTs := hexutil.Uint64(0)
 	// Activate Delta hardfork
 	upgradesHelpers.ApplyDeltaTimeOffset(dp, &minTs)

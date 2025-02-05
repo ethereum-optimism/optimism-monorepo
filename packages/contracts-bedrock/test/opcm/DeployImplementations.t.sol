@@ -1,31 +1,37 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
+// Testing
 import { Test, stdStorage, StdStorage } from "forge-std/Test.sol";
 
-import { DelayedWETH } from "src/dispute/DelayedWETH.sol";
-import { PreimageOracle } from "src/cannon/PreimageOracle.sol";
-import { MIPS } from "src/cannon/MIPS.sol";
-import { DisputeGameFactory } from "src/dispute/DisputeGameFactory.sol";
+// Libraries
+import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
+import { Chains } from "scripts/libraries/Chains.sol";
 
-import { SuperchainConfig } from "src/L1/SuperchainConfig.sol";
-import { ProtocolVersions } from "src/L1/ProtocolVersions.sol";
-import { OPContractsManager } from "src/L1/OPContractsManager.sol";
-import { OptimismPortal2 } from "src/L1/OptimismPortal2.sol";
-import { SystemConfig } from "src/L1/SystemConfig.sol";
-import { L1CrossDomainMessenger } from "src/L1/L1CrossDomainMessenger.sol";
-import { L1ERC721Bridge } from "src/L1/L1ERC721Bridge.sol";
-import { L1StandardBridge } from "src/L1/L1StandardBridge.sol";
-import { OptimismMintableERC20Factory } from "src/universal/OptimismMintableERC20Factory.sol";
-import { ProxyAdmin } from "src/universal/ProxyAdmin.sol";
-import { Proxy } from "src/universal/Proxy.sol";
+// Interfaces
+import { IDelayedWETH } from "interfaces/dispute/IDelayedWETH.sol";
+import { IPreimageOracle } from "interfaces/cannon/IPreimageOracle.sol";
+import { IMIPS } from "interfaces/cannon/IMIPS.sol";
+import { IDisputeGameFactory } from "interfaces/dispute/IDisputeGameFactory.sol";
+import { IAnchorStateRegistry } from "interfaces/dispute/IAnchorStateRegistry.sol";
+import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
+import { IProtocolVersions } from "interfaces/L1/IProtocolVersions.sol";
+import { IOPContractsManager } from "interfaces/L1/IOPContractsManager.sol";
+import { IOptimismPortal2 } from "interfaces/L1/IOptimismPortal2.sol";
+import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
+import { IL1CrossDomainMessenger } from "interfaces/L1/IL1CrossDomainMessenger.sol";
+import { IL1ERC721Bridge } from "interfaces/L1/IL1ERC721Bridge.sol";
+import { IL1StandardBridge } from "interfaces/L1/IL1StandardBridge.sol";
+import { IOptimismMintableERC20Factory } from "interfaces/universal/IOptimismMintableERC20Factory.sol";
+import { IProxyAdmin } from "interfaces/universal/IProxyAdmin.sol";
+import { IProxy } from "interfaces/universal/IProxy.sol";
 
 import {
     DeployImplementationsInput,
     DeployImplementations,
     DeployImplementationsInterop,
     DeployImplementationsOutput
-} from "scripts/DeployImplementations.s.sol";
+} from "scripts/deploy/DeployImplementations.s.sol";
 
 contract DeployImplementationsInput_Test is Test {
     DeployImplementationsInput dii;
@@ -36,14 +42,14 @@ contract DeployImplementationsInput_Test is Test {
     uint256 proofMaturityDelaySeconds = 400;
     uint256 disputeGameFinalityDelaySeconds = 500;
     string release = "dev-release"; // this means implementation contracts will be deployed
-    SuperchainConfig superchainConfigProxy = SuperchainConfig(makeAddr("superchainConfigProxy"));
-    ProtocolVersions protocolVersionsProxy = ProtocolVersions(makeAddr("protocolVersionsProxy"));
+    ISuperchainConfig superchainConfigProxy = ISuperchainConfig(makeAddr("superchainConfigProxy"));
+    IProtocolVersions protocolVersionsProxy = IProtocolVersions(makeAddr("protocolVersionsProxy"));
 
     function setUp() public {
         dii = new DeployImplementationsInput();
     }
 
-    function test_getters_whenNotSet_revert() public {
+    function test_getters_whenNotSet_reverts() public {
         vm.expectRevert("DeployImplementationsInput: not set");
         dii.withdrawalDelaySeconds();
 
@@ -60,7 +66,7 @@ contract DeployImplementationsInput_Test is Test {
         dii.disputeGameFinalityDelaySeconds();
 
         vm.expectRevert("DeployImplementationsInput: not set");
-        dii.release();
+        dii.l1ContractsRelease();
 
         vm.expectRevert("DeployImplementationsInput: not set");
         dii.superchainConfigProxy();
@@ -69,21 +75,7 @@ contract DeployImplementationsInput_Test is Test {
         dii.protocolVersionsProxy();
 
         vm.expectRevert("DeployImplementationsInput: not set");
-        dii.opcmProxyOwner();
-
-        vm.expectRevert("DeployImplementationsInput: not set");
-        dii.standardVersionsToml();
-    }
-
-    function test_opcmProxyOwner_whenNotSet_reverts() public {
-        vm.expectRevert("DeployImplementationsInput: not set");
-        dii.opcmProxyOwner();
-    }
-
-    function test_opcmProxyOwner_succeeds() public {
-        dii.set(dii.opcmProxyOwner.selector, address(msg.sender));
-        address opcmProxyOwner = dii.opcmProxyOwner();
-        assertEq(address(msg.sender), address(opcmProxyOwner), "100");
+        dii.upgradeController();
     }
 }
 
@@ -95,27 +87,22 @@ contract DeployImplementationsOutput_Test is Test {
     }
 
     function test_set_succeeds() public {
-        Proxy proxy = new Proxy(address(0));
-        address opcmImpl = address(makeAddr("opcmImpl"));
-        vm.prank(address(0));
-        proxy.upgradeTo(opcmImpl);
+        IOPContractsManager opcm = IOPContractsManager(address(makeAddr("opcm")));
+        IOptimismPortal2 optimismPortalImpl = IOptimismPortal2(payable(makeAddr("optimismPortalImpl")));
+        IDelayedWETH delayedWETHImpl = IDelayedWETH(payable(makeAddr("delayedWETHImpl")));
+        IPreimageOracle preimageOracleSingleton = IPreimageOracle(makeAddr("preimageOracleSingleton"));
+        IMIPS mipsSingleton = IMIPS(makeAddr("mipsSingleton"));
+        ISystemConfig systemConfigImpl = ISystemConfig(makeAddr("systemConfigImpl"));
+        IL1CrossDomainMessenger l1CrossDomainMessengerImpl =
+            IL1CrossDomainMessenger(makeAddr("l1CrossDomainMessengerImpl"));
+        IL1ERC721Bridge l1ERC721BridgeImpl = IL1ERC721Bridge(makeAddr("l1ERC721BridgeImpl"));
+        IL1StandardBridge l1StandardBridgeImpl = IL1StandardBridge(payable(makeAddr("l1StandardBridgeImpl")));
+        IOptimismMintableERC20Factory optimismMintableERC20FactoryImpl =
+            IOptimismMintableERC20Factory(makeAddr("optimismMintableERC20FactoryImpl"));
+        IDisputeGameFactory disputeGameFactoryImpl = IDisputeGameFactory(makeAddr("disputeGameFactoryImpl"));
+        IAnchorStateRegistry anchorStateRegistryImpl = IAnchorStateRegistry(makeAddr("anchorStateRegistryImpl"));
 
-        OPContractsManager opcmProxy = OPContractsManager(address(proxy));
-        OptimismPortal2 optimismPortalImpl = OptimismPortal2(payable(makeAddr("optimismPortalImpl")));
-        DelayedWETH delayedWETHImpl = DelayedWETH(payable(makeAddr("delayedWETHImpl")));
-        PreimageOracle preimageOracleSingleton = PreimageOracle(makeAddr("preimageOracleSingleton"));
-        MIPS mipsSingleton = MIPS(makeAddr("mipsSingleton"));
-        SystemConfig systemConfigImpl = SystemConfig(makeAddr("systemConfigImpl"));
-        L1CrossDomainMessenger l1CrossDomainMessengerImpl =
-            L1CrossDomainMessenger(makeAddr("l1CrossDomainMessengerImpl"));
-        L1ERC721Bridge l1ERC721BridgeImpl = L1ERC721Bridge(makeAddr("l1ERC721BridgeImpl"));
-        L1StandardBridge l1StandardBridgeImpl = L1StandardBridge(payable(makeAddr("l1StandardBridgeImpl")));
-        OptimismMintableERC20Factory optimismMintableERC20FactoryImpl =
-            OptimismMintableERC20Factory(makeAddr("optimismMintableERC20FactoryImpl"));
-        DisputeGameFactory disputeGameFactoryImpl = DisputeGameFactory(makeAddr("disputeGameFactoryImpl"));
-
-        vm.etch(address(opcmProxy), address(opcmProxy).code);
-        vm.etch(address(opcmImpl), hex"01");
+        vm.etch(address(opcm), hex"01");
         vm.etch(address(optimismPortalImpl), hex"01");
         vm.etch(address(delayedWETHImpl), hex"01");
         vm.etch(address(preimageOracleSingleton), hex"01");
@@ -126,7 +113,8 @@ contract DeployImplementationsOutput_Test is Test {
         vm.etch(address(l1StandardBridgeImpl), hex"01");
         vm.etch(address(optimismMintableERC20FactoryImpl), hex"01");
         vm.etch(address(disputeGameFactoryImpl), hex"01");
-        dio.set(dio.opcmProxy.selector, address(opcmProxy));
+        vm.etch(address(anchorStateRegistryImpl), hex"01");
+        dio.set(dio.opcm.selector, address(opcm));
         dio.set(dio.optimismPortalImpl.selector, address(optimismPortalImpl));
         dio.set(dio.delayedWETHImpl.selector, address(delayedWETHImpl));
         dio.set(dio.preimageOracleSingleton.selector, address(preimageOracleSingleton));
@@ -137,8 +125,9 @@ contract DeployImplementationsOutput_Test is Test {
         dio.set(dio.l1StandardBridgeImpl.selector, address(l1StandardBridgeImpl));
         dio.set(dio.optimismMintableERC20FactoryImpl.selector, address(optimismMintableERC20FactoryImpl));
         dio.set(dio.disputeGameFactoryImpl.selector, address(disputeGameFactoryImpl));
+        dio.set(dio.anchorStateRegistryImpl.selector, address(anchorStateRegistryImpl));
 
-        assertEq(address(opcmProxy), address(dio.opcmProxy()), "50");
+        assertEq(address(opcm), address(dio.opcm()), "50");
         assertEq(address(optimismPortalImpl), address(dio.optimismPortalImpl()), "100");
         assertEq(address(delayedWETHImpl), address(dio.delayedWETHImpl()), "200");
         assertEq(address(preimageOracleSingleton), address(dio.preimageOracleSingleton()), "300");
@@ -149,9 +138,10 @@ contract DeployImplementationsOutput_Test is Test {
         assertEq(address(l1StandardBridgeImpl), address(dio.l1StandardBridgeImpl()), "800");
         assertEq(address(optimismMintableERC20FactoryImpl), address(dio.optimismMintableERC20FactoryImpl()), "900");
         assertEq(address(disputeGameFactoryImpl), address(dio.disputeGameFactoryImpl()), "950");
+        assertEq(address(anchorStateRegistryImpl), address(dio.anchorStateRegistryImpl()), "960");
     }
 
-    function test_getters_whenNotSet_revert() public {
+    function test_getters_whenNotSet_reverts() public {
         bytes memory expectedErr = "DeployUtils: zero address";
 
         vm.expectRevert(expectedErr);
@@ -183,6 +173,9 @@ contract DeployImplementationsOutput_Test is Test {
 
         vm.expectRevert(expectedErr);
         dio.disputeGameFactoryImpl();
+
+        vm.expectRevert(expectedErr);
+        dio.anchorStateRegistryImpl();
     }
 
     function test_getters_whenAddrHasNoCode_reverts() public {
@@ -240,18 +233,16 @@ contract DeployImplementations_Test is Test {
     uint256 challengePeriodSeconds = 300;
     uint256 proofMaturityDelaySeconds = 400;
     uint256 disputeGameFinalityDelaySeconds = 500;
-    SuperchainConfig superchainConfigProxy = SuperchainConfig(makeAddr("superchainConfigProxy"));
-    ProtocolVersions protocolVersionsProxy = ProtocolVersions(makeAddr("protocolVersionsProxy"));
+    ISuperchainConfig superchainConfigProxy = ISuperchainConfig(makeAddr("superchainConfigProxy"));
+    IProtocolVersions protocolVersionsProxy = IProtocolVersions(makeAddr("protocolVersionsProxy"));
+    IProxyAdmin superchainProxyAdmin = IProxyAdmin(makeAddr("superchainProxyAdmin"));
+    address upgradeController = makeAddr("upgradeController");
 
     function setUp() public virtual {
+        vm.etch(address(superchainConfigProxy), hex"01");
+        vm.etch(address(protocolVersionsProxy), hex"01");
         deployImplementations = new DeployImplementations();
         (dii, dio) = deployImplementations.etchIOContracts();
-
-        // End users of the DeployImplementations contract will need to set the `standardVersionsToml`.
-        string memory standardVersionsTomlPath =
-            string.concat(vm.projectRoot(), "/test/fixtures/standard-versions.toml");
-        string memory standardVersionsToml = vm.readFile(standardVersionsTomlPath);
-        dii.set(dii.standardVersionsToml.selector, standardVersionsToml);
     }
 
     // By deploying the `DeployImplementations` contract with this virtual function, we provide a
@@ -266,132 +257,81 @@ contract DeployImplementations_Test is Test {
     }
 
     function test_deployImplementation_succeeds() public {
-        string memory deployContractsRelease = "dev-release";
-        dii.set(dii.release.selector, deployContractsRelease);
-        deployImplementations.deploySystemConfigImpl(dii, dio);
+        deployImplementations.deploySystemConfigImpl(dio);
         assertTrue(address(0) != address(dio.systemConfigImpl()));
     }
 
     function test_reuseImplementation_succeeds() public {
-        // All hardcoded addresses below are taken from the superchain-registry config:
-        // https://github.com/ethereum-optimism/superchain-registry/blob/be65d22f8128cf0c4e5b4e1f677daf86843426bf/validation/standard/standard-versions.toml#L11
         string memory testRelease = "op-contracts/v1.6.0";
-        dii.set(dii.release.selector, testRelease);
-
-        deployImplementations.deploySystemConfigImpl(dii, dio);
-        address srSystemConfigImpl = address(0xF56D96B2535B932656d3c04Ebf51baBff241D886);
-        vm.etch(address(srSystemConfigImpl), hex"01");
-        assertEq(srSystemConfigImpl, address(dio.systemConfigImpl()));
-
-        address srL1CrossDomainMessengerImpl = address(0xD3494713A5cfaD3F5359379DfA074E2Ac8C6Fd65);
-        vm.etch(address(srL1CrossDomainMessengerImpl), hex"01");
-        deployImplementations.deployL1CrossDomainMessengerImpl(dii, dio);
-        assertEq(srL1CrossDomainMessengerImpl, address(dio.l1CrossDomainMessengerImpl()));
-
-        address srL1ERC721BridgeImpl = address(0xAE2AF01232a6c4a4d3012C5eC5b1b35059caF10d);
-        vm.etch(address(srL1ERC721BridgeImpl), hex"01");
-        deployImplementations.deployL1ERC721BridgeImpl(dii, dio);
-        assertEq(srL1ERC721BridgeImpl, address(dio.l1ERC721BridgeImpl()));
-
-        address srL1StandardBridgeImpl = address(0x64B5a5Ed26DCb17370Ff4d33a8D503f0fbD06CfF);
-        vm.etch(address(srL1StandardBridgeImpl), hex"01");
-        deployImplementations.deployL1StandardBridgeImpl(dii, dio);
-        assertEq(srL1StandardBridgeImpl, address(dio.l1StandardBridgeImpl()));
-
-        address srOptimismMintableERC20FactoryImpl = address(0xE01efbeb1089D1d1dB9c6c8b135C934C0734c846);
-        vm.etch(address(srOptimismMintableERC20FactoryImpl), hex"01");
-        deployImplementations.deployOptimismMintableERC20FactoryImpl(dii, dio);
-        assertEq(srOptimismMintableERC20FactoryImpl, address(dio.optimismMintableERC20FactoryImpl()));
-
-        address srOptimismPortalImpl = address(0xe2F826324b2faf99E513D16D266c3F80aE87832B);
-        vm.etch(address(srOptimismPortalImpl), hex"01");
-        deployImplementations.deployOptimismPortalImpl(dii, dio);
-        assertEq(srOptimismPortalImpl, address(dio.optimismPortalImpl()));
-
-        address srDelayedWETHImpl = address(0x71e966Ae981d1ce531a7b6d23DC0f27B38409087);
-        vm.etch(address(srDelayedWETHImpl), hex"01");
-        deployImplementations.deployDelayedWETHImpl(dii, dio);
-        assertEq(srDelayedWETHImpl, address(dio.delayedWETHImpl()));
-
-        address srPreimageOracleSingleton = address(0x9c065e11870B891D214Bc2Da7EF1f9DDFA1BE277);
-        vm.etch(address(srPreimageOracleSingleton), hex"01");
-        deployImplementations.deployPreimageOracleSingleton(dii, dio);
-        assertEq(srPreimageOracleSingleton, address(dio.preimageOracleSingleton()));
-
-        address srMipsSingleton = address(0x16e83cE5Ce29BF90AD9Da06D2fE6a15d5f344ce4);
-        vm.etch(address(srMipsSingleton), hex"01");
-        deployImplementations.deployMipsSingleton(dii, dio);
-        assertEq(srMipsSingleton, address(dio.mipsSingleton()));
-
-        address srDisputeGameFactoryImpl = address(0xc641A33cab81C559F2bd4b21EA34C290E2440C2B);
-        vm.etch(address(srDisputeGameFactoryImpl), hex"01");
-        deployImplementations.deployDisputeGameFactoryImpl(dii, dio);
-        assertEq(srDisputeGameFactoryImpl, address(dio.disputeGameFactoryImpl()));
-    }
-
-    function test_deployAtNonExistentRelease_reverts() public {
-        string memory unknownRelease = "op-contracts/v0.0.0";
-        dii.set(dii.release.selector, unknownRelease);
-
-        bytes memory expectedErr =
-            bytes(string.concat("DeployImplementations: failed to deploy release ", unknownRelease));
-
-        vm.expectRevert(expectedErr);
-        deployImplementations.deploySystemConfigImpl(dii, dio);
-
-        vm.expectRevert(expectedErr);
-        deployImplementations.deployL1CrossDomainMessengerImpl(dii, dio);
-
-        vm.expectRevert(expectedErr);
-        deployImplementations.deployL1ERC721BridgeImpl(dii, dio);
-
-        vm.expectRevert(expectedErr);
-        deployImplementations.deployL1StandardBridgeImpl(dii, dio);
-
-        vm.expectRevert(expectedErr);
-        deployImplementations.deployOptimismMintableERC20FactoryImpl(dii, dio);
-
-        // TODO: Uncomment the code below when OPContractsManager is deployed based on release. Superchain-registry
-        // doesn't contain OPContractsManager yet.
-        // dii.set(dii.superchainConfigProxy.selector, address(superchainConfigProxy));
-        // dii.set(dii.protocolVersionsProxy.selector, address(protocolVersionsProxy));
-        // vm.etch(address(superchainConfigProxy), hex"01");
-        // vm.etch(address(protocolVersionsProxy), hex"01");
-        // vm.expectRevert(expectedErr);
-        // deployImplementations.deployOPContractsManagerImpl(dii, dio);
-
+        dii.set(dii.l1ContractsRelease.selector, testRelease);
         dii.set(dii.proofMaturityDelaySeconds.selector, 1);
-        dii.set(dii.disputeGameFinalityDelaySeconds.selector, 2);
-        vm.expectRevert(expectedErr);
-        deployImplementations.deployOptimismPortalImpl(dii, dio);
-
+        dii.set(dii.disputeGameFinalityDelaySeconds.selector, 1);
         dii.set(dii.withdrawalDelaySeconds.selector, 1);
-        vm.expectRevert(expectedErr);
-        deployImplementations.deployDelayedWETHImpl(dii, dio);
-
         dii.set(dii.minProposalSizeBytes.selector, 1);
-        dii.set(dii.challengePeriodSeconds.selector, 2);
-        vm.expectRevert(expectedErr);
+        dii.set(dii.challengePeriodSeconds.selector, 1);
+        dii.set(dii.mipsVersion.selector, 1);
+        dii.set(dii.superchainConfigProxy.selector, address(superchainConfigProxy));
+        dii.set(dii.protocolVersionsProxy.selector, address(protocolVersionsProxy));
+        dii.set(dii.superchainProxyAdmin.selector, address(superchainProxyAdmin));
+        dii.set(dii.upgradeController.selector, upgradeController);
+
+        // Perform the initial deployment.
+        deployImplementations.deploySuperchainConfigImpl(dio);
+        deployImplementations.deployProtocolVersionsImpl(dio);
+        deployImplementations.deploySystemConfigImpl(dio);
+        deployImplementations.deployL1CrossDomainMessengerImpl(dio);
+        deployImplementations.deployL1ERC721BridgeImpl(dio);
+        deployImplementations.deployL1StandardBridgeImpl(dio);
+        deployImplementations.deployOptimismMintableERC20FactoryImpl(dio);
+        deployImplementations.deployOptimismPortalImpl(dii, dio);
+        deployImplementations.deployDelayedWETHImpl(dii, dio);
         deployImplementations.deployPreimageOracleSingleton(dii, dio);
-
-        address preImageOracleSingleton = makeAddr("preImageOracleSingleton");
-        vm.etch(address(preImageOracleSingleton), hex"01");
-        dio.set(dio.preimageOracleSingleton.selector, preImageOracleSingleton);
-        vm.expectRevert(expectedErr);
         deployImplementations.deployMipsSingleton(dii, dio);
+        deployImplementations.deployDisputeGameFactoryImpl(dio);
+        deployImplementations.deployAnchorStateRegistryImpl(dio);
+        deployImplementations.deployOPContractsManager(dii, dio);
 
-        vm.expectRevert(expectedErr); // fault proof contracts don't exist at this release
-        deployImplementations.deployDisputeGameFactoryImpl(dii, dio);
-    }
+        // Store the original addresses.
+        address systemConfigImpl = address(dio.systemConfigImpl());
+        address l1CrossDomainMessengerImpl = address(dio.l1CrossDomainMessengerImpl());
+        address l1ERC721BridgeImpl = address(dio.l1ERC721BridgeImpl());
+        address l1StandardBridgeImpl = address(dio.l1StandardBridgeImpl());
+        address optimismMintableERC20FactoryImpl = address(dio.optimismMintableERC20FactoryImpl());
+        address optimismPortalImpl = address(dio.optimismPortalImpl());
+        address delayedWETHImpl = address(dio.delayedWETHImpl());
+        address preimageOracleSingleton = address(dio.preimageOracleSingleton());
+        address mipsSingleton = address(dio.mipsSingleton());
+        address disputeGameFactoryImpl = address(dio.disputeGameFactoryImpl());
+        address anchorStateRegistryImpl = address(dio.anchorStateRegistryImpl());
+        address opcm = address(dio.opcm());
 
-    function test_noContractExistsAtRelease_reverts() public {
-        string memory unknownRelease = "op-contracts/v1.3.0";
-        dii.set(dii.release.selector, unknownRelease);
-        bytes memory expectedErr =
-            bytes(string.concat("DeployImplementations: failed to deploy release ", unknownRelease));
+        // Do the deployments again. Thi should be a noop.
+        deployImplementations.deploySystemConfigImpl(dio);
+        deployImplementations.deployL1CrossDomainMessengerImpl(dio);
+        deployImplementations.deployL1ERC721BridgeImpl(dio);
+        deployImplementations.deployL1StandardBridgeImpl(dio);
+        deployImplementations.deployOptimismMintableERC20FactoryImpl(dio);
+        deployImplementations.deployOptimismPortalImpl(dii, dio);
+        deployImplementations.deployDelayedWETHImpl(dii, dio);
+        deployImplementations.deployPreimageOracleSingleton(dii, dio);
+        deployImplementations.deployMipsSingleton(dii, dio);
+        deployImplementations.deployDisputeGameFactoryImpl(dio);
+        deployImplementations.deployAnchorStateRegistryImpl(dio);
+        deployImplementations.deployOPContractsManager(dii, dio);
 
-        vm.expectRevert(expectedErr); // fault proof contracts don't exist at this release
-        deployImplementations.deployDisputeGameFactoryImpl(dii, dio);
+        // Assert that the addresses did not change.
+        assertEq(systemConfigImpl, address(dio.systemConfigImpl()), "100");
+        assertEq(l1CrossDomainMessengerImpl, address(dio.l1CrossDomainMessengerImpl()), "200");
+        assertEq(l1ERC721BridgeImpl, address(dio.l1ERC721BridgeImpl()), "300");
+        assertEq(l1StandardBridgeImpl, address(dio.l1StandardBridgeImpl()), "400");
+        assertEq(optimismMintableERC20FactoryImpl, address(dio.optimismMintableERC20FactoryImpl()), "500");
+        assertEq(optimismPortalImpl, address(dio.optimismPortalImpl()), "600");
+        assertEq(delayedWETHImpl, address(dio.delayedWETHImpl()), "700");
+        assertEq(preimageOracleSingleton, address(dio.preimageOracleSingleton()), "800");
+        assertEq(mipsSingleton, address(dio.mipsSingleton()), "900");
+        assertEq(disputeGameFactoryImpl, address(dio.disputeGameFactoryImpl()), "1000");
+        assertEq(anchorStateRegistryImpl, address(dio.anchorStateRegistryImpl()), "1100");
+        assertEq(opcm, address(dio.opcm()), "1200");
     }
 
     function testFuzz_run_memory_succeeds(bytes32 _seed) public {
@@ -401,15 +341,27 @@ contract DeployImplementations_Test is Test {
         proofMaturityDelaySeconds = uint256(hash(_seed, 3));
         disputeGameFinalityDelaySeconds = uint256(hash(_seed, 4));
         string memory release = string(bytes.concat(hash(_seed, 5)));
-        protocolVersionsProxy = ProtocolVersions(address(uint160(uint256(hash(_seed, 7)))));
+        protocolVersionsProxy = IProtocolVersions(address(uint160(uint256(hash(_seed, 7)))));
 
-        // Must configure the ProxyAdmin contract which is used to upgrade the OPCM's proxy contract.
-        ProxyAdmin superchainProxyAdmin = new ProxyAdmin(msg.sender);
-        superchainConfigProxy = SuperchainConfig(address(new Proxy(payable(address(superchainProxyAdmin)))));
+        // Must configure the ProxyAdmin contract.
+        superchainProxyAdmin = IProxyAdmin(
+            DeployUtils.create1({
+                _name: "ProxyAdmin",
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(IProxyAdmin.__constructor__, (msg.sender)))
+            })
+        );
+        superchainConfigProxy = ISuperchainConfig(
+            DeployUtils.create1({
+                _name: "Proxy",
+                _args: DeployUtils.encodeConstructor(
+                    abi.encodeCall(IProxy.__constructor__, (address(superchainProxyAdmin)))
+                )
+            })
+        );
 
-        SuperchainConfig superchainConfigImpl = SuperchainConfig(address(uint160(uint256(hash(_seed, 6)))));
+        ISuperchainConfig superchainConfigImpl = ISuperchainConfig(address(uint160(uint256(hash(_seed, 6)))));
         vm.prank(address(superchainProxyAdmin));
-        Proxy(payable(address(superchainConfigProxy))).upgradeTo(address(superchainConfigImpl));
+        IProxy(payable(address(superchainConfigProxy))).upgradeTo(address(superchainConfigImpl));
 
         vm.etch(address(superchainProxyAdmin), address(superchainProxyAdmin).code);
         vm.etch(address(superchainConfigProxy), address(superchainConfigProxy).code);
@@ -420,10 +372,12 @@ contract DeployImplementations_Test is Test {
         dii.set(dii.challengePeriodSeconds.selector, challengePeriodSeconds);
         dii.set(dii.proofMaturityDelaySeconds.selector, proofMaturityDelaySeconds);
         dii.set(dii.disputeGameFinalityDelaySeconds.selector, disputeGameFinalityDelaySeconds);
-        dii.set(dii.release.selector, release);
+        dii.set(dii.mipsVersion.selector, 1);
+        dii.set(dii.l1ContractsRelease.selector, release);
         dii.set(dii.superchainConfigProxy.selector, address(superchainConfigProxy));
         dii.set(dii.protocolVersionsProxy.selector, address(protocolVersionsProxy));
-        dii.set(dii.opcmProxyOwner.selector, msg.sender);
+        dii.set(dii.superchainProxyAdmin.selector, address(superchainProxyAdmin));
+        dii.set(dii.upgradeController.selector, upgradeController);
 
         deployImplementations.run(dii, dio);
 
@@ -433,10 +387,12 @@ contract DeployImplementations_Test is Test {
         assertEq(challengePeriodSeconds, dii.challengePeriodSeconds(), "300");
         assertEq(proofMaturityDelaySeconds, dii.proofMaturityDelaySeconds(), "400");
         assertEq(disputeGameFinalityDelaySeconds, dii.disputeGameFinalityDelaySeconds(), "500");
-        assertEq(release, dii.release(), "525");
+        assertEq(1, dii.mipsVersion(), "512");
+        assertEq(release, dii.l1ContractsRelease(), "525");
         assertEq(address(superchainConfigProxy), address(dii.superchainConfigProxy()), "550");
         assertEq(address(protocolVersionsProxy), address(dii.protocolVersionsProxy()), "575");
-        assertEq(msg.sender, dii.opcmProxyOwner(), "580");
+        assertEq(address(superchainProxyAdmin), address(dii.superchainProxyAdmin()), "600");
+        assertEq(upgradeController, dii.upgradeController(), "625");
 
         // Architecture assertions.
         assertEq(address(dio.mipsSingleton().oracle()), address(dio.preimageOracleSingleton()), "600");
@@ -446,18 +402,23 @@ contract DeployImplementations_Test is Test {
         dio.checkOutput(dii);
     }
 
-    function testFuzz_run_largeChallengePeriodSeconds_reverts(uint256 _challengePeriodSeconds) public {
+    function setDefaults() internal {
         // Set the defaults.
         dii.set(dii.withdrawalDelaySeconds.selector, withdrawalDelaySeconds);
         dii.set(dii.minProposalSizeBytes.selector, minProposalSizeBytes);
         dii.set(dii.challengePeriodSeconds.selector, challengePeriodSeconds);
         dii.set(dii.proofMaturityDelaySeconds.selector, proofMaturityDelaySeconds);
         dii.set(dii.disputeGameFinalityDelaySeconds.selector, disputeGameFinalityDelaySeconds);
+        dii.set(dii.mipsVersion.selector, 1);
         string memory release = "dev-release";
-        dii.set(dii.release.selector, release);
+        dii.set(dii.l1ContractsRelease.selector, release);
         dii.set(dii.superchainConfigProxy.selector, address(superchainConfigProxy));
         dii.set(dii.protocolVersionsProxy.selector, address(protocolVersionsProxy));
+        dii.set(dii.superchainProxyAdmin.selector, address(superchainProxyAdmin));
+    }
 
+    function testFuzz_run_largeChallengePeriodSeconds_reverts(uint256 _challengePeriodSeconds) public {
+        setDefaults();
         // Set the challenge period to a value that is too large, using vm.store because the setter
         // method won't allow it.
         challengePeriodSeconds = bound(_challengePeriodSeconds, uint256(type(uint64).max) + 1, type(uint256).max);
@@ -466,6 +427,19 @@ contract DeployImplementations_Test is Test {
         vm.store(address(dii), bytes32(slot), bytes32(challengePeriodSeconds));
 
         vm.expectRevert("DeployImplementationsInput: challengePeriodSeconds too large");
+        deployImplementations.run(dii, dio);
+    }
+
+    function test_run_deployMipsV1OnMainnetOrSepolia_reverts() public {
+        setDefaults();
+        dii.set(dii.mipsVersion.selector, 2);
+
+        vm.chainId(Chains.Mainnet);
+        vm.expectRevert("DeployImplementations: Only Mips32 should be deployed on Mainnet or Sepolia");
+        deployImplementations.run(dii, dio);
+
+        vm.chainId(Chains.Sepolia);
+        vm.expectRevert("DeployImplementations: Only Mips32 should be deployed on Mainnet or Sepolia");
         deployImplementations.run(dii, dio);
     }
 }

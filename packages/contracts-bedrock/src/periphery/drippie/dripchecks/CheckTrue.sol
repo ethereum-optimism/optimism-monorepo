@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
-import { IDripCheck } from "../IDripCheck.sol";
+// Interfaces
+import { IDripCheck } from "src/periphery/drippie/IDripCheck.sol";
 
 /// @title CheckTrue
 /// @notice DripCheck that always returns true.

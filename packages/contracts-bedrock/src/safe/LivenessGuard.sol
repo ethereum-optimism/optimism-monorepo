@@ -1,12 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
+// Safe
 import { GnosisSafe as Safe } from "safe-contracts/GnosisSafe.sol";
 import { Guard as BaseGuard } from "safe-contracts/base/GuardManager.sol";
-import { SafeSigners } from "src/safe/SafeSigners.sol";
 import { Enum } from "safe-contracts/common/Enum.sol";
-import { ISemver } from "src/universal/interfaces/ISemver.sol";
+
+// Libraries
 import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import { SafeSigners } from "src/safe/SafeSigners.sol";
+
+// Interfaces
+import { ISemver } from "interfaces/universal/ISemver.sol";
 
 /// @title LivenessGuard
 /// @notice This Guard contract is used to track the liveness of Safe owners.
@@ -25,8 +30,8 @@ contract LivenessGuard is ISemver, BaseGuard {
     event OwnerRecorded(address owner);
 
     /// @notice Semantic version.
-    /// @custom:semver 1.0.1-beta.2
-    string public constant version = "1.0.1-beta.2";
+    /// @custom:semver 1.0.1-beta.4
+    string public constant version = "1.0.1-beta.4";
 
     /// @notice The safe account for which this contract will be the guard.
     Safe internal immutable SAFE;

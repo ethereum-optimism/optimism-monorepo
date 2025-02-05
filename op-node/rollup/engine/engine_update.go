@@ -7,6 +7,7 @@ import (
 
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/rpc"
 )
 
 // isDepositTx checks an opaqueTx to determine if it is a Deposit Transaction
@@ -84,15 +85,15 @@ const (
 func startPayload(ctx context.Context, eng ExecEngine, fc eth.ForkchoiceState, attrs *eth.PayloadAttributes) (id eth.PayloadID, errType BlockInsertionErrType, err error) {
 	fcRes, err := eng.ForkchoiceUpdate(ctx, &fc, attrs)
 	if err != nil {
-		var inputErr eth.InputError
-		if errors.As(err, &inputErr) {
-			switch inputErr.Code {
+		var rpcErr rpc.Error
+		if errors.As(err, &rpcErr) {
+			switch code := eth.ErrorCode(rpcErr.ErrorCode()); code {
 			case eth.InvalidForkchoiceState:
-				return eth.PayloadID{}, BlockInsertPrestateErr, fmt.Errorf("pre-block-creation forkchoice update was inconsistent with engine, need reset to resolve: %w", inputErr.Unwrap())
+				return eth.PayloadID{}, BlockInsertPrestateErr, fmt.Errorf("pre-block-creation forkchoice update was inconsistent with engine, need reset to resolve: %w", rpcErr)
 			case eth.InvalidPayloadAttributes:
-				return eth.PayloadID{}, BlockInsertPayloadErr, fmt.Errorf("payload attributes are not valid, cannot build block: %w", inputErr.Unwrap())
+				return eth.PayloadID{}, BlockInsertPayloadErr, fmt.Errorf("payload attributes are not valid, cannot build block: %w", rpcErr)
 			default:
-				if inputErr.Code.IsEngineError() {
+				if code.IsEngineError() {
 					return eth.PayloadID{}, BlockInsertPrestateErr, fmt.Errorf("unexpected engine error code in forkchoice-updated response: %w", err)
 				} else {
 					return eth.PayloadID{}, BlockInsertTemporaryErr, fmt.Errorf("unexpected generic error code in forkchoice-updated response: %w", err)

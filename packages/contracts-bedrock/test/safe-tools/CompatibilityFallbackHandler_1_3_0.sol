@@ -93,7 +93,7 @@ contract CompatibilityFallbackHandler is DefaultCallbackHandler, ISignatureValid
         GnosisSafe safe = GnosisSafe(payable(msg.sender));
         bytes32 messageHash = getMessageHashForSafe(safe, _data);
         if (_signature.length == 0) {
-            require(safe.signedMessages(messageHash) != 0, "Hash not approved");
+            require(safe.signedMessages(messageHash) != 0, "CompatibilityFallbackHandler: Hash not approved");
         } else {
             safe.checkSignatures(messageHash, _data, _signature);
         }

@@ -1,5 +1,6 @@
 codecov:
   require_ci_to_pass: false
+
 comment:
   layout: "diff, flags, files"
   behavior: default
@@ -12,30 +13,30 @@ ignore:
   - "**/*.t.sol"
   - "packages/contracts-bedrock/test/**/*.sol"
   - "packages/contracts-bedrock/scripts/**/*.sol"
-  - "packages/contracts-bedrock/contracts/vendor/WETH9.sol"
-  - 'packages/contracts-bedrock/contracts/EAS/**/*.sol'
+  - "packages/contracts-bedrock/src/vendor/**/*.sol"
+  - "packages/contracts-bedrock/src/interfaces/**/*.sol"
+  # TODO: add coverage for MIPS64 back once tests are merged in
+  - "packages/contracts-bedrock/src/cannon/MIPS64.sol"
+  - "packages/contracts-bedrock/src/cannon/libraries/MIPS64Instructions.sol"
+  - "packages/contracts-bedrock/src/cannon/libraries/MIPS64State.sol"
+  - "packages/contracts-bedrock/src/cannon/libraries/MIPS64Syscalls.sol"
+
 coverage:
   status:
-    patch:
-      default:
-        target: auto  # target coverage is equal to the PR base
-        threshold: 0% # coverage is not allowed to reduce vs. the PR base
-        base: auto
-        informational: true
-        enabled: true
     project:
       default:
         informational: true
+    patch:
+      contracts:
+        base: auto
+        target: auto
+        threshold: 5%
+        informational: false
+        flags:
+          - contracts-bedrock-tests
+
 flag_management:
-  # Note: flags should have the same name as the circleci job in which they
-  # are uploaded.
   individual_flags:
     - name: contracts-bedrock-tests
       paths:
         - packages/contracts-bedrock/src
-      statuses:
-        - type: patch
-          target: 100%
-    - name: bedrock-go-tests
-    - name: contracts-tests
-    - name: sdk-tests

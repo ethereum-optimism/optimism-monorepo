@@ -11,7 +11,7 @@ usage_run_kontrol() {
   echo "" 1>&2
   echo "Execution modes:"
   echo "  container          Run in docker container. Reproduce CI execution. (Default)" 1>&2
-  echo "  local              Run locally, enforces registered versions.json version for better reproducibility. (Recommended)" 1>&2
+  echo "  local              Run locally, enforces registered mise.toml version for better reproducibility. (Recommended)" 1>&2
   echo "  dev                Run locally, does NOT enforce registered version. (Useful for developing with new versions and features)" 1>&2
   echo "" 1>&2
   echo "Tests executed:"
@@ -28,7 +28,7 @@ usage_make_summary() {
   echo "" 1>&2
   echo "Execution modes:"
   echo "  container          Run in docker container. Reproduce CI execution. (Default)" 1>&2
-  echo "  local              Run locally, enforces registered versions.json version for better reproducibility. (Recommended)" 1>&2
+  echo "  local              Run locally, enforces registered mise.toml version for better reproducibility. (Recommended)" 1>&2
   echo "  dev                Run locally, does NOT enforce registered version. (Useful for developing with new versions and features)" 1>&2
   exit 0
 }
@@ -43,7 +43,7 @@ export CONTAINER_NAME=kontrol-tests
 if [ "$KONTROL_FP_DEPLOYMENT" = true ]; then
   export CONTAINER_NAME=kontrol-fp-tests
 fi
-KONTROLRC=$(jq -r .kontrol < "$WORKSPACE_DIR/../../versions.json")
+KONTROLRC=$(yq '.tools.kontrol' "$WORKSPACE_DIR/../../mise.toml")
 export KONTROL_RELEASE=$KONTROLRC
 export LOCAL=false
 export SCRIPT_TESTS=false
@@ -155,7 +155,7 @@ start_docker () {
     --rm \
     --interactive \
     --detach \
-    --env FOUNDRY_PROFILE="$FOUNDRY_PROFILE" \
+    --env FOUNDRY_PROFILE="${FOUNDRY_PROFILE-default}" \
     --workdir /home/user/workspace \
     runtimeverificationinc/kontrol:ubuntu-jammy-"$KONTROL_RELEASE"
 

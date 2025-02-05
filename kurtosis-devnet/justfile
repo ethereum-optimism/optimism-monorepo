@@ -1,0 +1,92 @@
+set shell := ["/bin/bash", "-c"]
+
+test:
+    go test --tags=testonly ./...
+
+_kurtosis-run PACKAGE_NAME ARG_FILE ENCLAVE:
+	kurtosis run {{PACKAGE_NAME}} --args-file {{ARG_FILE}} --enclave {{ENCLAVE}} --show-enclave-inspect=false --image-download=missing
+
+# Internal recipes for kurtosis-devnet
+_contracts-build BUNDLE='contracts-bundle.tar.gz':
+    just ../packages/contracts-bedrock/forge-build
+    tar -czf {{BUNDLE}} -C ../packages/contracts-bedrock artifacts forge-artifacts cache
+
+_prestate-build PATH='.':
+    docker buildx build --output {{PATH}} --progress plain -f ../op-program/Dockerfile.repro ../
+
+_docker_build TAG TARGET CONTEXT DOCKERFILE *ARGS:
+    docker buildx build -t {{TAG}} \
+        -f {{CONTEXT}}/{{DOCKERFILE}} \
+        {{ if TARGET != '' {  "--target " + TARGET } else { "" } }} \
+        --build-arg GIT_COMMIT={git_commit} \
+        --build-arg GIT_DATE={git_date} \
+        {{ ARGS }} \
+        {{CONTEXT}}
+
+_docker_build_stack TAG TARGET *ARGS: (_docker_build TAG TARGET "../" "ops/docker/op-stack-go/Dockerfile" ARGS)
+
+cannon-image TAG='cannon:devnet': (_docker_build_stack TAG "cannon-target")
+da-server-image TAG='da-server:devnet': (_docker_build_stack TAG "da-server-target")
+op-batcher-image TAG='op-batcher:devnet': (_docker_build_stack TAG "op-batcher-target")
+# TODO: this is a temporary hack to get the kona version right.
+# Ideally the Dockerfile should be self-sufficient (right now we depend on
+# docker-bake.hcl to do the right thing).
+op-challenger-image TAG='op-challenger:devnet': (_docker_build_stack TAG "op-challenger-target" "--build-arg" "KONA_VERSION=kona-client-v0.1.0-beta.6")
+op-conductor-image TAG='op-conductor:devnet': (_docker_build_stack TAG "op-conductor-target")
+op-deployer-image TAG='op-deployer:devnet': (_docker_build_stack TAG "op-deployer-target")
+op-dispute-mon-image TAG='op-dispute-mon:devnet': (_docker_build_stack TAG "op-dispute-mon-target")
+op-node-image TAG='op-node:devnet': (_docker_build_stack TAG "op-node-target")
+op-program-image TAG='op-program:devnet': (_docker_build_stack TAG "op-program-target")
+op-proposer-image TAG='op-proposer:devnet': (_docker_build_stack TAG "op-proposer-target")
+op-supervisor-image TAG='op-supervisor:devnet': (_docker_build_stack TAG "op-supervisor-target")
+op-wheel-image TAG='op-wheel:devnet': (_docker_build_stack TAG "op-wheel-target")
+
+KURTOSIS_PACKAGE := "github.com/ethpandaops/optimism-package"
+
+# Devnet template recipe
+devnet TEMPLATE_FILE DATA_FILE="" NAME="":
+    #!/usr/bin/env bash
+    export DEVNET_NAME={{NAME}}
+    if [ -z "{{NAME}}" ]; then
+        export DEVNET_NAME=`basename {{TEMPLATE_FILE}} .yaml`
+        if [ -n "{{DATA_FILE}}" ]; then
+            export DATA_FILE_NAME=`basename {{DATA_FILE}} .json`
+            export DEVNET_NAME="$DEVNET_NAME-$DATA_FILE_NAME"
+        fi
+    fi
+    export ENCL_NAME="$DEVNET_NAME"-devnet
+    go run cmd/main.go -kurtosis-package {{KURTOSIS_PACKAGE}} \
+        -environment "tests/$ENCL_NAME.json" \
+        -template "{{TEMPLATE_FILE}}" \
+        -data "{{DATA_FILE}}" \
+        -enclave "$ENCL_NAME" \
+    && cat "tests/$ENCL_NAME.json"
+
+devnet-test DEVNET *TEST:
+    #!/usr/bin/env bash
+    export TESTS=({{TEST}})
+    # we need a timestamp in there to force kurtosis to not cache the test solely based on its name!
+    export ARGS=$(printf '%s\n' "${TESTS[@]}" | jq -R . | jq -s . | jq -s '{devnet: "{{DEVNET}}", timestamp: "{{datetime("%s")}}", tests: add}')
+    kurtosis run --enclave {{DEVNET}} \
+        --show-enclave-inspect=false \
+        ./tests/ "$ARGS"
+
+# Devnet recipes
+
+# Simple devnet
+simple-devnet: (devnet "simple.yaml")
+
+# Interop devnet
+interop-devnet: (devnet "interop.yaml")
+interop-devnet-test: (devnet-test "interop-devnet" "interop-smoke-test.sh")
+
+# User devnet
+user-devnet DATA_FILE:
+    {{just_executable()}} devnet "user.yaml" {{DATA_FILE}} {{file_stem(DATA_FILE)}}
+
+# Pectra devnet
+pectra-devnet: (devnet "pectra.yaml")
+
+# subshells
+enter-devnet DEVNET CHAIN='Ethereum':
+    exec go run ../devnet-sdk/shell/cmd/enter/main.go --devnet tests/{{DEVNET}}.json --chain {{CHAIN}}

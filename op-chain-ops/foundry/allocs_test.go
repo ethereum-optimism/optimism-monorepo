@@ -28,13 +28,13 @@ func TestForgeAllocs_FromState(t *testing.T) {
 	oplog.SetGlobalLogHandler(oplog.NewLogHandler(os.Stdout, cfg))
 
 	rawDB := rawdb.NewMemoryDatabase()
-	stateDB := state.NewDatabaseWithConfig(rawDB, &triedb.Config{
+	stateDB := state.NewDatabase(triedb.NewDatabase(rawDB, &triedb.Config{
 		Preimages: true,
 		IsVerkle:  false,
 		HashDB:    hashdb.Defaults,
 		PathDB:    nil,
-	})
-	st, err := state.New(types.EmptyRootHash, stateDB, nil)
+	}), nil)
+	st, err := state.New(types.EmptyRootHash, stateDB)
 	require.NoError(t, err)
 
 	alice := common.HexToAddress("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266")
@@ -58,17 +58,17 @@ func TestForgeAllocs_FromState(t *testing.T) {
 
 	// Commit and make a new state, we cannot reuse the state after Commit
 	// (see doc-comment in Commit, absolute footgun)
-	root, err := st.Commit(0, false)
+	root, err := st.Commit(0, false, false)
 	require.NoError(t, err)
-	st, err = state.New(root, stateDB, nil)
+	st, err = state.New(root, stateDB)
 	require.NoError(t, err)
 
 	st.SetState(contract, common.Hash{0: 0xa}, common.Hash{0: 1})
 	st.SetState(contract, crypto.Keccak256Hash([]byte("hello")), crypto.Keccak256Hash([]byte("world")))
 
-	root, err = st.Commit(0, false)
+	root, err = st.Commit(0, false, false)
 	require.NoError(t, err)
-	st, err = state.New(root, stateDB, nil)
+	st, err = state.New(root, stateDB)
 	require.NoError(t, err)
 
 	var allocs ForgeAllocs

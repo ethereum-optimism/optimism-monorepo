@@ -3,16 +3,23 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"os"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/ethereum-optimism/optimism/op-node/chaincfg"
+	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum-optimism/optimism/op-program/chainconfig"
+	"github.com/ethereum-optimism/optimism/op-program/client/boot"
 	"github.com/ethereum-optimism/optimism/op-program/host/config"
 	"github.com/ethereum-optimism/optimism/op-program/host/types"
+	"github.com/ethereum-optimism/optimism/op-service/eth"
 	oplog "github.com/ethereum-optimism/optimism/op-service/log"
 	"github.com/ethereum-optimism/optimism/op-service/sources"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/params"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
@@ -71,9 +78,9 @@ func TestDefaultCLIOptionsMatchDefaultConfig(t *testing.T) {
 	cfg := configForArgs(t, addRequiredArgs())
 	rollupCfg, err := chaincfg.GetRollupConfig("op-sepolia")
 	require.NoError(t, err)
-	defaultCfg := config.NewConfig(
+	defaultCfg := config.NewSingleChainConfig(
 		rollupCfg,
-		chainconfig.OPSepoliaChainConfig,
+		chainconfig.OPSepoliaChainConfig(),
 		common.HexToHash(l1HeadValue),
 		common.HexToHash(l2HeadValue),
 		common.HexToHash(l2OutputRoot),
@@ -87,12 +94,10 @@ func TestNetwork(t *testing.T) {
 		verifyArgsInvalid(t, "invalid network: \"bar\"", replaceRequiredArg("--network", "bar"))
 	})
 
-	t.Run("Required", func(t *testing.T) {
-		verifyArgsInvalid(t, "flag rollup.config or network is required", addRequiredArgsExcept("--network"))
-	})
-
-	t.Run("DisallowNetworkAndRollupConfig", func(t *testing.T) {
-		verifyArgsInvalid(t, "cannot specify both rollup.config and network", addRequiredArgs("--rollup.config=foo"))
+	t.Run("AllowNetworkAndRollupConfig", func(t *testing.T) {
+		configFile, rollupCfg := writeRollupConfigWithChainID(t, 4297842)
+		cfg := configForArgs(t, addRequiredArgs("--rollup.config", configFile))
+		require.Equal(t, []*rollup.Config{chaincfg.OPSepolia(), rollupCfg}, cfg.Rollups)
 	})
 
 	t.Run("RollupConfig", func(t *testing.T) {
@@ -100,7 +105,17 @@ func TestNetwork(t *testing.T) {
 		genesisFile := writeValidGenesis(t)
 
 		cfg := configForArgs(t, addRequiredArgsExcept("--network", "--rollup.config", configFile, "--l2.genesis", genesisFile))
-		require.Equal(t, *chaincfg.Sepolia, *cfg.Rollup)
+		require.Len(t, cfg.Rollups, 1)
+		require.Equal(t, *chaincfg.OPSepolia(), *cfg.Rollups[0])
+	})
+
+	t.Run("Multiple", func(t *testing.T) {
+		cfg := configForArgs(t, addRequiredArgsExcept("--network", "--network=op-mainnet,op-sepolia"))
+		require.Len(t, cfg.Rollups, 2)
+		opMainnetCfg, err := chaincfg.GetRollupConfig("op-mainnet")
+		require.NoError(t, err)
+		require.Equal(t, *opMainnetCfg, *cfg.Rollups[0])
+		require.Equal(t, *chaincfg.OPSepolia(), *cfg.Rollups[1])
 	})
 
 	for _, name := range chaincfg.AvailableNetworks() {
@@ -110,7 +125,8 @@ func TestNetwork(t *testing.T) {
 		t.Run("Network_"+name, func(t *testing.T) {
 			args := replaceRequiredArg("--network", name)
 			cfg := configForArgs(t, args)
-			require.Equal(t, *expected, *cfg.Rollup)
+			require.Len(t, cfg.Rollups, 1)
+			require.Equal(t, *expected, *cfg.Rollups[0])
 		})
 	}
 }
@@ -136,38 +152,113 @@ func TestDataFormat(t *testing.T) {
 }
 
 func TestL2(t *testing.T) {
-	expected := "https://example.com:8545"
-	cfg := configForArgs(t, addRequiredArgs("--l2", expected))
-	require.Equal(t, expected, cfg.L2URL)
+	t.Run("Single", func(t *testing.T) {
+		expected := "https://example.com:8545"
+		cfg := configForArgs(t, addRequiredArgs("--l2", expected))
+		require.Equal(t, []string{expected}, cfg.L2URLs)
+	})
+
+	t.Run("Multiple", func(t *testing.T) {
+		expected := []string{"https://example.com:8545", "https://example.com:9000"}
+		cfg := configForArgs(t, addRequiredArgs("--l2", strings.Join(expected, ",")))
+		require.Equal(t, expected, cfg.L2URLs)
+	})
 }
 
 func TestL2Genesis(t *testing.T) {
-	t.Run("RequiredWithCustomNetwork", func(t *testing.T) {
-		rollupCfgFile := writeValidRollupConfig(t)
-		verifyArgsInvalid(t, "flag l2.genesis is required", addRequiredArgsExcept("--network", "--rollup.config", rollupCfgFile))
-	})
-
 	t.Run("Valid", func(t *testing.T) {
 		rollupCfgFile := writeValidRollupConfig(t)
 		genesisFile := writeValidGenesis(t)
 		cfg := configForArgs(t, addRequiredArgsExcept("--network", "--rollup.config", rollupCfgFile, "--l2.genesis", genesisFile))
-		require.Equal(t, l2GenesisConfig, cfg.L2ChainConfig)
+		require.Equal(t, []*params.ChainConfig{l2GenesisConfig}, cfg.L2ChainConfigs)
 	})
 
-	t.Run("NotRequiredForGoerli", func(t *testing.T) {
+	t.Run("NotRequiredForSepolia", func(t *testing.T) {
 		cfg := configForArgs(t, replaceRequiredArg("--network", "sepolia"))
-		require.Equal(t, chainconfig.OPSepoliaChainConfig, cfg.L2ChainConfig)
+		require.Equal(t, []*params.ChainConfig{chainconfig.OPSepoliaChainConfig()}, cfg.L2ChainConfigs)
+	})
+}
+
+func TestMultipleNetworkConfigs(t *testing.T) {
+	t.Run("MultipleCustomChains", func(t *testing.T) {
+		rollupFile1, rollupCfg1 := writeRollupConfigWithChainID(t, 1)
+		rollupFile2, rollupCfg2 := writeRollupConfigWithChainID(t, 2)
+		genesisFile1, chainCfg1 := writeGenesisFileWithChainID(t, 1)
+		genesisFile2, chainCfg2 := writeGenesisFileWithChainID(t, 2)
+		cfg := configForArgs(t, addRequiredArgsExcept("--network",
+			"--rollup.config", rollupFile1+","+rollupFile2,
+			"--l2.genesis", genesisFile1+","+genesisFile2))
+		require.Equal(t, []*rollup.Config{rollupCfg1, rollupCfg2}, cfg.Rollups)
+		require.Equal(t, []*params.ChainConfig{chainCfg1, chainCfg2}, cfg.L2ChainConfigs)
+	})
+
+	t.Run("MixNetworkAndCustomChains", func(t *testing.T) {
+		rollupFile, rollupCfg := writeRollupConfigWithChainID(t, 1)
+		genesisFile, chainCfg := writeGenesisFileWithChainID(t, 1)
+		cfg := configForArgs(t, addRequiredArgsExcept("--network",
+			"--network", "op-sepolia",
+			"--rollup.config", rollupFile,
+			"--l2.genesis", genesisFile))
+		require.Equal(t, []*rollup.Config{chaincfg.OPSepolia(), rollupCfg}, cfg.Rollups)
+		require.Equal(t, []*params.ChainConfig{chainconfig.OPSepoliaChainConfig(), chainCfg}, cfg.L2ChainConfigs)
+	})
+}
+
+func TestL2ChainID(t *testing.T) {
+	t.Run("DefaultToNetworkChainID", func(t *testing.T) {
+		cfg := configForArgs(t, replaceRequiredArg("--network", "op-mainnet"))
+		require.Equal(t, eth.ChainIDFromUInt64(10), cfg.L2ChainID)
+	})
+
+	t.Run("DefaultToGenesisChainID", func(t *testing.T) {
+		rollupCfgFile := writeValidRollupConfig(t)
+		genesisFile := writeValidGenesis(t)
+		cfg := configForArgs(t, addRequiredArgsExcept("--network", "--rollup.config", rollupCfgFile, "--l2.genesis", genesisFile))
+		require.Equal(t, eth.ChainIDFromBig(l2GenesisConfig.ChainID), cfg.L2ChainID)
+	})
+
+	t.Run("OverrideToCustomIndicator", func(t *testing.T) {
+		rollupCfgFile := writeValidRollupConfig(t)
+		genesisFile := writeValidGenesis(t)
+		cfg := configForArgs(t, addRequiredArgsExcept("--network",
+			"--rollup.config", rollupCfgFile,
+			"--l2.genesis", genesisFile,
+			"--l2.custom"))
+		require.Equal(t, boot.CustomChainIDIndicator, cfg.L2ChainID)
+	})
+
+	t.Run("ZeroWhenMultipleL2ChainsSpecified", func(t *testing.T) {
+		cfg := configForArgs(t, addRequiredArgsExcept("--network", "--network", "op-sepolia,op-mainnet"))
+		require.Zero(t, cfg.L2ChainID)
 	})
 }
 
 func TestL2Head(t *testing.T) {
-	t.Run("Required", func(t *testing.T) {
-		verifyArgsInvalid(t, "flag l2.head is required", addRequiredArgsExcept("--l2.head"))
+	t.Run("RequiredWithOutputRoot", func(t *testing.T) {
+		verifyArgsInvalid(t, "flag l2.head is required when l2.outputroot is specified", addRequiredArgsExcept("--l2.head"))
+	})
+
+	t.Run("NotAllowedWithAgreedPrestate", func(t *testing.T) {
+		req := requiredArgs()
+		delete(req, "--l2.head")
+		delete(req, "--l2.outputroot")
+		args := append(toArgList(req), "--l2.head", l2HeadValue, "--l2.agreed-prestate", "0x1234")
+		verifyArgsInvalid(t, "flag l2.head and l2.agreed-prestate must not be specified together", args)
 	})
 
 	t.Run("Valid", func(t *testing.T) {
 		cfg := configForArgs(t, replaceRequiredArg("--l2.head", l2HeadValue))
 		require.Equal(t, common.HexToHash(l2HeadValue), cfg.L2Head)
+	})
+
+	t.Run("NotRequiredForInterop", func(t *testing.T) {
+		req := requiredArgs()
+		delete(req, "--l2.head")
+		delete(req, "--l2.outputroot")
+		args := append(toArgList(req), "--l2.agreed-prestate", "0x1234")
+		cfg := configForArgs(t, args)
+		require.Equal(t, common.Hash{}, cfg.L2Head)
+		require.True(t, cfg.InteropEnabled)
 	})
 
 	t.Run("Invalid", func(t *testing.T) {
@@ -177,7 +268,11 @@ func TestL2Head(t *testing.T) {
 
 func TestL2OutputRoot(t *testing.T) {
 	t.Run("Required", func(t *testing.T) {
-		verifyArgsInvalid(t, "flag l2.outputroot is required", addRequiredArgsExcept("--l2.outputroot"))
+		verifyArgsInvalid(t, "flag l2.outputroot or l2.agreed-prestate is required", addRequiredArgsExcept("--l2.outputroot"))
+	})
+
+	t.Run("NotRequiredWhenAgreedPrestateProvided", func(t *testing.T) {
+		configForArgs(t, addRequiredArgsExceptMultiple([]string{"--l2.outputroot", "--l2.head"}, "--l2.agreed-prestate", "0x1234"))
 	})
 
 	t.Run("Valid", func(t *testing.T) {
@@ -187,6 +282,33 @@ func TestL2OutputRoot(t *testing.T) {
 
 	t.Run("Invalid", func(t *testing.T) {
 		verifyArgsInvalid(t, config.ErrInvalidL2OutputRoot.Error(), replaceRequiredArg("--l2.outputroot", "something"))
+	})
+}
+
+func TestL2AgreedPrestate(t *testing.T) {
+	t.Run("NotRequiredWhenL2OutputRootProvided", func(t *testing.T) {
+		configForArgs(t, addRequiredArgsExceptMultiple([]string{"--l2.outputroot", "--l2.head"}, "--l2.agreed-prestate", "0x1234"))
+	})
+
+	t.Run("Valid", func(t *testing.T) {
+		prestate := "0x1234"
+		prestateBytes := common.FromHex(prestate)
+		expectedOutputRoot := crypto.Keccak256Hash(prestateBytes)
+		cfg := configForArgs(t, addRequiredArgsExceptMultiple([]string{"--l2.outputroot", "--l2.head"}, "--l2.agreed-prestate", prestate))
+		require.Equal(t, expectedOutputRoot, cfg.L2OutputRoot)
+		require.Equal(t, prestateBytes, cfg.AgreedPrestate)
+	})
+
+	t.Run("MustNotSpecifyWithL2OutputRoot", func(t *testing.T) {
+		verifyArgsInvalid(t, "flag l2.outputroot and l2.agreed-prestate must not be specified together", addRequiredArgs("--l2.agreed-prestate", "0x1234"))
+	})
+
+	t.Run("Invalid", func(t *testing.T) {
+		verifyArgsInvalid(t, config.ErrInvalidAgreedPrestate.Error(), addRequiredArgsExceptMultiple([]string{"--l2.outputroot", "--l2.head"}, "--l2.agreed-prestate", "something"))
+	})
+
+	t.Run("ZeroLength", func(t *testing.T) {
+		verifyArgsInvalid(t, config.ErrInvalidAgreedPrestate.Error(), addRequiredArgsExceptMultiple([]string{"--l2.outputroot", "--l2.head"}, "--l2.agreed-prestate", "0x"))
 	})
 }
 
@@ -274,6 +396,25 @@ func TestL2Claim(t *testing.T) {
 	})
 }
 
+func TestL2Experimental(t *testing.T) {
+	t.Run("DefaultEmpty", func(t *testing.T) {
+		cfg := configForArgs(t, addRequiredArgs())
+		require.Len(t, cfg.L2ExperimentalURLs, 0)
+	})
+
+	t.Run("Valid", func(t *testing.T) {
+		expected := "https://example.com:8545"
+		cfg := configForArgs(t, addRequiredArgs("--l2.experimental", expected))
+		require.EqualValues(t, []string{expected}, cfg.L2ExperimentalURLs)
+	})
+
+	t.Run("Multiple", func(t *testing.T) {
+		expected := []string{"https://example.com:8545", "https://example.com:9000"}
+		cfg := configForArgs(t, addRequiredArgs("--l2.experimental", strings.Join(expected, ",")))
+		require.EqualValues(t, expected, cfg.L2ExperimentalURLs)
+	})
+}
+
 func TestL2BlockNumber(t *testing.T) {
 	t.Run("Required", func(t *testing.T) {
 		verifyArgsInvalid(t, "flag l2.blocknumber is required", addRequiredArgsExcept("--l2.blocknumber"))
@@ -358,6 +499,14 @@ func addRequiredArgsExcept(name string, optionalArgs ...string) []string {
 	return append(toArgList(req), optionalArgs...)
 }
 
+func addRequiredArgsExceptMultiple(remove []string, optionalArgs ...string) []string {
+	req := requiredArgs()
+	for _, name := range remove {
+		delete(req, name)
+	}
+	return append(toArgList(req), optionalArgs...)
+}
+
 func replaceRequiredArg(name string, value string) []string {
 	req := requiredArgs()
 	req[name] = value
@@ -378,8 +527,21 @@ func requiredArgs() map[string]string {
 }
 
 func writeValidGenesis(t *testing.T) string {
+	genesis := l2Genesis
+	return writeGenesis(t, genesis)
+}
+
+func writeGenesisFileWithChainID(t *testing.T, chainID uint64) (string, *params.ChainConfig) {
+	genesis := *l2Genesis
+	chainCfg := *genesis.Config
+	chainCfg.ChainID = new(big.Int).SetUint64(chainID)
+	genesis.Config = &chainCfg
+	return writeGenesis(t, &genesis), &chainCfg
+}
+
+func writeGenesis(t *testing.T, genesis *core.Genesis) string {
 	dir := t.TempDir()
-	j, err := json.Marshal(l2Genesis)
+	j, err := json.Marshal(genesis)
 	require.NoError(t, err)
 	genesisFile := dir + "/genesis.json"
 	require.NoError(t, os.WriteFile(genesisFile, j, 0666))
@@ -387,8 +549,18 @@ func writeValidGenesis(t *testing.T) string {
 }
 
 func writeValidRollupConfig(t *testing.T) string {
+	return writeRollupConfig(t, chaincfg.OPSepolia())
+}
+
+func writeRollupConfigWithChainID(t *testing.T, chainID uint64) (string, *rollup.Config) {
+	rollupCfg := *chaincfg.OPSepolia()
+	rollupCfg.L2ChainID = new(big.Int).SetUint64(chainID)
+	return writeRollupConfig(t, &rollupCfg), &rollupCfg
+}
+
+func writeRollupConfig(t *testing.T, rollupCfg *rollup.Config) string {
 	dir := t.TempDir()
-	j, err := json.Marshal(chaincfg.Sepolia)
+	j, err := json.Marshal(&rollupCfg)
 	require.NoError(t, err)
 	cfgFile := dir + "/rollup.json"
 	require.NoError(t, os.WriteFile(cfgFile, j, 0666))

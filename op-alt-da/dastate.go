@@ -56,7 +56,7 @@ type State struct {
 	expiredCommitments   []Commitment          // commitments where the challenge/resolve period has expired but not finalized
 	challenges           []*Challenge          // challenges ordered by L1 inclusion
 	expiredChallenges    []*Challenge          // challenges ordered by L1 inclusion
-	challengesMap        map[string]*Challenge // challenges by seralized comm + block number for easy lookup
+	challengesMap        map[string]*Challenge // challenges by serialized comm + block number for easy lookup
 	lastPrunedCommitment eth.L1BlockRef        // the last commitment to be pruned
 	cfg                  Config
 	log                  log.Logger
@@ -146,9 +146,9 @@ func (s *State) NoCommitments() bool {
 	return len(s.challenges) == 0 && len(s.expiredChallenges) == 0 && len(s.commitments) == 0 && len(s.expiredCommitments) == 0
 }
 
-// ExpireCommitments moves commitments from the acive state map to the expired state map.
+// ExpireCommitments moves commitments from the active state map to the expired state map.
 // commitments are considered expired when the challenge window ends without a challenge, or when the resolve window ends without a resolution to the challenge.
-// This function processess commitments in order of inclusion until it finds a commitment which has not expired.
+// This function processes commitments in order of inclusion until it finds a commitment which has not expired.
 // If a commitment expires which did not resolve its challenge, it returns ErrReorgRequired to indicate that a L2 reorg should be performed.
 func (s *State) ExpireCommitments(origin eth.BlockID) error {
 	var err error
@@ -182,8 +182,8 @@ func (s *State) ExpireCommitments(origin eth.BlockID) error {
 }
 
 // ExpireChallenges moves challenges from the active state map to the expired state map.
-// challenges are considered expired when the oirgin is beyond the challenge's resolve window.
-// This function processess challenges in order of inclusion until it finds a commitment which has not expired.
+// challenges are considered expired when the origin is beyond the challenge's resolve window.
+// This function processes challenges in order of inclusion until it finds a commitment which has not expired.
 // This function must be called for every block because there is no contract event to expire challenges.
 func (s *State) ExpireChallenges(origin eth.BlockID) {
 	for len(s.challenges) > 0 {

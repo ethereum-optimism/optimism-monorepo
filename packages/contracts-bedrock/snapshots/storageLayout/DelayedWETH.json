@@ -36,14 +36,14 @@
   },
   {
     "bytes": "32",
-    "label": "balanceOf",
+    "label": "_balanceOf",
     "offset": 0,
     "slot": "101",
     "type": "mapping(address => uint256)"
   },
   {
     "bytes": "32",
-    "label": "allowance",
+    "label": "_allowance",
     "offset": 0,
     "slot": "102",
     "type": "mapping(address => mapping(address => uint256))"

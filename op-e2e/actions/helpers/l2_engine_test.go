@@ -31,7 +31,7 @@ import (
 func TestL2EngineAPI(gt *testing.T) {
 	t := NewDefaultTesting(gt)
 	jwtPath := e2eutils.WriteDefaultJWT(t)
-	dp := e2eutils.MakeDeployParams(t, DefaultRollupTestParams)
+	dp := e2eutils.MakeDeployParams(t, DefaultRollupTestParams())
 	sd := e2eutils.Setup(t, dp, DefaultAlloc)
 	log := testlog.Logger(t, log.LevelDebug)
 	genesisBlock := sd.L2Cfg.ToBlock()
@@ -40,7 +40,7 @@ func TestL2EngineAPI(gt *testing.T) {
 	tdb := triedb.NewDatabase(db, &triedb.Config{HashDB: hashdb.Defaults})
 	sd.L2Cfg.MustCommit(db, tdb)
 
-	engine := NewL2Engine(t, log, sd.L2Cfg, sd.RollupCfg.Genesis.L1, jwtPath)
+	engine := NewL2Engine(t, log, sd.L2Cfg, jwtPath)
 
 	l2Cl, err := sources.NewEngineClient(engine.RPCClient(), log, nil, sources.EngineClientDefaultConfig(sd.RollupCfg))
 	require.NoError(t, err)
@@ -54,7 +54,7 @@ func TestL2EngineAPI(gt *testing.T) {
 		}
 	})
 
-	payloadA, err := eth.BlockAsPayloadEnv(chainA[0], sd.RollupCfg.CanyonTime)
+	payloadA, err := eth.BlockAsPayloadEnv(chainA[0], sd.L2Cfg.Config)
 	require.NoError(t, err)
 
 	// apply the payload
@@ -83,7 +83,7 @@ func TestL2EngineAPI(gt *testing.T) {
 		}
 	})
 
-	payloadB, err := eth.BlockAsPayloadEnv(chainB[0], sd.RollupCfg.CanyonTime)
+	payloadB, err := eth.BlockAsPayloadEnv(chainB[0], sd.L2Cfg.Config)
 	require.NoError(t, err)
 
 	// apply the payload
@@ -107,7 +107,7 @@ func TestL2EngineAPI(gt *testing.T) {
 func TestL2EngineAPIBlockBuilding(gt *testing.T) {
 	t := NewDefaultTesting(gt)
 	jwtPath := e2eutils.WriteDefaultJWT(t)
-	dp := e2eutils.MakeDeployParams(t, DefaultRollupTestParams)
+	dp := e2eutils.MakeDeployParams(t, DefaultRollupTestParams())
 	sd := e2eutils.Setup(t, dp, DefaultAlloc)
 	log := testlog.Logger(t, log.LevelDebug)
 	genesisBlock := sd.L2Cfg.ToBlock()
@@ -115,7 +115,7 @@ func TestL2EngineAPIBlockBuilding(gt *testing.T) {
 	tdb := triedb.NewDatabase(db, &triedb.Config{HashDB: hashdb.Defaults})
 	sd.L2Cfg.MustCommit(db, tdb)
 
-	engine := NewL2Engine(t, log, sd.L2Cfg, sd.RollupCfg.Genesis.L1, jwtPath)
+	engine := NewL2Engine(t, log, sd.L2Cfg, jwtPath)
 	t.Cleanup(func() {
 		_ = engine.Close()
 	})
@@ -208,10 +208,10 @@ func TestL2EngineAPIBlockBuilding(gt *testing.T) {
 func TestL2EngineAPIFail(gt *testing.T) {
 	t := NewDefaultTesting(gt)
 	jwtPath := e2eutils.WriteDefaultJWT(t)
-	dp := e2eutils.MakeDeployParams(t, DefaultRollupTestParams)
+	dp := e2eutils.MakeDeployParams(t, DefaultRollupTestParams())
 	sd := e2eutils.Setup(t, dp, DefaultAlloc)
 	log := testlog.Logger(t, log.LevelDebug)
-	engine := NewL2Engine(t, log, sd.L2Cfg, sd.RollupCfg.Genesis.L1, jwtPath)
+	engine := NewL2Engine(t, log, sd.L2Cfg, jwtPath)
 	// mock an RPC failure
 	mockErr := errors.New("mock L2 RPC error")
 	engine.ActL2RPCFail(t, mockErr)
@@ -228,7 +228,7 @@ func TestL2EngineAPIFail(gt *testing.T) {
 func TestEngineAPITests(t *testing.T) {
 	test.RunEngineAPITests(t, func(t *testing.T) engineapi.EngineBackend {
 		jwtPath := e2eutils.WriteDefaultJWT(t)
-		dp := e2eutils.MakeDeployParams(t, DefaultRollupTestParams)
+		dp := e2eutils.MakeDeployParams(t, DefaultRollupTestParams())
 		sd := e2eutils.Setup(t, dp, DefaultAlloc)
 		n, _, apiBackend := newBackend(t, sd.L2Cfg, jwtPath, nil)
 		err := n.Start()

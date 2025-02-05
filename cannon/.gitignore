@@ -7,9 +7,6 @@ venv
 *.log
 testdata/example/bin
 contracts/out
-state.json
-*.json
-*.json.gz
 *.pprof
 *.out
 bin

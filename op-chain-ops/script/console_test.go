@@ -7,6 +7,8 @@ import (
 	"math/rand" // nosemgrep
 	"testing"
 
+	"github.com/ethereum-optimism/optimism/op-chain-ops/script/addresses"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/log"
@@ -62,8 +64,8 @@ func TestFormatter(t *testing.T) {
 	require.Equal(t, "4.2", consoleFormat("%8e", big.NewInt(420000000)))
 	require.Equal(t, "foo true bar false", consoleFormat("foo %s bar %s", true, false))
 	require.Equal(t, "foo 1 bar 0", consoleFormat("foo %d bar %d", true, false))
-	require.Equal(t, "sender: "+DefaultSenderAddr.String(),
-		consoleFormat("sender: %s", DefaultSenderAddr))
+	require.Equal(t, "sender: "+addresses.DefaultSenderAddr.String(),
+		consoleFormat("sender: %s", addresses.DefaultSenderAddr))
 	require.Equal(t, "long 0.000000000000000042 number", consoleFormat("long %18e number", big.NewInt(42)))
 	require.Equal(t, "long 4200.000000000000000003 number", consoleFormat("long %18e number",
 		new(big.Int).Add(new(big.Int).Mul(

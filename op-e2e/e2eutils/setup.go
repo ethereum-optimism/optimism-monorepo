@@ -6,7 +6,6 @@ import (
 	"path"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -39,6 +38,7 @@ type DeployParams struct {
 	MnemonicConfig *MnemonicConfig
 	Secrets        *Secrets
 	Addresses      *Addresses
+	AllocType      config.AllocType
 }
 
 // TestParams parametrizes the most essential rollup configuration parameters
@@ -48,6 +48,7 @@ type TestParams struct {
 	ChannelTimeout      uint64
 	L1BlockTime         uint64
 	UseAltDA            bool
+	AllocType           config.AllocType
 }
 
 func MakeDeployParams(t require.TestingT, tp *TestParams) *DeployParams {
@@ -56,7 +57,7 @@ func MakeDeployParams(t require.TestingT, tp *TestParams) *DeployParams {
 	require.NoError(t, err)
 	addresses := secrets.Addresses()
 
-	deployConfig := config.DeployConfig.Copy()
+	deployConfig := config.DeployConfig(tp.AllocType)
 	deployConfig.MaxSequencerDrift = tp.MaxSequencerDrift
 	deployConfig.SequencerWindowSize = tp.SequencerWindowSize
 	deployConfig.ChannelTimeoutBedrock = tp.ChannelTimeout
@@ -75,6 +76,7 @@ func MakeDeployParams(t require.TestingT, tp *TestParams) *DeployParams {
 		MnemonicConfig: mnemonicCfg,
 		Secrets:        secrets,
 		Addresses:      addresses,
+		AllocType:      tp.AllocType,
 	}
 }
 
@@ -103,6 +105,25 @@ func Ether(v uint64) *big.Int {
 	return new(big.Int).Mul(new(big.Int).SetUint64(v), etherScalar)
 }
 
+func GetL2AllocsMode(dc *genesis.DeployConfig, t uint64) genesis.L2AllocsMode {
+	if fork := dc.IsthmusTime(t); fork != nil && *fork <= 0 {
+		return genesis.L2AllocsIsthmus
+	}
+	if fork := dc.HoloceneTime(t); fork != nil && *fork <= 0 {
+		return genesis.L2AllocsHolocene
+	}
+	if fork := dc.GraniteTime(t); fork != nil && *fork <= 0 {
+		return genesis.L2AllocsGranite
+	}
+	if fork := dc.FjordTime(t); fork != nil && *fork <= 0 {
+		return genesis.L2AllocsFjord
+	}
+	if fork := dc.EcotoneTime(t); fork != nil && *fork <= 0 {
+		return genesis.L2AllocsEcotone
+	}
+	return genesis.L2AllocsDelta
+}
+
 // Setup computes the testing setup configurations from deployment configuration and optional allocation parameters.
 func Setup(t require.TestingT, deployParams *DeployParams, alloc *AllocParams) *SetupData {
 	deployConf := deployParams.DeployConfig.Copy()
@@ -110,10 +131,14 @@ func Setup(t require.TestingT, deployParams *DeployParams, alloc *AllocParams) *
 	logger := log.NewLogger(log.DiscardHandler())
 	require.NoError(t, deployConf.Check(logger))
 
-	l1Deployments := config.L1Deployments.Copy()
+	l1Deployments := config.L1Deployments(deployParams.AllocType)
 	require.NoError(t, l1Deployments.Check(deployConf))
 
-	l1Genesis, err := genesis.BuildL1DeveloperGenesis(deployConf, config.L1Allocs, l1Deployments)
+	l1Genesis, err := genesis.BuildL1DeveloperGenesis(
+		deployConf,
+		config.L1Allocs(deployParams.AllocType),
+		l1Deployments,
+	)
 	require.NoError(t, err, "failed to create l1 genesis")
 	if alloc.PrefundTestUsers {
 		for _, addr := range deployParams.Addresses.All() {
@@ -128,12 +153,8 @@ func Setup(t require.TestingT, deployParams *DeployParams, alloc *AllocParams) *
 
 	l1Block := l1Genesis.ToBlock()
 
-	var allocsMode genesis.L2AllocsMode
-	allocsMode = genesis.L2AllocsDelta
-	if ecotoneTime := deployConf.EcotoneTime(l1Block.Time()); ecotoneTime != nil && *ecotoneTime == 0 {
-		allocsMode = genesis.L2AllocsEcotone
-	}
-	l2Allocs := config.L2Allocs(allocsMode)
+	allocsMode := GetL2AllocsMode(deployConf, l1Block.Time())
+	l2Allocs := config.L2Allocs(deployParams.AllocType, allocsMode)
 	l2Genesis, err := genesis.BuildL2Genesis(deployConf, l2Allocs, l1Block.Header())
 	require.NoError(t, err, "failed to create l2 genesis")
 	if alloc.PrefundTestUsers {
@@ -185,6 +206,8 @@ func Setup(t require.TestingT, deployParams *DeployParams, alloc *AllocParams) *
 		EcotoneTime:            deployConf.EcotoneTime(uint64(deployConf.L1GenesisBlockTimestamp)),
 		FjordTime:              deployConf.FjordTime(uint64(deployConf.L1GenesisBlockTimestamp)),
 		GraniteTime:            deployConf.GraniteTime(uint64(deployConf.L1GenesisBlockTimestamp)),
+		HoloceneTime:           deployConf.HoloceneTime(uint64(deployConf.L1GenesisBlockTimestamp)),
+		IsthmusTime:            deployConf.IsthmusTime(uint64(deployConf.L1GenesisBlockTimestamp)),
 		InteropTime:            deployConf.InteropTime(uint64(deployConf.L1GenesisBlockTimestamp)),
 		AltDAConfig:            pcfg,
 	}
@@ -206,16 +229,13 @@ func Setup(t require.TestingT, deployParams *DeployParams, alloc *AllocParams) *
 }
 
 func SystemConfigFromDeployConfig(deployConfig *genesis.DeployConfig) eth.SystemConfig {
-	return eth.SystemConfig{
-		BatcherAddr: deployConfig.BatchSenderAddress,
-		Overhead:    eth.Bytes32(common.BigToHash(new(big.Int).SetUint64(deployConfig.GasPriceOracleOverhead))),
-		Scalar:      eth.Bytes32(deployConfig.FeeScalar()),
-		GasLimit:    uint64(deployConfig.L2GenesisBlockGasLimit),
-	}
+	return deployConfig.GenesisSystemConfig()
 }
 
 func ApplyDeployConfigForks(deployConfig *genesis.DeployConfig) {
-	isGranite := os.Getenv("OP_E2E_USE_GRANITE") == "true"
+	isIsthmus := os.Getenv("OP_E2E_USE_ISTHMUS") == "true"
+	isHolocene := isIsthmus || os.Getenv("OP_E2E_USE_HOLOCENE") == "true"
+	isGranite := isHolocene || os.Getenv("OP_E2E_USE_GRANITE") == "true"
 	isFjord := isGranite || os.Getenv("OP_E2E_USE_FJORD") == "true"
 	isEcotone := isFjord || os.Getenv("OP_E2E_USE_ECOTONE") == "true"
 	isDelta := isEcotone || os.Getenv("OP_E2E_USE_DELTA") == "true"
@@ -231,26 +251,13 @@ func ApplyDeployConfigForks(deployConfig *genesis.DeployConfig) {
 	if isGranite {
 		deployConfig.L2GenesisGraniteTimeOffset = new(hexutil.Uint64)
 	}
+	if isHolocene {
+		deployConfig.L2GenesisHoloceneTimeOffset = new(hexutil.Uint64)
+	}
+	if isIsthmus {
+		deployConfig.L2GenesisIsthmusTimeOffset = new(hexutil.Uint64)
+	}
 	// Canyon and lower is activated by default
 	deployConfig.L2GenesisCanyonTimeOffset = new(hexutil.Uint64)
 	deployConfig.L2GenesisRegolithTimeOffset = new(hexutil.Uint64)
-}
-
-func UseFaultProofs() bool {
-	return !UseL2OO()
-}
-
-func UseL2OO() bool {
-	return (os.Getenv("OP_E2E_USE_L2OO") == "true" ||
-		os.Getenv("DEVNET_L2OO") == "true")
-}
-
-func UseAltDA() bool {
-	return (os.Getenv("OP_E2E_USE_ALTDA") == "true" ||
-		os.Getenv("DEVNET_ALTDA") == "true")
-}
-
-func UseMTCannon() bool {
-	return (os.Getenv("OP_E2E_USE_MT_CANNON") == "true" ||
-		os.Getenv("USE_MT_CANNON") == "true")
 }

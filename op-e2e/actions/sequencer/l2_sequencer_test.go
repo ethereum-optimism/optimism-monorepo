@@ -4,6 +4,8 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/ethereum-optimism/optimism/op-e2e/config"
+
 	"github.com/ethereum-optimism/optimism/op-e2e/actions/helpers"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/params"
@@ -23,6 +25,7 @@ func TestL2Sequencer_SequencerDrift(gt *testing.T) {
 		SequencerWindowSize: 24,
 		ChannelTimeout:      20,
 		L1BlockTime:         12,
+		AllocType:           config.AllocTypeStandard,
 	}
 	dp := e2eutils.MakeDeployParams(t, p)
 	sd := e2eutils.Setup(t, dp, helpers.DefaultAlloc)
@@ -92,7 +95,7 @@ func TestL2Sequencer_SequencerDrift(gt *testing.T) {
 // while the verifier-codepath only ever sees the valid post-reorg L1 chain.
 func TestL2Sequencer_SequencerOnlyReorg(gt *testing.T) {
 	t := helpers.NewDefaultTesting(gt)
-	dp := e2eutils.MakeDeployParams(t, helpers.DefaultRollupTestParams)
+	dp := e2eutils.MakeDeployParams(t, helpers.DefaultRollupTestParams())
 	sd := e2eutils.Setup(t, dp, helpers.DefaultAlloc)
 	log := testlog.Logger(t, log.LevelDebug)
 	miner, _, sequencer := helpers.SetupSequencerTest(t, sd, log)

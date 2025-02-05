@@ -1,42 +1,37 @@
+//go:build !cannon64
+// +build !cannon64
+
 package versions
 
 import (
 	"path/filepath"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
+	"github.com/ethereum-optimism/optimism/cannon/mipsevm"
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/multithreaded"
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/singlethreaded"
-	"github.com/ethereum-optimism/optimism/cannon/serialize"
-	"github.com/stretchr/testify/require"
+	"github.com/ethereum-optimism/optimism/op-service/serialize"
 )
 
 func TestNewFromState(t *testing.T) {
-	t.Run("singlethreaded", func(t *testing.T) {
+	t.Run("singlethreaded-latestVersion", func(t *testing.T) {
 		actual, err := NewFromState(singlethreaded.CreateEmptyState())
 		require.NoError(t, err)
 		require.IsType(t, &singlethreaded.State{}, actual.FPVMState)
-		require.Equal(t, VersionSingleThreaded, actual.Version)
+		require.Equal(t, VersionSingleThreaded2, actual.Version)
 	})
 
-	t.Run("multithreaded", func(t *testing.T) {
+	t.Run("multithreaded-latestVersion", func(t *testing.T) {
 		actual, err := NewFromState(multithreaded.CreateEmptyState())
 		require.NoError(t, err)
 		require.IsType(t, &multithreaded.State{}, actual.FPVMState)
-		require.Equal(t, VersionMultiThreaded, actual.Version)
+		require.Equal(t, VersionMultiThreaded_v2, actual.Version)
 	})
 }
 
 func TestLoadStateFromFile(t *testing.T) {
-	t.Run("SinglethreadedFromJSON", func(t *testing.T) {
-		expected, err := NewFromState(singlethreaded.CreateEmptyState())
-		require.NoError(t, err)
-
-		path := writeToFile(t, "state.json", expected)
-		actual, err := LoadStateFromFile(path)
-		require.NoError(t, err)
-		require.Equal(t, expected, actual)
-	})
-
 	t.Run("SinglethreadedFromBinary", func(t *testing.T) {
 		expected, err := NewFromState(singlethreaded.CreateEmptyState())
 		require.NoError(t, err)
@@ -58,14 +53,36 @@ func TestLoadStateFromFile(t *testing.T) {
 	})
 }
 
-func TestMultithreadedDoesNotSupportJSON(t *testing.T) {
-	state, err := NewFromState(multithreaded.CreateEmptyState())
-	require.NoError(t, err)
+func TestVersionsOtherThanZeroDoNotSupportJSON(t *testing.T) {
+	tests := []struct {
+		version     StateVersion
+		createState func() mipsevm.FPVMState
+	}{
+		{VersionSingleThreaded2, func() mipsevm.FPVMState { return singlethreaded.CreateEmptyState() }},
+		{VersionMultiThreaded_v2, func() mipsevm.FPVMState { return multithreaded.CreateEmptyState() }},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.version.String(), func(t *testing.T) {
+			state, err := NewFromState(test.createState())
+			require.NoError(t, err)
 
-	dir := t.TempDir()
-	path := filepath.Join(dir, "test.json")
-	err = serialize.Write(path, state, 0o644)
-	require.ErrorIs(t, err, ErrJsonNotSupported)
+			dir := t.TempDir()
+			path := filepath.Join(dir, "test.json")
+			err = serialize.Write(path, state, 0o644)
+			require.ErrorIs(t, err, ErrJsonNotSupported)
+		})
+	}
+}
+
+func TestParseStateVersion(t *testing.T) {
+	for _, version := range StateVersionTypes {
+		t.Run(version.String(), func(t *testing.T) {
+			result, err := ParseStateVersion(version.String())
+			require.NoError(t, err)
+			require.Equal(t, version, result)
+		})
+	}
 }
 
 func writeToFile(t *testing.T, filename string, data serialize.Serializable) string {

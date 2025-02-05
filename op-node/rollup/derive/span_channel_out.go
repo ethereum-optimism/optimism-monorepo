@@ -122,27 +122,27 @@ func (co *SpanChannelOut) swapRLP() {
 	co.rlpIndex = (co.rlpIndex + 1) % 2
 }
 
-// AddBlock adds a block to the channel.
-// returns an error if there is a problem adding the block. The only sentinel error
+// AddBlock adds a block to the channel. It returns the block's L1BlockInfo
+// and an error if there is a problem adding the block. The only sentinel error
 // that it returns is ErrTooManyRLPBytes. If this error is returned, the channel
 // should be closed and a new one should be made.
-func (co *SpanChannelOut) AddBlock(rollupCfg *rollup.Config, block *types.Block) error {
+func (co *SpanChannelOut) AddBlock(rollupCfg *rollup.Config, block *types.Block) (*L1BlockInfo, error) {
 	if co.closed {
-		return ErrChannelOutAlreadyClosed
+		return nil, ErrChannelOutAlreadyClosed
 	}
 
 	batch, l1Info, err := BlockToSingularBatch(rollupCfg, block)
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("converting block to batch: %w", err)
 	}
-	return co.AddSingularBatch(batch, l1Info.SequenceNumber)
+	return l1Info, co.addSingularBatch(batch, l1Info.SequenceNumber)
 }
 
-// AddSingularBatch adds a SingularBatch to the channel, compressing the data if necessary.
+// addSingularBatch adds a SingularBatch to the channel, compressing the data if necessary.
 // if the new batch would make the channel exceed the target size, the last batch is reverted,
 // and the compression happens on the previous RLP buffer instead
 // if the input is too small to need compression, data is accumulated but not compressed
-func (co *SpanChannelOut) AddSingularBatch(batch *SingularBatch, seqNum uint64) error {
+func (co *SpanChannelOut) addSingularBatch(batch *SingularBatch, seqNum uint64) error {
 	// sentinel error for closed or full channel
 	if co.closed {
 		return ErrChannelOutAlreadyClosed

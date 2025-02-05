@@ -1,8 +1,6 @@
 #!/bin/bash
 set -euo pipefail
 
-export FOUNDRY_PROFILE=kdeploy
-
 SCRIPT_HOME="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 # shellcheck source=/dev/null
 source "$SCRIPT_HOME/common.sh"
@@ -50,15 +48,16 @@ fi
 conditionally_start_docker
 
 CONTRACT_NAMES=deployments/kontrol.json
-SCRIPT_SIG="runKontrolDeployment()"
 if [ "$KONTROL_FP_DEPLOYMENT" = true ]; then
   CONTRACT_NAMES=deployments/kontrol-fp.json
-  SCRIPT_SIG="runKontrolDeploymentFaultProofs()"
 fi
 
+# Sender just needs to be anything but the default sender (0x1804c8AB1F12E6bbf3894d4083f33e07309d1f38)
+# Otherwise state changes inside of Deploy.s.sol get stored in the state diff under the default script address (0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496)
+# Conflicts with other stuff that happens inside of Kontrol and leads to errors that are hard to debug
 DEPLOY_CONFIG_PATH=deploy-config/hardhat.json \
 DEPLOYMENT_OUTFILE="$CONTRACT_NAMES" \
-  forge script -vvv test/kontrol/deployment/KontrolDeployment.sol:KontrolDeployment --sig $SCRIPT_SIG
+  forge script --sender 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 -vvv scripts/deploy/Deploy.s.sol:Deploy --sig runWithStateDiff
 echo "Created state diff json"
 
 # Clean and store the state diff json in snapshots/state-diff/Kontrol-Deploy.json
@@ -82,7 +81,7 @@ if [ "$KONTROL_FP_DEPLOYMENT" = true ]; then
 fi
 
 copy_to_docker # Copy the newly generated files to the docker container
-run kontrol load-state-diff $SUMMARY_NAME snapshots/state-diff/$STATEDIFF --contract-names $CONTRACT_NAMES --output-dir $SUMMARY_DIR --license $LICENSE
+run kontrol load-state --from-state-diff $SUMMARY_NAME snapshots/state-diff/$STATEDIFF --contract-names $CONTRACT_NAMES --output-dir $SUMMARY_DIR --license $LICENSE
 if [ "$LOCAL" = false ]; then
     # Sync Snapshot updates to the host
     docker cp "$CONTAINER_NAME:/home/user/workspace/$SUMMARY_DIR" "$WORKSPACE_DIR/$SUMMARY_DIR/.."

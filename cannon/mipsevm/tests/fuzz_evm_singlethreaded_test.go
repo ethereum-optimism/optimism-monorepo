@@ -1,13 +1,15 @@
+//go:build !cannon64
+// +build !cannon64
+
 package tests
 
 import (
 	"os"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/stretchr/testify/require"
 
-	"github.com/ethereum-optimism/optimism/cannon/mipsevm/exec"
+	"github.com/ethereum-optimism/optimism/cannon/mipsevm/arch"
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/testutil"
 )
 
@@ -16,8 +18,8 @@ func FuzzStateSyscallCloneST(f *testing.F) {
 	f.Fuzz(func(t *testing.T, seed int64) {
 		goVm := v.VMFactory(nil, os.Stdout, os.Stderr, testutil.CreateLogger(), testutil.WithRandomization(seed))
 		state := goVm.GetState()
-		state.GetRegistersRef()[2] = exec.SysClone
-		state.GetMemory().SetMemory(state.GetPC(), syscallInsn)
+		state.GetRegistersRef()[2] = arch.SysClone
+		testutil.StoreInstruction(state.GetMemory(), state.GetPC(), syscallInsn)
 		step := state.GetStep()
 
 		expected := testutil.NewExpectedState(state)
@@ -32,11 +34,6 @@ func FuzzStateSyscallCloneST(f *testing.F) {
 		require.False(t, stepWitness.HasPreimage())
 
 		expected.Validate(t, state)
-
-		evm := testutil.NewMIPSEVM(v.Contracts)
-		evmPost := evm.Step(t, stepWitness, step, v.StateHashFn)
-		goPost, _ := goVm.GetState().EncodeWitness()
-		require.Equal(t, hexutil.Bytes(goPost).String(), hexutil.Bytes(evmPost).String(),
-			"mipsevm produced different state than EVM")
+		testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
 	})
 }

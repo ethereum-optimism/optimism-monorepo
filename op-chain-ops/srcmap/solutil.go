@@ -238,6 +238,16 @@ func (s *SourceMapTracer) info(codeAddr common.Address, pc uint64) string {
 
 func (s *SourceMapTracer) OnOpCode(pc uint64, opcode byte, gas, cost uint64, scope tracing.OpContext, rData []byte, depth int, err error) {
 	op := vm.OpCode(opcode)
+	var top []string
+	stk := scope.StackData()
+	for i := len(stk) - 1; i >= 0; i-- {
+		top = append(top, stk[i].Hex())
+		if len(top) == 4 {
+			break
+		}
+	}
+	stkInfo := fmt.Sprintf("[%s]", strings.Join(top, ", "))
+
 	if op.IsPush() {
 		var val []byte
 		sc, ok := scope.(*vm.ScopeContext)
@@ -248,10 +258,10 @@ func (s *SourceMapTracer) OnOpCode(pc uint64, opcode byte, gas, cost uint64, sco
 		} else {
 			val = []byte("N/A")
 		}
-		fmt.Fprintf(s.out, "%-40s : pc %x opcode %s (%x)\n", s.info(scope.Address(), pc), pc, op.String(), val)
+		fmt.Fprintf(s.out, "%-40s : pc %x opcode %s (%x) \t| stk[:%d] %s\n", s.info(scope.Address(), pc), pc, op.String(), val, len(top), stkInfo)
 		return
 	}
-	fmt.Fprintf(s.out, "%-40s : pc %x opcode %s\n", s.info(scope.Address(), pc), pc, op.String())
+	fmt.Fprintf(s.out, "%-40s : pc %x opcode %s \t\t| stk[:%d] %s\n", s.info(scope.Address(), pc), pc, op.String(), len(top), stkInfo)
 }
 
 func (s *SourceMapTracer) OnFault(pc uint64, opcode byte, gas, cost uint64, scope tracing.OpContext, depth int, err error) {

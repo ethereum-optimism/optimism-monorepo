@@ -1,3 +1,6 @@
+//go:build !cannon64
+// +build !cannon64
+
 package tests
 
 import (
@@ -5,10 +8,10 @@ import (
 	"os"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/core/tracing"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ethereum-optimism/optimism/cannon/mipsevm/arch"
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/exec"
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/memory"
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/testutil"
@@ -16,14 +19,12 @@ import (
 )
 
 func TestEVM_LL(t *testing.T) {
-	var tracer *tracing.Hooks
-
 	cases := []struct {
 		name    string
-		base    uint32
+		base    Word
 		offset  int
-		value   uint32
-		effAddr uint32
+		value   Word
+		effAddr Word
 		rtReg   int
 	}{
 		{name: "Aligned effAddr", base: 0x00_00_00_01, offset: 0x0133, value: 0xABCD, effAddr: 0x00_00_01_34, rtReg: 5},
@@ -37,12 +38,12 @@ func TestEVM_LL(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			rtReg := c.rtReg
 			baseReg := 6
-			pc := uint32(0x44)
+			pc := Word(0x44)
 			insn := uint32((0b11_0000 << 26) | (baseReg & 0x1F << 21) | (rtReg & 0x1F << 16) | (0xFFFF & c.offset))
 			goVm := v.VMFactory(nil, os.Stdout, os.Stderr, testutil.CreateLogger(), testutil.WithRandomization(int64(i)), testutil.WithPC(pc), testutil.WithNextPC(pc+4))
 			state := goVm.GetState()
-			state.GetMemory().SetMemory(pc, insn)
-			state.GetMemory().SetMemory(c.effAddr, c.value)
+			testutil.StoreInstruction(state.GetMemory(), pc, insn)
+			state.GetMemory().SetWord(c.effAddr, c.value)
 			state.GetRegistersRef()[baseReg] = c.base
 			step := state.GetStep()
 
@@ -60,20 +61,18 @@ func TestEVM_LL(t *testing.T) {
 
 			// Check expectations
 			expected.Validate(t, state)
-			testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts, tracer)
+			testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
 		})
 	}
 }
 
 func TestEVM_SC(t *testing.T) {
-	var tracer *tracing.Hooks
-
 	cases := []struct {
 		name    string
-		base    uint32
+		base    Word
 		offset  int
-		value   uint32
-		effAddr uint32
+		value   Word
+		effAddr Word
 		rtReg   int
 	}{
 		{name: "Aligned effAddr", base: 0x00_00_00_01, offset: 0x0133, value: 0xABCD, effAddr: 0x00_00_01_34, rtReg: 5},
@@ -87,11 +86,11 @@ func TestEVM_SC(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			rtReg := c.rtReg
 			baseReg := 6
-			pc := uint32(0x44)
+			pc := Word(0x44)
 			insn := uint32((0b11_1000 << 26) | (baseReg & 0x1F << 21) | (rtReg & 0x1F << 16) | (0xFFFF & c.offset))
 			goVm := v.VMFactory(nil, os.Stdout, os.Stderr, testutil.CreateLogger(), testutil.WithRandomization(int64(i)), testutil.WithPC(pc), testutil.WithNextPC(pc+4))
 			state := goVm.GetState()
-			state.GetMemory().SetMemory(pc, insn)
+			testutil.StoreInstruction(state.GetMemory(), pc, insn)
 			state.GetRegistersRef()[baseReg] = c.base
 			state.GetRegistersRef()[rtReg] = c.value
 			step := state.GetStep()
@@ -102,8 +101,8 @@ func TestEVM_SC(t *testing.T) {
 			expected.PC = pc + 4
 			expected.NextPC = pc + 8
 			expectedMemory := memory.NewMemory()
-			expectedMemory.SetMemory(pc, insn)
-			expectedMemory.SetMemory(c.effAddr, c.value)
+			testutil.StoreInstruction(expectedMemory, pc, insn)
+			expectedMemory.SetWord(c.effAddr, c.value)
 			expected.MemoryRoot = expectedMemory.MerkleRoot()
 			if rtReg != 0 {
 				expected.Registers[rtReg] = 1 // 1 for success
@@ -114,14 +113,12 @@ func TestEVM_SC(t *testing.T) {
 
 			// Check expectations
 			expected.Validate(t, state)
-			testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts, tracer)
+			testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
 		})
 	}
 }
 
 func TestEVM_SysRead_Preimage(t *testing.T) {
-	var tracer *tracing.Hooks
-
 	preimageValue := make([]byte, 0, 8)
 	preimageValue = binary.BigEndian.AppendUint32(preimageValue, 0x12_34_56_78)
 	preimageValue = binary.BigEndian.AppendUint32(preimageValue, 0x98_76_54_32)
@@ -130,12 +127,12 @@ func TestEVM_SysRead_Preimage(t *testing.T) {
 
 	cases := []struct {
 		name           string
-		addr           uint32
-		count          uint32
-		writeLen       uint32
-		preimageOffset uint32
-		prestateMem    uint32
-		postateMem     uint32
+		addr           Word
+		count          Word
+		writeLen       Word
+		preimageOffset Word
+		prestateMem    Word
+		postateMem     Word
 		shouldPanic    bool
 	}{
 		{name: "Aligned addr, write 1 byte", addr: 0x00_00_FF_00, count: 1, writeLen: 1, preimageOffset: 8, prestateMem: 0xFF_FF_FF_FF, postateMem: 0x12_FF_FF_FF},
@@ -157,7 +154,7 @@ func TestEVM_SysRead_Preimage(t *testing.T) {
 	}
 	for i, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			effAddr := 0xFFffFFfc & c.addr
+			effAddr := arch.AddressMask & c.addr
 			preimageKey := preimage.Keccak256Key(crypto.Keccak256Hash(preimageValue)).PreimageKey()
 			oracle := testutil.StaticOracle(t, preimageValue)
 			goVm := v.VMFactory(oracle, os.Stdout, os.Stderr, testutil.CreateLogger(), testutil.WithRandomization(int64(i)), testutil.WithPreimageKey(preimageKey), testutil.WithPreimageOffset(c.preimageOffset))
@@ -165,12 +162,12 @@ func TestEVM_SysRead_Preimage(t *testing.T) {
 			step := state.GetStep()
 
 			// Set up state
-			state.GetRegistersRef()[2] = exec.SysRead
+			state.GetRegistersRef()[2] = arch.SysRead
 			state.GetRegistersRef()[4] = exec.FdPreimageRead
 			state.GetRegistersRef()[5] = c.addr
 			state.GetRegistersRef()[6] = c.count
-			state.GetMemory().SetMemory(state.GetPC(), syscallInsn)
-			state.GetMemory().SetMemory(effAddr, c.prestateMem)
+			testutil.StoreInstruction(state.GetMemory(), state.GetPC(), syscallInsn)
+			state.GetMemory().SetWord(effAddr, c.prestateMem)
 
 			// Setup expectations
 			expected := testutil.NewExpectedState(state)
@@ -178,18 +175,18 @@ func TestEVM_SysRead_Preimage(t *testing.T) {
 			expected.Registers[2] = c.writeLen
 			expected.Registers[7] = 0 // no error
 			expected.PreimageOffset += c.writeLen
-			expected.ExpectMemoryWrite(effAddr, c.postateMem)
+			expected.ExpectMemoryWriteWord(effAddr, c.postateMem)
 
 			if c.shouldPanic {
 				require.Panics(t, func() { _, _ = goVm.Step(true) })
-				testutil.AssertPreimageOracleReverts(t, preimageKey, preimageValue, c.preimageOffset, v.Contracts, tracer)
+				testutil.AssertPreimageOracleReverts(t, preimageKey, preimageValue, c.preimageOffset, v.Contracts)
 			} else {
 				stepWitness, err := goVm.Step(true)
 				require.NoError(t, err)
 
 				// Check expectations
 				expected.Validate(t, state)
-				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts, tracer)
+				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
 			}
 		})
 	}

@@ -1,31 +1,42 @@
 package backend
 
 import (
+	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/sources/caching"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/db/logs"
-	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 )
 
 type Metrics interface {
-	CacheAdd(chainID types.ChainID, label string, cacheSize int, evicted bool)
-	CacheGet(chainID types.ChainID, label string, hit bool)
+	CacheAdd(chainID eth.ChainID, label string, cacheSize int, evicted bool)
+	CacheGet(chainID eth.ChainID, label string, hit bool)
 
-	RecordDBEntryCount(chainID types.ChainID, count int64)
-	RecordDBSearchEntriesRead(chainID types.ChainID, count int64)
+	RecordCrossUnsafeRef(chainID eth.ChainID, ref eth.BlockRef)
+	RecordCrossSafeRef(chainID eth.ChainID, ref eth.BlockRef)
+
+	RecordDBEntryCount(chainID eth.ChainID, kind string, count int64)
+	RecordDBSearchEntriesRead(chainID eth.ChainID, count int64)
 }
 
 // chainMetrics is an adapter between the metrics API expected by clients that assume there's only a single chain
 // and the actual metrics implementation which requires a chain ID to identify the source chain.
 type chainMetrics struct {
-	chainID  types.ChainID
+	chainID  eth.ChainID
 	delegate Metrics
 }
 
-func newChainMetrics(chainID types.ChainID, delegate Metrics) *chainMetrics {
+func newChainMetrics(chainID eth.ChainID, delegate Metrics) *chainMetrics {
 	return &chainMetrics{
 		chainID:  chainID,
 		delegate: delegate,
 	}
+}
+
+func (c *chainMetrics) RecordCrossUnsafeRef(ref eth.BlockRef) {
+	c.delegate.RecordCrossUnsafeRef(c.chainID, ref)
+}
+
+func (c *chainMetrics) RecordCrossSafeRef(ref eth.BlockRef) {
+	c.delegate.RecordCrossSafeRef(c.chainID, ref)
 }
 
 func (c *chainMetrics) CacheAdd(label string, cacheSize int, evicted bool) {
@@ -36,8 +47,8 @@ func (c *chainMetrics) CacheGet(label string, hit bool) {
 	c.delegate.CacheGet(c.chainID, label, hit)
 }
 
-func (c *chainMetrics) RecordDBEntryCount(count int64) {
-	c.delegate.RecordDBEntryCount(c.chainID, count)
+func (c *chainMetrics) RecordDBEntryCount(kind string, count int64) {
+	c.delegate.RecordDBEntryCount(c.chainID, kind, count)
 }
 
 func (c *chainMetrics) RecordDBSearchEntriesRead(count int64) {

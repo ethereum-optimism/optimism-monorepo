@@ -5,7 +5,7 @@ import { Test, stdStorage, StdStorage } from "forge-std/Test.sol";
 import { stdToml } from "forge-std/StdToml.sol";
 import { Solarray } from "scripts/libraries/Solarray.sol";
 
-import { DeployAuthSystemInput, DeployAuthSystem, DeployAuthSystemOutput } from "scripts/DeployAuthSystem.s.sol";
+import { DeployAuthSystemInput, DeployAuthSystem, DeployAuthSystemOutput } from "scripts/deploy/DeployAuthSystem.s.sol";
 
 contract DeployAuthSystemInput_Test is Test {
     DeployAuthSystemInput dasi;
@@ -30,7 +30,7 @@ contract DeployAuthSystemInput_Test is Test {
         }
     }
 
-    function test_getters_whenNotSet_revert() public {
+    function test_getters_whenNotSet_reverts() public {
         vm.expectRevert("DeployAuthSystemInput: threshold not set");
         dasi.threshold();
 
@@ -38,7 +38,7 @@ contract DeployAuthSystemInput_Test is Test {
         dasi.owners();
     }
 
-    function test_setters_ownerAlreadySet_revert() public {
+    function test_setters_ownerAlreadySet_reverts() public {
         dasi.set(dasi.owners.selector, owners);
 
         vm.expectRevert("DeployAuthSystemInput: owners already set");
@@ -135,7 +135,7 @@ contract DeployAuthSystem_Test is Test {
         daso.checkOutput();
     }
 
-    function test_run_NullInput_reverts() public {
+    function test_run_nullInput_reverts() public {
         dasi.set(dasi.owners.selector, defaultOwners);
         dasi.set(dasi.threshold.selector, defaultThreshold);
 

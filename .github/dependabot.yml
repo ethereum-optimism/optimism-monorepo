@@ -1,45 +1,5 @@
 version: 2
 updates:
-  - package-ecosystem: "docker"
-    directory: "/ops-bedrock"
-    schedule:
-      interval: "daily"
-      day: "tuesday"
-      time: "14:30"
-      timezone: "America/New_York"
-    open-pull-requests-limit: 10
-    commit-message:
-      prefix: "dependabot(docker): "
-    labels:
-      - "M-dependabot"
-
-  - package-ecosystem: "github-actions"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "tuesday"
-      time: "14:30"
-      timezone: "America/New_York"
-    open-pull-requests-limit: 10
-    commit-message:
-      prefix: "dependabot(actions): "
-    labels:
-      - "M-dependabot"
-
-  - package-ecosystem: "npm"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "tuesday"
-      time: "14:30"
-      timezone: "America/New_York"
-    open-pull-requests-limit: 10
-    versioning-strategy: "auto"
-    commit-message:
-      prefix: "dependabot(npm): "
-    labels:
-      - "M-dependabot"
-
   - package-ecosystem: "gomod"
     directory: "/"
     schedule:

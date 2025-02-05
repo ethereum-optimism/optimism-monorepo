@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/big"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/ethereum-optimism/optimism/op-proposer/bindings"
@@ -46,7 +47,7 @@ type L2OOContract interface {
 
 type DGFContract interface {
 	Version(ctx context.Context) (string, error)
-	HasProposedSince(ctx context.Context, proposer common.Address, cutoff time.Time, gameType uint32) (bool, time.Time, error)
+	HasProposedSince(ctx context.Context, proposer common.Address, cutoff time.Time, gameType uint32) (bool, time.Time, common.Hash, error)
 	ProposalTx(ctx context.Context, gameType uint32, outputRoot common.Hash, l2BlockNum uint64) (txmgr.TxCandidate, error)
 }
 
@@ -77,8 +78,7 @@ type L2OutputSubmitter struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
-	mutex   sync.Mutex
-	running bool
+	running atomic.Bool
 
 	l2ooContract L2OOContract
 	l2ooABI      *abi.ABI
@@ -163,13 +163,9 @@ func newDGFSubmitter(ctx context.Context, cancel context.CancelFunc, setup Drive
 func (l *L2OutputSubmitter) StartL2OutputSubmitting() error {
 	l.Log.Info("Starting Proposer")
 
-	l.mutex.Lock()
-	defer l.mutex.Unlock()
-
-	if l.running {
+	if !l.running.CompareAndSwap(false, true) {
 		return errors.New("proposer is already running")
 	}
-	l.running = true
 
 	if l.Cfg.WaitNodeSync {
 		err := l.waitNodeSync()
@@ -196,13 +192,9 @@ func (l *L2OutputSubmitter) StopL2OutputSubmittingIfRunning() error {
 func (l *L2OutputSubmitter) StopL2OutputSubmitting() error {
 	l.Log.Info("Stopping Proposer")
 
-	l.mutex.Lock()
-	defer l.mutex.Unlock()
-
-	if !l.running {
+	if !l.running.CompareAndSwap(true, false) {
 		return ErrProposerNotRunning
 	}
-	l.running = false
 
 	l.cancel()
 	close(l.done)
@@ -269,7 +261,7 @@ func (l *L2OutputSubmitter) FetchL2OOOutput(ctx context.Context) (*eth.OutputRes
 // context will be derived from it.
 func (l *L2OutputSubmitter) FetchDGFOutput(ctx context.Context) (*eth.OutputResponse, bool, error) {
 	cutoff := time.Now().Add(-l.Cfg.ProposalInterval)
-	proposedRecently, proposalTime, err := l.dgfContract.HasProposedSince(ctx, l.Txmgr.From(), cutoff, l.Cfg.DisputeGameType)
+	proposedRecently, proposalTime, claim, err := l.dgfContract.HasProposedSince(ctx, l.Txmgr.From(), cutoff, l.Cfg.DisputeGameType)
 	if err != nil {
 		return nil, false, fmt.Errorf("could not check for recent proposal: %w", err)
 	}
@@ -278,7 +270,6 @@ func (l *L2OutputSubmitter) FetchDGFOutput(ctx context.Context) (*eth.OutputResp
 		l.Log.Debug("Duration since last game not past proposal interval", "duration", time.Since(proposalTime))
 		return nil, false, nil
 	}
-	l.Log.Info("No proposals found for at least proposal interval, submitting proposal now", "proposalInterval", l.Cfg.ProposalInterval)
 
 	// Fetch the current L2 heads
 	currentBlockNumber, err := l.FetchCurrentBlockNumber(ctx)
@@ -295,6 +286,13 @@ func (l *L2OutputSubmitter) FetchDGFOutput(ctx context.Context) (*eth.OutputResp
 	if err != nil {
 		return nil, false, fmt.Errorf("could not fetch output at current block number %d: %w", currentBlockNumber, err)
 	}
+
+	if claim == common.Hash(output.OutputRoot) {
+		l.Log.Debug("Skipping proposal: output root unchanged since last proposed game", "last_proposed_root", claim, "output_root", output.OutputRoot)
+		return nil, false, nil
+	}
+
+	l.Log.Info("No proposals found for at least proposal interval, submitting proposal now", "proposalInterval", l.Cfg.ProposalInterval)
 
 	return output, true, nil
 }

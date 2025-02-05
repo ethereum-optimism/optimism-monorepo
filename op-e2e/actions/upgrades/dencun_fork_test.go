@@ -19,7 +19,7 @@ import (
 
 func TestDencunL1ForkAfterGenesis(gt *testing.T) {
 	t := helpers.NewDefaultTesting(gt)
-	dp := e2eutils.MakeDeployParams(t, helpers.DefaultRollupTestParams)
+	dp := e2eutils.MakeDeployParams(t, helpers.DefaultRollupTestParams())
 	offset := hexutil.Uint64(24)
 	dp.DeployConfig.L1CancunTimeOffset = &offset
 	sd := e2eutils.Setup(t, dp, helpers.DefaultAlloc)
@@ -62,7 +62,7 @@ func TestDencunL1ForkAfterGenesis(gt *testing.T) {
 
 func TestDencunL1ForkAtGenesis(gt *testing.T) {
 	t := helpers.NewDefaultTesting(gt)
-	dp := e2eutils.MakeDeployParams(t, helpers.DefaultRollupTestParams)
+	dp := e2eutils.MakeDeployParams(t, helpers.DefaultRollupTestParams())
 	require.Zero(t, *dp.DeployConfig.L1CancunTimeOffset)
 	sd := e2eutils.Setup(t, dp, helpers.DefaultAlloc)
 	log := testlog.Logger(t, log.LevelDebug)
@@ -119,13 +119,14 @@ func verifyEcotoneBlock(gt *testing.T, header *types.Header) {
 
 func TestDencunL2ForkAfterGenesis(gt *testing.T) {
 	t := helpers.NewDefaultTesting(gt)
-	dp := e2eutils.MakeDeployParams(t, helpers.DefaultRollupTestParams)
+	dp := e2eutils.MakeDeployParams(t, helpers.DefaultRollupTestParams())
 	require.Zero(t, *dp.DeployConfig.L1CancunTimeOffset)
 	// This test wil fork on the second block
 	offset := hexutil.Uint64(dp.DeployConfig.L2BlockTime * 2)
 	dp.DeployConfig.L2GenesisEcotoneTimeOffset = &offset
 	dp.DeployConfig.L2GenesisFjordTimeOffset = nil
 	dp.DeployConfig.L2GenesisGraniteTimeOffset = nil
+	dp.DeployConfig.L2GenesisHoloceneTimeOffset = nil
 	// New forks have to be added here, after changing the default deploy config!
 
 	sd := e2eutils.Setup(t, dp, helpers.DefaultAlloc)
@@ -157,7 +158,7 @@ func TestDencunL2ForkAfterGenesis(gt *testing.T) {
 
 func TestDencunL2ForkAtGenesis(gt *testing.T) {
 	t := helpers.NewDefaultTesting(gt)
-	dp := e2eutils.MakeDeployParams(t, helpers.DefaultRollupTestParams)
+	dp := e2eutils.MakeDeployParams(t, helpers.DefaultRollupTestParams())
 	require.Zero(t, *dp.DeployConfig.L2GenesisEcotoneTimeOffset)
 
 	sd := e2eutils.Setup(t, dp, helpers.DefaultAlloc)
@@ -189,13 +190,13 @@ func aliceSimpleBlobTx(t helpers.Testing, dp *e2eutils.DeployParams) *types.Tran
 
 func newEngine(t helpers.Testing, sd *e2eutils.SetupData, log log.Logger) *helpers.L2Engine {
 	jwtPath := e2eutils.WriteDefaultJWT(t)
-	return helpers.NewL2Engine(t, log, sd.L2Cfg, sd.RollupCfg.Genesis.L1, jwtPath)
+	return helpers.NewL2Engine(t, log, sd.L2Cfg, jwtPath)
 }
 
 // TestDencunBlobTxRPC tries to send a Blob tx to the L2 engine via RPC, it should not be accepted.
 func TestDencunBlobTxRPC(gt *testing.T) {
 	t := helpers.NewDefaultTesting(gt)
-	dp := e2eutils.MakeDeployParams(t, helpers.DefaultRollupTestParams)
+	dp := e2eutils.MakeDeployParams(t, helpers.DefaultRollupTestParams())
 
 	sd := e2eutils.Setup(t, dp, helpers.DefaultAlloc)
 	log := testlog.Logger(t, log.LevelDebug)
@@ -209,7 +210,7 @@ func TestDencunBlobTxRPC(gt *testing.T) {
 // TestDencunBlobTxInTxPool tries to insert a blob tx directly into the tx pool, it should not be accepted.
 func TestDencunBlobTxInTxPool(gt *testing.T) {
 	t := helpers.NewDefaultTesting(gt)
-	dp := e2eutils.MakeDeployParams(t, helpers.DefaultRollupTestParams)
+	dp := e2eutils.MakeDeployParams(t, helpers.DefaultRollupTestParams())
 
 	sd := e2eutils.Setup(t, dp, helpers.DefaultAlloc)
 	log := testlog.Logger(t, log.LevelDebug)
@@ -222,7 +223,7 @@ func TestDencunBlobTxInTxPool(gt *testing.T) {
 // TestDencunBlobTxInclusion tries to send a Blob tx to the L2 engine, it should not be accepted.
 func TestDencunBlobTxInclusion(gt *testing.T) {
 	t := helpers.NewDefaultTesting(gt)
-	dp := e2eutils.MakeDeployParams(t, helpers.DefaultRollupTestParams)
+	dp := e2eutils.MakeDeployParams(t, helpers.DefaultRollupTestParams())
 
 	sd := e2eutils.Setup(t, dp, helpers.DefaultAlloc)
 	log := testlog.Logger(t, log.LevelDebug)

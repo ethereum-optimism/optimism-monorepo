@@ -28,7 +28,9 @@ import (
 // Returns the receipt of the L2 transaction
 func SendDepositTx(t *testing.T, cfg e2esys.SystemConfig, l1Client *ethclient.Client, l2Client *ethclient.Client, l1Opts *bind.TransactOpts, applyL2Opts DepositTxOptsFn) *types.Receipt {
 	l2Opts := defaultDepositTxOpts(l1Opts)
-	applyL2Opts(l2Opts)
+	if applyL2Opts != nil {
+		applyL2Opts(l2Opts)
+	}
 
 	// Find deposit contract
 	depositContract, err := bindings.NewOptimismPortal(cfg.L1Deployments.OptimismPortalProxy, l1Client)

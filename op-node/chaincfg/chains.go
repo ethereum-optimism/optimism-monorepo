@@ -2,31 +2,35 @@ package chaincfg
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
-	"github.com/ethereum-optimism/superchain-registry/superchain"
+	"github.com/ethereum/go-ethereum/superchain"
 
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
 )
 
-var Mainnet, Sepolia *rollup.Config
+// OPSepolia loads the op-sepolia rollup config. This is intended for tests that need an arbitrary, valid rollup config.
+func OPSepolia() *rollup.Config {
+	return mustLoadRollupConfig("op-sepolia")
+}
 
-func init() {
-	mustCfg := func(name string) *rollup.Config {
-		cfg, err := GetRollupConfig(name)
-		if err != nil {
-			panic(fmt.Errorf("failed to load rollup config %q: %w", name, err))
-		}
-		return cfg
+func mustLoadRollupConfig(name string) *rollup.Config {
+	cfg, err := GetRollupConfig(name)
+	if err != nil {
+		panic(fmt.Errorf("failed to load rollup config %q: %w", name, err))
 	}
-	Mainnet = mustCfg("op-mainnet")
-	Sepolia = mustCfg("op-sepolia")
+	return cfg
 }
 
 var L2ChainIDToNetworkDisplayName = func() map[string]string {
 	out := make(map[string]string)
-	for _, netCfg := range superchain.OPChains {
-		out[fmt.Sprintf("%d", netCfg.ChainID)] = netCfg.Name
+	for _, netCfg := range superchain.Chains {
+		cfg, err := netCfg.Config()
+		if err != nil {
+			panic(fmt.Errorf("failed to load chain config: %w", err))
+		}
+		out[fmt.Sprintf("%d", cfg.ChainID)] = netCfg.Name
 	}
 	return out
 }()
@@ -34,9 +38,10 @@ var L2ChainIDToNetworkDisplayName = func() map[string]string {
 // AvailableNetworks returns the selection of network configurations that is available by default.
 func AvailableNetworks() []string {
 	var networks []string
-	for _, cfg := range superchain.OPChains {
-		networks = append(networks, cfg.Chain+"-"+cfg.Superchain)
+	for _, cfg := range superchain.Chains {
+		networks = append(networks, cfg.Name+"-"+cfg.Network)
 	}
+	sort.Strings(networks)
 	return networks
 }
 
@@ -56,10 +61,16 @@ func handleLegacyName(name string) string {
 func ChainByName(name string) *superchain.ChainConfig {
 	// Handle legacy name aliases
 	name = handleLegacyName(name)
-	for _, chainCfg := range superchain.OPChains {
-		if strings.EqualFold(chainCfg.Chain+"-"+chainCfg.Superchain, name) {
-			return chainCfg
+	for _, chainCfg := range superchain.Chains {
+		if !strings.EqualFold(chainCfg.Name+"-"+chainCfg.Network, name) {
+			continue
 		}
+
+		cfg, err := chainCfg.Config()
+		if err != nil {
+			panic(fmt.Errorf("failed to load chain config: %w", err))
+		}
+		return cfg
 	}
 	return nil
 }

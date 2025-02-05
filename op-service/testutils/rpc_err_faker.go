@@ -44,13 +44,13 @@ func (r RPCErrFaker) BatchCallContext(ctx context.Context, b []rpc.BatchElem) er
 	return r.RPC.BatchCallContext(ctx, b)
 }
 
-func (r RPCErrFaker) EthSubscribe(ctx context.Context, channel any, args ...any) (ethereum.Subscription, error) {
+func (r RPCErrFaker) Subscribe(ctx context.Context, namespace string, channel any, args ...any) (ethereum.Subscription, error) {
 	if r.ErrFn != nil {
 		if err := r.ErrFn(nil); err != nil {
 			return nil, err
 		}
 	}
-	return r.RPC.EthSubscribe(ctx, channel, args...)
+	return r.RPC.Subscribe(ctx, namespace, channel, args...)
 }
 
 var _ client.RPC = (*RPCErrFaker)(nil)

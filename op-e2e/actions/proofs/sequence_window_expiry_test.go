@@ -132,17 +132,18 @@ func Test_ProgramAction_SequenceWindowExpired(gt *testing.T) {
 	matrix := helpers.NewMatrix[any]()
 	defer matrix.Run(gt)
 
+	forks := helpers.ForkMatrix{helpers.Granite, helpers.LatestFork}
 	matrix.AddTestCase(
 		"HonestClaim",
 		nil,
-		helpers.LatestForkOnly,
+		forks,
 		runSequenceWindowExpireTest,
 		helpers.ExpectNoError(),
 	)
 	matrix.AddTestCase(
 		"JunkClaim",
 		nil,
-		helpers.LatestForkOnly,
+		forks,
 		runSequenceWindowExpireTest,
 		helpers.ExpectError(claim.ErrClaimNotValid),
 		helpers.WithL2Claim(common.HexToHash("0xdeadbeef")),
@@ -150,14 +151,14 @@ func Test_ProgramAction_SequenceWindowExpired(gt *testing.T) {
 	matrix.AddTestCase(
 		"ChannelCloseAfterWindowExpiry-HonestClaim",
 		nil,
-		helpers.LatestForkOnly,
+		forks,
 		runSequenceWindowExpire_ChannelCloseAfterWindowExpiry_Test,
 		helpers.ExpectNoError(),
 	)
 	matrix.AddTestCase(
 		"ChannelCloseAfterWindowExpiry-JunkClaim",
 		nil,
-		helpers.LatestForkOnly,
+		forks,
 		runSequenceWindowExpire_ChannelCloseAfterWindowExpiry_Test,
 		helpers.ExpectError(claim.ErrClaimNotValid),
 		helpers.WithL2Claim(common.HexToHash("0xdeadbeef")),

@@ -2,15 +2,11 @@
 pragma solidity 0.8.25;
 
 // Testing utilities
-import { Test, StdUtils, Vm } from "forge-std/Test.sol";
-import { StdInvariant } from "forge-std/StdInvariant.sol";
-import { StdAssertions } from "forge-std/StdAssertions.sol";
-import { EIP1967Helper } from "test/mocks/EIP1967Helper.sol";
+import { Test } from "forge-std/Test.sol";
 
 // Libraries
 import { Predeploys } from "src/libraries/Predeploys.sol";
-import { OptimismSuperchainERC20 } from "src/L2/OptimismSuperchainERC20.sol";
-import { IL2ToL2CrossDomainMessenger } from "src/L2/interfaces/IL2ToL2CrossDomainMessenger.sol";
+import { SuperchainERC20 } from "src/L2/SuperchainERC20.sol";
 import { ProtocolGuided } from "./fuzz/Protocol.guided.t.sol";
 import { ProtocolUnguided } from "./fuzz/Protocol.unguided.t.sol";
 import { HandlerGetters } from "./helpers/HandlerGetters.t.sol";
@@ -42,7 +38,7 @@ contract OptimismSuperchainERC20Properties is Test {
             for (uint256 validChainId = 0; validChainId < handler.MAX_CHAINS(); validChainId++) {
                 address supertoken = MESSENGER.superTokenAddresses(validChainId, currentSalt);
                 if (supertoken != address(0)) {
-                    totalSupply += OptimismSuperchainERC20(supertoken).totalSupply();
+                    totalSupply += SuperchainERC20(supertoken).totalSupply();
                 }
             }
             assertEq(trackedSupply, totalSupply + fundsInTransit);
@@ -65,7 +61,7 @@ contract OptimismSuperchainERC20Properties is Test {
             for (uint256 validChainId = 0; validChainId < handler.MAX_CHAINS(); validChainId++) {
                 address supertoken = MESSENGER.superTokenAddresses(validChainId, currentSalt);
                 if (supertoken != address(0)) {
-                    totalSupply += OptimismSuperchainERC20(supertoken).totalSupply();
+                    totalSupply += SuperchainERC20(supertoken).totalSupply();
                 }
             }
             assertEq(trackedSupply, totalSupply);
@@ -73,7 +69,7 @@ contract OptimismSuperchainERC20Properties is Test {
     }
 
     /// @custom:invariant many other assertion mode invariants are also defined  under
-    /// `test/invariants/OptimismSuperchainERC20/fuzz/` .
+    /// `test/invariants/SuperchainERC20/fuzz/` .
     ///
     ///     since setting`fail_on_revert=false` also ignores StdAssertion failures, this invariant explicitly asks the
     ///     handler for assertion test failures

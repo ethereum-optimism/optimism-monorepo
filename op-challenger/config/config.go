@@ -10,7 +10,6 @@ import (
 
 	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/trace/vm"
 	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/types"
-	"github.com/ethereum-optimism/optimism/op-node/chaincfg"
 	opmetrics "github.com/ethereum-optimism/optimism/op-service/metrics"
 	"github.com/ethereum-optimism/optimism/op-service/oppprof"
 	"github.com/ethereum-optimism/optimism/op-service/txmgr"
@@ -18,37 +17,27 @@ import (
 )
 
 var (
-	ErrMissingTraceType                 = errors.New("no supported trace types specified")
-	ErrMissingDatadir                   = errors.New("missing datadir")
-	ErrMaxConcurrencyZero               = errors.New("max concurrency must not be 0")
-	ErrMissingL2Rpc                     = errors.New("missing L2 rpc url")
-	ErrMissingCannonBin                 = errors.New("missing cannon bin")
-	ErrMissingCannonServer              = errors.New("missing cannon server")
-	ErrMissingCannonAbsolutePreState    = errors.New("missing cannon absolute pre-state")
-	ErrCannonAbsolutePreStateAndBaseURL = errors.New("only specify one of cannon absolute pre-state and cannon absolute pre-state base URL")
-	ErrMissingL1EthRPC                  = errors.New("missing l1 eth rpc url")
-	ErrMissingL1Beacon                  = errors.New("missing l1 beacon url")
-	ErrMissingGameFactoryAddress        = errors.New("missing game factory address")
-	ErrMissingCannonSnapshotFreq        = errors.New("missing cannon snapshot freq")
-	ErrMissingCannonInfoFreq            = errors.New("missing cannon info freq")
-	ErrMissingCannonRollupConfig        = errors.New("missing cannon network or rollup config path")
-	ErrMissingCannonL2Genesis           = errors.New("missing cannon network or l2 genesis path")
-	ErrCannonNetworkAndRollupConfig     = errors.New("only specify one of network or rollup config path")
-	ErrCannonNetworkAndL2Genesis        = errors.New("only specify one of network or l2 genesis path")
-	ErrCannonNetworkUnknown             = errors.New("unknown cannon network")
-	ErrMissingRollupRpc                 = errors.New("missing rollup rpc url")
+	ErrMissingTraceType              = errors.New("no supported trace types specified")
+	ErrMissingDatadir                = errors.New("missing datadir")
+	ErrMaxConcurrencyZero            = errors.New("max concurrency must not be 0")
+	ErrMissingL2Rpc                  = errors.New("missing L2 rpc url")
+	ErrMissingCannonAbsolutePreState = errors.New("missing cannon absolute pre-state")
+	ErrMissingL1EthRPC               = errors.New("missing l1 eth rpc url")
+	ErrMissingL1Beacon               = errors.New("missing l1 beacon url")
+	ErrMissingGameFactoryAddress     = errors.New("missing game factory address")
+	ErrMissingCannonSnapshotFreq     = errors.New("missing cannon snapshot freq")
+	ErrMissingCannonInfoFreq         = errors.New("missing cannon info freq")
 
-	ErrMissingAsteriscBin                 = errors.New("missing asterisc bin")
-	ErrMissingAsteriscServer              = errors.New("missing asterisc server")
-	ErrMissingAsteriscAbsolutePreState    = errors.New("missing asterisc absolute pre-state")
-	ErrAsteriscAbsolutePreStateAndBaseURL = errors.New("only specify one of asterisc absolute pre-state and asterisc absolute pre-state base URL")
-	ErrMissingAsteriscSnapshotFreq        = errors.New("missing asterisc snapshot freq")
-	ErrMissingAsteriscInfoFreq            = errors.New("missing asterisc info freq")
-	ErrMissingAsteriscRollupConfig        = errors.New("missing asterisc network or rollup config path")
-	ErrMissingAsteriscL2Genesis           = errors.New("missing asterisc network or l2 genesis path")
-	ErrAsteriscNetworkAndRollupConfig     = errors.New("only specify one of network or rollup config path")
-	ErrAsteriscNetworkAndL2Genesis        = errors.New("only specify one of network or l2 genesis path")
-	ErrAsteriscNetworkUnknown             = errors.New("unknown asterisc network")
+	ErrMissingRollupRpc     = errors.New("missing rollup rpc url")
+	ErrMissingSupervisorRpc = errors.New("missing supervisor rpc url")
+
+	ErrMissingAsteriscAbsolutePreState = errors.New("missing asterisc absolute pre-state")
+	ErrMissingAsteriscSnapshotFreq     = errors.New("missing asterisc snapshot freq")
+	ErrMissingAsteriscInfoFreq         = errors.New("missing asterisc info freq")
+
+	ErrMissingAsteriscKonaAbsolutePreState = errors.New("missing asterisc kona absolute pre-state")
+	ErrMissingAsteriscKonaSnapshotFreq     = errors.New("missing asterisc kona snapshot freq")
+	ErrMissingAsteriscKonaInfoFreq         = errors.New("missing asterisc kona info freq")
 )
 
 const (
@@ -62,7 +51,7 @@ const (
 	// The default value is 28 days. The worst case duration for a game is 16 days
 	// (due to clock extension), plus 7 days WETH withdrawal delay leaving a 5 day
 	// buffer to monitor games to ensure bonds are claimed.
-	DefaultGameWindow   = time.Duration(28 * 24 * time.Hour)
+	DefaultGameWindow   = 28 * 24 * time.Hour
 	DefaultMaxPendingTx = 10
 )
 
@@ -86,9 +75,9 @@ type Config struct {
 
 	TraceTypes []types.TraceType // Type of traces supported
 
-	RollupRpc string // L2 Rollup RPC Url
-
-	L2Rpc string // L2 RPC Url
+	RollupRpc     string   // L2 Rollup RPC Url
+	SupervisorRPC string   // L2 supervisor RPC URL
+	L2Rpcs        []string // L2 RPC Url
 
 	// Specific to the cannon trace provider
 	Cannon                        vm.Config
@@ -123,7 +112,7 @@ func NewConfig(
 		L1EthRpc:           l1EthRpc,
 		L1Beacon:           l1BeaconApi,
 		RollupRpc:          l2RollupRpc,
-		L2Rpc:              l2EthRpc,
+		L2Rpcs:             []string{l2EthRpc},
 		GameFactoryAddress: gameFactoryAddress,
 		MaxConcurrency:     uint(runtime.NumCPU()),
 		PollInterval:       DefaultPollInterval,
@@ -142,27 +131,29 @@ func NewConfig(
 			VmType:          types.TraceTypeCannon,
 			L1:              l1EthRpc,
 			L1Beacon:        l1BeaconApi,
-			L2:              l2EthRpc,
+			L2s:             []string{l2EthRpc},
 			SnapshotFreq:    DefaultCannonSnapshotFreq,
 			InfoFreq:        DefaultCannonInfoFreq,
 			DebugInfo:       true,
 			BinarySnapshots: true,
 		},
 		Asterisc: vm.Config{
-			VmType:       types.TraceTypeAsterisc,
-			L1:           l1EthRpc,
-			L1Beacon:     l1BeaconApi,
-			L2:           l2EthRpc,
-			SnapshotFreq: DefaultAsteriscSnapshotFreq,
-			InfoFreq:     DefaultAsteriscInfoFreq,
+			VmType:          types.TraceTypeAsterisc,
+			L1:              l1EthRpc,
+			L1Beacon:        l1BeaconApi,
+			L2s:             []string{l2EthRpc},
+			SnapshotFreq:    DefaultAsteriscSnapshotFreq,
+			InfoFreq:        DefaultAsteriscInfoFreq,
+			BinarySnapshots: true,
 		},
 		AsteriscKona: vm.Config{
-			VmType:       types.TraceTypeAsteriscKona,
-			L1:           l1EthRpc,
-			L1Beacon:     l1BeaconApi,
-			L2:           l2EthRpc,
-			SnapshotFreq: DefaultAsteriscSnapshotFreq,
-			InfoFreq:     DefaultAsteriscInfoFreq,
+			VmType:          types.TraceTypeAsteriscKona,
+			L1:              l1EthRpc,
+			L1Beacon:        l1BeaconApi,
+			L2s:             []string{l2EthRpc},
+			SnapshotFreq:    DefaultAsteriscSnapshotFreq,
+			InfoFreq:        DefaultAsteriscInfoFreq,
+			BinarySnapshots: true,
 		},
 		GameWindow: DefaultGameWindow,
 	}
@@ -179,10 +170,7 @@ func (c Config) Check() error {
 	if c.L1Beacon == "" {
 		return ErrMissingL1Beacon
 	}
-	if c.RollupRpc == "" {
-		return ErrMissingRollupRpc
-	}
-	if c.L2Rpc == "" {
+	if len(c.L2Rpcs) == 0 {
 		return ErrMissingL2Rpc
 	}
 	if c.GameFactoryAddress == (common.Address{}) {
@@ -197,80 +185,59 @@ func (c Config) Check() error {
 	if c.MaxConcurrency == 0 {
 		return ErrMaxConcurrencyZero
 	}
+	if c.TraceTypeEnabled(types.TraceTypeSuperCannon) {
+		if c.SupervisorRPC == "" {
+			return ErrMissingSupervisorRpc
+		}
+		if err := c.validateBaseCannonOptions(); err != nil {
+			return err
+		}
+	}
 	if c.TraceTypeEnabled(types.TraceTypeCannon) || c.TraceTypeEnabled(types.TraceTypePermissioned) {
-		if c.Cannon.VmBin == "" {
-			return ErrMissingCannonBin
+		if c.RollupRpc == "" {
+			return ErrMissingRollupRpc
 		}
-		if c.Cannon.Server == "" {
-			return ErrMissingCannonServer
-		}
-		if c.Cannon.Network == "" {
-			if c.Cannon.RollupConfigPath == "" {
-				return ErrMissingCannonRollupConfig
-			}
-			if c.Cannon.L2GenesisPath == "" {
-				return ErrMissingCannonL2Genesis
-			}
-		} else {
-			if c.Cannon.RollupConfigPath != "" {
-				return ErrCannonNetworkAndRollupConfig
-			}
-			if c.Cannon.L2GenesisPath != "" {
-				return ErrCannonNetworkAndL2Genesis
-			}
-			if ch := chaincfg.ChainByName(c.Cannon.Network); ch == nil {
-				return fmt.Errorf("%w: %v", ErrCannonNetworkUnknown, c.Cannon.Network)
-			}
-		}
-		if c.CannonAbsolutePreState == "" && c.CannonAbsolutePreStateBaseURL == nil {
-			return ErrMissingCannonAbsolutePreState
-		}
-		if c.CannonAbsolutePreState != "" && c.CannonAbsolutePreStateBaseURL != nil {
-			return ErrCannonAbsolutePreStateAndBaseURL
-		}
-		if c.Cannon.SnapshotFreq == 0 {
-			return ErrMissingCannonSnapshotFreq
-		}
-		if c.Cannon.InfoFreq == 0 {
-			return ErrMissingCannonInfoFreq
+		if err := c.validateBaseCannonOptions(); err != nil {
+			return err
 		}
 	}
 	if c.TraceTypeEnabled(types.TraceTypeAsterisc) {
-		if c.Asterisc.VmBin == "" {
-			return ErrMissingAsteriscBin
+		if c.RollupRpc == "" {
+			return ErrMissingRollupRpc
 		}
-		if c.Asterisc.Server == "" {
-			return ErrMissingAsteriscServer
-		}
-		if c.Asterisc.Network == "" {
-			if c.Asterisc.RollupConfigPath == "" {
-				return ErrMissingAsteriscRollupConfig
-			}
-			if c.Asterisc.L2GenesisPath == "" {
-				return ErrMissingAsteriscL2Genesis
-			}
-		} else {
-			if c.Asterisc.RollupConfigPath != "" {
-				return ErrAsteriscNetworkAndRollupConfig
-			}
-			if c.Asterisc.L2GenesisPath != "" {
-				return ErrAsteriscNetworkAndL2Genesis
-			}
-			if ch := chaincfg.ChainByName(c.Asterisc.Network); ch == nil {
-				return fmt.Errorf("%w: %v", ErrAsteriscNetworkUnknown, c.Asterisc.Network)
-			}
+		if err := c.Asterisc.Check(); err != nil {
+			return fmt.Errorf("asterisc: %w", err)
 		}
 		if c.AsteriscAbsolutePreState == "" && c.AsteriscAbsolutePreStateBaseURL == nil {
 			return ErrMissingAsteriscAbsolutePreState
-		}
-		if c.AsteriscAbsolutePreState != "" && c.AsteriscAbsolutePreStateBaseURL != nil {
-			return ErrAsteriscAbsolutePreStateAndBaseURL
 		}
 		if c.Asterisc.SnapshotFreq == 0 {
 			return ErrMissingAsteriscSnapshotFreq
 		}
 		if c.Asterisc.InfoFreq == 0 {
 			return ErrMissingAsteriscInfoFreq
+		}
+	}
+	if c.TraceTypeEnabled(types.TraceTypeAsteriscKona) {
+		if c.RollupRpc == "" {
+			return ErrMissingRollupRpc
+		}
+		if err := c.AsteriscKona.Check(); err != nil {
+			return fmt.Errorf("asterisc kona: %w", err)
+		}
+		if c.AsteriscKonaAbsolutePreState == "" && c.AsteriscKonaAbsolutePreStateBaseURL == nil {
+			return ErrMissingAsteriscKonaAbsolutePreState
+		}
+		if c.AsteriscKona.SnapshotFreq == 0 {
+			return ErrMissingAsteriscKonaSnapshotFreq
+		}
+		if c.AsteriscKona.InfoFreq == 0 {
+			return ErrMissingAsteriscKonaInfoFreq
+		}
+	}
+	if c.TraceTypeEnabled(types.TraceTypeAlphabet) || c.TraceTypeEnabled(types.TraceTypeFast) {
+		if c.RollupRpc == "" {
+			return ErrMissingRollupRpc
 		}
 	}
 	if err := c.TxMgrConfig.Check(); err != nil {
@@ -281,6 +248,22 @@ func (c Config) Check() error {
 	}
 	if err := c.PprofConfig.Check(); err != nil {
 		return err
+	}
+	return nil
+}
+
+func (c Config) validateBaseCannonOptions() error {
+	if err := c.Cannon.Check(); err != nil {
+		return fmt.Errorf("cannon: %w", err)
+	}
+	if c.CannonAbsolutePreState == "" && c.CannonAbsolutePreStateBaseURL == nil {
+		return ErrMissingCannonAbsolutePreState
+	}
+	if c.Cannon.SnapshotFreq == 0 {
+		return ErrMissingCannonSnapshotFreq
+	}
+	if c.Cannon.InfoFreq == 0 {
+		return ErrMissingCannonInfoFreq
 	}
 	return nil
 }

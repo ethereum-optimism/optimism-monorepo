@@ -82,17 +82,19 @@ func TestAPIGetBlobSidecarsResponse(t *testing.T) {
 	var resp eth.APIGetBlobSidecarsResponse
 	require.NoError(json.Unmarshal(jsonStr, &resp))
 	require.NotEmpty(resp.Data)
-	require.Equal(5, reflect.TypeOf(*resp.Data[0]).NumField(), "APIBlobSidecar changed, adjust test")
-	require.Equal(1, reflect.TypeOf(resp.Data[0].SignedBlockHeader).NumField(), "SignedBeaconBlockHeader changed, adjust test")
+	require.Equal(6, reflect.TypeOf(*resp.Data[0]).NumField(), "APIBlobSidecar changed, adjust test")
+	require.Equal(2, reflect.TypeOf(resp.Data[0].SignedBlockHeader).NumField(), "SignedBeaconBlockHeader changed, adjust test")
 	require.Equal(5, reflect.TypeOf(resp.Data[0].SignedBlockHeader.Message).NumField(), "BeaconBlockHeader changed, adjust test")
 
 	require.NotZero(resp.Data[0].Blob)
 	require.NotZero(resp.Data[1].Index)
 	require.NotZero(resp.Data[0].KZGCommitment)
 	require.NotZero(resp.Data[0].KZGProof)
+	require.NotZero(resp.Data[0].InclusionProof)
 	require.NotZero(resp.Data[0].SignedBlockHeader.Message.Slot)
 	require.NotZero(resp.Data[0].SignedBlockHeader.Message.ParentRoot)
 	require.NotZero(resp.Data[0].SignedBlockHeader.Message.BodyRoot)
 	require.NotZero(resp.Data[0].SignedBlockHeader.Message.ProposerIndex)
 	require.NotZero(resp.Data[0].SignedBlockHeader.Message.StateRoot)
+	require.NotZero(resp.Data[0].SignedBlockHeader.Signature)
 }

@@ -2,9 +2,8 @@ package conductor
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"math/rand"
-	"net"
 	"strings"
 	"testing"
 	"time"
@@ -51,28 +50,23 @@ const (
 var retryStrategy = &retry.FixedStrategy{Dur: 50 * time.Millisecond}
 
 type conductor struct {
-	service       *con.OpConductor
-	client        conrpc.API
-	consensusPort int
-	rpcPort       int
+	service *con.OpConductor
+	client  conrpc.API
 }
 
 func (c *conductor) ConsensusEndpoint() string {
-	return fmt.Sprintf("%s:%d", localhost, c.consensusPort)
+	return c.service.ConsensusEndpoint()
 }
 
 func (c *conductor) RPCEndpoint() string {
-	return fmt.Sprintf("http://%s:%d", localhost, c.rpcPort)
+	return c.service.HTTPEndpoint()
 }
 
 func setupSequencerFailoverTest(t *testing.T) (*e2esys.System, map[string]*conductor, func()) {
 	op_e2e.InitParallel(t)
 	ctx := context.Background()
 
-	sys, conductors, err := retry.Do2(ctx, maxSetupRetries, retryStrategy, func() (*e2esys.System, map[string]*conductor, error) {
-		return setupHAInfra(t, ctx)
-	})
-	require.NoError(t, err, "Expected to successfully setup sequencers and conductors after retry")
+	sys, conductors := setupHAInfra(t, ctx)
 
 	// form a cluster
 	c1 := conductors[Sequencer1Name]
@@ -143,79 +137,80 @@ func setupSequencerFailoverTest(t *testing.T) (*e2esys.System, map[string]*condu
 	}
 }
 
-func setupHAInfra(t *testing.T, ctx context.Context) (*e2esys.System, map[string]*conductor, error) {
+func setupHAInfra(t *testing.T, ctx context.Context) (*e2esys.System, map[string]*conductor) {
 	startTime := time.Now()
-
-	var sys *e2esys.System
-	var conductors map[string]*conductor
-	var err error
-
-	// clean up if setup fails due to port in use.
 	defer func() {
-		if err != nil {
-			if sys != nil {
-				sys.Close()
-			}
-
-			for _, c := range conductors {
-				if c == nil || c.service == nil {
-					// pass. Sometimes we can get nil in this map
-				} else if serr := c.service.Stop(ctx); serr != nil {
-					t.Log("Failed to stop conductor", "error", serr)
-				}
-			}
-		}
 		t.Logf("setupHAInfra took %s\n", time.Since(startTime))
 	}()
 
-	conductorRpcPorts := map[string]int{
-		Sequencer1Name: findAvailablePort(t),
-		Sequencer2Name: findAvailablePort(t),
-		Sequencer3Name: findAvailablePort(t),
+	conductorsReady := map[string]chan string{
+		Sequencer1Name: make(chan string, 1),
+		Sequencer2Name: make(chan string, 1),
+		Sequencer3Name: make(chan string, 1),
+	}
+
+	// The sequencer op-node & execution engine have to be up first, to get their endpoints running.
+	// The conductor is then started after, using the endpoints of op-node and execution engine.
+	// The op-node, while starting, will wait for the conductor to be up and running, to get its endpoint.
+	// No endpoint is reserved/hardcoded this way, this avoids CI test flakes in the setup.
+	conductorEndpointFn := func(ctx context.Context, name string) (endpoint string, err error) {
+		endpointCh, ok := conductorsReady[name]
+		if !ok {
+			return "", errors.New("conductor %s is not known")
+		}
+		select {
+		case <-ctx.Done():
+			return "", fmt.Errorf("failed to set up conductor timely: %w", err)
+		case endpoint := <-endpointCh:
+			return endpoint, nil
+		}
 	}
 
 	// 3 sequencers, 1 verifier, 1 active sequencer.
-	cfg := sequencerFailoverSystemConfig(t, conductorRpcPorts)
-	if sys, err = cfg.Start(t); err != nil {
-		return nil, nil, err
-	}
+	cfg := sequencerFailoverSystemConfig(t, conductorEndpointFn)
+
+	// sys is configured to close itself on test cleanup.
+	sys, err := cfg.Start(t)
+	require.NoError(t, err, "must start system")
+
+	out := make(map[string]*conductor)
 
 	// 3 conductors that connects to 1 sequencer each.
-	conductors = make(map[string]*conductor)
-
 	// initialize all conductors in paused mode
 	conductorCfgs := []struct {
 		name      string
-		port      int
 		bootstrap bool
 	}{
-		{Sequencer1Name, conductorRpcPorts[Sequencer1Name], true}, // one in bootstrap mode so that we can form a cluster.
-		{Sequencer2Name, conductorRpcPorts[Sequencer2Name], false},
-		{Sequencer3Name, conductorRpcPorts[Sequencer3Name], false},
+		{Sequencer1Name, true}, // one in bootstrap mode so that we can form a cluster.
+		{Sequencer2Name, false},
+		{Sequencer3Name, false},
 	}
 	for _, cfg := range conductorCfgs {
 		cfg := cfg
 		nodePRC := sys.RollupNodes[cfg.name].UserRPC().RPC()
 		engineRPC := sys.EthInstances[cfg.name].UserRPC().RPC()
-		if conductors[cfg.name], err = setupConductor(t, cfg.name, t.TempDir(), nodePRC, engineRPC, cfg.port, cfg.bootstrap, *sys.RollupConfig); err != nil {
-			return nil, nil, err
-		}
+
+		conduc, err := setupConductor(t, cfg.name, t.TempDir(), nodePRC, engineRPC, cfg.bootstrap, *sys.RollupConfig)
+		require.NoError(t, err, "failed to set up conductor %s", cfg.name)
+		out[cfg.name] = conduc
+		// Signal that the conductor RPC endpoint is ready
+		conductorsReady[cfg.name] <- conduc.RPCEndpoint()
 	}
 
-	return sys, conductors, nil
+	return sys, out
 }
 
 func setupConductor(
 	t *testing.T,
 	serverID, dir, nodeRPC, engineRPC string,
-	rpcPort int,
 	bootstrap bool,
 	rollupCfg rollup.Config,
 ) (*conductor, error) {
-	consensusPort := findAvailablePort(t)
 	cfg := con.Config{
-		ConsensusAddr:         localhost,
-		ConsensusPort:         consensusPort,
+		ConsensusAddr:           localhost,
+		ConsensusPort:           0,  // let the system select a port, avoid conflicts
+		ConsensusAdvertisedAddr: "", // use the local address we bind to
+
 		RaftServerID:          serverID,
 		RaftStorageDir:        dir,
 		RaftBootstrap:         bootstrap,
@@ -237,17 +232,18 @@ func setupConductor(
 		RollupCfg:      rollupCfg,
 		RPCEnableProxy: true,
 		LogConfig: oplog.CLIConfig{
-			Level: log.LevelInfo,
+			Level: log.LevelDebug,
 			Color: false,
 		},
 		RPC: oprpc.CLIConfig{
 			ListenAddr: localhost,
-			ListenPort: rpcPort,
+			ListenPort: 0, // let the system select a port
 		},
 	}
 
+	logger := testlog.Logger(t, log.LevelDebug)
 	ctx := context.Background()
-	service, err := con.New(ctx, &cfg, testlog.Logger(t, log.LevelInfo), "0.0.1")
+	service, err := con.New(ctx, &cfg, logger, "0.0.1")
 	if err != nil {
 		return nil, err
 	}
@@ -257,6 +253,8 @@ func setupConductor(
 		return nil, err
 	}
 
+	logger.Info("Started conductor", "nodeRPC", nodeRPC, "engineRPC", engineRPC)
+
 	rawClient, err := rpc.DialContext(ctx, service.HTTPEndpoint())
 	if err != nil {
 		return nil, err
@@ -265,10 +263,8 @@ func setupConductor(
 	client := conrpc.NewAPIClient(rawClient)
 
 	return &conductor{
-		service:       service,
-		client:        client,
-		consensusPort: consensusPort,
-		rpcPort:       rpcPort,
+		service: service,
+		client:  client,
 	}, nil
 }
 
@@ -316,12 +312,18 @@ func setupBatcher(t *testing.T, sys *e2esys.System, conductors map[string]*condu
 	sys.BatchSubmitter = batcher
 }
 
-func sequencerFailoverSystemConfig(t *testing.T, ports map[string]int) e2esys.SystemConfig {
+func sequencerFailoverSystemConfig(t *testing.T, conductorRPCEndpoints func(ctx context.Context, name string) (string, error)) e2esys.SystemConfig {
 	cfg := e2esys.EcotoneSystemConfig(t, new(hexutil.Uint64))
 	delete(cfg.Nodes, "sequencer")
-	cfg.Nodes[Sequencer1Name] = sequencerCfg(ports[Sequencer1Name])
-	cfg.Nodes[Sequencer2Name] = sequencerCfg(ports[Sequencer2Name])
-	cfg.Nodes[Sequencer3Name] = sequencerCfg(ports[Sequencer3Name])
+	cfg.Nodes[Sequencer1Name] = sequencerCfg(func(ctx context.Context) (string, error) {
+		return conductorRPCEndpoints(ctx, Sequencer1Name)
+	})
+	cfg.Nodes[Sequencer2Name] = sequencerCfg(func(ctx context.Context) (string, error) {
+		return conductorRPCEndpoints(ctx, Sequencer2Name)
+	})
+	cfg.Nodes[Sequencer3Name] = sequencerCfg(func(ctx context.Context) (string, error) {
+		return conductorRPCEndpoints(ctx, Sequencer3Name)
+	})
 
 	delete(cfg.Loggers, "sequencer")
 	cfg.Loggers[Sequencer1Name] = testlog.Logger(t, log.LevelInfo).New("role", Sequencer1Name)
@@ -338,7 +340,7 @@ func sequencerFailoverSystemConfig(t *testing.T, ports map[string]int) e2esys.Sy
 	return cfg
 }
 
-func sequencerCfg(rpcPort int) *rollupNode.Config {
+func sequencerCfg(conductorRPCEndpoint rollupNode.ConductorRPCFunc) *rollupNode.Config {
 	return &rollupNode.Config{
 		Driver: driver.Config{
 			VerifierConfDepth:  0,
@@ -357,8 +359,8 @@ func sequencerCfg(rpcPort int) *rollupNode.Config {
 		ConfigPersistence:           &rollupNode.DisabledConfigPersistence{},
 		Sync:                        sync.Config{SyncMode: sync.CLSync},
 		ConductorEnabled:            true,
-		ConductorRpc:                fmt.Sprintf("http://%s:%d", localhost, rpcPort),
-		ConductorRpcTimeout:         1 * time.Second,
+		ConductorRpc:                conductorRPCEndpoint,
+		ConductorRpcTimeout:         5 * time.Second,
 	}
 }
 
@@ -451,26 +453,6 @@ func sequencerActive(t *testing.T, ctx context.Context, rollupClient *sources.Ro
 	active, err := rollupClient.SequencerActive(ctx)
 	require.NoError(t, err)
 	return active
-}
-
-func findAvailablePort(t *testing.T) int {
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-	defer cancel()
-	for {
-		select {
-		case <-ctx.Done():
-			t.Error("Failed to find available port")
-		default:
-			// private / ephemeral ports are in the range 49152-65535
-			port := rand.Intn(65535-49152) + 49152
-			addr := fmt.Sprintf("127.0.0.1:%d", port)
-			l, err := net.Listen("tcp", addr)
-			if err == nil {
-				l.Close() // Close the listener and return the port if it's available
-				return port
-			}
-		}
-	}
 }
 
 func findLeader(t *testing.T, conductors map[string]*conductor) (string, *conductor) {

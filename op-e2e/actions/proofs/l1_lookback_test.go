@@ -73,11 +73,12 @@ func runL1LookbackTest_ReopenChannel(gt *testing.T, testCfg *helpers.TestCfg[any
 	env.Miner.ActL1SafeNext(t)
 
 	// Re-submit the first L2 block frame w/ different transaction data.
-	err := env.Batcher.Buffer(t, func(block *types.Block) {
+	err := env.Batcher.Buffer(t, func(block *types.Block) *types.Block {
 		env.Bob.L2.ActResetTxOpts(t)
 		env.Bob.L2.ActSetTxToAddr(&env.Dp.Addresses.Mallory)
 		tx := env.Bob.L2.MakeTransaction(t)
 		block.Transactions()[1] = tx
+		return block
 	})
 	require.NoError(t, err)
 	env.Batcher.ActL2BatchSubmit(t)

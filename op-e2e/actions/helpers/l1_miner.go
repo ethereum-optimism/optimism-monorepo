@@ -16,6 +16,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/trie"
+	"github.com/ethereum/go-ethereum/triedb"
 
 	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
@@ -73,7 +74,7 @@ func (s *L1Miner) ActL1StartBlock(timeDelta uint64) Action {
 
 		parent := s.l1Chain.CurrentHeader()
 		parentHash := parent.Hash()
-		statedb, err := state.New(parent.Root, state.NewDatabase(s.l1Database), nil)
+		statedb, err := state.New(parent.Root, state.NewDatabase(triedb.NewDatabase(s.l1Database, nil), nil))
 		if err != nil {
 			t.Fatalf("failed to init state db around block %s (state %s): %w", parentHash, parent.Root, err)
 		}
@@ -116,8 +117,8 @@ func (s *L1Miner) ActL1StartBlock(timeDelta uint64) Action {
 			if vmConfig := s.l1Chain.GetVMConfig(); vmConfig != nil && vmConfig.PrecompileOverrides != nil {
 				precompileOverrides = vmConfig.PrecompileOverrides
 			}
-			vmenv := vm.NewEVM(context, vm.TxContext{}, statedb, s.l1Chain.Config(), vm.Config{PrecompileOverrides: precompileOverrides})
-			core.ProcessBeaconBlockRoot(*header.ParentBeaconRoot, vmenv, statedb)
+			vmenv := vm.NewEVM(context, statedb, s.l1Chain.Config(), vm.Config{PrecompileOverrides: precompileOverrides})
+			core.ProcessBeaconBlockRoot(*header.ParentBeaconRoot, vmenv)
 		}
 
 		s.l1Building = true
@@ -176,8 +177,10 @@ func (s *L1Miner) IncludeTx(t Testing, tx *types.Transaction) {
 		return
 	}
 	s.l1BuildingState.SetTxContext(tx.Hash(), len(s.L1Transactions))
-	receipt, err := core.ApplyTransaction(s.l1Cfg.Config, s.l1Chain, &s.l1BuildingHeader.Coinbase,
-		s.L1GasPool, s.l1BuildingState, s.l1BuildingHeader, tx.WithoutBlobTxSidecar(), &s.l1BuildingHeader.GasUsed, *s.l1Chain.GetVMConfig())
+	blockCtx := core.NewEVMBlockContext(s.l1BuildingHeader, s.l1Chain, nil, s.l1Cfg.Config, s.l1BuildingState)
+	evm := vm.NewEVM(blockCtx, s.l1BuildingState, s.l1Cfg.Config, *s.l1Chain.GetVMConfig())
+	receipt, err := core.ApplyTransaction(
+		evm, s.L1GasPool, s.l1BuildingState, s.l1BuildingHeader, tx.WithoutBlobTxSidecar(), &s.l1BuildingHeader.GasUsed)
 	if err != nil {
 		s.l1TxFailed = append(s.l1TxFailed, tx)
 		t.Fatalf("failed to apply transaction to L1 block (tx %d): %v", len(s.L1Transactions), err)
@@ -202,10 +205,10 @@ func (s *L1Miner) ActL1SetFeeRecipient(coinbase common.Address) {
 }
 
 // ActL1EndBlock finishes the new L1 block, and applies it to the chain as unsafe block
-func (s *L1Miner) ActL1EndBlock(t Testing) {
+func (s *L1Miner) ActL1EndBlock(t Testing) *types.Block {
 	if !s.l1Building {
 		t.InvalidAction("cannot end L1 block when not building block")
-		return
+		return nil
 	}
 
 	s.l1Building = false
@@ -217,8 +220,9 @@ func (s *L1Miner) ActL1EndBlock(t Testing) {
 		withdrawals = make([]*types.Withdrawal, 0)
 	}
 
-	block := types.NewBlock(s.l1BuildingHeader, &types.Body{Transactions: s.L1Transactions, Withdrawals: withdrawals}, s.l1Receipts, trie.NewStackTrie(nil))
-	if s.l1Cfg.Config.IsCancun(s.l1BuildingHeader.Number, s.l1BuildingHeader.Time) {
+	block := types.NewBlock(s.l1BuildingHeader, &types.Body{Transactions: s.L1Transactions, Withdrawals: withdrawals}, s.l1Receipts, trie.NewStackTrie(nil), types.DefaultBlockConfig)
+	isCancun := s.l1Cfg.Config.IsCancun(s.l1BuildingHeader.Number, s.l1BuildingHeader.Time)
+	if isCancun {
 		parent := s.l1Chain.GetHeaderByHash(s.l1BuildingHeader.ParentHash)
 		var (
 			parentExcessBlobGas uint64
@@ -233,7 +237,7 @@ func (s *L1Miner) ActL1EndBlock(t Testing) {
 	}
 
 	// Write state changes to db
-	root, err := s.l1BuildingState.Commit(s.l1BuildingHeader.Number.Uint64(), s.l1Cfg.Config.IsEIP158(s.l1BuildingHeader.Number))
+	root, err := s.l1BuildingState.Commit(s.l1BuildingHeader.Number.Uint64(), s.l1Cfg.Config.IsEIP158(s.l1BuildingHeader.Number), isCancun)
 	if err != nil {
 		t.Fatalf("l1 state write error: %v", err)
 	}
@@ -252,11 +256,12 @@ func (s *L1Miner) ActL1EndBlock(t Testing) {
 	if err != nil {
 		t.Fatalf("failed to insert block into l1 chain")
 	}
+	return block
 }
 
-func (s *L1Miner) ActEmptyBlock(t Testing) {
+func (s *L1Miner) ActEmptyBlock(t Testing) *types.Block {
 	s.ActL1StartBlock(12)(t)
-	s.ActL1EndBlock(t)
+	return s.ActL1EndBlock(t)
 }
 
 func (s *L1Miner) Close() error {

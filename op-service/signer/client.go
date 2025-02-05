@@ -25,9 +25,9 @@ type SignerClient struct {
 	logger log.Logger
 }
 
-func NewSignerClient(logger log.Logger, endpoint string, tlsConfig optls.CLIConfig) (*SignerClient, error) {
+func NewSignerClient(logger log.Logger, endpoint string, headers http.Header, tlsConfig optls.CLIConfig) (*SignerClient, error) {
 	var httpClient *http.Client
-	if tlsConfig.TLSCaCert != "" {
+	if tlsConfig.Enabled {
 		logger.Info("tlsConfig specified, loading tls config")
 		caCert, err := os.ReadFile(tlsConfig.TLSCaCert)
 		if err != nil {
@@ -63,7 +63,7 @@ func NewSignerClient(logger log.Logger, endpoint string, tlsConfig optls.CLIConf
 		httpClient = http.DefaultClient
 	}
 
-	rpcClient, err := rpc.DialOptions(context.Background(), endpoint, rpc.WithHTTPClient(httpClient))
+	rpcClient, err := rpc.DialOptions(context.Background(), endpoint, rpc.WithHTTPClient(httpClient), rpc.WithHeaders(headers))
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +79,7 @@ func NewSignerClient(logger log.Logger, endpoint string, tlsConfig optls.CLIConf
 }
 
 func NewSignerClientFromConfig(logger log.Logger, config CLIConfig) (*SignerClient, error) {
-	return NewSignerClient(logger, config.Endpoint, config.TLSConfig)
+	return NewSignerClient(logger, config.Endpoint, config.Headers, config.TLSConfig)
 }
 
 func (s *SignerClient) pingVersion() (string, error) {
@@ -112,4 +112,20 @@ func (s *SignerClient) SignTransaction(ctx context.Context, chainId *big.Int, fr
 	}
 
 	return &signed, nil
+}
+
+func (s *SignerClient) SignBlockPayload(ctx context.Context, args *BlockPayloadArgs) ([65]byte, error) {
+	var result hexutil.Bytes
+
+	if err := s.client.CallContext(ctx, &result, "opsigner_signBlockPayload", args); err != nil {
+		return [65]byte{}, fmt.Errorf("opsigner_signBlockPayload failed: %w", err)
+	}
+
+	if len(result) != 65 {
+		return [65]byte{}, fmt.Errorf("invalid signature: %s", result.String())
+	}
+
+	signature := [65]byte(result)
+
+	return signature, nil
 }

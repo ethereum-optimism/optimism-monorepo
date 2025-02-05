@@ -26,7 +26,7 @@ func TestPermissionedGameType(t *testing.T) {
 	gameFactory.StartChallenger(ctx, "TowerDefense",
 		challenger.WithValidPrestateRequired(),
 		challenger.WithInvalidCannonPrestate(),
-		challenger.WithPermissioned(t, sys.RollupConfig, sys.L2GenesisCfg),
+		challenger.WithPermissioned(t, sys),
 		challenger.WithPrivKey(sys.Cfg.Secrets.Alice),
 	)
 

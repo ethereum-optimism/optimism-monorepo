@@ -73,6 +73,8 @@ type Finalizer struct {
 
 	ctx context.Context
 
+	cfg *rollup.Config
+
 	emitter event.Emitter
 
 	// finalizedL1 is the currently perceived finalized L1 block.
@@ -98,6 +100,7 @@ func NewFinalizer(ctx context.Context, log log.Logger, cfg *rollup.Config, l1Fet
 	lookback := calcFinalityLookback(cfg)
 	return &Finalizer{
 		ctx:              ctx,
+		cfg:              cfg,
 		log:              log,
 		finalizedL1:      eth.L1BlockRef{},
 		triedFinalizeAt:  0,
@@ -253,6 +256,14 @@ func (fi *Finalizer) tryFinalize() {
 func (fi *Finalizer) onDerivedSafeBlock(l2Safe eth.L2BlockRef, derivedFrom eth.L1BlockRef) {
 	fi.mu.Lock()
 	defer fi.mu.Unlock()
+
+	// Stop registering blocks after interop.
+	// Finality in interop is determined by the superchain backend,
+	// i.e. the op-supervisor RPC identifies which L2 block may be finalized.
+	if fi.cfg.IsInterop(l2Safe.Time) {
+		return
+	}
+
 	// remember the last L2 block that we fully derived from the given finality data
 	if len(fi.finalityData) == 0 || fi.finalityData[len(fi.finalityData)-1].L1Block.Number < derivedFrom.Number {
 		// prune finality data if necessary, before appending any data.

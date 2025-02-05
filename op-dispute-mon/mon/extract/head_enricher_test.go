@@ -3,13 +3,12 @@ package extract
 import (
 	"context"
 	"errors"
-	"math/big"
 	"testing"
 
 	"github.com/ethereum-optimism/optimism/op-dispute-mon/mon/types"
+	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/sources/batching/rpcblock"
 	"github.com/ethereum/go-ethereum/common"
-	gethTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -39,11 +38,11 @@ type stubBlockFetcher struct {
 	err error
 }
 
-func (s *stubBlockFetcher) HeaderByHash(_ context.Context, _ common.Hash) (*gethTypes.Header, error) {
+func (s *stubBlockFetcher) L1BlockRefByHash(_ context.Context, _ common.Hash) (eth.L1BlockRef, error) {
 	if s.err != nil {
-		return nil, s.err
+		return eth.L1BlockRef{}, s.err
 	}
-	return &gethTypes.Header{
-		Number: new(big.Int).SetUint64(s.num),
+	return eth.L1BlockRef{
+		Number: s.num,
 	}, nil
 }

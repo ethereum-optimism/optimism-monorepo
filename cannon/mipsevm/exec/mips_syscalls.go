@@ -8,62 +8,16 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm"
+	"github.com/ethereum-optimism/optimism/cannon/mipsevm/arch"
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/memory"
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/program"
+	"github.com/ethereum-optimism/optimism/cannon/mipsevm/register"
 )
 
-// Syscall codes
-const (
-	SysMmap         = 4090
-	SysBrk          = 4045
-	SysClone        = 4120
-	SysExitGroup    = 4246
-	SysRead         = 4003
-	SysWrite        = 4004
-	SysFcntl        = 4055
-	SysExit         = 4001
-	SysSchedYield   = 4162
-	SysGetTID       = 4222
-	SysFutex        = 4238
-	SysOpen         = 4005
-	SysNanosleep    = 4166
-	SysClockGetTime = 4263
-	SysGetpid       = 4020
-)
+type Word = arch.Word
 
-// Noop Syscall codes
 const (
-	SysMunmap        = 4091
-	SysGetAffinity   = 4240
-	SysMadvise       = 4218
-	SysRtSigprocmask = 4195
-	SysSigaltstack   = 4206
-	SysRtSigaction   = 4194
-	SysPrlimit64     = 4338
-	SysClose         = 4006
-	SysPread64       = 4200
-	SysFstat64       = 4215
-	SysOpenAt        = 4288
-	SysReadlink      = 4085
-	SysReadlinkAt    = 4298
-	SysIoctl         = 4054
-	SysEpollCreate1  = 4326
-	SysPipe2         = 4328
-	SysEpollCtl      = 4249
-	SysEpollPwait    = 4313
-	SysGetRandom     = 4353
-	SysUname         = 4122
-	SysStat64        = 4213
-	SysGetuid        = 4024
-	SysGetgid        = 4047
-	SysLlseek        = 4140
-	SysMinCore       = 4217
-	SysTgkill        = 4266
-	// Profiling-related syscalls
-	SysSetITimer    = 4104
-	SysTimerCreate  = 4257
-	SysTimerSetTime = 4258
-	SysTimerDelete  = 4261
+	AddressMask = arch.AddressMask
 )
 
 // File descriptors
@@ -79,7 +33,7 @@ const (
 
 // Errors
 const (
-	SysErrorSignal = ^uint32(0)
+	SysErrorSignal = ^Word(0)
 	MipsEBADF      = 0x9
 	MipsEINVAL     = 0x16
 	MipsEAGAIN     = 0xb
@@ -88,11 +42,8 @@ const (
 
 // SysFutex-related constants
 const (
-	FutexWaitPrivate  = 128
-	FutexWakePrivate  = 129
-	FutexTimeoutSteps = 10_000
-	FutexNoTimeout    = ^uint64(0)
-	FutexEmptyAddr    = ^uint32(0)
+	FutexWaitPrivate = 128
+	FutexWakePrivate = 129
 )
 
 // SysClone flags
@@ -145,19 +96,18 @@ const (
 	ClockGettimeMonotonicFlag = 1
 )
 
-func GetSyscallArgs(registers *[32]uint32) (syscallNum, a0, a1, a2, a3 uint32) {
-	syscallNum = registers[2] // v0
+func GetSyscallArgs(registers *[32]Word) (syscallNum, a0, a1, a2 Word) {
+	syscallNum = registers[register.RegSyscallNum] // v0
 
-	a0 = registers[4]
-	a1 = registers[5]
-	a2 = registers[6]
-	a3 = registers[7]
+	a0 = registers[register.RegSyscallParam1]
+	a1 = registers[register.RegSyscallParam2]
+	a2 = registers[register.RegSyscallParam3]
 
-	return syscallNum, a0, a1, a2, a3
+	return syscallNum, a0, a1, a2
 }
 
-func HandleSysMmap(a0, a1, heap uint32) (v0, v1, newHeap uint32) {
-	v1 = uint32(0)
+func HandleSysMmap(a0, a1, heap Word) (v0, v1, newHeap Word) {
+	v1 = Word(0)
 	newHeap = heap
 
 	sz := a1
@@ -182,34 +132,41 @@ func HandleSysMmap(a0, a1, heap uint32) (v0, v1, newHeap uint32) {
 	return v0, v1, newHeap
 }
 
-func HandleSysRead(a0, a1, a2 uint32, preimageKey [32]byte, preimageOffset uint32, preimageReader PreimageReader, memory *memory.Memory, memTracker MemTracker) (v0, v1, newPreimageOffset uint32, memUpdated bool, memAddr uint32) {
+func HandleSysRead(
+	a0, a1, a2 Word,
+	preimageKey [32]byte,
+	preimageOffset Word,
+	preimageReader PreimageReader,
+	memory *memory.Memory,
+	memTracker MemTracker,
+) (v0, v1, newPreimageOffset Word, memUpdated bool, memAddr Word) {
 	// args: a0 = fd, a1 = addr, a2 = count
 	// returns: v0 = read, v1 = err code
-	v0 = uint32(0)
-	v1 = uint32(0)
+	v0 = Word(0)
+	v1 = Word(0)
 	newPreimageOffset = preimageOffset
 
 	switch a0 {
 	case FdStdin:
 		// leave v0 and v1 zero: read nothing, no error
 	case FdPreimageRead: // pre-image oracle
-		effAddr := a1 & 0xFFffFFfc
+		effAddr := a1 & AddressMask
 		memTracker.TrackMemAccess(effAddr)
-		mem := memory.GetMemory(effAddr)
+		mem := memory.GetWord(effAddr)
 		dat, datLen := preimageReader.ReadPreimage(preimageKey, preimageOffset)
 		//fmt.Printf("reading pre-image data: addr: %08x, offset: %d, datLen: %d, data: %x, key: %s  count: %d\n", a1, preimageOffset, datLen, dat[:datLen], preimageKey, a2)
-		alignment := a1 & 3
-		space := 4 - alignment
+		alignment := a1 & arch.ExtMask
+		space := arch.WordSizeBytes - alignment
 		if space < datLen {
 			datLen = space
 		}
 		if a2 < datLen {
 			datLen = a2
 		}
-		var outMem [4]byte
-		binary.BigEndian.PutUint32(outMem[:], mem)
+		var outMem [arch.WordSizeBytes]byte
+		arch.ByteOrderWord.PutWord(outMem[:], mem)
 		copy(outMem[alignment:], dat[:datLen])
-		memory.SetMemory(effAddr, binary.BigEndian.Uint32(outMem[:]))
+		memory.SetWord(effAddr, arch.ByteOrderWord.Word(outMem[:]))
 		memUpdated = true
 		memAddr = effAddr
 		newPreimageOffset += datLen
@@ -219,17 +176,25 @@ func HandleSysRead(a0, a1, a2 uint32, preimageKey [32]byte, preimageOffset uint3
 		// don't actually read into memory, just say we read it all, we ignore the result anyway
 		v0 = a2
 	default:
-		v0 = 0xFFffFFff
+		v0 = ^Word(0)
 		v1 = MipsEBADF
 	}
 
 	return v0, v1, newPreimageOffset, memUpdated, memAddr
 }
 
-func HandleSysWrite(a0, a1, a2 uint32, lastHint hexutil.Bytes, preimageKey [32]byte, preimageOffset uint32, oracle mipsevm.PreimageOracle, memory *memory.Memory, memTracker MemTracker, stdOut, stdErr io.Writer) (v0, v1 uint32, newLastHint hexutil.Bytes, newPreimageKey common.Hash, newPreimageOffset uint32) {
+func HandleSysWrite(a0, a1, a2 Word,
+	lastHint hexutil.Bytes,
+	preimageKey [32]byte,
+	preimageOffset Word,
+	oracle mipsevm.PreimageOracle,
+	memory *memory.Memory,
+	memTracker MemTracker,
+	stdOut, stdErr io.Writer,
+) (v0, v1 Word, newLastHint hexutil.Bytes, newPreimageKey common.Hash, newPreimageOffset Word) {
 	// args: a0 = fd, a1 = addr, a2 = count
 	// returns: v0 = written, v1 = err code
-	v1 = uint32(0)
+	v1 = Word(0)
 	newLastHint = lastHint
 	newPreimageKey = preimageKey
 	newPreimageOffset = preimageOffset
@@ -257,56 +222,64 @@ func HandleSysWrite(a0, a1, a2 uint32, lastHint hexutil.Bytes, preimageKey [32]b
 		newLastHint = lastHint
 		v0 = a2
 	case FdPreimageWrite:
-		effAddr := a1 & 0xFFffFFfc
+		effAddr := a1 & arch.AddressMask
 		memTracker.TrackMemAccess(effAddr)
-		mem := memory.GetMemory(effAddr)
+		mem := memory.GetWord(effAddr)
 		key := preimageKey
-		alignment := a1 & 3
-		space := 4 - alignment
+		alignment := a1 & arch.ExtMask
+		space := arch.WordSizeBytes - alignment
 		if space < a2 {
 			a2 = space
 		}
 		copy(key[:], key[a2:])
-		var tmp [4]byte
-		binary.BigEndian.PutUint32(tmp[:], mem)
+		var tmp [arch.WordSizeBytes]byte
+		arch.ByteOrderWord.PutWord(tmp[:], mem)
 		copy(key[32-a2:], tmp[alignment:])
 		newPreimageKey = key
 		newPreimageOffset = 0
 		//fmt.Printf("updating pre-image key: %s\n", m.state.PreimageKey)
 		v0 = a2
 	default:
-		v0 = 0xFFffFFff
+		v0 = ^Word(0)
 		v1 = MipsEBADF
 	}
 
 	return v0, v1, newLastHint, newPreimageKey, newPreimageOffset
 }
 
-func HandleSysFcntl(a0, a1 uint32) (v0, v1 uint32) {
+func HandleSysFcntl(a0, a1 Word) (v0, v1 Word) {
 	// args: a0 = fd, a1 = cmd
-	v1 = uint32(0)
+	v1 = Word(0)
 
-	if a1 == 3 { // F_GETFL: get file descriptor flags
+	if a1 == 1 { // F_GETFD: get file descriptor flags
+		switch a0 {
+		case FdStdin, FdStdout, FdStderr, FdPreimageRead, FdHintRead, FdPreimageWrite, FdHintWrite:
+			v0 = 0 // No flags set
+		default:
+			v0 = ^Word(0)
+			v1 = MipsEBADF
+		}
+	} else if a1 == 3 { // F_GETFL: get file status flags
 		switch a0 {
 		case FdStdin, FdPreimageRead, FdHintRead:
 			v0 = 0 // O_RDONLY
 		case FdStdout, FdStderr, FdPreimageWrite, FdHintWrite:
 			v0 = 1 // O_WRONLY
 		default:
-			v0 = 0xFFffFFff
+			v0 = ^Word(0)
 			v1 = MipsEBADF
 		}
 	} else {
-		v0 = 0xFFffFFff
+		v0 = ^Word(0)
 		v1 = MipsEINVAL // cmd not recognized by this kernel
 	}
 
 	return v0, v1
 }
 
-func HandleSyscallUpdates(cpu *mipsevm.CpuScalars, registers *[32]uint32, v0, v1 uint32) {
-	registers[2] = v0
-	registers[7] = v1
+func HandleSyscallUpdates(cpu *mipsevm.CpuScalars, registers *[32]Word, v0, v1 Word) {
+	registers[register.RegSyscallRet1] = v0
+	registers[register.RegSyscallErrno] = v1
 
 	cpu.PC = cpu.NextPC
 	cpu.NextPC = cpu.NextPC + 4

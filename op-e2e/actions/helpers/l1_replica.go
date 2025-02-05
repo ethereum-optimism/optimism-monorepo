@@ -198,6 +198,12 @@ func (s *L1Replica) L1Client(t Testing, cfg *rollup.Config) *sources.L1Client {
 	return l1F
 }
 
+func (s *L1Replica) L1ClientSimple(t Testing) *sources.L1Client {
+	l1F, err := sources.NewL1Client(s.RPCClient(), s.log, nil, sources.L1ClientSimpleConfig(false, sources.RPCKindStandard, 100))
+	require.NoError(t, err)
+	return l1F
+}
+
 func (s *L1Replica) L1Chain() *core.BlockChain {
 	return s.l1Chain
 }

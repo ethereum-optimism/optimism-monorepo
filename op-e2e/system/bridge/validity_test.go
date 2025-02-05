@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum-optimism/optimism/op-e2e/config"
+
 	op_e2e "github.com/ethereum-optimism/optimism/op-e2e"
 
 	"github.com/ethereum-optimism/optimism/op-e2e/system/e2esys"
@@ -264,9 +266,17 @@ func TestMixedDepositValidity(t *testing.T) {
 	}
 }
 
+func TestMixedWithdrawalValidity_L2OO(t *testing.T) {
+	testMixedWithdrawalValidity(t, config.AllocTypeL2OO)
+}
+
+func TestMixedWithdrawalValidity_Standard(t *testing.T) {
+	testMixedWithdrawalValidity(t, config.AllocTypeStandard)
+}
+
 // TestMixedWithdrawalValidity makes a number of withdrawal transactions and ensures ones with modified parameters are
 // rejected while unmodified ones are accepted. This runs test cases in different systems.
-func TestMixedWithdrawalValidity(t *testing.T) {
+func testMixedWithdrawalValidity(t *testing.T, allocType config.AllocType) {
 	op_e2e.InitParallel(t)
 
 	// There are 7 different fields we try modifying to cause a failure, plus one "good" test result we test.
@@ -279,7 +289,7 @@ func TestMixedWithdrawalValidity(t *testing.T) {
 			op_e2e.InitParallel(t)
 
 			// Create our system configuration, funding all accounts we created for L1/L2, and start it
-			cfg := e2esys.DefaultSystemConfig(t)
+			cfg := e2esys.DefaultSystemConfig(t, e2esys.WithAllocType(allocType))
 			cfg.Nodes["sequencer"].SafeDBPath = t.TempDir()
 			cfg.DeployConfig.L2BlockTime = 2
 			require.LessOrEqual(t, cfg.DeployConfig.FinalizationPeriodSeconds, uint64(6))
@@ -317,18 +327,21 @@ func TestMixedWithdrawalValidity(t *testing.T) {
 			_ = depositContract
 			require.NoError(t, err)
 
-			l2OutputOracle, err := bindings.NewL2OutputOracleCaller(cfg.L1Deployments.L2OutputOracleProxy, l1Client)
-			require.NoError(t, err)
-
-			finalizationPeriod, err := l2OutputOracle.FINALIZATIONPERIODSECONDS(nil)
-			require.NoError(t, err)
-			require.Equal(t, cfg.DeployConfig.FinalizationPeriodSeconds, finalizationPeriod.Uint64())
-
-			disputeGameFactory, err := bindings.NewDisputeGameFactoryCaller(cfg.L1Deployments.DisputeGameFactoryProxy, l1Client)
-			require.NoError(t, err)
-
-			optimismPortal2, err := bindingspreview.NewOptimismPortal2Caller(cfg.L1Deployments.OptimismPortalProxy, l1Client)
-			require.NoError(t, err)
+			var l2OutputOracle *bindings.L2OutputOracleCaller
+			var disputeGameFactory *bindings.DisputeGameFactoryCaller
+			var optimismPortal2 *bindingspreview.OptimismPortal2Caller
+			if allocType.UsesProofs() {
+				disputeGameFactory, err = bindings.NewDisputeGameFactoryCaller(cfg.L1Deployments.DisputeGameFactoryProxy, l1Client)
+				require.NoError(t, err)
+				optimismPortal2, err = bindingspreview.NewOptimismPortal2Caller(cfg.L1Deployments.OptimismPortalProxy, l1Client)
+				require.NoError(t, err)
+			} else {
+				l2OutputOracle, err = bindings.NewL2OutputOracleCaller(cfg.L1Deployments.L2OutputOracleProxy, l1Client)
+				require.NoError(t, err)
+				finalizationPeriod, err := l2OutputOracle.FINALIZATIONPERIODSECONDS(nil)
+				require.NoError(t, err)
+				require.Equal(t, cfg.DeployConfig.FinalizationPeriodSeconds, finalizationPeriod.Uint64())
+			}
 
 			// Create a struct used to track our transactors and their transactions sent.
 			type TestAccountState struct {
@@ -419,9 +432,8 @@ func TestMixedWithdrawalValidity(t *testing.T) {
 			transactor.ExpectedL2Nonce = transactor.ExpectedL2Nonce + 1
 
 			// Wait for the finalization period, then we can finalize this withdrawal.
-			require.NotEqual(t, cfg.L1Deployments.L2OutputOracleProxy, common.Address{})
 			var blockNumber uint64
-			if e2eutils.UseFaultProofs() {
+			if allocType.UsesProofs() {
 				blockNumber, err = wait.ForGamePublished(ctx, l1Client, cfg.L1Deployments.OptimismPortalProxy, cfg.L1Deployments.DisputeGameFactoryProxy, receipt.BlockNumber)
 			} else {
 				blockNumber, err = wait.ForOutputRootPublished(ctx, l1Client, cfg.L1Deployments.L2OutputOracleProxy, receipt.BlockNumber)
@@ -438,7 +450,7 @@ func TestMixedWithdrawalValidity(t *testing.T) {
 			blockCl := ethclient.NewClient(rpcClient)
 
 			// Now create the withdrawal
-			params, err := helpers.ProveWithdrawalParameters(context.Background(), proofCl, receiptCl, blockCl, tx.Hash(), header, l2OutputOracle, disputeGameFactory, optimismPortal2)
+			params, err := helpers.ProveWithdrawalParameters(context.Background(), proofCl, receiptCl, blockCl, tx.Hash(), header, l2OutputOracle, disputeGameFactory, optimismPortal2, cfg.AllocType)
 			require.Nil(t, err)
 
 			// Obtain our withdrawal parameters
@@ -527,7 +539,7 @@ func TestMixedWithdrawalValidity(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 
-				if e2eutils.UseFaultProofs() {
+				if allocType.UsesProofs() {
 					// Start a challenger to resolve claims and games once the clock expires
 					factoryHelper := disputegame.NewFactoryHelper(t, ctx, sys)
 					factoryHelper.StartChallenger(ctx, "Challenger",
@@ -555,7 +567,7 @@ func TestMixedWithdrawalValidity(t *testing.T) {
 				// Wait for finalization and then create the Finalized Withdrawal Transaction
 				ctx, withdrawalCancel := context.WithTimeout(context.Background(), 60*time.Duration(cfg.DeployConfig.L1BlockTime)*time.Second)
 				defer withdrawalCancel()
-				if e2eutils.UseFaultProofs() {
+				if allocType.UsesProofs() {
 					err = wait.ForWithdrawalCheck(ctx, l1Client, withdrawal, cfg.L1Deployments.OptimismPortalProxy, transactor.Account.L1Opts.From)
 					require.NoError(t, err)
 				} else {

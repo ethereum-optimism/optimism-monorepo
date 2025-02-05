@@ -68,7 +68,7 @@ contract LivenessGuard_Getters_Test is LivenessGuard_TestInit {
 
 contract LivenessGuard_CheckTx_TestFails is LivenessGuard_TestInit {
     /// @dev Tests that the checkTransaction function reverts if the caller is not the Safe
-    function test_checkTransaction_callerIsNotSafe_revert() external {
+    function test_checkTransaction_callerIsNotSafe_reverts() external {
         vm.expectRevert("LivenessGuard: only Safe can call this function");
         livenessGuard.checkTransaction({
             _to: address(0),
@@ -110,7 +110,7 @@ contract LivenessGuard_CheckTx_Test is LivenessGuard_TestInit {
             vm.expectEmit(address(livenessGuard));
             emit OwnerRecorded(signers[i]);
         }
-        vm.expectCall(address(safeInstance.safe), abi.encodeWithSignature("nonce()"));
+        vm.expectCall(address(safeInstance.safe), abi.encodeCall(safeInstance.safe.nonce, ()));
         vm.expectCall(address(safeInstance.safe), abi.encodeCall(OwnerManager.getThreshold, ()));
         safeInstance.execTransaction({ to: address(1111), value: 0, data: hex"abba" });
         for (uint256 i; i < safeInstance.threshold; i++) {
@@ -123,7 +123,7 @@ contract LivenessGuard_CheckTx_Test is LivenessGuard_TestInit {
 
 contract LivenessGuard_CheckAfterExecution_TestFails is LivenessGuard_TestInit {
     /// @dev Tests that the checkAfterExecution function reverts if the caller is not the Safe
-    function test_checkAfterExecution_callerIsNotSafe_revert() external {
+    function test_checkAfterExecution_callerIsNotSafe_reverts() external {
         vm.expectRevert("LivenessGuard: only Safe can call this function");
         livenessGuard.checkAfterExecution(bytes32(0), false);
     }
@@ -228,7 +228,7 @@ contract LivenessGuard_FuzzOwnerManagement_Test is StdCheats, StdUtils, Liveness
     mapping(address => uint256) privateKeys;
 
     /// @dev Tests that the guard correctly manages the lastLive mapping when owners are added, removed, or swapped
-    function testFuzz_OwnerManagement_works(
+    function testFuzz_ownerManagement_works(
         uint256 initialOwners,
         uint256 threshold,
         OwnerChange[] memory changes

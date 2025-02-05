@@ -49,6 +49,15 @@ func (id L2BlockRef) TerminalString() string {
 	return fmt.Sprintf("%s:%d", id.Hash.TerminalString(), id.Number)
 }
 
+func (id L2BlockRef) BlockRef() BlockRef {
+	return BlockRef{
+		Hash:       id.Hash,
+		Number:     id.Number,
+		ParentHash: id.ParentHash,
+		Time:       id.Time,
+	}
+}
+
 type L1BlockRef struct {
 	Hash       common.Hash `json:"hash"`
 	Number     uint64      `json:"number"`
@@ -84,6 +93,10 @@ func (id L1BlockRef) ParentID() BlockID {
 		Number: n,
 	}
 }
+
+// BlockRef is a Block Ref indepdendent of L1 or L2
+// Because L1BlockRefs are strict subsets of L2BlockRefs, BlockRef is a direct alias of L1BlockRef
+type BlockRef = L1BlockRef
 
 func (id L2BlockRef) ID() BlockID {
 	return BlockID{

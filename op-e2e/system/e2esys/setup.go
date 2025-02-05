@@ -16,6 +16,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/wait"
+
 	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/maps"
 
@@ -83,17 +85,34 @@ var (
 	genesisTime      = hexutil.Uint64(0)
 )
 
-func DefaultSystemConfig(t testing.TB) SystemConfig {
-	config.ExternalL2TestParms.SkipIfNecessary(t)
+type SystemConfigOpts struct {
+	AllocType config.AllocType
+}
+
+type SystemConfigOpt func(s *SystemConfigOpts)
+
+func WithAllocType(allocType config.AllocType) SystemConfigOpt {
+	return func(s *SystemConfigOpts) {
+		s.AllocType = allocType
+	}
+}
+
+func DefaultSystemConfig(t testing.TB, opts ...SystemConfigOpt) SystemConfig {
+	sco := &SystemConfigOpts{
+		AllocType: config.DefaultAllocType,
+	}
+	for _, opt := range opts {
+		opt(sco)
+	}
 
 	secrets, err := e2eutils.DefaultMnemonicConfig.Secrets()
 	require.NoError(t, err)
-	deployConfig := config.DeployConfig.Copy()
+	deployConfig := config.DeployConfig(sco.AllocType)
 	deployConfig.L1GenesisBlockTimestamp = hexutil.Uint64(time.Now().Unix())
 	e2eutils.ApplyDeployConfigForks(deployConfig)
 	require.NoError(t, deployConfig.Check(testlog.Logger(t, log.LevelInfo)),
 		"Deploy config is invalid, do you need to run make devnet-allocs?")
-	l1Deployments := config.L1Deployments.Copy()
+	l1Deployments := config.L1Deployments(sco.AllocType)
 	require.NoError(t, l1Deployments.Check(deployConfig))
 
 	require.Equal(t, secrets.Addresses().Batcher, deployConfig.BatchSenderAddress)
@@ -116,6 +135,7 @@ func DefaultSystemConfig(t testing.TB) SystemConfig {
 		JWTSecret:              testingJWTSecret,
 		L1FinalizedDistance:    8, // Short, for faster tests.
 		BlobsPath:              t.TempDir(),
+		AllocType:              sco.AllocType,
 		Nodes: map[string]*rollupNode.Config{
 			RoleSeq: {
 				Driver: driver.Config{
@@ -161,57 +181,70 @@ func DefaultSystemConfig(t testing.TB) SystemConfig {
 		GethOptions:                   map[string][]geth.GethOption{},
 		P2PTopology:                   nil, // no P2P connectivity by default
 		NonFinalizedProposals:         false,
-		ExternalL2Shim:                config.ExternalL2Shim,
 		DataAvailabilityType:          batcherFlags.CalldataType,
 		BatcherMaxPendingTransactions: 1,
 		BatcherTargetNumFrames:        1,
 	}
 }
 
-func RegolithSystemConfig(t *testing.T, regolithTimeOffset *hexutil.Uint64) SystemConfig {
-	cfg := DefaultSystemConfig(t)
+func RegolithSystemConfig(t *testing.T, regolithTimeOffset *hexutil.Uint64, opts ...SystemConfigOpt) SystemConfig {
+	cfg := DefaultSystemConfig(t, opts...)
 	cfg.DeployConfig.L2GenesisRegolithTimeOffset = regolithTimeOffset
 	cfg.DeployConfig.L2GenesisCanyonTimeOffset = nil
 	cfg.DeployConfig.L2GenesisDeltaTimeOffset = nil
 	cfg.DeployConfig.L2GenesisEcotoneTimeOffset = nil
 	cfg.DeployConfig.L2GenesisFjordTimeOffset = nil
 	cfg.DeployConfig.L2GenesisGraniteTimeOffset = nil
+	cfg.DeployConfig.L2GenesisHoloceneTimeOffset = nil
+	cfg.DeployConfig.L2GenesisIsthmusTimeOffset = nil
 	// ADD NEW FORKS HERE!
 	return cfg
 }
 
-func CanyonSystemConfig(t *testing.T, canyonTimeOffset *hexutil.Uint64) SystemConfig {
-	cfg := RegolithSystemConfig(t, &genesisTime)
+func CanyonSystemConfig(t *testing.T, canyonTimeOffset *hexutil.Uint64, opts ...SystemConfigOpt) SystemConfig {
+	cfg := RegolithSystemConfig(t, &genesisTime, opts...)
 	cfg.DeployConfig.L2GenesisCanyonTimeOffset = canyonTimeOffset
 	return cfg
 }
 
-func DeltaSystemConfig(t *testing.T, deltaTimeOffset *hexutil.Uint64) SystemConfig {
-	cfg := CanyonSystemConfig(t, &genesisTime)
+func DeltaSystemConfig(t *testing.T, deltaTimeOffset *hexutil.Uint64, opts ...SystemConfigOpt) SystemConfig {
+	cfg := CanyonSystemConfig(t, &genesisTime, opts...)
 	cfg.DeployConfig.L2GenesisDeltaTimeOffset = deltaTimeOffset
 	return cfg
 }
 
-func EcotoneSystemConfig(t *testing.T, ecotoneTimeOffset *hexutil.Uint64) SystemConfig {
-	cfg := DeltaSystemConfig(t, &genesisTime)
+func EcotoneSystemConfig(t *testing.T, ecotoneTimeOffset *hexutil.Uint64, opts ...SystemConfigOpt) SystemConfig {
+	cfg := DeltaSystemConfig(t, &genesisTime, opts...)
 	//  from Ecotone onwards, activate L1 Cancun at genesis
 	cfg.DeployConfig.L1CancunTimeOffset = &genesisTime
 	cfg.DeployConfig.L2GenesisEcotoneTimeOffset = ecotoneTimeOffset
 	return cfg
 }
 
-func FjordSystemConfig(t *testing.T, fjordTimeOffset *hexutil.Uint64) SystemConfig {
-	cfg := EcotoneSystemConfig(t, &genesisTime)
+func FjordSystemConfig(t *testing.T, fjordTimeOffset *hexutil.Uint64, opts ...SystemConfigOpt) SystemConfig {
+	cfg := EcotoneSystemConfig(t, &genesisTime, opts...)
 	cfg.DeployConfig.L2GenesisFjordTimeOffset = fjordTimeOffset
 	return cfg
 }
 
-func GraniteSystemConfig(t *testing.T, graniteTimeOffset *hexutil.Uint64) SystemConfig {
-	cfg := FjordSystemConfig(t, &genesisTime)
+func GraniteSystemConfig(t *testing.T, graniteTimeOffset *hexutil.Uint64, opts ...SystemConfigOpt) SystemConfig {
+	cfg := FjordSystemConfig(t, &genesisTime, opts...)
 	cfg.DeployConfig.L2GenesisGraniteTimeOffset = graniteTimeOffset
 	return cfg
 }
 
+func HoloceneSystemConfig(t *testing.T, holoceneTimeOffset *hexutil.Uint64, opts ...SystemConfigOpt) SystemConfig {
+	cfg := GraniteSystemConfig(t, &genesisTime, opts...)
+	cfg.DeployConfig.L2GenesisHoloceneTimeOffset = holoceneTimeOffset
+	return cfg
+}
+
+func IsthmusSystemConfig(t *testing.T, isthmusTimeOffset *hexutil.Uint64, opts ...SystemConfigOpt) SystemConfig {
+	cfg := HoloceneSystemConfig(t, &genesisTime, opts...)
+	cfg.DeployConfig.L1PragueTimeOffset = isthmusTimeOffset
+	cfg.DeployConfig.L2GenesisIsthmusTimeOffset = isthmusTimeOffset
+	return cfg
+}
 func writeDefaultJWT(t testing.TB) string {
 	// Sadly the geth node config cannot load JWT secret from memory, it has to be a file
 	jwtPath := path.Join(t.TempDir(), "jwt_secret")
@@ -300,6 +333,8 @@ type SystemConfig struct {
 
 	// SupportL1TimeTravel determines if the L1 node supports quickly skipping forward in time
 	SupportL1TimeTravel bool
+
+	AllocType config.AllocType
 }
 
 type System struct {
@@ -385,6 +420,10 @@ func (sys *System) L2Genesis() *core.Genesis {
 	return sys.L2GenesisCfg
 }
 
+func (sys *System) AllocType() config.AllocType {
+	return sys.Cfg.AllocType
+}
+
 func (sys *System) L1Slot(l1Timestamp uint64) uint64 {
 	return (l1Timestamp - uint64(sys.Cfg.DeployConfig.L1GenesisBlockTimestamp)) /
 		sys.Cfg.DeployConfig.L1BlockTime
@@ -437,37 +476,59 @@ func (sys *System) Close() {
 
 type SystemConfigHook func(sCfg *SystemConfig, s *System)
 
-type SystemConfigOption struct {
+type StartOption struct {
 	Key    string
 	Role   string
 	Action SystemConfigHook
+
+	// Batcher CLIConfig modifications to apply before starting the batcher.
+	BatcherMod func(*bss.CLIConfig)
 }
 
-type SystemConfigOptions struct {
+type startOptions struct {
 	opts map[string]SystemConfigHook
 }
 
-func NewSystemConfigOptions(_opts []SystemConfigOption) (SystemConfigOptions, error) {
+func parseStartOptions(_opts []StartOption) (startOptions, error) {
 	opts := make(map[string]SystemConfigHook)
 	for _, opt := range _opts {
 		if _, ok := opts[opt.Key+":"+opt.Role]; ok {
-			return SystemConfigOptions{}, fmt.Errorf("duplicate option for key %s and role %s", opt.Key, opt.Role)
+			return startOptions{}, fmt.Errorf("duplicate option for key %s and role %s", opt.Key, opt.Role)
 		}
 		opts[opt.Key+":"+opt.Role] = opt.Action
 	}
 
-	return SystemConfigOptions{
+	return startOptions{
 		opts: opts,
 	}, nil
 }
 
-func (s *SystemConfigOptions) Get(key, role string) (SystemConfigHook, bool) {
+func WithBatcherCompressionAlgo(ca derive.CompressionAlgo) StartOption {
+	return StartOption{
+		BatcherMod: func(cfg *bss.CLIConfig) {
+			cfg.CompressionAlgo = ca
+		},
+	}
+}
+
+func WithBatcherThrottling(interval time.Duration, threshold, txSize, blockSize uint64) StartOption {
+	return StartOption{
+		BatcherMod: func(cfg *bss.CLIConfig) {
+			cfg.ThrottleInterval = interval
+			cfg.ThrottleThreshold = threshold
+			cfg.ThrottleTxSize = txSize
+			cfg.ThrottleBlockSize = blockSize
+		},
+	}
+}
+
+func (s *startOptions) Get(key, role string) (SystemConfigHook, bool) {
 	v, ok := s.opts[key+":"+role]
 	return v, ok
 }
 
-func (cfg SystemConfig) Start(t *testing.T, _opts ...SystemConfigOption) (*System, error) {
-	opts, err := NewSystemConfigOptions(_opts)
+func (cfg SystemConfig) Start(t *testing.T, startOpts ...StartOption) (*System, error) {
+	parsedStartOpts, err := parseStartOptions(startOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -493,7 +554,11 @@ func (cfg SystemConfig) Start(t *testing.T, _opts ...SystemConfigOption) (*Syste
 		return nil, err
 	}
 
-	l1Genesis, err := genesis.BuildL1DeveloperGenesis(cfg.DeployConfig, config.L1Allocs, config.L1Deployments)
+	l1Genesis, err := genesis.BuildL1DeveloperGenesis(
+		cfg.DeployConfig,
+		config.L1Allocs(cfg.AllocType),
+		config.L1Deployments(cfg.AllocType),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -518,7 +583,7 @@ func (cfg SystemConfig) Start(t *testing.T, _opts ...SystemConfigOption) (*Syste
 	allocsMode := cfg.DeployConfig.AllocMode(l1Block.Time())
 
 	t.Log("Generating L2 genesis", "l2_allocs_mode", string(allocsMode))
-	l2Allocs := config.L2Allocs(allocsMode)
+	l2Allocs := config.L2Allocs(cfg.AllocType, allocsMode)
 	l2Genesis, err := genesis.BuildL2Genesis(cfg.DeployConfig, l2Allocs, l1Block.Header())
 	if err != nil {
 		return nil, err
@@ -579,6 +644,8 @@ func (cfg SystemConfig) Start(t *testing.T, _opts ...SystemConfigOption) (*Syste
 			EcotoneTime:             cfg.DeployConfig.EcotoneTime(uint64(cfg.DeployConfig.L1GenesisBlockTimestamp)),
 			FjordTime:               cfg.DeployConfig.FjordTime(uint64(cfg.DeployConfig.L1GenesisBlockTimestamp)),
 			GraniteTime:             cfg.DeployConfig.GraniteTime(uint64(cfg.DeployConfig.L1GenesisBlockTimestamp)),
+			HoloceneTime:            cfg.DeployConfig.HoloceneTime(uint64(cfg.DeployConfig.L1GenesisBlockTimestamp)),
+			IsthmusTime:             cfg.DeployConfig.IsthmusTime(uint64(cfg.DeployConfig.L1GenesisBlockTimestamp)),
 			InteropTime:             cfg.DeployConfig.InteropTime(uint64(cfg.DeployConfig.L1GenesisBlockTimestamp)),
 			ProtocolVersionsAddress: cfg.L1Deployments.ProtocolVersionsProxy,
 			AltDAConfig:             rollupAltDAConfig,
@@ -614,6 +681,14 @@ func (cfg SystemConfig) Start(t *testing.T, _opts ...SystemConfigOption) (*Syste
 		return nil, err
 	}
 
+	sysLogger := testlog.Logger(t, log.LevelInfo).New("role", "system")
+
+	l1UpCtx, l1UpCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer l1UpCancel()
+	if err := wait.ForNodeUp(l1UpCtx, sys.NodeClient(RoleL1), sysLogger); err != nil {
+		return nil, fmt.Errorf("l1 never came up: %w", err)
+	}
+
 	// Ordered such that the Sequencer is initialized first. Setup this way so that
 	// the `RollupSequencerHTTP` GethOption can be supplied to any sentry nodes.
 	l2Nodes := []string{RoleSeq}
@@ -626,39 +701,22 @@ func (cfg SystemConfig) Start(t *testing.T, _opts ...SystemConfigOption) (*Syste
 
 	for _, name := range l2Nodes {
 		var ethClient services.EthInstance
-		if cfg.ExternalL2Shim == "" {
-			if name != RoleSeq && !cfg.DisableTxForwarder {
-				cfg.GethOptions[name] = append(cfg.GethOptions[name], func(ethCfg *ethconfig.Config, nodeCfg *node.Config) error {
-					ethCfg.RollupSequencerHTTP = sys.EthInstances[RoleSeq].UserRPC().RPC()
-					return nil
-				})
-			}
-
-			l2Geth, err := geth.InitL2(name, l2Genesis, cfg.JWTFilePath, cfg.GethOptions[name]...)
-			if err != nil {
-				return nil, err
-			}
-			if err := l2Geth.Node.Start(); err != nil {
-				return nil, err
-			}
-
-			ethClient = l2Geth
-		} else {
-			if len(cfg.GethOptions[name]) > 0 {
-				t.Skip("External L2 nodes do not support configuration through GethOptions")
-			}
-
-			if name != RoleSeq && !cfg.DisableTxForwarder {
-				cfg.Loggers[name].Warn("External L2 nodes do not support `RollupSequencerHTTP` configuration. No tx forwarding support.")
-			}
-
-			ethClient = (&ExternalRunner{
-				Name:    name,
-				BinPath: cfg.ExternalL2Shim,
-				Genesis: l2Genesis,
-				JWTPath: cfg.JWTFilePath,
-			}).Run(t)
+		if name != RoleSeq && !cfg.DisableTxForwarder {
+			cfg.GethOptions[name] = append(cfg.GethOptions[name], func(ethCfg *ethconfig.Config, nodeCfg *node.Config) error {
+				ethCfg.RollupSequencerHTTP = sys.EthInstances[RoleSeq].UserRPC().RPC()
+				return nil
+			})
 		}
+
+		l2Geth, err := geth.InitL2(name, l2Genesis, cfg.JWTFilePath, cfg.GethOptions[name]...)
+		if err != nil {
+			return nil, err
+		}
+		if err := l2Geth.Node.Start(); err != nil {
+			return nil, err
+		}
+
+		ethClient = l2Geth
 
 		sys.EthInstances[name] = ethClient
 	}
@@ -672,7 +730,7 @@ func (cfg SystemConfig) Start(t *testing.T, _opts ...SystemConfigOption) (*Syste
 	}
 
 	l1Client := sys.NodeClient(RoleL1)
-	_, err = geth.WaitForBlock(big.NewInt(2), l1Client, 6*time.Second*time.Duration(cfg.DeployConfig.L1BlockTime))
+	_, err = geth.WaitForBlock(big.NewInt(2), l1Client)
 	if err != nil {
 		return nil, fmt.Errorf("waiting for blocks: %w", err)
 	}
@@ -758,7 +816,7 @@ func (cfg SystemConfig) Start(t *testing.T, _opts ...SystemConfigOption) (*Syste
 
 		sys.RollupNodes[name] = n
 
-		if action, ok := opts.Get("afterRollupNodeStart", name); ok {
+		if action, ok := parsedStartOpts.Get("afterRollupNodeStart", name); ok {
 			action(&cfg, sys)
 		}
 	}
@@ -791,11 +849,11 @@ func (cfg SystemConfig) Start(t *testing.T, _opts ...SystemConfigOption) (*Syste
 
 	// L2Output Submitter
 	var proposerCLIConfig *l2os.CLIConfig
-	if e2eutils.UseFaultProofs() {
+	if cfg.AllocType.UsesProofs() {
 		proposerCLIConfig = &l2os.CLIConfig{
 			L1EthRpc:          sys.EthInstances[RoleL1].UserRPC().RPC(),
 			RollupRpc:         sys.RollupNodes[RoleSeq].UserRPC().RPC(),
-			DGFAddress:        config.L1Deployments.DisputeGameFactoryProxy.Hex(),
+			DGFAddress:        config.L1Deployments(cfg.AllocType).DisputeGameFactoryProxy.Hex(),
 			ProposalInterval:  6 * time.Second,
 			DisputeGameType:   254, // Fast game type
 			PollInterval:      500 * time.Millisecond,
@@ -810,7 +868,7 @@ func (cfg SystemConfig) Start(t *testing.T, _opts ...SystemConfigOption) (*Syste
 		proposerCLIConfig = &l2os.CLIConfig{
 			L1EthRpc:          sys.EthInstances[RoleL1].UserRPC().RPC(),
 			RollupRpc:         sys.RollupNodes[RoleSeq].UserRPC().RPC(),
-			L2OOAddress:       config.L1Deployments.L2OutputOracleProxy.Hex(),
+			L2OOAddress:       config.L1Deployments(cfg.AllocType).L2OutputOracleProxy.Hex(),
 			PollInterval:      500 * time.Millisecond,
 			TxMgrConfig:       setuputils.NewTxMgrConfig(sys.EthInstances[RoleL1].UserRPC(), cfg.Secrets.Proposer),
 			AllowNonFinalized: cfg.NonFinalizedProposals,
@@ -839,12 +897,6 @@ func (cfg SystemConfig) Start(t *testing.T, _opts ...SystemConfigOption) (*Syste
 	batcherTargetNumFrames := cfg.BatcherTargetNumFrames
 	if batcherTargetNumFrames == 0 {
 		batcherTargetNumFrames = 1
-	}
-
-	var compressionAlgo derive.CompressionAlgo = derive.Zlib
-	// if opt has brotli key, set the compression algo as brotli
-	if _, ok := opts.Get("compressionAlgo", "brotli"); ok {
-		compressionAlgo = derive.Brotli10
 	}
 
 	var batcherAltDACLIConfig altda.CLIConfig
@@ -884,16 +936,24 @@ func (cfg SystemConfig) Start(t *testing.T, _opts ...SystemConfigOption) (*Syste
 		BatchType:             cfg.BatcherBatchType,
 		MaxBlocksPerSpanBatch: cfg.BatcherMaxBlocksPerSpanBatch,
 		DataAvailabilityType:  sys.Cfg.DataAvailabilityType,
-		CompressionAlgo:       compressionAlgo,
+		CompressionAlgo:       derive.Zlib,
 		AltDA:                 batcherAltDACLIConfig,
 	}
+
+	// Apply batcher cli modifications
+	for _, opt := range startOpts {
+		if opt.BatcherMod != nil {
+			opt.BatcherMod(batcherCLIConfig)
+		}
+	}
+
 	// Batch Submitter
 	batcher, err := bss.BatcherServiceFromCLIConfig(context.Background(), "0.0.1", batcherCLIConfig, sys.Cfg.Loggers["batcher"])
 	if err != nil {
 		return nil, fmt.Errorf("failed to setup batch submitter: %w", err)
 	}
 	sys.BatchSubmitter = batcher
-	if action, ok := opts.Get("beforeBatcherStart", ""); ok {
+	if action, ok := parsedStartOpts.Get("beforeBatcherStart", ""); ok {
 		action(&cfg, sys)
 	}
 	if err := batcher.Start(context.Background()); err != nil {
@@ -1005,7 +1065,10 @@ func (sys *System) RollupClient(name string) *sources.RollupClient {
 		require.NoError(sys.t, err, "failed to dial rollup instance %s", name)
 		return cl
 	})
-	rollupClient = sources.NewRollupClient(client.NewBaseRPCClient(rpcClient))
+	rollupClient = sources.NewRollupClient(client.NewBaseRPCClient(rpcClient,
+		// Increase timeouts because CI servers can be under a lot of load
+		client.WithCallTimeout(30*time.Second),
+		client.WithBatchCallTimeout(30*time.Second)))
 	sys.rollupClients[name] = rollupClient
 	return rollupClient
 }

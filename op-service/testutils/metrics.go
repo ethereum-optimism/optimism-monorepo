@@ -17,7 +17,7 @@ type TestDerivationMetrics struct {
 	FnRecordChannelTimedOut   func()
 }
 
-func (t *TestDerivationMetrics) CountSequencedTxs(count int) {
+func (t *TestDerivationMetrics) CountSequencedTxsInBlock(txns int, deposits int) {
 }
 
 func (t *TestDerivationMetrics) RecordSequencerBuildingDiffTime(duration time.Duration) {

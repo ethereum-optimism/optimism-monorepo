@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/versions"
 )
@@ -20,9 +21,7 @@ var vmFS embed.FS
 const baseDir = "embeds"
 
 func ExecuteCannon(ctx context.Context, args []string, ver versions.StateVersion) error {
-	switch ver {
-	case versions.VersionSingleThreaded, versions.VersionMultiThreaded:
-	default:
+	if !slices.Contains(versions.StateVersionTypes, ver) {
 		return errors.New("unsupported version")
 	}
 

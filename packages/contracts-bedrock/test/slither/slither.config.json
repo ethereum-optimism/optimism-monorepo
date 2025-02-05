@@ -1,0 +1,10 @@
+{
+  "detectors_to_exclude": "arbitrary-send-eth,incorrect-equality,naming-convention,solc-version",
+  "exclude_dependencies": true,
+  "exclude_informational": true,
+  "exclude_low": true,
+  "exclude_optimization": true,
+  "fail_on": "none",
+  "filter_paths": "(src/vendor|src/cannon/MIPS.sol|src/vendor/eas/EAS.sol)",
+  "foundry_out_directory": "artifacts"
+}

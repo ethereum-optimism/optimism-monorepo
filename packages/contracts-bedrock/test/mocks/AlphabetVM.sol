@@ -6,7 +6,7 @@ import { PreimageKeyLib } from "src/cannon/PreimageKeyLib.sol";
 import "src/dispute/lib/Types.sol";
 
 // Interfaces
-import { IBigStepper, IPreimageOracle } from "src/dispute/interfaces/IBigStepper.sol";
+import { IBigStepper, IPreimageOracle } from "interfaces/dispute/IBigStepper.sol";
 
 /// @title AlphabetVM
 /// @dev A mock VM for the purpose of testing the dispute game infrastructure. Note that this only works

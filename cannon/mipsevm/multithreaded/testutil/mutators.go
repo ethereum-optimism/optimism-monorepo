@@ -6,6 +6,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 
+	"github.com/ethereum-optimism/optimism/cannon/mipsevm/arch"
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/exec"
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/multithreaded"
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/testutil"
@@ -27,18 +28,18 @@ func (m *StateMutatorMultiThreaded) Randomize(randSeed int64) {
 	step := r.RandStep()
 
 	m.state.PreimageKey = r.RandHash()
-	m.state.PreimageOffset = r.Uint32()
+	m.state.PreimageOffset = r.Word()
 	m.state.Step = step
 	m.state.LastHint = r.RandHint()
 	m.state.StepsSinceLastContextSwitch = uint64(r.Intn(exec.SchedQuantum))
 
 	// Randomize memory-related fields
 	halfMemory := math.MaxUint32 / 2
-	m.state.Heap = uint32(r.Intn(halfMemory) + halfMemory)
-	m.state.LLReservationActive = r.Intn(2) == 1
-	if m.state.LLReservationActive {
-		m.state.LLAddress = uint32(r.Intn(halfMemory))
-		m.state.LLOwnerThread = uint32(r.Intn(10))
+	m.state.Heap = arch.Word(r.Intn(halfMemory) + halfMemory)
+	m.state.LLReservationStatus = multithreaded.LLReservationStatus(r.Intn(3))
+	if m.state.LLReservationStatus != multithreaded.LLStatusNone {
+		m.state.LLAddress = arch.Word(r.Intn(halfMemory))
+		m.state.LLOwnerThread = arch.Word(r.Intn(10))
 	}
 
 	// Randomize threads
@@ -48,11 +49,11 @@ func (m *StateMutatorMultiThreaded) Randomize(randSeed int64) {
 	SetupThreads(randSeed+1, m.state, traverseRight, activeStackThreads, inactiveStackThreads)
 }
 
-func (m *StateMutatorMultiThreaded) SetHI(val uint32) {
+func (m *StateMutatorMultiThreaded) SetHI(val arch.Word) {
 	m.state.GetCurrentThread().Cpu.HI = val
 }
 
-func (m *StateMutatorMultiThreaded) SetLO(val uint32) {
+func (m *StateMutatorMultiThreaded) SetLO(val arch.Word) {
 	m.state.GetCurrentThread().Cpu.LO = val
 }
 
@@ -64,16 +65,16 @@ func (m *StateMutatorMultiThreaded) SetExited(val bool) {
 	m.state.Exited = val
 }
 
-func (m *StateMutatorMultiThreaded) SetPC(val uint32) {
+func (m *StateMutatorMultiThreaded) SetPC(val arch.Word) {
 	thread := m.state.GetCurrentThread()
 	thread.Cpu.PC = val
 }
 
-func (m *StateMutatorMultiThreaded) SetHeap(val uint32) {
+func (m *StateMutatorMultiThreaded) SetHeap(val arch.Word) {
 	m.state.Heap = val
 }
 
-func (m *StateMutatorMultiThreaded) SetNextPC(val uint32) {
+func (m *StateMutatorMultiThreaded) SetNextPC(val arch.Word) {
 	thread := m.state.GetCurrentThread()
 	thread.Cpu.NextPC = val
 }
@@ -86,7 +87,7 @@ func (m *StateMutatorMultiThreaded) SetPreimageKey(val common.Hash) {
 	m.state.PreimageKey = val
 }
 
-func (m *StateMutatorMultiThreaded) SetPreimageOffset(val uint32) {
+func (m *StateMutatorMultiThreaded) SetPreimageOffset(val arch.Word) {
 	m.state.PreimageOffset = val
 }
 

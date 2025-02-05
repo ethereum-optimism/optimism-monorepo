@@ -26,6 +26,9 @@ const (
 	BatchUndecided
 	// BatchFuture indicates that the batch may be valid, but cannot be processed yet and should be checked again later
 	BatchFuture
+	// BatchPast indicates that the batch is from the past, i.e. its timestamp is smaller or equal
+	// to the safe head's timestamp.
+	BatchPast
 )
 
 // CheckBatch checks if the given batch can be applied on top of the given l2SafeHead, given the contextual L1 blocks the batch was included in.
@@ -69,11 +72,18 @@ func checkSingularBatch(cfg *rollup.Config, log log.Logger, l1Blocks []eth.L1Blo
 
 	nextTimestamp := l2SafeHead.Time + cfg.BlockTime
 	if batch.Timestamp > nextTimestamp {
+		if cfg.IsHolocene(l1InclusionBlock.Time) {
+			log.Warn("dropping future batch", "next_timestamp", nextTimestamp)
+			return BatchDrop
+		}
 		log.Trace("received out-of-order batch for future processing after next batch", "next_timestamp", nextTimestamp)
 		return BatchFuture
 	}
 	if batch.Timestamp < nextTimestamp {
-		log.Warn("dropping batch with old timestamp", "min_timestamp", nextTimestamp)
+		log.Warn("dropping past batch with old timestamp", "min_timestamp", nextTimestamp)
+		if cfg.IsHolocene(l1InclusionBlock.Time) {
+			return BatchPast
+		}
 		return BatchDrop
 	}
 
@@ -166,17 +176,19 @@ func checkSingularBatch(cfg *rollup.Config, log log.Logger, l1Blocks []eth.L1Blo
 	return BatchAccept
 }
 
-// checkSpanBatch implements SpanBatch validation rule.
-func checkSpanBatch(ctx context.Context, cfg *rollup.Config, log log.Logger, l1Blocks []eth.L1BlockRef, l2SafeHead eth.L2BlockRef,
+// checkSpanBatchPrefix performs the span batch prefix rules for Holocene.
+// Next to the validity, it also returns the parent L2 block as determined during the checks for
+// further consumption.
+func checkSpanBatchPrefix(ctx context.Context, cfg *rollup.Config, log log.Logger, l1Blocks []eth.L1BlockRef, l2SafeHead eth.L2BlockRef,
 	batch *SpanBatch, l1InclusionBlock eth.L1BlockRef, l2Fetcher SafeBlockFetcher,
-) BatchValidity {
+) (BatchValidity, eth.L2BlockRef) {
 	// add details to the log
 	log = batch.LogContext(log)
 
 	// sanity check we have consistent inputs
 	if len(l1Blocks) == 0 {
 		log.Warn("missing L1 block input, cannot proceed with batch checking")
-		return BatchUndecided
+		return BatchUndecided, eth.L2BlockRef{}
 	}
 	epoch := l1Blocks[0]
 
@@ -185,64 +197,70 @@ func checkSpanBatch(ctx context.Context, cfg *rollup.Config, log log.Logger, l1B
 	if startEpochNum == batchOrigin.Number+1 {
 		if len(l1Blocks) < 2 {
 			log.Info("eager batch wants to advance epoch, but could not without more L1 blocks", "current_epoch", epoch.ID())
-			return BatchUndecided
+			return BatchUndecided, eth.L2BlockRef{}
 		}
 		batchOrigin = l1Blocks[1]
 	}
 	if !cfg.IsDelta(batchOrigin.Time) {
 		log.Warn("received SpanBatch with L1 origin before Delta hard fork", "l1_origin", batchOrigin.ID(), "l1_origin_time", batchOrigin.Time)
-		return BatchDrop
+		return BatchDrop, eth.L2BlockRef{}
 	}
 
 	nextTimestamp := l2SafeHead.Time + cfg.BlockTime
 
 	if batch.GetTimestamp() > nextTimestamp {
+		if cfg.IsHolocene(l1InclusionBlock.Time) {
+			log.Warn("dropping future span batch", "next_timestamp", nextTimestamp)
+			return BatchDrop, eth.L2BlockRef{}
+		}
 		log.Trace("received out-of-order batch for future processing after next batch", "next_timestamp", nextTimestamp)
-		return BatchFuture
+		return BatchFuture, eth.L2BlockRef{}
 	}
 	if batch.GetBlockTimestamp(batch.GetBlockCount()-1) < nextTimestamp {
 		log.Warn("span batch has no new blocks after safe head")
-		return BatchDrop
+		if cfg.IsHolocene(l1InclusionBlock.Time) {
+			return BatchPast, eth.L2BlockRef{}
+		}
+		return BatchDrop, eth.L2BlockRef{}
 	}
 
 	// finding parent block of the span batch.
 	// if the span batch does not overlap the current safe chain, parentBLock should be l2SafeHead.
-	parentNum := l2SafeHead.Number
 	parentBlock := l2SafeHead
 	if batch.GetTimestamp() < nextTimestamp {
 		if batch.GetTimestamp() > l2SafeHead.Time {
 			// batch timestamp cannot be between safe head and next timestamp
 			log.Warn("batch has misaligned timestamp, block time is too short")
-			return BatchDrop
+			return BatchDrop, eth.L2BlockRef{}
 		}
 		if (l2SafeHead.Time-batch.GetTimestamp())%cfg.BlockTime != 0 {
 			log.Warn("batch has misaligned timestamp, not overlapped exactly")
-			return BatchDrop
+			return BatchDrop, eth.L2BlockRef{}
 		}
-		parentNum = l2SafeHead.Number - (l2SafeHead.Time-batch.GetTimestamp())/cfg.BlockTime - 1
+		parentNum := l2SafeHead.Number - (l2SafeHead.Time-batch.GetTimestamp())/cfg.BlockTime - 1
 		var err error
 		parentBlock, err = l2Fetcher.L2BlockRefByNumber(ctx, parentNum)
 		if err != nil {
 			log.Warn("failed to fetch L2 block", "number", parentNum, "err", err)
 			// unable to validate the batch for now. retry later.
-			return BatchUndecided
+			return BatchUndecided, eth.L2BlockRef{}
 		}
 	}
 	if !batch.CheckParentHash(parentBlock.Hash) {
 		log.Warn("ignoring batch with mismatching parent hash", "parent_block", parentBlock.Hash)
-		return BatchDrop
+		return BatchDrop, parentBlock
 	}
 
 	// Filter out batches that were included too late.
 	if startEpochNum+cfg.SeqWindowSize < l1InclusionBlock.Number {
 		log.Warn("batch was included too late, sequence window expired")
-		return BatchDrop
+		return BatchDrop, parentBlock
 	}
 
 	// Check the L1 origin of the batch
 	if startEpochNum > parentBlock.L1Origin.Number+1 {
 		log.Warn("batch is for future epoch too far ahead, while it has the next timestamp, so it must be invalid", "current_epoch", epoch.ID())
-		return BatchDrop
+		return BatchDrop, parentBlock
 	}
 
 	endEpochNum := batch.GetBlockEpochNum(batch.GetBlockCount() - 1)
@@ -252,7 +270,7 @@ func checkSpanBatch(ctx context.Context, cfg *rollup.Config, log log.Logger, l1B
 		if l1Block.Number == endEpochNum {
 			if !batch.CheckOriginHash(l1Block.Hash) {
 				log.Warn("batch is for different L1 chain, epoch hash does not match", "expected", l1Block.Hash)
-				return BatchDrop
+				return BatchDrop, parentBlock
 			}
 			originChecked = true
 			break
@@ -260,13 +278,26 @@ func checkSpanBatch(ctx context.Context, cfg *rollup.Config, log log.Logger, l1B
 	}
 	if !originChecked {
 		log.Info("need more l1 blocks to check entire origins of span batch")
-		return BatchUndecided
+		return BatchUndecided, parentBlock
 	}
 
 	if startEpochNum < parentBlock.L1Origin.Number {
 		log.Warn("dropped batch, epoch is too old", "minimum", parentBlock.ID())
-		return BatchDrop
+		return BatchDrop, parentBlock
 	}
+	return BatchAccept, parentBlock
+}
+
+// checkSpanBatch performs the full SpanBatch validation rules.
+func checkSpanBatch(ctx context.Context, cfg *rollup.Config, log log.Logger, l1Blocks []eth.L1BlockRef, l2SafeHead eth.L2BlockRef,
+	batch *SpanBatch, l1InclusionBlock eth.L1BlockRef, l2Fetcher SafeBlockFetcher,
+) BatchValidity {
+	prefixValidity, parentBlock := checkSpanBatchPrefix(ctx, cfg, log, l1Blocks, l2SafeHead, batch, l1InclusionBlock, l2Fetcher)
+	if prefixValidity != BatchAccept {
+		return prefixValidity
+	}
+
+	startEpochNum := uint64(batch.GetStartEpochNum())
 
 	originIdx := 0
 	originAdvanced := startEpochNum == parentBlock.L1Origin.Number+1
@@ -334,6 +365,8 @@ func checkSpanBatch(ctx context.Context, cfg *rollup.Config, log log.Logger, l1B
 		}
 	}
 
+	parentNum := parentBlock.Number
+	nextTimestamp := l2SafeHead.Time + cfg.BlockTime
 	// Check overlapped blocks
 	if batch.GetTimestamp() < nextTimestamp {
 		for i := uint64(0); i < l2SafeHead.Number-parentNum; i++ {

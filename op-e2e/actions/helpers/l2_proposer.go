@@ -7,6 +7,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/ethereum-optimism/optimism/op-e2e/config"
+
 	"github.com/ethereum-optimism/optimism/op-service/sources/batching"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -21,7 +23,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ethereum-optimism/optimism/op-e2e/bindings"
-	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils"
 	"github.com/ethereum-optimism/optimism/op-proposer/metrics"
 	"github.com/ethereum-optimism/optimism/op-proposer/proposer"
 	"github.com/ethereum-optimism/optimism/op-service/dial"
@@ -38,6 +39,7 @@ type ProposerCfg struct {
 	DisputeGameType        uint32
 	ProposerKey            *ecdsa.PrivateKey
 	AllowNonFinalized      bool
+	AllocType              config.AllocType
 }
 
 type L2Proposer struct {
@@ -51,6 +53,7 @@ type L2Proposer struct {
 	address                common.Address
 	privKey                *ecdsa.PrivateKey
 	lastTx                 common.Hash
+	allocType              config.AllocType
 }
 
 type fakeTxMgr struct {
@@ -117,7 +120,7 @@ func NewL2Proposer(t Testing, log log.Logger, cfg *ProposerCfg, l1 *ethclient.Cl
 
 	var l2OutputOracle *bindings.L2OutputOracleCaller
 	var disputeGameFactory *bindings.DisputeGameFactoryCaller
-	if e2eutils.UseFaultProofs() {
+	if cfg.AllocType.UsesProofs() {
 		disputeGameFactory, err = bindings.NewDisputeGameFactoryCaller(*cfg.DisputeGameFactoryAddr, l1)
 		require.NoError(t, err)
 	} else {
@@ -138,6 +141,7 @@ func NewL2Proposer(t Testing, log log.Logger, cfg *ProposerCfg, l1 *ethclient.Cl
 		disputeGameFactoryAddr: cfg.DisputeGameFactoryAddr,
 		address:                address,
 		privKey:                cfg.ProposerKey,
+		allocType:              cfg.AllocType,
 	}
 }
 
@@ -154,7 +158,7 @@ func (p *L2Proposer) sendTx(t Testing, data []byte) {
 	require.NoError(t, err)
 
 	var addr common.Address
-	if e2eutils.UseFaultProofs() {
+	if p.allocType.UsesProofs() {
 		addr = *p.disputeGameFactoryAddr
 	} else {
 		addr = *p.l2OutputOracleAddr
@@ -222,7 +226,7 @@ func toCallArg(msg ethereum.CallMsg) interface{} {
 }
 
 func (p *L2Proposer) fetchNextOutput(t Testing) (*eth.OutputResponse, bool, error) {
-	if e2eutils.UseFaultProofs() {
+	if p.allocType.UsesProofs() {
 		output, shouldPropose, err := p.driver.FetchDGFOutput(t.Ctx())
 		if err != nil || !shouldPropose {
 			return nil, false, err
@@ -258,7 +262,7 @@ func (p *L2Proposer) ActMakeProposalTx(t Testing) {
 	}
 
 	var txData []byte
-	if e2eutils.UseFaultProofs() {
+	if p.allocType.UsesProofs() {
 		tx, err := p.driver.ProposeL2OutputDGFTxCandidate(context.Background(), output)
 		require.NoError(t, err)
 		txData = tx.TxData

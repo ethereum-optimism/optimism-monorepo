@@ -284,7 +284,8 @@ func RandomBlock(rng *rand.Rand, txCount uint64) (*types.Block, []*types.Receipt
 
 func RandomBlockPrependTxsWithTime(rng *rand.Rand, txCount int, t uint64, ptxs ...*types.Transaction) (*types.Block, []*types.Receipt) {
 	header := RandomHeaderWithTime(rng, t)
-	signer := types.NewLondonSigner(big.NewInt(rng.Int63n(1000)))
+	chainID := big.NewInt(rng.Int63n(1000))
+	signer := types.NewLondonSigner(chainID)
 	txs := make([]*types.Transaction, 0, txCount+len(ptxs))
 	txs = append(txs, ptxs...)
 	for i := 0; i < txCount; i++ {
@@ -302,7 +303,7 @@ func RandomBlockPrependTxsWithTime(rng *rand.Rand, txCount int, t uint64, ptxs .
 	body := types.Body{
 		Transactions: txs,
 	}
-	block := types.NewBlock(header, &body, receipts, trie.NewStackTrie(nil))
+	block := types.NewBlock(header, &body, receipts, trie.NewStackTrie(nil), types.DefaultBlockConfig)
 	logIndex := uint(0)
 	for i, r := range receipts {
 		r.BlockHash = block.Hash()

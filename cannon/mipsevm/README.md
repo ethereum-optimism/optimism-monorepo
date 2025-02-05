@@ -12,8 +12,10 @@ Supported 63 instructions:
 | `Conditional Branch` | `beq`         | Branch on equal.                             |
 | `Conditional Branch` | `bgez`        | Branch on greater than or equal to zero.     |
 | `Conditional Branch` | `bgtz`        | Branch on greater than zero.                 |
+| `Conditional Branch` | `bgezal`      | Branch and link on greater than or equal to zero.     |
 | `Conditional Branch` | `blez`        | Branch on less than or equal to zero.        |
 | `Conditional Branch` | `bltz`        | Branch on less than zero.                    |
+| `Conditional Branch` | `bltzal`      | Branch and link on less than zero.           |
 | `Conditional Branch` | `bne`         | Branch on not equal.                         |
 | `Logical`            | `clo`         | Count leading ones.                          |
 | `Logical`            | `clz`         | Count leading zeros.                         |

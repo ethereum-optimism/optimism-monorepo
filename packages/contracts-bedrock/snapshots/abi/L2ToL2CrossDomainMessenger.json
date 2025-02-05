@@ -1,6 +1,24 @@
 [
   {
     "inputs": [],
+    "name": "crossDomainMessageContext",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "sender_",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "source_",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "crossDomainMessageSender",
     "outputs": [
       {
@@ -81,7 +99,7 @@
             "type": "uint256"
           }
         ],
-        "internalType": "struct ICrossL2Inbox.Identifier",
+        "internalType": "struct Identifier",
         "name": "_id",
         "type": "tuple"
       },
@@ -92,7 +110,13 @@
       }
     ],
     "name": "relayMessage",
-    "outputs": [],
+    "outputs": [
+      {
+        "internalType": "bytes",
+        "name": "returnData_",
+        "type": "bytes"
+      }
+    ],
     "stateMutability": "payable",
     "type": "function"
   },
@@ -179,31 +203,6 @@
         "type": "bytes32"
       }
     ],
-    "name": "FailedRelayedMessage",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "uint256",
-        "name": "source",
-        "type": "uint256"
-      },
-      {
-        "indexed": true,
-        "internalType": "uint256",
-        "name": "messageNonce",
-        "type": "uint256"
-      },
-      {
-        "indexed": true,
-        "internalType": "bytes32",
-        "name": "messageHash",
-        "type": "bytes32"
-      }
-    ],
     "name": "RelayedMessage",
     "type": "event"
   },
@@ -256,6 +255,11 @@
   },
   {
     "inputs": [],
+    "name": "InvalidChainId",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "MessageAlreadyRelayed",
     "type": "error"
   },
@@ -287,6 +291,11 @@
   {
     "inputs": [],
     "name": "ReentrantCall",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "TargetCallFailed",
     "type": "error"
   }
 ]

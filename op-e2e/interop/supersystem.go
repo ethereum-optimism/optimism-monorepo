@@ -7,13 +7,11 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"sort"
 	"testing"
 	"time"
 
-	emit "github.com/ethereum-optimism/optimism/op-e2e/interop/contracts"
-	"github.com/ethereum-optimism/optimism/op-e2e/system/helpers"
-
-	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils"
+	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -21,8 +19,10 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/eth/ethconfig"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/log"
+	gn "github.com/ethereum/go-ethereum/node"
 	"github.com/ethereum/go-ethereum/rpc"
 
 	bss "github.com/ethereum-optimism/optimism/op-batcher/batcher"
@@ -30,15 +30,22 @@ import (
 	"github.com/ethereum-optimism/optimism/op-chain-ops/devkeys"
 	"github.com/ethereum-optimism/optimism/op-chain-ops/foundry"
 	"github.com/ethereum-optimism/optimism/op-chain-ops/interopgen"
+	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils"
 	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/fakebeacon"
 	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/geth"
+	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/interop/contracts/bindings/emit"
+	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/interop/contracts/bindings/inbox"
+	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/interop/contracts/bindings/systemconfig"
 	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/opnode"
 	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/services"
 	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/setuputils"
+	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/wait"
+	"github.com/ethereum-optimism/optimism/op-e2e/system/helpers"
 	"github.com/ethereum-optimism/optimism/op-node/node"
 	"github.com/ethereum-optimism/optimism/op-node/p2p"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/derive"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/driver"
+	"github.com/ethereum-optimism/optimism/op-node/rollup/interop"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/sync"
 	l2os "github.com/ethereum-optimism/optimism/op-proposer/proposer"
 	"github.com/ethereum-optimism/optimism/op-service/client"
@@ -48,11 +55,15 @@ import (
 	oplog "github.com/ethereum-optimism/optimism/op-service/log"
 	"github.com/ethereum-optimism/optimism/op-service/metrics"
 	"github.com/ethereum-optimism/optimism/op-service/oppprof"
+	"github.com/ethereum-optimism/optimism/op-service/predeploys"
 	oprpc "github.com/ethereum-optimism/optimism/op-service/rpc"
 	"github.com/ethereum-optimism/optimism/op-service/sources"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
 	supervisorConfig "github.com/ethereum-optimism/optimism/op-supervisor/config"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/syncnode"
+	supervisortypes "github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 )
 
 // SuperSystem is an interface for the system (collection of connected resources)
@@ -78,8 +89,10 @@ type SuperSystem interface {
 	L2GethClient(network string) *ethclient.Client
 	// get the secret for a network and role
 	L2OperatorKey(network string, role devkeys.ChainOperatorRole) ecdsa.PrivateKey
-	// get the list of network IDs
+	// get the list of network IDs as key-strings
 	L2IDs() []string
+	// get the chain ID for a network
+	ChainID(network string) *big.Int
 	// register a username to an account on all L2s
 	AddUser(username string)
 	// get the user key for a user on an L2
@@ -91,14 +104,28 @@ type SuperSystem interface {
 	// Deploy the Emitter Contract, which emits Event Logs
 	DeployEmitterContract(network string, username string) common.Address
 	// Use the Emitter Contract to emit an Event Log
-	EmitData(network string, username string, data string) *types.Receipt
+	EmitData(ctx context.Context, network string, username string, data string) *types.Receipt
+	// AddDependency adds a dependency (by chain ID) to the given chain
+	AddDependency(ctx context.Context, network string, dep *big.Int) *types.Receipt
+	// ValidateMessage calls the CrossL2Inbox ValidateMessage function
+	ValidateMessage(
+		ctx context.Context,
+		id string,
+		sender string,
+		msgIdentifier supervisortypes.Identifier,
+		msgHash [32]byte,
+		expectedError error,
+	) (*types.Receipt, error)
 	// Access a contract on a network by name
 	Contract(network string, contractName string) interface{}
 }
+type SuperSystemConfig struct {
+	mempoolFiltering bool
+}
 
 // NewSuperSystem creates a new SuperSystem from a recipe. It creates an interopE2ESystem.
-func NewSuperSystem(t *testing.T, recipe *interopgen.InteropDevRecipe, w worldResourcePaths) SuperSystem {
-	s2 := &interopE2ESystem{recipe: recipe}
+func NewSuperSystem(t *testing.T, recipe *interopgen.InteropDevRecipe, w worldResourcePaths, config SuperSystemConfig) SuperSystem {
+	s2 := &interopE2ESystem{recipe: recipe, config: &config}
 	s2.prepare(t, w)
 	return s2
 }
@@ -117,9 +144,11 @@ type interopE2ESystem struct {
 	beacon          *fakebeacon.FakeBeacon
 	l1              *geth.GethInstance
 	l2s             map[string]l2Set
+	l1GethClient    *ethclient.Client
 	l2GethClients   map[string]*ethclient.Client
 	supervisor      *supervisor.SupervisorService
 	superClient     *sources.SupervisorClient
+	config          *SuperSystemConfig
 }
 
 // l2Set is a set of resources for an L2 chain
@@ -196,6 +225,7 @@ func (s *interopE2ESystem) prepareL1() (*fakebeacon.FakeBeacon, *geth.GethInstan
 	require.NoError(s.t, err)
 	require.NoError(s.t, l1Geth.Node.Start())
 	s.t.Cleanup(func() {
+		s.t.Logf("Closing L1 geth")
 		_ = l1Geth.Close()
 	})
 	return bcn, l1Geth
@@ -235,11 +265,18 @@ func (s *interopE2ESystem) newOperatorKeysForL2(l2Out *interopgen.L2Output) map[
 func (s *interopE2ESystem) newGethForL2(id string, l2Out *interopgen.L2Output) *geth.GethInstance {
 	jwtPath := writeDefaultJWT(s.t)
 	name := "l2-" + id
-	l2Geth, err := geth.InitL2(name, l2Out.Genesis, jwtPath)
+	l2Geth, err := geth.InitL2(name, l2Out.Genesis, jwtPath,
+		func(ethCfg *ethconfig.Config, nodeCfg *gn.Config) error {
+			ethCfg.InteropMessageRPC = s.supervisor.RPC()
+			ethCfg.InteropMempoolFiltering = s.config.mempoolFiltering
+			return nil
+		})
 	require.NoError(s.t, err)
 	require.NoError(s.t, l2Geth.Node.Start())
 	s.t.Cleanup(func() {
-		_ = l2Geth.Close()
+		s.t.Logf("Closing L2 geth of chain %s", id)
+		closeErr := l2Geth.Close()
+		s.t.Logf("Closed L2 geth of chain %s: %v", id, closeErr)
 	})
 	return l2Geth
 }
@@ -280,8 +317,11 @@ func (s *interopE2ESystem) newNodeForL2(
 			ListenPort:  0,
 			EnableAdmin: true,
 		},
-		Supervisor: &node.SupervisorEndpointConfig{
-			SupervisorAddr: s.supervisor.RPC(),
+		InteropConfig: &interop.Config{
+			//SupervisorAddr:   s.supervisor.RPC(),
+			RPCAddr:          "127.0.0.1",
+			RPCPort:          0,
+			RPCJwtSecretPath: "jwt.secret",
 		},
 		P2P:                         nil, // disabled P2P setup for now
 		L1EpochPollInterval:         time.Second * 2,
@@ -302,7 +342,9 @@ func (s *interopE2ESystem) newNodeForL2(
 	s.t.Cleanup(func() {
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel() // force-quit
+		s.t.Logf("Closing op-node of chain %s", id)
 		_ = opNode.Stop(ctx)
+		s.t.Logf("Closed op-node of chain %s", id)
 	})
 	return opNode
 }
@@ -386,7 +428,9 @@ func (s *interopE2ESystem) newBatcherForL2(
 	s.t.Cleanup(func() {
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel() // force-quit
+		s.t.Logf("Closing batcher of chain %s", id)
 		_ = batcher.Stop(ctx)
+		s.t.Logf("Closed batcher of chain %s", id)
 	})
 	return batcher
 }
@@ -414,11 +458,15 @@ func (s *interopE2ESystem) newL2(id string, l2Out *interopgen.L2Output) l2Set {
 	}
 }
 
+func (s *interopE2ESystem) ChainID(network string) *big.Int {
+	return s.l2s[network].chainID
+}
+
 // prepareSupervisor creates a new supervisor for the system
 func (s *interopE2ESystem) prepareSupervisor() *supervisor.SupervisorService {
 	// Be verbose with op-supervisor, it's in early test phase
 	logger := testlog.Logger(s.t, log.LevelDebug).New("role", "supervisor")
-	cfg := supervisorConfig.Config{
+	cfg := &supervisorConfig.Config{
 		MetricsConfig: metrics.CLIConfig{
 			Enabled: false,
 		},
@@ -434,14 +482,29 @@ func (s *interopE2ESystem) prepareSupervisor() *supervisor.SupervisorService {
 			ListenPort:  0,
 			EnableAdmin: true,
 		},
-		L2RPCs:  []string{},
-		Datadir: path.Join(s.t.TempDir(), "supervisor"),
+		SyncSources: &syncnode.CLISyncNodes{}, // no sync-sources
+		L1RPC:       s.l1.UserRPC().RPC(),
+		Datadir:     path.Join(s.t.TempDir(), "supervisor"),
 	}
-	for id := range s.l2s {
-		cfg.L2RPCs = append(cfg.L2RPCs, s.l2s[id].l2Geth.UserRPC().RPC())
+	depSet := make(map[eth.ChainID]*depset.StaticConfigDependency)
+
+	// Iterate over the L2 chain configs. The L2 nodes don't exist yet.
+	for _, l2Out := range s.worldOutput.L2s {
+		chainID := eth.ChainIDFromBig(l2Out.Genesis.Config.ChainID)
+		index, err := chainID.ToUInt32()
+		require.NoError(s.t, err)
+		depSet[chainID] = &depset.StaticConfigDependency{
+			ChainIndex:     supervisortypes.ChainIndex(index),
+			ActivationTime: 0,
+			HistoryMinTime: 0,
+		}
 	}
+	stDepSet, err := depset.NewStaticConfigDependencySet(depSet)
+	require.NoError(s.t, err)
+	cfg.DependencySetSource = stDepSet
+
 	// Create the supervisor with the configuration
-	super, err := supervisor.SupervisorFromConfig(context.Background(), &cfg, logger)
+	super, err := supervisor.SupervisorFromConfig(context.Background(), cfg, logger)
 	require.NoError(s.t, err)
 	// Start the supervisor
 	err = super.Start(context.Background())
@@ -449,7 +512,9 @@ func (s *interopE2ESystem) prepareSupervisor() *supervisor.SupervisorService {
 	s.t.Cleanup(func() {
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel() // force-quit
-		_ = super.Stop(ctx)
+		s.t.Logf("Closing supervisor")
+		closeErr := super.Stop(ctx)
+		s.t.Logf("Closed supervisor: %v", closeErr)
 	})
 	return super
 }
@@ -475,18 +540,31 @@ func (s *interopE2ESystem) prepare(t *testing.T, w worldResourcePaths) {
 	s.hdWallet = s.prepareHDWallet()
 	s.worldDeployment, s.worldOutput = s.prepareWorld(w)
 
-	// the supervisor and client are created first so that the L2s can use the supervisor
+	// L1 first so that the Supervisor and L2s can connect to it
+	s.beacon, s.l1 = s.prepareL1()
+
 	s.supervisor = s.prepareSupervisor()
 
-	s.beacon, s.l1 = s.prepareL1()
 	s.l2s = s.prepareL2s()
+
+	s.prepareContracts()
 
 	// add the L2 RPCs to the supervisor now that the L2s are created
 	ctx := context.Background()
 	for _, l2 := range s.l2s {
-		err := s.SupervisorClient().AddL2RPC(ctx, l2.l2Geth.UserRPC().RPC())
-		require.NoError(s.t, err, "failed to add L2 RPC to supervisor", "error", err)
+		rpcEndpoint, secret := l2.opNode.InteropRPC()
+		err := s.SupervisorClient().AddL2RPC(ctx, rpcEndpoint, secret)
+		require.NoError(s.t, err, "failed to add L2 RPC to supervisor")
 	}
+
+	// Try to close the op-supervisor first
+	s.t.Cleanup(func() {
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel() // force-quit
+		s.t.Logf("Closing supervisor")
+		closeErr := s.supervisor.Stop(ctx)
+		s.t.Logf("Closed supervisor: %v", closeErr)
+	})
 }
 
 // AddUser adds a user to the system by creating a user key for each L2.
@@ -528,6 +606,44 @@ func (s *interopE2ESystem) prepareL2s() map[string]l2Set {
 		l2s[id] = s.newL2(id, l2Out)
 	}
 	return l2s
+}
+
+// prepareContracts prepares contract-bindings for the L2s
+func (s *interopE2ESystem) prepareContracts() {
+	// Add bindings to common contracts for each L2
+	l1GethClient := s.L1GethClient()
+	for id, l2Dep := range s.worldDeployment.L2s {
+		{
+			contract, err := inbox.NewInbox(predeploys.CrossL2InboxAddr, s.L2GethClient(id))
+			require.NoError(s.t, err)
+			s.l2s[id].contracts["inbox"] = contract
+		}
+		{
+			contract, err := systemconfig.NewSystemconfig(l2Dep.SystemConfigProxy, l1GethClient)
+			require.NoError(s.t, err)
+			s.l2s[id].contracts["systemconfig"] = contract
+		}
+	}
+}
+
+func (s *interopE2ESystem) L1GethClient() *ethclient.Client {
+	if s.l1GethClient != nil {
+		return s.l1GethClient
+	}
+	rpcEndpoint := s.l1.UserRPC()
+	rpcCl := endpoint.DialRPC(
+		endpoint.PreferAnyRPC,
+		rpcEndpoint,
+		func(v string) *rpc.Client {
+			logger := testlog.Logger(s.t, log.LevelInfo)
+			cl, err := dial.DialRPCClientWithTimeout(context.Background(), 30*time.Second, logger, v)
+			require.NoError(s.t, err, "failed to dial L1 eth node instance")
+			return cl
+		})
+	nodeClient := ethclient.NewClient(rpcCl)
+	// register the client so it can be reused
+	s.l1GethClient = nodeClient
+	return nodeClient
 }
 
 func (s *interopE2ESystem) L2GethClient(id string) *ethclient.Client {
@@ -589,6 +705,7 @@ func (s *interopE2ESystem) L2IDs() []string {
 	for id := range s.l2s {
 		ids = append(ids, id)
 	}
+	sort.Strings(ids)
 	return ids
 }
 
@@ -616,6 +733,73 @@ func (s *interopE2ESystem) SendL2Tx(
 		newApply)
 }
 
+// ValidateMessage calls the CrossL2Inbox ValidateMessage function
+// it uses the L2's chain ID, username key, and geth client.
+// expectedError represents the error returned by `ValidateMessage` if it is expected.
+// the returned err is related to `WaitMined`
+func (s *interopE2ESystem) ValidateMessage(
+	ctx context.Context,
+	id string,
+	sender string,
+	msgIdentifier supervisortypes.Identifier,
+	msgHash [32]byte,
+	expectedError error,
+) (*types.Receipt, error) {
+	secret := s.UserKey(id, sender)
+	auth, err := bind.NewKeyedTransactorWithChainID(&secret, s.l2s[id].chainID)
+
+	require.NoError(s.t, err)
+
+	auth.GasLimit = uint64(3000_000)
+	auth.GasPrice = big.NewInt(20_000_000_000)
+
+	contract := s.Contract(id, "inbox").(*inbox.Inbox)
+	identifier := inbox.Identifier{
+		Origin:      msgIdentifier.Origin,
+		BlockNumber: new(big.Int).SetUint64(msgIdentifier.BlockNumber),
+		LogIndex:    new(big.Int).SetUint64(uint64(msgIdentifier.LogIndex)),
+		Timestamp:   new(big.Int).SetUint64(msgIdentifier.Timestamp),
+		ChainId:     msgIdentifier.ChainID.ToBig(),
+	}
+	tx, err := contract.InboxTransactor.ValidateMessage(auth, identifier, msgHash)
+	if expectedError != nil {
+		require.ErrorContains(s.t, err, expectedError.Error())
+		return nil, err
+	} else {
+		require.NoError(s.t, err)
+	}
+	s.logger.Info("Validating message", "tx", tx.Hash(), "to", tx.To(), "data", hexutil.Bytes(tx.Data()))
+	return bind.WaitMined(ctx, s.L2GethClient(id), tx)
+}
+
+func (s *interopE2ESystem) AddDependency(ctx context.Context, id string, dep *big.Int) *types.Receipt {
+	// There is a note in OPContractsManagerInterop that the proxy-admin is used for now,
+	// even though it should be a separate dependency-set-manager address.
+	secret, err := s.hdWallet.Secret(devkeys.ChainOperatorKey{
+		ChainID: s.l2s[id].chainID,
+		Role:    devkeys.SystemConfigOwner,
+	})
+	require.NoError(s.t, err)
+
+	auth, err := bind.NewKeyedTransactorWithChainID(secret, s.worldOutput.L1.Genesis.Config.ChainID)
+	require.NoError(s.t, err)
+
+	balance, err := s.l1GethClient.BalanceAt(ctx, crypto.PubkeyToAddress(secret.PublicKey), nil)
+	require.NoError(s.t, err)
+	require.False(s.t, balance.Sign() == 0, "system config owner needs a balance")
+
+	auth.GasLimit = uint64(3000000)
+	auth.GasPrice = big.NewInt(20000000000)
+
+	contract := s.Contract(id, "systemconfig").(*systemconfig.Systemconfig)
+	tx, err := contract.SystemconfigTransactor.AddDependency(auth, dep)
+	require.NoError(s.t, err)
+
+	receipt, err := wait.ForReceiptOK(ctx, s.L1GethClient(), tx.Hash())
+	require.NoError(s.t, err)
+	return receipt
+}
+
 func (s *interopE2ESystem) DeployEmitterContract(
 	id string,
 	sender string,
@@ -634,6 +818,7 @@ func (s *interopE2ESystem) DeployEmitterContract(
 }
 
 func (s *interopE2ESystem) EmitData(
+	ctx context.Context,
 	id string,
 	sender string,
 	data string,
@@ -649,7 +834,7 @@ func (s *interopE2ESystem) EmitData(
 	contract := s.Contract(id, "emitter").(*emit.Emit)
 	tx, err := contract.EmitTransactor.EmitData(auth, []byte(data))
 	require.NoError(s.t, err)
-	receipt, err := bind.WaitMined(context.Background(), s.L2GethClient(id), tx)
+	receipt, err := bind.WaitMined(ctx, s.L2GethClient(id), tx)
 	require.NoError(s.t, err)
 	return receipt
 }

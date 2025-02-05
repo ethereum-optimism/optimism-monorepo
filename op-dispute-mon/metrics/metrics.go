@@ -183,6 +183,8 @@ type Metricer interface {
 
 	RecordL2Challenges(agreement bool, count int)
 
+	RecordOldestGameUpdateTime(t time.Time)
+
 	caching.Metrics
 	contractMetrics.ContractMetricer
 }
@@ -215,7 +217,8 @@ type Metrics struct {
 	credits                   prometheus.GaugeVec
 	honestWithdrawableAmounts prometheus.GaugeVec
 
-	lastOutputFetch prometheus.Gauge
+	lastOutputFetch      prometheus.Gauge
+	oldestGameUpdateTime prometheus.Gauge
 
 	gamesAgreement             prometheus.GaugeVec
 	latestValidProposalL2Block prometheus.Gauge
@@ -268,6 +271,12 @@ func NewMetrics() *Metrics {
 			Namespace: Namespace,
 			Name:      "last_output_fetch",
 			Help:      "Timestamp of the last output fetch",
+		}),
+		oldestGameUpdateTime: factory.NewGauge(prometheus.GaugeOpts{
+			Namespace: Namespace,
+			Name:      "oldest_game_update_time",
+			Help: "Timestamp the least recently updated game " +
+				"or the time of the last update cycle if there were no games in the monitoring window",
 		}),
 		honestActorClaims: *factory.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: Namespace,
@@ -497,6 +506,10 @@ func (m *Metrics) Document() []opmetrics.DocumentedMetric {
 
 func (m *Metrics) RecordOutputFetchTime(timestamp float64) {
 	m.lastOutputFetch.Set(timestamp)
+}
+
+func (m *Metrics) RecordOldestGameUpdateTime(t time.Time) {
+	m.oldestGameUpdateTime.Set(float64(t.Unix()))
 }
 
 func (m *Metrics) RecordGameAgreement(status GameAgreementStatus, count int) {

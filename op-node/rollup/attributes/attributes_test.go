@@ -84,6 +84,8 @@ func TestAttributesHandler(t *testing.T) {
 		EcotoneTime:   new(uint64),
 	}
 
+	emptyWithdrawals := make(types.Withdrawals, 0)
+
 	a1L1Info, err := derive.L1InfoDepositBytes(cfg, cfg.Genesis.SystemConfig, 1, aL1Info, refA0.Time+cfg.BlockTime)
 	require.NoError(t, err)
 	parentBeaconBlockRoot := testutils.RandomHash(rng)
@@ -102,6 +104,7 @@ func TestAttributesHandler(t *testing.T) {
 		BaseFeePerGas: eth.Uint256Quantity(*uint256.NewInt(7)),
 		BlockHash:     common.Hash{},
 		Transactions:  []eth.Data{a1L1Info},
+		Withdrawals:   &emptyWithdrawals,
 	}, ParentBeaconBlockRoot: &parentBeaconBlockRoot}
 	// fix up the block-hash
 	payloadA1.ExecutionPayload.BlockHash, _ = payloadA1.CheckBlockHash()
@@ -117,9 +120,9 @@ func TestAttributesHandler(t *testing.T) {
 			NoTxPool:              false,
 			GasLimit:              &payloadA1.ExecutionPayload.GasLimit,
 		},
-		Parent:       refA0,
-		IsLastInSpan: true,
-		DerivedFrom:  refB,
+		Parent:      refA0,
+		Concluding:  true,
+		DerivedFrom: refB,
 	}
 	refA1, err := derive.PayloadToBlockRef(cfg, payloadA1.ExecutionPayload)
 	require.NoError(t, err)
@@ -139,6 +142,7 @@ func TestAttributesHandler(t *testing.T) {
 		BaseFeePerGas: eth.Uint256Quantity(*uint256.NewInt(7)),
 		BlockHash:     common.Hash{},
 		Transactions:  []eth.Data{a1L1Info},
+		Withdrawals:   &emptyWithdrawals,
 	}, ParentBeaconBlockRoot: &parentBeaconBlockRoot}
 	// fix up the block-hash
 	payloadA1Alt.ExecutionPayload.BlockHash, _ = payloadA1Alt.CheckBlockHash()
@@ -154,9 +158,9 @@ func TestAttributesHandler(t *testing.T) {
 			NoTxPool:              false,
 			GasLimit:              &payloadA1Alt.ExecutionPayload.GasLimit,
 		},
-		Parent:       refA0,
-		IsLastInSpan: true,
-		DerivedFrom:  refBAlt,
+		Parent:      refA0,
+		Concluding:  true,
+		DerivedFrom: refBAlt,
 	}
 
 	refA1Alt, err := derive.PayloadToBlockRef(cfg, payloadA1Alt.ExecutionPayload)
@@ -272,7 +276,7 @@ func TestAttributesHandler(t *testing.T) {
 			require.Nil(t, ah.attributes, "drop when attributes are successful")
 		})
 		t.Run("consolidation passes", func(t *testing.T) {
-			fn := func(t *testing.T, lastInSpan bool) {
+			fn := func(t *testing.T, concluding bool) {
 				logger := testlog.Logger(t, log.LevelInfo)
 				l2 := &testutils.MockL2Client{}
 				emitter := &testutils.MockEmitter{}
@@ -280,10 +284,10 @@ func TestAttributesHandler(t *testing.T) {
 				ah.AttachEmitter(emitter)
 
 				attr := &derive.AttributesWithParent{
-					Attributes:   attrA1.Attributes, // attributes will match, passing consolidation
-					Parent:       attrA1.Parent,
-					IsLastInSpan: lastInSpan,
-					DerivedFrom:  refB,
+					Attributes:  attrA1.Attributes, // attributes will match, passing consolidation
+					Parent:      attrA1.Parent,
+					Concluding:  concluding,
+					DerivedFrom: refB,
 				}
 				emitter.ExpectOnce(derive.ConfirmReceivedAttributesEvent{})
 				emitter.ExpectOnce(engine.PendingSafeRequestEvent{})
@@ -296,7 +300,7 @@ func TestAttributesHandler(t *testing.T) {
 
 				emitter.ExpectOnce(engine.PromotePendingSafeEvent{
 					Ref:         refA1,
-					Safe:        lastInSpan, // last in span becomes safe instantaneously
+					Concluding:  concluding,
 					DerivedFrom: refB,
 				})
 				ah.OnEvent(engine.PendingSafeUpdateEvent{
@@ -340,7 +344,7 @@ func TestAttributesHandler(t *testing.T) {
 		require.NotNil(t, ah.attributes, "queued up derived attributes")
 
 		// sanity check test setup
-		require.True(t, attrA1Alt.IsLastInSpan, "must be last in span for attributes to become safe")
+		require.True(t, attrA1Alt.Concluding, "must be concluding attributes")
 
 		// attrA1Alt will fit right on top of A0
 		emitter.ExpectOnce(engine.BuildStartEvent{Attributes: attrA1Alt})
@@ -396,5 +400,4 @@ func TestAttributesHandler(t *testing.T) {
 		l2.AssertExpectations(t)
 		emitter.AssertExpectations(t)
 	})
-
 }

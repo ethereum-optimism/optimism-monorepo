@@ -2,8 +2,11 @@ package engine
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
+
+	"github.com/ethereum/go-ethereum/rpc"
 
 	"github.com/ethereum-optimism/optimism/op-node/rollup/derive"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
@@ -14,8 +17,8 @@ type PayloadSealInvalidEvent struct {
 	Info eth.PayloadInfo
 	Err  error
 
-	IsLastInSpan bool
-	DerivedFrom  eth.L1BlockRef
+	Concluding  bool
+	DerivedFrom eth.L1BlockRef
 }
 
 func (ev PayloadSealInvalidEvent) String() string {
@@ -30,8 +33,8 @@ type PayloadSealExpiredErrorEvent struct {
 	Info eth.PayloadInfo
 	Err  error
 
-	IsLastInSpan bool
-	DerivedFrom  eth.L1BlockRef
+	Concluding  bool
+	DerivedFrom eth.L1BlockRef
 }
 
 func (ev PayloadSealExpiredErrorEvent) String() string {
@@ -42,7 +45,7 @@ type BuildSealEvent struct {
 	Info         eth.PayloadInfo
 	BuildStarted time.Time
 	// if payload should be promoted to safe (must also be pending safe, see DerivedFrom)
-	IsLastInSpan bool
+	Concluding bool
 	// payload is promoted to pending-safe if non-zero
 	DerivedFrom eth.L1BlockRef
 }
@@ -58,7 +61,8 @@ func (eq *EngDeriver) onBuildSeal(ev BuildSealEvent) {
 	sealingStart := time.Now()
 	envelope, err := eq.ec.engine.GetPayload(ctx, ev.Info)
 	if err != nil {
-		if x, ok := err.(eth.InputError); ok && x.Code == eth.UnknownPayload { //nolint:all
+		var rpcErr rpc.Error
+		if errors.As(err, &rpcErr) && eth.ErrorCode(rpcErr.ErrorCode()) == eth.UnknownPayload {
 			eq.log.Warn("Cannot seal block, payload ID is unknown",
 				"payloadID", ev.Info.ID, "payload_time", ev.Info.Timestamp,
 				"started_time", ev.BuildStarted)
@@ -69,10 +73,10 @@ func (eq *EngDeriver) onBuildSeal(ev BuildSealEvent) {
 		// same attributes with a new block-building job from here to recover from this error.
 		// We name it "expired", as this generally identifies a timeout, unknown job, or otherwise invalidated work.
 		eq.emitter.Emit(PayloadSealExpiredErrorEvent{
-			Info:         ev.Info,
-			Err:          fmt.Errorf("failed to seal execution payload (ID: %s): %w", ev.Info.ID, err),
-			IsLastInSpan: ev.IsLastInSpan,
-			DerivedFrom:  ev.DerivedFrom,
+			Info:        ev.Info,
+			Err:         fmt.Errorf("failed to seal execution payload (ID: %s): %w", ev.Info.ID, err),
+			Concluding:  ev.Concluding,
+			DerivedFrom: ev.DerivedFrom,
 		})
 		return
 	}
@@ -82,8 +86,8 @@ func (eq *EngDeriver) onBuildSeal(ev BuildSealEvent) {
 			Info: ev.Info,
 			Err: fmt.Errorf("failed sanity-check of execution payload contents (ID: %s, blockhash: %s): %w",
 				ev.Info.ID, envelope.ExecutionPayload.BlockHash, err),
-			IsLastInSpan: ev.IsLastInSpan,
-			DerivedFrom:  ev.DerivedFrom,
+			Concluding:  ev.Concluding,
+			DerivedFrom: ev.DerivedFrom,
 		})
 		return
 	}
@@ -91,10 +95,10 @@ func (eq *EngDeriver) onBuildSeal(ev BuildSealEvent) {
 	ref, err := derive.PayloadToBlockRef(eq.cfg, envelope.ExecutionPayload)
 	if err != nil {
 		eq.emitter.Emit(PayloadSealInvalidEvent{
-			Info:         ev.Info,
-			Err:          fmt.Errorf("failed to decode L2 block ref from payload: %w", err),
-			IsLastInSpan: ev.IsLastInSpan,
-			DerivedFrom:  ev.DerivedFrom,
+			Info:        ev.Info,
+			Err:         fmt.Errorf("failed to decode L2 block ref from payload: %w", err),
+			Concluding:  ev.Concluding,
+			DerivedFrom: ev.DerivedFrom,
 		})
 		return
 	}
@@ -106,14 +110,16 @@ func (eq *EngDeriver) onBuildSeal(ev BuildSealEvent) {
 	eq.metrics.RecordSequencerBuildingDiffTime(buildTime - time.Duration(eq.cfg.BlockTime)*time.Second)
 
 	txnCount := len(envelope.ExecutionPayload.Transactions)
-	eq.metrics.CountSequencedTxs(txnCount)
+	depositCount, _ := lastDeposit(envelope.ExecutionPayload.Transactions)
+	eq.metrics.CountSequencedTxsInBlock(txnCount, depositCount)
 
-	eq.log.Debug("Processed new L2 block", "l2_unsafe", ref, "l1_origin", ref.L1Origin,
-		"txs", txnCount, "time", ref.Time, "seal_time", sealTime, "build_time", buildTime)
+	eq.log.Debug("Built new L2 block", "l2_unsafe", ref, "l1_origin", ref.L1Origin,
+		"txs", txnCount, "deposits", depositCount, "time", ref.Time, "seal_time", sealTime, "build_time", buildTime)
 
 	eq.emitter.Emit(BuildSealedEvent{
-		IsLastInSpan: ev.IsLastInSpan,
+		Concluding:   ev.Concluding,
 		DerivedFrom:  ev.DerivedFrom,
+		BuildStarted: ev.BuildStarted,
 		Info:         ev.Info,
 		Envelope:     envelope,
 		Ref:          ref,

@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm"
+	"github.com/ethereum-optimism/optimism/cannon/mipsevm/arch"
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/memory"
 )
 
@@ -33,12 +34,12 @@ func AddPreimageLengthPrefix(data []byte) []byte {
 
 type StateMutator interface {
 	SetPreimageKey(val common.Hash)
-	SetPreimageOffset(val uint32)
-	SetPC(val uint32)
-	SetNextPC(val uint32)
-	SetHI(val uint32)
-	SetLO(val uint32)
-	SetHeap(addr uint32)
+	SetPreimageOffset(val arch.Word)
+	SetPC(val arch.Word)
+	SetNextPC(val arch.Word)
+	SetHI(val arch.Word)
+	SetLO(val arch.Word)
+	SetHeap(addr arch.Word)
 	SetExitCode(val uint8)
 	SetExited(val bool)
 	SetStep(val uint64)
@@ -48,26 +49,38 @@ type StateMutator interface {
 
 type StateOption func(state StateMutator)
 
-func WithPC(pc uint32) StateOption {
+func WithPC(pc arch.Word) StateOption {
 	return func(state StateMutator) {
 		state.SetPC(pc)
 	}
 }
 
-func WithNextPC(nextPC uint32) StateOption {
+func WithNextPC(nextPC arch.Word) StateOption {
 	return func(state StateMutator) {
 		state.SetNextPC(nextPC)
 	}
 }
 
-func WithPCAndNextPC(pc uint32) StateOption {
+func WithPCAndNextPC(pc arch.Word) StateOption {
 	return func(state StateMutator) {
 		state.SetPC(pc)
 		state.SetNextPC(pc + 4)
 	}
 }
 
-func WithHeap(addr uint32) StateOption {
+func WithHI(hi arch.Word) StateOption {
+	return func(state StateMutator) {
+		state.SetHI(hi)
+	}
+}
+
+func WithLO(lo arch.Word) StateOption {
+	return func(state StateMutator) {
+		state.SetLO(lo)
+	}
+}
+
+func WithHeap(addr arch.Word) StateOption {
 	return func(state StateMutator) {
 		state.SetHeap(addr)
 	}
@@ -85,7 +98,7 @@ func WithPreimageKey(key common.Hash) StateOption {
 	}
 }
 
-func WithPreimageOffset(offset uint32) StateOption {
+func WithPreimageOffset(offset arch.Word) StateOption {
 	return func(state StateMutator) {
 		state.SetPreimageOffset(offset)
 	}
@@ -103,12 +116,12 @@ func WithRandomization(seed int64) StateOption {
 	}
 }
 
-func AlignPC(pc uint32) uint32 {
+func AlignPC(pc arch.Word) arch.Word {
 	// Memory-align random pc and leave room for nextPC
-	pc = pc & 0xFF_FF_FF_FC // Align address
-	if pc >= 0xFF_FF_FF_FC {
+	pc = pc & arch.AddressMask // Align address
+	if pc >= arch.AddressMask {
 		// Leave room to set and then increment nextPC
-		pc = 0xFF_FF_FF_FC - 8
+		pc = arch.AddressMask - 8
 	}
 	return pc
 }
@@ -123,17 +136,17 @@ func BoundStep(step uint64) uint64 {
 
 type ExpectedState struct {
 	PreimageKey    common.Hash
-	PreimageOffset uint32
-	PC             uint32
-	NextPC         uint32
-	HI             uint32
-	LO             uint32
-	Heap           uint32
+	PreimageOffset arch.Word
+	PC             arch.Word
+	NextPC         arch.Word
+	HI             arch.Word
+	LO             arch.Word
+	Heap           arch.Word
 	ExitCode       uint8
 	Exited         bool
 	Step           uint64
 	LastHint       hexutil.Bytes
-	Registers      [32]uint32
+	Registers      [32]arch.Word
 	MemoryRoot     common.Hash
 	expectedMemory *memory.Memory
 }
@@ -164,8 +177,8 @@ func (e *ExpectedState) ExpectStep() {
 	e.NextPC += 4
 }
 
-func (e *ExpectedState) ExpectMemoryWrite(addr uint32, val uint32) {
-	e.expectedMemory.SetMemory(addr, val)
+func (e *ExpectedState) ExpectMemoryWriteWord(addr arch.Word, val arch.Word) {
+	e.expectedMemory.SetWord(addr, val)
 	e.MemoryRoot = e.expectedMemory.MerkleRoot()
 }
 

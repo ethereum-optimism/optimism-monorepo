@@ -6,14 +6,13 @@ import { ERC721Bridge } from "src/universal/ERC721Bridge.sol";
 
 // Libraries
 import { ERC165Checker } from "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
-import { Constants } from "src/libraries/Constants.sol";
 import { Predeploys } from "src/libraries/Predeploys.sol";
 
 // Interfaces
-import { IL1ERC721Bridge } from "src/L1/interfaces/IL1ERC721Bridge.sol";
-import { IOptimismMintableERC721 } from "src/universal/interfaces/IOptimismMintableERC721.sol";
-import { ICrossDomainMessenger } from "src/universal/interfaces/ICrossDomainMessenger.sol";
-import { ISemver } from "src/universal/interfaces/ISemver.sol";
+import { IL1ERC721Bridge } from "interfaces/L1/IL1ERC721Bridge.sol";
+import { IOptimismMintableERC721 } from "interfaces/L2/IOptimismMintableERC721.sol";
+import { ICrossDomainMessenger } from "interfaces/universal/ICrossDomainMessenger.sol";
+import { ISemver } from "interfaces/universal/ISemver.sol";
 
 /// @custom:proxied true
 /// @custom:predeploy 0x4200000000000000000000000000000000000014
@@ -23,21 +22,19 @@ import { ISemver } from "src/universal/interfaces/ISemver.sol";
 ///         acts as a minter for new tokens when it hears about deposits into the L1 ERC721 bridge.
 ///         This contract also acts as a burner for tokens being withdrawn.
 ///         **WARNING**: Do not bridge an ERC721 that was originally deployed on Optimism. This
-///         bridge ONLY supports ERC721s originally deployed on Ethereum. Users will need to
-///         wait for the one-week challenge period to elapse before their Optimism-native NFT
-///         can be refunded on L2.
+///         bridge ONLY supports ERC721s originally deployed on Ethereum.
 contract L2ERC721Bridge is ERC721Bridge, ISemver {
-    /// @custom:semver 1.7.1-beta.2
-    string public constant version = "1.7.1-beta.2";
+    /// @custom:semver 1.8.0-beta.5
+    string public constant version = "1.8.0-beta.5";
 
     /// @notice Constructs the L2ERC721Bridge contract.
     constructor() ERC721Bridge() {
-        initialize({ _l1ERC721Bridge: payable(address(0)) });
+        _disableInitializers();
     }
 
     /// @notice Initializes the contract.
     /// @param _l1ERC721Bridge Address of the ERC721 bridge contract on the other network.
-    function initialize(address payable _l1ERC721Bridge) public initializer {
+    function initialize(address payable _l1ERC721Bridge) external initializer {
         __ERC721Bridge_init({
             _messenger: ICrossDomainMessenger(Predeploys.L2_CROSS_DOMAIN_MESSENGER),
             _otherBridge: ERC721Bridge(_l1ERC721Bridge)
@@ -118,8 +115,8 @@ contract L2ERC721Bridge is ERC721Bridge, ISemver {
         // slither-disable-next-line reentrancy-events
         IOptimismMintableERC721(_localToken).burn(_from, _tokenId);
 
-        bytes memory message = abi.encodeWithSelector(
-            IL1ERC721Bridge.finalizeBridgeERC721.selector, remoteToken, _localToken, _from, _to, _tokenId, _extraData
+        bytes memory message = abi.encodeCall(
+            IL1ERC721Bridge.finalizeBridgeERC721, (remoteToken, _localToken, _from, _to, _tokenId, _extraData)
         );
 
         // Send message to L1 bridge

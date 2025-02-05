@@ -6,6 +6,10 @@ variable "REPOSITORY" {
   default = "oplabs-tools-artifacts/images"
 }
 
+variable "KONA_VERSION" {
+  default = "kona-client-v0.1.0-beta.8"
+}
+
 variable "GIT_COMMIT" {
   default = "dev"
 }
@@ -119,6 +123,7 @@ target "op-challenger" {
     GIT_COMMIT = "${GIT_COMMIT}"
     GIT_DATE = "${GIT_DATE}"
     OP_CHALLENGER_VERSION = "${OP_CHALLENGER_VERSION}"
+    KONA_VERSION="${KONA_VERSION}"
   }
   target = "op-challenger-target"
   platforms = split(",", PLATFORMS)
@@ -206,38 +211,23 @@ target "proofs-tools" {
   dockerfile = "./ops/docker/proofs-tools/Dockerfile"
   context = "."
   args = {
-    CHALLENGER_VERSION="v1.1.2-rc.1"
-    KONA_VERSION="kona-client-v0.1.0-alpha.3"
-    ASTERISC_VERSION="v1.0.2"
+    CHALLENGER_VERSION="b46bffed42db3442d7484f089278d59f51503049"
+    KONA_VERSION="${KONA_VERSION}"
   }
   target="proofs-tools"
   platforms = split(",", PLATFORMS)
   tags = [for tag in split(",", IMAGE_TAGS) : "${REGISTRY}/${REPOSITORY}/proofs-tools:${tag}"]
 }
 
-target "ci-builder" {
-  dockerfile = "./ops/docker/ci-builder/Dockerfile"
-  context = "."
+target "holocene-deployer" {
+  dockerfile = "./packages/contracts-bedrock/scripts/upgrades/holocene/upgrade.dockerfile"
+  context = "./packages/contracts-bedrock/scripts/upgrades/holocene"
+  args = {
+    REV = "op-contracts/v1.8.0-rc.1"
+  }
+  target="holocene-deployer"
   platforms = split(",", PLATFORMS)
-  target="base-builder"
-  tags = [for tag in split(",", IMAGE_TAGS) : "${REGISTRY}/${REPOSITORY}/ci-builder:${tag}"]
-}
-
-target "ci-builder-rust" {
-  dockerfile = "./ops/docker/ci-builder/Dockerfile"
-  context = "."
-  platforms = split(",", PLATFORMS)
-  target="rust-builder"
-  tags = [for tag in split(",", IMAGE_TAGS) : "${REGISTRY}/${REPOSITORY}/ci-builder-rust:${tag}"]
-}
-
-target "contracts-bedrock" {
-  dockerfile = "./ops/docker/Dockerfile.packages"
-  context = "."
-  target = "contracts-bedrock"
-  # See comment in Dockerfile.packages for why we only build for linux/amd64.
-  platforms = ["linux/amd64"]
-  tags = [for tag in split(",", IMAGE_TAGS) : "${REGISTRY}/${REPOSITORY}/contracts-bedrock:${tag}"]
+  tags = [for tag in split(",", IMAGE_TAGS) : "${REGISTRY}/${REPOSITORY}/holocene-deployer:${tag}"]
 }
 
 target "op-deployer" {

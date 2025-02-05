@@ -11,6 +11,7 @@ REBUILD_ALL_PATTERNS = [
     r'^\.github/\.*',
     r'^package\.json',
     r'ops/check-changed/.*',
+    r'^mise.toml',
 ]
 
 GO_PATTERNS = [

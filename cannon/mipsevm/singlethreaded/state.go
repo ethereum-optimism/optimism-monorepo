@@ -6,35 +6,37 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/ethereum-optimism/optimism/cannon/serialize"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm"
+	"github.com/ethereum-optimism/optimism/cannon/mipsevm/arch"
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/memory"
+	"github.com/ethereum-optimism/optimism/op-service/serialize"
 )
 
 // STATE_WITNESS_SIZE is the size of the state witness encoding in bytes.
+// ignoring 64-bit STATE_WITNESS_SIZE as it's not supported for singlethreaded
 const STATE_WITNESS_SIZE = 226
 
 type State struct {
 	Memory *memory.Memory `json:"memory"`
 
 	PreimageKey    common.Hash `json:"preimageKey"`
-	PreimageOffset uint32      `json:"preimageOffset"` // note that the offset includes the 8-byte length prefix
+	PreimageOffset Word        `json:"preimageOffset"` // note that the offset includes the 8-byte length prefix
 
 	Cpu mipsevm.CpuScalars `json:"cpu"`
 
-	Heap uint32 `json:"heap"` // to handle mmap growth
+	Heap Word `json:"heap"` // to handle mmap growth
 
 	ExitCode uint8 `json:"exit"`
 	Exited   bool  `json:"exited"`
 
 	Step uint64 `json:"step"`
 
-	Registers [32]uint32 `json:"registers"`
+	Registers [32]Word `json:"registers"`
 
 	// LastHint is optional metadata, and not part of the VM state itself.
 	LastHint hexutil.Bytes `json:"lastHint,omitempty"`
@@ -51,7 +53,7 @@ func CreateEmptyState() *State {
 			HI:     0,
 		},
 		Heap:      0,
-		Registers: [32]uint32{},
+		Registers: [32]Word{},
 		Memory:    memory.NewMemory(),
 		ExitCode:  0,
 		Exited:    false,
@@ -59,7 +61,7 @@ func CreateEmptyState() *State {
 	}
 }
 
-func CreateInitialState(pc, heapStart uint32) *State {
+func CreateInitialState(pc, heapStart Word) *State {
 	state := CreateEmptyState()
 	state.Cpu.PC = pc
 	state.Cpu.NextPC = pc + 4
@@ -69,23 +71,22 @@ func CreateInitialState(pc, heapStart uint32) *State {
 }
 
 func (s *State) CreateVM(logger log.Logger, po mipsevm.PreimageOracle, stdOut, stdErr io.Writer, meta mipsevm.Metadata) mipsevm.FPVM {
-	logger.Info("Using cannon VM")
 	return NewInstrumentedState(s, po, stdOut, stdErr, meta)
 }
 
 type stateMarshaling struct {
 	Memory         *memory.Memory `json:"memory"`
 	PreimageKey    common.Hash    `json:"preimageKey"`
-	PreimageOffset uint32         `json:"preimageOffset"`
-	PC             uint32         `json:"pc"`
-	NextPC         uint32         `json:"nextPC"`
-	LO             uint32         `json:"lo"`
-	HI             uint32         `json:"hi"`
-	Heap           uint32         `json:"heap"`
+	PreimageOffset Word           `json:"preimageOffset"`
+	PC             Word           `json:"pc"`
+	NextPC         Word           `json:"nextPC"`
+	LO             Word           `json:"lo"`
+	HI             Word           `json:"hi"`
+	Heap           Word           `json:"heap"`
 	ExitCode       uint8          `json:"exit"`
 	Exited         bool           `json:"exited"`
 	Step           uint64         `json:"step"`
-	Registers      [32]uint32     `json:"registers"`
+	Registers      [32]Word       `json:"registers"`
 	LastHint       hexutil.Bytes  `json:"lastHint,omitempty"`
 }
 
@@ -129,11 +130,11 @@ func (s *State) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (s *State) GetPC() uint32 { return s.Cpu.PC }
+func (s *State) GetPC() Word { return s.Cpu.PC }
 
 func (s *State) GetCpu() mipsevm.CpuScalars { return s.Cpu }
 
-func (s *State) GetRegistersRef() *[32]uint32 { return &s.Registers }
+func (s *State) GetRegistersRef() *[32]Word { return &s.Registers }
 
 func (s *State) GetExitCode() uint8 { return s.ExitCode }
 
@@ -153,7 +154,7 @@ func (s *State) GetMemory() *memory.Memory {
 	return s.Memory
 }
 
-func (s *State) GetHeap() uint32 {
+func (s *State) GetHeap() Word {
 	return s.Heap
 }
 
@@ -161,7 +162,7 @@ func (s *State) GetPreimageKey() common.Hash {
 	return s.PreimageKey
 }
 
-func (s *State) GetPreimageOffset() uint32 {
+func (s *State) GetPreimageOffset() Word {
 	return s.PreimageOffset
 }
 
@@ -170,17 +171,17 @@ func (s *State) EncodeWitness() ([]byte, common.Hash) {
 	memRoot := s.Memory.MerkleRoot()
 	out = append(out, memRoot[:]...)
 	out = append(out, s.PreimageKey[:]...)
-	out = binary.BigEndian.AppendUint32(out, s.PreimageOffset)
-	out = binary.BigEndian.AppendUint32(out, s.Cpu.PC)
-	out = binary.BigEndian.AppendUint32(out, s.Cpu.NextPC)
-	out = binary.BigEndian.AppendUint32(out, s.Cpu.LO)
-	out = binary.BigEndian.AppendUint32(out, s.Cpu.HI)
-	out = binary.BigEndian.AppendUint32(out, s.Heap)
+	out = arch.ByteOrderWord.AppendWord(out, s.PreimageOffset)
+	out = arch.ByteOrderWord.AppendWord(out, s.Cpu.PC)
+	out = arch.ByteOrderWord.AppendWord(out, s.Cpu.NextPC)
+	out = arch.ByteOrderWord.AppendWord(out, s.Cpu.LO)
+	out = arch.ByteOrderWord.AppendWord(out, s.Cpu.HI)
+	out = arch.ByteOrderWord.AppendWord(out, s.Heap)
 	out = append(out, s.ExitCode)
 	out = mipsevm.AppendBoolToWitness(out, s.Exited)
 	out = binary.BigEndian.AppendUint64(out, s.Step)
 	for _, r := range s.Registers {
-		out = binary.BigEndian.AppendUint32(out, r)
+		out = arch.ByteOrderWord.AppendWord(out, r)
 	}
 	return out, stateHashFromWitness(out)
 }
@@ -192,17 +193,17 @@ func (s *State) EncodeWitness() ([]byte, common.Hash) {
 // StateVersion                uint8(0)
 // Memory                      As per Memory.Serialize
 // PreimageKey                 [32]byte
-// PreimageOffset              uint32
-// Cpu.PC					   uint32
-// Cpu.NextPC 				   uint32
-// Cpu.LO 					   uint32
-// Cpu.HI					   uint32
-// Heap                        uint32
+// PreimageOffset              Word
+// Cpu.PC					   Word
+// Cpu.NextPC 				   Word
+// Cpu.LO 					   Word
+// Cpu.HI					   Word
+// Heap                        Word
 // ExitCode                    uint8
 // Exited                      uint8 - 0 for false, 1 for true
 // Step                        uint64
-// Registers                   [32]uint32
-// len(LastHint)			   uint32 (0 when LastHint is nil)
+// Registers                   [32]Word
+// len(LastHint)			   Word (0 when LastHint is nil)
 // LastHint 				   []byte
 func (s *State) Serialize(out io.Writer) error {
 	bout := serialize.NewBinaryWriter(out)

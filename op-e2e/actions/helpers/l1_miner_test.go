@@ -15,7 +15,7 @@ import (
 
 func TestL1Miner_BuildBlock(gt *testing.T) {
 	t := NewDefaultTesting(gt)
-	dp := e2eutils.MakeDeployParams(t, DefaultRollupTestParams)
+	dp := e2eutils.MakeDeployParams(t, DefaultRollupTestParams())
 	sd := e2eutils.Setup(t, dp, DefaultAlloc)
 	log := testlog.Logger(t, log.LevelDebug)
 	miner := NewL1Miner(t, log, sd.L1Cfg)

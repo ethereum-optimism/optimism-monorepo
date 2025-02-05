@@ -1,13 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
+// Contracts
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+
+// Interfaces
 import { ILegacyMintableERC20 } from "src/universal/OptimismMintableERC20.sol";
 
 /// @title LegacyMintableERC20
 /// @notice The legacy implementation of the OptimismMintableERC20. This
 ///         contract is deprecated and should no longer be used.
-contract LegacyMintableERC20 is ILegacyMintableERC20, ERC20 {
+contract LegacyMintableERC20 is ERC20 {
     /// @notice Emitted when the token is minted by the bridge.
     event Mint(address indexed _account, uint256 _amount);
 

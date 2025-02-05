@@ -94,7 +94,7 @@ func writeChannel(ch ChannelWithMetadata, filename string) error {
 // from the channel. Returns a ChannelWithMetadata struct containing all the relevant data.
 func ProcessFrames(cfg Config, rollupCfg *rollup.Config, id derive.ChannelID, frames []FrameWithMetadata) ChannelWithMetadata {
 	spec := rollup.NewChainSpec(rollupCfg)
-	ch := derive.NewChannel(id, eth.L1BlockRef{Number: frames[0].InclusionBlock})
+	ch := derive.NewChannel(id, eth.L1BlockRef{Number: frames[0].InclusionBlock}, rollupCfg.IsHolocene(frames[0].Timestamp))
 	invalidFrame := false
 
 	for _, frame := range frames {

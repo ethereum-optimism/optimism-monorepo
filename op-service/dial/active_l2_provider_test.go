@@ -42,7 +42,7 @@ func setupEndpointProviderTest(t *testing.T, numSequencers int) *endpointProvide
 	return ept
 }
 
-// newActiveL2EndpointProvider constructs a new ActiveL2RollupProvider using the test harness setup.
+// newActiveL2RollupProvider constructs a new ActiveL2RollupProvider using the test harness setup.
 func (et *endpointProviderTest) newActiveL2RollupProvider(checkDuration time.Duration) (*ActiveL2RollupProvider, error) {
 	mockRollupDialer := func(ctx context.Context, log log.Logger, url string) (RollupClientInterface, error) {
 		for i, client := range et.rollupClients {

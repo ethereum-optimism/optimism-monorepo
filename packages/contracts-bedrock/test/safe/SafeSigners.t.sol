@@ -2,7 +2,6 @@
 pragma solidity 0.8.15;
 
 import { Test } from "forge-std/Test.sol";
-import { GnosisSafe as Safe } from "safe-contracts/GnosisSafe.sol";
 import { SafeSigners } from "src/safe/SafeSigners.sol";
 import "test/safe-tools/SafeTestTools.sol";
 
@@ -75,6 +74,7 @@ contract SafeSigners_Test is Test, SafeTestTools {
                 contractSigs++;
                 address addr = SafeTestLib.decodeSmartContractWalletAsAddress(pks[i]);
                 r = bytes32(uint256(uint160(addr)));
+                // nosemgrep: sol-style-use-abi-encodecall
                 vm.mockCall(
                     addr, abi.encodeWithSignature("isValidSignature(bytes,bytes)"), abi.encode(EIP1271_MAGIC_VALUE)
                 );

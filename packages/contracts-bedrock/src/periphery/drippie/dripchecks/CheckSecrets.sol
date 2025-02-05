@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
-import { IDripCheck } from "../IDripCheck.sol";
+// Interfaces
+import { IDripCheck } from "src/periphery/drippie/IDripCheck.sol";
 
 /// @title CheckSecrets
 /// @notice DripCheck that checks if specific secrets exist (or not). Supports having a secret that

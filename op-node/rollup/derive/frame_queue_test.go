@@ -7,12 +7,14 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/ethereum-optimism/optimism/op-node/rollup"
-	"github.com/ethereum-optimism/optimism/op-node/rollup/derive/mocks"
-	"github.com/ethereum-optimism/optimism/op-service/eth"
-	"github.com/ethereum-optimism/optimism/op-service/testlog"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+
+	"github.com/ethereum-optimism/optimism/op-node/rollup"
+	"github.com/ethereum-optimism/optimism/op-node/rollup/derive/mocks"
+	"github.com/ethereum-optimism/optimism/op-node/rollup/derive/params"
+	"github.com/ethereum-optimism/optimism/op-service/eth"
+	"github.com/ethereum-optimism/optimism/op-service/testlog"
 )
 
 func TestPruneFrameQueue(t *testing.T) {
@@ -126,7 +128,7 @@ func testFrameQueue_NextFrame(t *testing.T, holocene bool) {
 	}
 
 	var inBuf bytes.Buffer
-	inBuf.WriteByte(DerivationVersion0)
+	inBuf.WriteByte(params.DerivationVersion0)
 	for _, f := range inFrames {
 		require.NoError(t, f.MarshalBinary(&inBuf))
 	}

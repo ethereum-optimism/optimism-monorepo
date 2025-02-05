@@ -24,6 +24,7 @@ func TestSetup(t *testing.T) {
 		SequencerWindowSize: 120,
 		ChannelTimeout:      120,
 		L1BlockTime:         15,
+		AllocType:           config.AllocTypeStandard,
 	}
 	dp := MakeDeployParams(t, tp)
 	alloc := &AllocParams{PrefundTestUsers: true}
@@ -34,6 +35,7 @@ func TestSetup(t *testing.T) {
 	require.Contains(t, sd.L2Cfg.Alloc, dp.Addresses.Alice)
 	require.Equal(t, sd.L2Cfg.Alloc[dp.Addresses.Alice].Balance, Ether(1e12))
 
-	require.Contains(t, sd.L1Cfg.Alloc, config.L1Deployments.OptimismPortalProxy)
+	expAllocs := config.L1Deployments(config.DefaultAllocType)
+	require.Contains(t, sd.L1Cfg.Alloc, expAllocs.AddressManager)
 	require.Contains(t, sd.L2Cfg.Alloc, predeploys.L1BlockAddr)
 }

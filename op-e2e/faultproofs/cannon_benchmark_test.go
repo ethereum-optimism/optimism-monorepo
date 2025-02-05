@@ -12,6 +12,7 @@ import (
 	"time"
 
 	op_e2e "github.com/ethereum-optimism/optimism/op-e2e"
+	"github.com/ethereum-optimism/optimism/op-e2e/config"
 	"github.com/ethereum-optimism/optimism/op-e2e/system/e2esys"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -32,17 +33,22 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
 )
 
-func TestBenchmarkCannon_FPP(t *testing.T) {
+func TestBenchmarkCannonFPP_Standard(t *testing.T) {
+	testBenchmarkCannonFPP(t, config.AllocTypeStandard)
+}
+
+func TestBenchmarkCannonFPP_Multithreaded(t *testing.T) {
+	testBenchmarkCannonFPP(t, config.AllocTypeMTCannon)
+}
+
+func testBenchmarkCannonFPP(t *testing.T, allocType config.AllocType) {
 	t.Skip("TODO(client-pod#906): Compare total witness size for assertions against pages allocated by the VM")
 
 	op_e2e.InitParallel(t, op_e2e.UsesCannon)
 	ctx := context.Background()
-	cfg := e2esys.DefaultSystemConfig(t)
+	cfg := e2esys.DefaultSystemConfig(t, e2esys.WithAllocType(allocType))
 	// We don't need a verifier - just the sequencer is enough
 	delete(cfg.Nodes, "verifier")
-	// Use a small sequencer window size to avoid test timeout while waiting for empty blocks
-	// But not too small to ensure that our claim and subsequent state change is published
-	cfg.DeployConfig.SequencerWindowSize = 16
 	minTs := hexutil.Uint64(0)
 	cfg.DeployConfig.L2GenesisDeltaTimeOffset = &minTs
 	cfg.DeployConfig.L2GenesisEcotoneTimeOffset = &minTs

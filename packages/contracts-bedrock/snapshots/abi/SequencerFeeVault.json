@@ -12,7 +12,7 @@
         "type": "uint256"
       },
       {
-        "internalType": "enum FeeVault.WithdrawalNetwork",
+        "internalType": "enum Types.WithdrawalNetwork",
         "name": "_withdrawalNetwork",
         "type": "uint8"
       }
@@ -55,7 +55,7 @@
     "name": "WITHDRAWAL_NETWORK",
     "outputs": [
       {
-        "internalType": "enum FeeVault.WithdrawalNetwork",
+        "internalType": "enum Types.WithdrawalNetwork",
         "name": "",
         "type": "uint8"
       }
@@ -140,7 +140,7 @@
     "name": "withdrawalNetwork",
     "outputs": [
       {
-        "internalType": "enum FeeVault.WithdrawalNetwork",
+        "internalType": "enum Types.WithdrawalNetwork",
         "name": "network_",
         "type": "uint8"
       }
@@ -196,7 +196,7 @@
       },
       {
         "indexed": false,
-        "internalType": "enum FeeVault.WithdrawalNetwork",
+        "internalType": "enum Types.WithdrawalNetwork",
         "name": "withdrawalNetwork",
         "type": "uint8"
       }

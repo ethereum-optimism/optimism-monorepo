@@ -1,0 +1,77 @@
+# yaml-language-server: $schema=https://goreleaser.com/static/schema-pro.json
+# vim: set ts=2 sw=2 tw=0 fo=cnqoj
+
+version: 2
+
+project_name: op-deployer
+
+before:
+  hooks:
+    # You may remove this if you don't use go modules.
+    - go mod tidy
+
+builds:
+  - id: main
+    main: ./cmd/op-deployer
+    binary: op-deployer
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+      - goos: linux
+        goarch: arm64
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    ldflags:
+      - -X main.GitCommit={{ .FullCommit }}
+      - -X main.GitDate={{ .CommitDate }}
+      - -X github.com/ethereum-optimism/optimism/op-chain-ops/deployer/version.Version={{ .Version }}
+      - -X github.com/ethereum-optimism/optimism/op-chain-ops/deployer/version.Meta="unstable"
+
+archives:
+  - format: tar.gz
+    # this name template makes the OS and Arch compatible with the results of `uname`.
+    name_template: "{{ .ProjectName }}-{{.Version}}-{{ tolower .Os }}-{{ .Arch }}"
+    # use zip for windows archives
+    wrap_in_directory: true
+    format_overrides:
+      - goos: windows
+        format: zip
+
+dockers:
+  - id: default
+    goos: linux
+    goarch: amd64
+    dockerfile: Dockerfile.default
+    image_templates:
+      - "us-docker.pkg.dev/oplabs-tools-artifacts/images/op-deployer:{{ .Tag }}"
+  - id: minimal
+    goos: linux
+    goarch: amd64
+    dockerfile: Dockerfile.minimal
+    image_templates:
+      - "us-docker.pkg.dev/oplabs-tools-artifacts/images/op-deployer:{{ .Tag }}-minimal"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+
+release:
+  github:
+    owner: ethereum-optimism
+    name: optimism
+  make_latest: false
+
+monorepo:
+  tag_prefix: op-deployer/
+  dir: op-deployer

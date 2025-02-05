@@ -7,6 +7,7 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm"
+	"github.com/ethereum-optimism/optimism/cannon/mipsevm/arch"
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/exec"
 )
 
@@ -19,6 +20,7 @@ type InstrumentedState struct {
 
 	memoryTracker *exec.MemoryTrackerImpl
 	stackTracker  ThreadedStackTracker
+	statsTracker  StatsTracker
 
 	preimageOracle *exec.TrackingPreimageOracleReader
 	meta           mipsevm.Metadata
@@ -34,6 +36,7 @@ func NewInstrumentedState(state *State, po mipsevm.PreimageOracle, stdOut, stdEr
 		stdErr:         stdErr,
 		memoryTracker:  exec.NewMemoryTracker(state.Memory),
 		stackTracker:   &NoopThreadedStackTracker{},
+		statsTracker:   NoopStatsTracker(),
 		preimageOracle: exec.NewTrackingPreimageOracleReader(po),
 		meta:           meta,
 	}
@@ -46,6 +49,10 @@ func (m *InstrumentedState) InitDebug() error {
 	}
 	m.stackTracker = stackTracker
 	return nil
+}
+
+func (m *InstrumentedState) EnableStats() {
+	m.statsTracker = NewStatsTracker()
 }
 
 func (m *InstrumentedState) Step(proof bool) (wit *mipsevm.StepWitness, err error) {
@@ -77,7 +84,7 @@ func (m *InstrumentedState) Step(proof bool) (wit *mipsevm.StepWitness, err erro
 		wit.ProofData = append(wit.ProofData, memProof[:]...)
 		wit.ProofData = append(wit.ProofData, memProof2[:]...)
 		lastPreimageKey, lastPreimage, lastPreimageOffset := m.preimageOracle.LastPreimage()
-		if lastPreimageOffset != ^uint32(0) {
+		if lastPreimageOffset != ^arch.Word(0) {
 			wit.PreimageOffset = lastPreimageOffset
 			wit.PreimageKey = lastPreimageKey
 			wit.PreimageValue = lastPreimage
@@ -90,7 +97,7 @@ func (m *InstrumentedState) CheckInfiniteLoop() bool {
 	return false
 }
 
-func (m *InstrumentedState) LastPreimage() ([32]byte, []byte, uint32) {
+func (m *InstrumentedState) LastPreimage() ([32]byte, []byte, arch.Word) {
 	return m.preimageOracle.LastPreimage()
 }
 
@@ -99,19 +106,22 @@ func (m *InstrumentedState) GetState() mipsevm.FPVMState {
 }
 
 func (m *InstrumentedState) GetDebugInfo() *mipsevm.DebugInfo {
-	return &mipsevm.DebugInfo{
+	debugInfo := &mipsevm.DebugInfo{
 		Pages:               m.state.Memory.PageCount(),
 		MemoryUsed:          hexutil.Uint64(m.state.Memory.UsageRaw()),
 		NumPreimageRequests: m.preimageOracle.NumPreimageRequests(),
 		TotalPreimageSize:   m.preimageOracle.TotalPreimageSize(),
+		TotalSteps:          m.state.GetStep(),
 	}
+	m.statsTracker.populateDebugInfo(debugInfo)
+	return debugInfo
 }
 
 func (m *InstrumentedState) Traceback() {
 	m.stackTracker.Traceback()
 }
 
-func (m *InstrumentedState) LookupSymbol(addr uint32) string {
+func (m *InstrumentedState) LookupSymbol(addr arch.Word) string {
 	if m.meta == nil {
 		return ""
 	}

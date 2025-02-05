@@ -1,7 +1,20 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.15;
 
-import "src/dispute/lib/LibUDT.sol";
+// Libraries
+import {
+    Position,
+    Hash,
+    GameType,
+    VMStatus,
+    Timestamp,
+    Duration,
+    Clock,
+    GameId,
+    Claim,
+    LibGameId,
+    LibClock
+} from "src/dispute/lib/LibUDT.sol";
 
 /// @notice The current status of the dispute game.
 enum GameStatus {
@@ -11,6 +24,17 @@ enum GameStatus {
     CHALLENGER_WINS,
     // The game has concluded, and the `rootClaim` could not be contested.
     DEFENDER_WINS
+}
+
+/// @notice The game's bond distribution type. Games are expected to start in the `UNDECIDED`
+///         state, and then choose either `NORMAL` or `REFUND`.
+enum BondDistributionMode {
+    // Bond distribution strategy has not been chosen.
+    UNDECIDED,
+    // Bonds should be distributed as normal.
+    NORMAL,
+    // Bonds should be refunded to claimants.
+    REFUND
 }
 
 /// @notice Represents an L2 output root and the L2 block number at which it was generated.
@@ -27,11 +51,17 @@ library GameTypes {
     /// @dev A dispute game type the uses the cannon vm.
     GameType internal constant CANNON = GameType.wrap(0);
 
-    /// @dev A permissioned dispute game type the uses the cannon vm.
+    /// @dev A permissioned dispute game type that uses the cannon vm.
     GameType internal constant PERMISSIONED_CANNON = GameType.wrap(1);
 
-    /// @notice A dispute game type the uses the asterisc VM
+    /// @notice A dispute game type that uses the asterisc VM
     GameType internal constant ASTERISC = GameType.wrap(2);
+
+    /// @notice A dispute game type that uses the asterisc VM with Kona
+    GameType internal constant ASTERISC_KONA = GameType.wrap(3);
+
+    /// @notice A dispute game type that uses OP Succinct
+    GameType internal constant OP_SUCCINCT = GameType.wrap(6);
 
     /// @notice A dispute game type with short game duration for testing withdrawals.
     ///         Not intended for production use.
@@ -40,6 +70,9 @@ library GameTypes {
     /// @notice A dispute game type that uses an alphabet vm.
     ///         Not intended for production use.
     GameType internal constant ALPHABET = GameType.wrap(255);
+
+    /// @notice A dispute game type that uses RISC Zero's Kailua
+    GameType internal constant KAILUA = GameType.wrap(1337);
 }
 
 /// @title VMStatuses

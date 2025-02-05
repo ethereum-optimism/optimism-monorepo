@@ -18,22 +18,41 @@ STATES_DIR="${SCRIPTS_DIR}/../temp/states"
 LOGS_DIR="${SCRIPTS_DIR}/../temp/logs"
 REPO_DIR="${TMP_DIR}/optimism"
 BIN_DIR="${REPO_DIR}/op-program/bin/"
+VERSIONS_FILE="${STATES_DIR}/versions.json"
 
 mkdir -p "${STATES_DIR}" "${LOGS_DIR}"
 
+
 cd "${REPO_DIR}"
 
-VERSIONS=$(git tag | grep 'op-program\/v')
+VERSIONS_JSON="[]"
+VERSIONS=$(git tag --list 'op-program/v*' --sort taggerdate)
 
 for VERSION in ${VERSIONS}
 do
-    LOG_FILE="${LOGS_DIR}/build-$(echo "${VERSION}" | cut -c 12-).txt"
+    SHORT_VERSION=$(echo "${VERSION}" | cut -c 13-)
+    LOG_FILE="${LOGS_DIR}/build-${SHORT_VERSION}.txt"
     echo "Building Version: ${VERSION} Logs: ${LOG_FILE}"
     git checkout "${VERSION}" > "${LOG_FILE}" 2>&1
+    rm -rf "${BIN_DIR}"
     make reproducible-prestate >> "${LOG_FILE}" 2>&1
     HASH=$(cat "${BIN_DIR}/prestate-proof.json" | jq -r .pre)
-    cp "${BIN_DIR}/prestate.json" "${STATES_DIR}/${HASH}.json"
+    if [ -f "${BIN_DIR}/prestate.bin.gz" ]
+    then
+      cp "${BIN_DIR}/prestate.bin.gz" "${STATES_DIR}/${HASH}.bin.gz"
+    else
+      cp "${BIN_DIR}/prestate.json" "${STATES_DIR}/${HASH}.json"
+    fi
+    VERSIONS_JSON=$(echo "${VERSIONS_JSON}" | jq ". += [{\"version\": \"${SHORT_VERSION}\", \"hash\": \"${HASH}\"}]")
     echo "Built ${VERSION}: ${HASH}"
+
+    if [ -f "${BIN_DIR}/prestate-proof-mt64.json" ]; then
+      HASH=$(cat "${BIN_DIR}/prestate-proof-mt64.json" | jq -r .pre)
+      cp "${BIN_DIR}/prestate-mt64.bin.gz" "${STATES_DIR}/${HASH}.mt64.bin.gz"
+      VERSIONS_JSON=$(echo "${VERSIONS_JSON}" | jq ". += [{\"version\": \"${SHORT_VERSION}\", \"hash\": \"${HASH}\", \"type\": \"cannon64\"}]")
+      echo "Built cannon64 ${VERSION}: ${HASH}"
+    fi
 done
+echo "${VERSIONS_JSON}" > "${VERSIONS_FILE}"
 
 echo "All prestates successfully built and available in ${STATES_DIR}"

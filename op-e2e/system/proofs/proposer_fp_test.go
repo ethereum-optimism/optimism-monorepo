@@ -8,6 +8,8 @@ import (
 
 	op_e2e "github.com/ethereum-optimism/optimism/op-e2e"
 
+	"github.com/ethereum-optimism/optimism/op-e2e/config"
+
 	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/contracts"
 	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/contracts/metrics"
 	"github.com/ethereum-optimism/optimism/op-e2e/bindings"
@@ -20,9 +22,8 @@ import (
 )
 
 func TestL2OutputSubmitterFaultProofs(t *testing.T) {
-	op_e2e.InitParallel(t, op_e2e.SkipOnL2OO)
-
-	cfg := e2esys.DefaultSystemConfig(t)
+	op_e2e.InitParallel(t)
+	cfg := e2esys.DefaultSystemConfig(t, e2esys.WithAllocType(config.AllocTypeStandard))
 	cfg.NonFinalizedProposals = true // speed up the time till we see output proposals
 
 	sys, err := cfg.Start(t)
@@ -39,7 +40,7 @@ func TestL2OutputSubmitterFaultProofs(t *testing.T) {
 	require.Nil(t, err)
 
 	l2Verif := sys.NodeClient("verifier")
-	_, err = geth.WaitForBlock(big.NewInt(6), l2Verif, 10*time.Duration(cfg.DeployConfig.L2BlockTime)*time.Second)
+	_, err = geth.WaitForBlock(big.NewInt(6), l2Verif)
 	require.Nil(t, err)
 
 	timeoutCh := time.After(15 * time.Second)

@@ -2,7 +2,6 @@
 pragma solidity 0.8.15;
 
 // Target contract
-import { Storage } from "src/libraries/Storage.sol";
 import { StorageSetter } from "src/universal/StorageSetter.sol";
 import { Test } from "forge-std/Test.sol";
 

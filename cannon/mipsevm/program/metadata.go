@@ -10,8 +10,8 @@ import (
 
 type Symbol struct {
 	Name  string `json:"name"`
-	Start uint32 `json:"start"`
-	Size  uint32 `json:"size"`
+	Start Word   `json:"start"`
+	Size  Word   `json:"size"`
 }
 
 type Metadata struct {
@@ -31,12 +31,12 @@ func MakeMetadata(elfProgram *elf.File) (*Metadata, error) {
 	})
 	out := &Metadata{Symbols: make([]Symbol, len(syms))}
 	for i, s := range syms {
-		out.Symbols[i] = Symbol{Name: s.Name, Start: uint32(s.Value), Size: uint32(s.Size)}
+		out.Symbols[i] = Symbol{Name: s.Name, Start: Word(s.Value), Size: Word(s.Size)}
 	}
 	return out, nil
 }
 
-func (m *Metadata) LookupSymbol(addr uint32) string {
+func (m *Metadata) LookupSymbol(addr Word) string {
 	if len(m.Symbols) == 0 {
 		return "!unknown"
 	}
@@ -59,12 +59,12 @@ func (m *Metadata) CreateSymbolMatcher(name string) mipsevm.SymbolMatcher {
 		if s.Name == name {
 			start := s.Start
 			end := s.Start + s.Size
-			return func(addr uint32) bool {
+			return func(addr Word) bool {
 				return addr >= start && addr < end
 			}
 		}
 	}
-	return func(addr uint32) bool {
+	return func(addr Word) bool {
 		return false
 	}
 }

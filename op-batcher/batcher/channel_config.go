@@ -53,7 +53,7 @@ type ChannelConfig struct {
 
 // ChannelConfig returns a copy of the receiver.
 // This allows the receiver to be a static ChannelConfigProvider of itself.
-func (cc ChannelConfig) ChannelConfig() ChannelConfig {
+func (cc ChannelConfig) ChannelConfig(isPectra bool) ChannelConfig {
 	return cc
 }
 
@@ -104,7 +104,7 @@ func (cc *ChannelConfig) Check() error {
 	// The [ChannelTimeout] must be larger than the [SubSafetyMargin].
 	// Otherwise, new blocks would always be considered timed out.
 	if cc.ChannelTimeout < cc.SubSafetyMargin {
-		return ErrInvalidChannelTimeout
+		return fmt.Errorf("%w: %d < %d", ErrInvalidChannelTimeout, cc.ChannelTimeout, cc.SubSafetyMargin)
 	}
 
 	// The max frame size must at least be able to accommodate the constant

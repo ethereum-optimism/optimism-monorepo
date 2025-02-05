@@ -1,0 +1,58 @@
+[tools]
+
+# Core dependencies
+go = "1.22.7"
+rust = "1.83.0"
+python = "3.12.0"
+uv = "0.5.5"
+jq = "1.7.1"
+yq = "4.44.5"
+shellcheck = "0.10.0"
+direnv = "2.35.0"
+just = "1.37.0"
+
+# Cargo dependencies
+"cargo:svm-rs" = "0.5.8"
+
+# Go dependencies
+"go:github.com/ethereum/go-ethereum/cmd/abigen" = "1.10.25"
+"go:gotest.tools/gotestsum" = "1.12.0"
+"go:github.com/vektra/mockery/v2" = "2.46.0"
+"go:github.com/golangci/golangci-lint/cmd/golangci-lint" = "1.61.0"
+
+# Python dependencies
+"pipx:slither-analyzer" = "0.10.2"
+"pipx:semgrep" = "1.90.0"
+
+# Foundry dependencies
+# Foundry is a special case because it supplies multiple binaries at the same
+# GitHub release, so we need to use the aliasing trick to get mise to not error
+# The git ref here should be on the `stable` branch.
+forge = "nightly-5d16800a64e5357fbb2493e4cae061756d145981"
+cast = "nightly-5d16800a64e5357fbb2493e4cae061756d145981"
+anvil = "nightly-5d16800a64e5357fbb2493e4cae061756d145981"
+
+# Other dependencies
+codecov-uploader = "0.8.0"
+goreleaser-pro = "2.3.2-pro"
+
+# Fake dependencies
+# Put things here if you need to track versions of tools or projects that can't
+# actually be managed by mise (yet). Make sure that anything you put in here is
+# also found inside of disabled_tools or mise will try to install it.
+asterisc = "1.2.0"
+kontrol = "1.0.90"
+binary_signer = "1.0.4"
+
+[alias]
+forge = "ubi:foundry-rs/foundry[exe=forge]"
+cast = "ubi:foundry-rs/foundry[exe=cast]"
+anvil = "ubi:foundry-rs/foundry[exe=anvil]"
+just = "ubi:casey/just"
+codecov-uploader = "ubi:codecov/uploader"
+goreleaser-pro = "ubi:goreleaser/goreleaser-pro[exe=goreleaser]"
+
+[settings]
+experimental = true
+pipx.uvx = true
+disable_tools = ["asterisc", "kontrol", "binary_signer"]

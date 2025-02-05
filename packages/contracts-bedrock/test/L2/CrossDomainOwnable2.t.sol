@@ -2,7 +2,7 @@
 pragma solidity 0.8.15;
 
 // Testing utilities
-import { Bridge_Initializer } from "test/setup/Bridge_Initializer.sol";
+import { CommonTest } from "test/setup/CommonTest.sol";
 
 // Libraries
 import { Hashing } from "src/libraries/Hashing.sol";
@@ -23,7 +23,7 @@ contract XDomainSetter2 is CrossDomainOwnable2 {
     }
 }
 
-contract CrossDomainOwnable2_Test is Bridge_Initializer {
+contract CrossDomainOwnable2_Test is CommonTest {
     XDomainSetter2 setter;
 
     /// @dev Sets up the test suite.
@@ -58,7 +58,7 @@ contract CrossDomainOwnable2_Test is Bridge_Initializer {
         address target = address(setter);
         uint256 value = 0;
         uint256 minGasLimit = 0;
-        bytes memory message = abi.encodeWithSelector(XDomainSetter2.set.selector, 1);
+        bytes memory message = abi.encodeCall(XDomainSetter2.set, (1));
 
         bytes32 hash = Hashing.hashCrossDomainMessage(
             Encoding.encodeVersionedNonce(nonce, 1), sender, target, value, minGasLimit, message
@@ -85,12 +85,7 @@ contract CrossDomainOwnable2_Test is Bridge_Initializer {
         // the L1CrossDomainMessenger
         vm.prank(AddressAliasHelper.applyL1ToL2Alias(address(l1CrossDomainMessenger)));
         l2CrossDomainMessenger.relayMessage(
-            Encoding.encodeVersionedNonce(1, 1),
-            owner,
-            address(setter),
-            0,
-            0,
-            abi.encodeWithSelector(XDomainSetter2.set.selector, 2)
+            Encoding.encodeVersionedNonce(1, 1), owner, address(setter), 0, 0, abi.encodeCall(XDomainSetter2.set, (2))
         );
 
         assertEq(setter.value(), 2);

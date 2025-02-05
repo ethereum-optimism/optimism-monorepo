@@ -1,10 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
+// Contracts
 import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import { ISemver } from "src/universal/interfaces/ISemver.sol";
+
+// Libraries
 import { Storage } from "src/libraries/Storage.sol";
-import { Constants } from "src/libraries/Constants.sol";
+
+// Interfaces
+import { ISemver } from "interfaces/universal/ISemver.sol";
 
 /// @notice ProtocolVersion is a numeric identifier of the protocol version.
 type ProtocolVersion is uint256;
@@ -37,26 +41,19 @@ contract ProtocolVersions is OwnableUpgradeable, ISemver {
     event ConfigUpdate(uint256 indexed version, UpdateType indexed updateType, bytes data);
 
     /// @notice Semantic version.
-    /// @custom:semver 1.0.1-beta.1
-    string public constant version = "1.0.1-beta.1";
+    /// @custom:semver 1.1.0
+    string public constant version = "1.1.0";
 
-    /// @notice Constructs the ProtocolVersion contract. Cannot set
-    ///         the owner to `address(0)` due to the Ownable contract's
-    ///         implementation, so set it to `address(0xdEaD)`
-    ///         A zero version is considered empty and is ignored by nodes.
+    /// @notice Constructs the ProtocolVersion contract.
     constructor() {
-        initialize({
-            _owner: address(0xdEaD),
-            _required: ProtocolVersion.wrap(uint256(0)),
-            _recommended: ProtocolVersion.wrap(uint256(0))
-        });
+        _disableInitializers();
     }
 
     /// @notice Initializer.
     /// @param _owner             Initial owner of the contract.
     /// @param _required          Required protocol version to operate on this chain.
     /// @param _recommended       Recommended protocol version to operate on thi chain.
-    function initialize(address _owner, ProtocolVersion _required, ProtocolVersion _recommended) public initializer {
+    function initialize(address _owner, ProtocolVersion _required, ProtocolVersion _recommended) external initializer {
         __Ownable_init();
         transferOwnership(_owner);
         _setRequired(_required);

@@ -260,7 +260,7 @@ library SafeTestLib {
             instance,
             address(instance.safe),
             0,
-            abi.encodeWithSelector(ModuleManager.enableModule.selector, module),
+            abi.encodeCall(ModuleManager.enableModule, (module)),
             Enum.Operation.Call,
             0,
             0,
@@ -289,7 +289,7 @@ library SafeTestLib {
             instance,
             address(instance.safe),
             0,
-            abi.encodeWithSelector(ModuleManager.disableModule.selector, prevModule, module),
+            abi.encodeCall(ModuleManager.disableModule, (prevModule, module)),
             Enum.Operation.Call,
             0,
             0,
@@ -308,7 +308,7 @@ library SafeTestLib {
             instance,
             address(instance.safe),
             0,
-            abi.encodeWithSelector(GuardManager.setGuard.selector, guard),
+            abi.encodeCall(GuardManager.setGuard, (guard)),
             Enum.Operation.Call,
             0,
             0,
@@ -326,7 +326,7 @@ library SafeTestLib {
             instance: instance,
             to: signMessageLib,
             value: 0,
-            data: abi.encodeWithSelector(SignMessageLib.signMessage.selector, data),
+            data: abi.encodeCall(SignMessageLib.signMessage, (data)),
             operation: Enum.Operation.DelegateCall,
             safeTxGas: 0,
             baseGas: 0,
@@ -350,21 +350,13 @@ library SafeTestLib {
 
     /// @dev Adds a new owner to the safe
     function changeThreshold(SafeInstance memory instance, uint256 threshold) internal {
-        execTransaction(
-            instance,
-            address(instance.safe),
-            0,
-            abi.encodeWithSelector(OwnerManager.changeThreshold.selector, threshold)
-        );
+        execTransaction(instance, address(instance.safe), 0, abi.encodeCall(OwnerManager.changeThreshold, (threshold)));
     }
 
     /// @dev Adds a new owner to the safe
     function addOwnerWithThreshold(SafeInstance memory instance, address owner, uint256 threshold) internal {
         execTransaction(
-            instance,
-            address(instance.safe),
-            0,
-            abi.encodeWithSelector(OwnerManager.addOwnerWithThreshold.selector, owner, threshold)
+            instance, address(instance.safe), 0, abi.encodeCall(OwnerManager.addOwnerWithThreshold, (owner, threshold))
         );
     }
 
@@ -373,10 +365,7 @@ library SafeTestLib {
     function removeOwner(SafeInstance memory instance, address prevOwner, address owner, uint256 threshold) internal {
         prevOwner = prevOwner > address(0) ? prevOwner : SafeTestLib.getPrevOwner(instance, owner);
         execTransaction(
-            instance,
-            address(instance.safe),
-            0,
-            abi.encodeWithSelector(OwnerManager.removeOwner.selector, prevOwner, owner, threshold)
+            instance, address(instance.safe), 0, abi.encodeCall(OwnerManager.removeOwner, (prevOwner, owner, threshold))
         );
     }
 
@@ -385,10 +374,7 @@ library SafeTestLib {
     function swapOwner(SafeInstance memory instance, address prevOwner, address oldOwner, address newOwner) internal {
         prevOwner = prevOwner > address(0) ? prevOwner : SafeTestLib.getPrevOwner(instance, oldOwner);
         execTransaction(
-            instance,
-            address(instance.safe),
-            0,
-            abi.encodeWithSelector(OwnerManager.swapOwner.selector, prevOwner, oldOwner, newOwner)
+            instance, address(instance.safe), 0, abi.encodeCall(OwnerManager.swapOwner, (prevOwner, oldOwner, newOwner))
         );
     }
 
@@ -537,16 +523,18 @@ contract SafeTestTools {
 
         bytes memory initData = advancedParams.initData.length > 0
             ? advancedParams.initData
-            : abi.encodeWithSelector(
-                GnosisSafe.setup.selector,
-                owners,
-                threshold,
-                advancedParams.setupModulesCall_to,
-                advancedParams.setupModulesCall_data,
-                advancedParams.includeFallbackHandler ? address(handler) : address(0),
-                advancedParams.refundToken,
-                advancedParams.refundAmount,
-                advancedParams.refundReceiver
+            : abi.encodeCall(
+                GnosisSafe.setup,
+                (
+                    owners,
+                    threshold,
+                    advancedParams.setupModulesCall_to,
+                    advancedParams.setupModulesCall_data,
+                    advancedParams.includeFallbackHandler ? address(handler) : address(0),
+                    advancedParams.refundToken,
+                    advancedParams.refundAmount,
+                    advancedParams.refundReceiver
+                )
             );
 
         DeployedSafe safe0 = DeployedSafe(

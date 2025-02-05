@@ -1,10 +1,12 @@
 package mipsevm
 
+import "github.com/ethereum-optimism/optimism/cannon/mipsevm/arch"
+
 type CpuScalars struct {
-	PC     uint32 `json:"pc"`
-	NextPC uint32 `json:"nextPC"`
-	LO     uint32 `json:"lo"`
-	HI     uint32 `json:"hi"`
+	PC     arch.Word `json:"pc"`
+	NextPC arch.Word `json:"nextPC"`
+	LO     arch.Word `json:"lo"`
+	HI     arch.Word `json:"hi"`
 }
 
 const (

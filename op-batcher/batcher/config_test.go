@@ -38,8 +38,11 @@ func validBatcherConfig() batcher.CLIConfig {
 		MetricsConfig:          metrics.DefaultCLIConfig(),
 		PprofConfig:            oppprof.DefaultCLIConfig(),
 		// The compressor config is not checked in config.Check()
-		RPC:             rpc.DefaultCLIConfig(),
-		CompressionAlgo: derive.Zlib,
+		RPC:               rpc.DefaultCLIConfig(),
+		CompressionAlgo:   derive.Zlib,
+		ThrottleThreshold: 0, // no DA throttling
+		ThrottleInterval:  12 * time.Second,
+		ThrottleTxSize:    0,
 	}
 }
 

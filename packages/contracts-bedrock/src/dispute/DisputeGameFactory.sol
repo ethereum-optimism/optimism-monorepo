@@ -6,12 +6,12 @@ import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/O
 
 // Libraries
 import { LibClone } from "@solady/utils/LibClone.sol";
-import "src/dispute/lib/Types.sol";
-import "src/dispute/lib/Errors.sol";
+import { GameType, Claim, GameId, Timestamp, Hash, LibGameId } from "src/dispute/lib/Types.sol";
+import { NoImplementation, IncorrectBondAmount, GameAlreadyExists } from "src/dispute/lib/Errors.sol";
 
 // Interfaces
-import { ISemver } from "src/universal/interfaces/ISemver.sol";
-import { IDisputeGame } from "src/dispute/interfaces/IDisputeGame.sol";
+import { ISemver } from "interfaces/universal/ISemver.sol";
+import { IDisputeGame } from "interfaces/dispute/IDisputeGame.sol";
 
 /// @custom:proxied true
 /// @title DisputeGameFactory
@@ -49,8 +49,8 @@ contract DisputeGameFactory is OwnableUpgradeable, ISemver {
     }
 
     /// @notice Semantic version.
-    /// @custom:semver 1.0.1-beta.2
-    string public constant version = "1.0.1-beta.2";
+    /// @custom:semver 1.0.1
+    string public constant version = "1.0.1";
 
     /// @notice `gameImpls` is a mapping that maps `GameType`s to their respective
     ///         `IDisputeGame` implementations.
@@ -69,12 +69,12 @@ contract DisputeGameFactory is OwnableUpgradeable, ISemver {
 
     /// @notice Constructs a new DisputeGameFactory contract.
     constructor() OwnableUpgradeable() {
-        initialize(address(0));
+        _disableInitializers();
     }
 
     /// @notice Initializes the contract.
     /// @param _owner The owner of the contract.
-    function initialize(address _owner) public initializer {
+    function initialize(address _owner) external initializer {
         __Ownable_init();
         _transferOwnership(_owner);
     }

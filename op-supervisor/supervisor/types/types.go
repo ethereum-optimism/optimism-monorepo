@@ -5,20 +5,57 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"math/big"
+	"strconv"
 
-	"github.com/holiman/uint256"
+	ethTypes "github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/crypto"
+
+	"github.com/ethereum-optimism/optimism/op-service/eth"
 )
 
+// ChainIndex represents the lifetime of a chain in a dependency set.
+type ChainIndex uint32
+
+func (ci ChainIndex) String() string {
+	return strconv.FormatUint(uint64(ci), 10)
+}
+
+func (ci ChainIndex) MarshalText() ([]byte, error) {
+	return []byte(ci.String()), nil
+}
+
+func (ci *ChainIndex) UnmarshalText(data []byte) error {
+	v, err := strconv.ParseUint(string(data), 10, 32)
+	if err != nil {
+		return err
+	}
+	*ci = ChainIndex(v)
+	return nil
+}
+
+// ContainsQuery contains all the information needed to check a message
+// against a chain's database, to determine if it is valid (ie all invariants hold).
+type ContainsQuery struct {
+	Timestamp uint64
+	BlockNum  uint64
+	LogIdx    uint32
+	LogHash   common.Hash // LogHash commits to the origin-address and the message payload-hash
+}
+
 type ExecutingMessage struct {
-	Chain     uint32 // same as ChainID for now, but will be indirect, i.e. translated to full ID, later
+	Chain     ChainIndex // same as ChainID for now, but will be indirect, i.e. translated to full ID, later
 	BlockNum  uint64
 	LogIdx    uint32
 	Timestamp uint64
 	Hash      common.Hash
+}
+
+func (s *ExecutingMessage) String() string {
+	return fmt.Sprintf("ExecMsg(chainIndex: %s, block: %d, log: %d, time: %d, logHash: %s)",
+		s.Chain, s.BlockNum, s.LogIdx, s.Timestamp, s.Hash)
 }
 
 type Message struct {
@@ -29,9 +66,9 @@ type Message struct {
 type Identifier struct {
 	Origin      common.Address
 	BlockNumber uint64
-	LogIndex    uint64
+	LogIndex    uint32
 	Timestamp   uint64
-	ChainID     ChainID // flat, not a pointer, to make Identifier safe as map key
+	ChainID     eth.ChainID // flat, not a pointer, to make Identifier safe as map key
 }
 
 type identifierMarshaling struct {
@@ -59,9 +96,12 @@ func (id *Identifier) UnmarshalJSON(input []byte) error {
 	}
 	id.Origin = dec.Origin
 	id.BlockNumber = uint64(dec.BlockNumber)
-	id.LogIndex = uint64(dec.LogIndex)
+	if dec.LogIndex > math.MaxUint32 {
+		return fmt.Errorf("log index too large: %d", dec.LogIndex)
+	}
+	id.LogIndex = uint32(dec.LogIndex)
 	id.Timestamp = uint64(dec.Timestamp)
-	id.ChainID = (ChainID)(dec.ChainID)
+	id.ChainID = (eth.ChainID)(dec.ChainID)
 	return nil
 }
 
@@ -71,9 +111,10 @@ func (lvl SafetyLevel) String() string {
 	return string(lvl)
 }
 
-func (lvl SafetyLevel) Valid() bool {
+// Validate returns true if the SafetyLevel is one of the recognized levels
+func (lvl SafetyLevel) Validate() bool {
 	switch lvl {
-	case Finalized, CrossSafe, LocalSafe, CrossUnsafe, LocalUnsafe:
+	case Invalid, Finalized, CrossSafe, LocalSafe, CrossUnsafe, LocalUnsafe:
 		return true
 	default:
 		return false
@@ -89,7 +130,7 @@ func (lvl *SafetyLevel) UnmarshalText(text []byte) error {
 		return errors.New("cannot unmarshal into nil SafetyLevel")
 	}
 	x := SafetyLevel(text)
-	if !x.Valid() {
+	if !x.Validate() {
 		return fmt.Errorf("unrecognized safety level: %q", text)
 	}
 	*lvl = x
@@ -97,19 +138,27 @@ func (lvl *SafetyLevel) UnmarshalText(text []byte) error {
 }
 
 // AtLeastAsSafe returns true if the receiver is at least as safe as the other SafetyLevel.
+// Safety levels are assumed to graduate from LocalUnsafe to LocalSafe to CrossUnsafe to CrossSafe, with Finalized as the strongest.
 func (lvl *SafetyLevel) AtLeastAsSafe(min SafetyLevel) bool {
-	switch min {
-	case Invalid:
-		return true
-	case CrossUnsafe:
-		return *lvl != Invalid
-	case CrossSafe:
-		return *lvl == CrossSafe || *lvl == Finalized
-	case Finalized:
-		return *lvl == Finalized
-	default:
+	relativeSafety := map[SafetyLevel]int{
+		Invalid:     0,
+		LocalUnsafe: 1,
+		LocalSafe:   2,
+		CrossUnsafe: 3,
+		CrossSafe:   4,
+		Finalized:   5,
+	}
+	// if either level is not recognized, return false
+	_, ok := relativeSafety[*lvl]
+	if !ok {
 		return false
 	}
+	_, ok = relativeSafety[min]
+	if !ok {
+		return false
+	}
+	// compare the relative safety levels to determine if the receiver is at least as safe as the other
+	return relativeSafety[*lvl] >= relativeSafety[min]
 }
 
 const (
@@ -135,28 +184,143 @@ const (
 	Invalid SafetyLevel = "invalid"
 )
 
-type ChainID uint256.Int
-
-func ChainIDFromBig(chainID *big.Int) ChainID {
-	return ChainID(*uint256.MustFromBig(chainID))
+type ReferenceView struct {
+	Local eth.BlockID `json:"local"`
+	Cross eth.BlockID `json:"cross"`
 }
 
-func ChainIDFromUInt64(i uint64) ChainID {
-	return ChainID(*uint256.NewInt(i))
+func (v ReferenceView) String() string {
+	return fmt.Sprintf("View(local: %s, cross: %s)", v.Local, v.Cross)
 }
 
-func (id ChainID) String() string {
-	return ((*uint256.Int)(&id)).Dec()
+type BlockSeal struct {
+	Hash      common.Hash
+	Number    uint64
+	Timestamp uint64
 }
 
-func (id ChainID) ToUInt32() (uint32, error) {
-	v := (*uint256.Int)(&id)
-	if !v.IsUint64() {
-		return 0, fmt.Errorf("ChainID too large for uint32: %v", id)
+func (s BlockSeal) String() string {
+	return fmt.Sprintf("BlockSeal(hash:%s, number:%d, time:%d)", s.Hash, s.Number, s.Timestamp)
+}
+
+func (s BlockSeal) ID() eth.BlockID {
+	return eth.BlockID{Hash: s.Hash, Number: s.Number}
+}
+
+func (s BlockSeal) MustWithParent(parent eth.BlockID) eth.BlockRef {
+	ref, err := s.WithParent(parent)
+	if err != nil {
+		panic(err)
 	}
-	v64 := v.Uint64()
-	if v64 > math.MaxUint32 {
-		return 0, fmt.Errorf("ChainID too large for uint32: %v", id)
+	return ref
+}
+
+func (s BlockSeal) WithParent(parent eth.BlockID) (eth.BlockRef, error) {
+	// prevent parent attachment if the parent is not the previous block,
+	// and the block is not the genesis block
+	if s.Number != parent.Number+1 && s.Number != 0 {
+		return eth.BlockRef{}, fmt.Errorf("invalid parent block %s to combine with %s", parent, s)
 	}
-	return uint32(v64), nil
+	return eth.BlockRef{
+		Hash:       s.Hash,
+		Number:     s.Number,
+		ParentHash: parent.Hash,
+		Time:       s.Timestamp,
+	}, nil
+}
+
+func (s BlockSeal) ForceWithParent(parent eth.BlockID) eth.BlockRef {
+	return eth.BlockRef{
+		Hash:       s.Hash,
+		Number:     s.Number,
+		ParentHash: parent.Hash,
+		Time:       s.Timestamp,
+	}
+}
+
+func BlockSealFromRef(ref eth.BlockRef) BlockSeal {
+	return BlockSeal{
+		Hash:      ref.Hash,
+		Number:    ref.Number,
+		Timestamp: ref.Time,
+	}
+}
+
+// PayloadHashToLogHash converts the payload hash to the log hash
+// it is the concatenation of the log's address and the hash of the log's payload,
+// which is then hashed again. This is the hash that is stored in the log storage.
+// The logHash can then be used to traverse from the executing message
+// to the log the referenced initiating message.
+func PayloadHashToLogHash(payloadHash common.Hash, addr common.Address) common.Hash {
+	msg := make([]byte, 0, 2*common.HashLength)
+	msg = append(msg, addr.Bytes()...)
+	msg = append(msg, payloadHash.Bytes()...)
+	return crypto.Keccak256Hash(msg)
+}
+
+// LogToMessagePayload is the data that is hashed to get the payloadHash
+// it is the concatenation of the log's topics and data
+// the implementation is based on the interop messaging spec
+func LogToMessagePayload(l *ethTypes.Log) []byte {
+	msg := make([]byte, 0)
+	for _, topic := range l.Topics {
+		msg = append(msg, topic.Bytes()...)
+	}
+	msg = append(msg, l.Data...)
+	return msg
+}
+
+// DerivedBlockRefPair is a pair of block refs, where Derived (L2) is derived from DerivedFrom (L1).
+type DerivedBlockRefPair struct {
+	DerivedFrom eth.BlockRef `json:"derivedFrom"`
+	Derived     eth.BlockRef `json:"derived"`
+}
+
+func (refs *DerivedBlockRefPair) IDs() DerivedIDPair {
+	return DerivedIDPair{
+		DerivedFrom: refs.DerivedFrom.ID(),
+		Derived:     refs.Derived.ID(),
+	}
+}
+
+func (refs *DerivedBlockRefPair) Seals() DerivedBlockSealPair {
+	return DerivedBlockSealPair{
+		DerivedFrom: BlockSealFromRef(refs.DerivedFrom),
+		Derived:     BlockSealFromRef(refs.Derived),
+	}
+}
+
+// DerivedBlockSealPair is a pair of block seals, where Derived (L2) is derived from DerivedFrom (L1).
+type DerivedBlockSealPair struct {
+	DerivedFrom BlockSeal `json:"derivedFrom"`
+	Derived     BlockSeal `json:"derived"`
+}
+
+func (seals *DerivedBlockSealPair) IDs() DerivedIDPair {
+	return DerivedIDPair{
+		DerivedFrom: seals.DerivedFrom.ID(),
+		Derived:     seals.Derived.ID(),
+	}
+}
+
+// DerivedIDPair is a pair of block IDs, where Derived (L2) is derived from DerivedFrom (L1).
+type DerivedIDPair struct {
+	DerivedFrom eth.BlockID `json:"derivedFrom"`
+	Derived     eth.BlockID `json:"derived"`
+}
+
+type BlockReplacement struct {
+	Replacement eth.BlockRef `json:"replacement"`
+	Invalidated common.Hash  `json:"invalidated"`
+}
+
+// ManagedEvent is an event sent by the managed node to the supervisor,
+// to share an update. One of the fields will be non-null; different kinds of updates may be sent.
+type ManagedEvent struct {
+	Reset                  *string              `json:"reset,omitempty"`
+	UnsafeBlock            *eth.BlockRef        `json:"unsafeBlock,omitempty"`
+	DerivationUpdate       *DerivedBlockRefPair `json:"derivationUpdate,omitempty"`
+	ExhaustL1              *DerivedBlockRefPair `json:"exhaustL1,omitempty"`
+	ReplaceBlock           *BlockReplacement    `json:"replaceBlock,omitempty"`
+	DerivationOriginUpdate *DerivedBlockRefPair `json:"derivationOriginUpdate,omitempty"`
 }

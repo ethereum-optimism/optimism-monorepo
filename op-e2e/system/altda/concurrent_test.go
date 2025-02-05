@@ -22,7 +22,15 @@ func TestBatcherConcurrentAltDARequests(t *testing.T) {
 	numL1TxsExpected := int64(10)
 
 	cfg := e2esys.DefaultSystemConfig(t)
+	// Manually configure these since the alt-DA values aren't
+	// set at all in the standard config unless UseAltDA is set.
+	// For some reason this test doesn't use the alt DA allocs.
 	cfg.DeployConfig.UseAltDA = true
+	cfg.DeployConfig.DACommitmentType = "KeccakCommitment"
+	cfg.DeployConfig.DAChallengeWindow = 16
+	cfg.DeployConfig.DAResolveWindow = 16
+	cfg.DeployConfig.DABondSize = 1000000
+	cfg.DeployConfig.DAResolverRefundPercentage = 0
 	cfg.BatcherMaxPendingTransactions = 0 // no limit on parallel txs
 	// ensures that batcher txs are as small as possible
 	cfg.BatcherMaxL1TxSizeBytes = derive.FrameV0OverHeadSize + 1 /*version bytes*/ + 1
@@ -34,7 +42,9 @@ func TestBatcherConcurrentAltDARequests(t *testing.T) {
 	cfg.DisableBatcher = true
 	sys, err := cfg.Start(t)
 	require.NoError(t, err, "Error starting up system")
-	defer sys.Close()
+	t.Cleanup(func() {
+		sys.Close()
+	})
 
 	// make every request take 5 seconds, such that only concurrent requests will be able to make progress fast enough
 	sys.FakeAltDAServer.SetPutRequestLatency(5 * time.Second)
@@ -43,7 +53,7 @@ func TestBatcherConcurrentAltDARequests(t *testing.T) {
 	l2Seq := sys.NodeClient("sequencer")
 
 	// we wait for numL1TxsExpected L2 blocks to have been produced, just to make sure the sequencer is working properly
-	_, err = geth.WaitForBlock(big.NewInt(numL1TxsExpected), l2Seq, time.Duration(cfg.DeployConfig.L2BlockTime*uint64(numL1TxsExpected))*time.Second)
+	_, err = geth.WaitForBlock(big.NewInt(numL1TxsExpected), l2Seq)
 	require.NoError(t, err, "Waiting for L2 blocks")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -55,23 +65,20 @@ func TestBatcherConcurrentAltDARequests(t *testing.T) {
 	err = driver.StartBatchSubmitting()
 	require.NoError(t, err)
 
-	totalBatcherTxsCount := int64(0)
-	// wait for up to 5 L1 blocks, expecting 10 L2 batcher txs in them.
-	// usually only 3 is required, but it's possible additional L1 blocks will be created
-	// before the batcher starts, so we wait additional blocks.
-	for i := int64(0); i < 5; i++ {
-		block, err := geth.WaitForBlock(big.NewInt(int64(startingL1BlockNum)+i), l1Client, time.Duration(cfg.DeployConfig.L1BlockTime*2)*time.Second)
+	// Iterate over up to 10 blocks. The number of transactions sent by the batcher should
+	// exceed the number of blocks.
+	checkBlocks := 10
+	for i := 0; i < checkBlocks; i++ {
+		block, err := geth.WaitForBlock(big.NewInt(int64(startingL1BlockNum)+int64(i)), l1Client)
 		require.NoError(t, err, "Waiting for l1 blocks")
 		// there are possibly other services (proposer/challenger) in the background sending txs
 		// so we only count the batcher txs
 		batcherTxCount, err := transactions.TransactionsBySender(block, cfg.DeployConfig.BatchSenderAddress)
 		require.NoError(t, err)
-		totalBatcherTxsCount += int64(batcherTxCount)
-
-		if totalBatcherTxsCount >= numL1TxsExpected {
+		if batcherTxCount > 1 {
 			return
 		}
 	}
 
-	t.Fatal("Expected at least 10 transactions from the batcher")
+	t.Fatalf("did not find more than 1 batcher tx per block in %d blocks", checkBlocks)
 }

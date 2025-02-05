@@ -1,0 +1,28 @@
+[
+  {
+    "type": "function",
+    "name": "emitData",
+    "inputs": [
+      {
+        "name": "_data",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "event",
+    "name": "DataEmitted",
+    "inputs": [
+      {
+        "name": "_data",
+        "type": "bytes",
+        "indexed": true,
+        "internalType": "bytes"
+      }
+    ],
+    "anonymous": false
+  }
+]

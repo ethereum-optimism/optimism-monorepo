@@ -7,15 +7,15 @@ import { Enum } from "safe-contracts/common/Enum.sol";
 
 // Libraries
 import { Unauthorized } from "src/libraries/PortalErrors.sol";
-import "src/dispute/lib/Types.sol";
+import { GameType, Timestamp } from "src/dispute/lib/Types.sol";
 
 // Interfaces
-import { IAnchorStateRegistry } from "src/dispute/interfaces/IAnchorStateRegistry.sol";
-import { IFaultDisputeGame } from "src/dispute/interfaces/IFaultDisputeGame.sol";
-import { ISuperchainConfig } from "src/L1/interfaces/ISuperchainConfig.sol";
-import { IOptimismPortal2 } from "src/L1/interfaces/IOptimismPortal2.sol";
-import { IDisputeGame } from "src/dispute/interfaces/IDisputeGame.sol";
-import { ISemver } from "src/universal/interfaces/ISemver.sol";
+import { IAnchorStateRegistry } from "interfaces/dispute/IAnchorStateRegistry.sol";
+import { IFaultDisputeGame } from "interfaces/dispute/IFaultDisputeGame.sol";
+import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
+import { IOptimismPortal2 } from "interfaces/L1/IOptimismPortal2.sol";
+import { IDisputeGame } from "interfaces/dispute/IDisputeGame.sol";
+import { ISemver } from "interfaces/universal/ISemver.sol";
 
 /// @title DeputyGuardianModule
 /// @notice This module is intended to be enabled on the Security Council Safe, which will own the Guardian role in the
@@ -48,8 +48,8 @@ contract DeputyGuardianModule is ISemver {
     address internal immutable DEPUTY_GUARDIAN;
 
     /// @notice Semantic version.
-    /// @custom:semver 2.0.1-beta.3
-    string public constant version = "2.0.1-beta.3";
+    /// @custom:semver 2.0.1-beta.5
+    string public constant version = "2.0.1-beta.5";
 
     // Constructor to initialize the Safe and baseModule instances
     constructor(Safe _safe, ISuperchainConfig _superchainConfig, address _deputyGuardian) {

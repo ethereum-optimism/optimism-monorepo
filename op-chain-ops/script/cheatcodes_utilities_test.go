@@ -57,3 +57,14 @@ func TestParseTomlAddress(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, common.HexToAddress("0xff4ce7b6a91a35c31d7d62b327d19617c8da6f23"), addr)
 }
+
+func TestComputeCreate2Address(t *testing.T) {
+	c := &CheatCodesPrecompile{}
+	var salt [32]byte
+	salt[31] = 'S'
+	var codeHash [32]byte
+	codeHash[31] = 'C'
+	addr, err := c.ComputeCreate2Address_890c283b(salt, codeHash)
+	require.NoError(t, err)
+	require.EqualValues(t, common.HexToAddress("0x2f29AF1b5a7083bf98C4A89976c2f17FF980735f"), addr)
+}

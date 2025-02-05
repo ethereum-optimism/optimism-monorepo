@@ -10,6 +10,9 @@ import (
 	"github.com/ethereum-optimism/optimism/op-batcher/compressor"
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/derive"
+	"github.com/ethereum-optimism/optimism/op-service/eth"
+	"github.com/ethereum-optimism/optimism/op-service/testutils"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -101,6 +104,40 @@ func channelOutByType(b *testing.B, batchType uint, cd compressorDetails) (deriv
 	return nil, fmt.Errorf("unsupported batch type: %d", batchType)
 }
 
+func randomBlock(cfg *rollup.Config, rng *rand.Rand, txCount int, timestamp uint64) (*types.Block, error) {
+	batch := derive.RandomSingularBatch(rng, txCount, cfg.L2ChainID)
+	batch.Timestamp = timestamp
+	return singularBatchToBlock(cfg, batch)
+}
+
+// singularBatchToBlock converts a singular batch to a block for use in the benchmarks. This function
+// should only be used for testing purposes, as the batch input doesn't contain the necessary information
+// to build the full block (only non-deposit transactions and a subset of header fields are populated).
+func singularBatchToBlock(rollupCfg *rollup.Config, batch *derive.SingularBatch) (*types.Block, error) {
+	l1InfoTx, err := derive.L1InfoDeposit(rollupCfg, eth.SystemConfig{}, 0, &testutils.MockBlockInfo{
+		InfoNum:  uint64(batch.EpochNum),
+		InfoHash: batch.EpochHash,
+	}, batch.Timestamp)
+	if err != nil {
+		return nil, fmt.Errorf("could not build L1 Info transaction: %w", err)
+	}
+	txs := []*types.Transaction{types.NewTx(l1InfoTx)}
+	for i, opaqueTx := range batch.Transactions {
+		var tx types.Transaction
+		err = tx.UnmarshalBinary(opaqueTx)
+		if err != nil {
+			return nil, fmt.Errorf("could not decode tx %d: %w", i, err)
+		}
+		txs = append(txs, &tx)
+	}
+	return types.NewBlockWithHeader(&types.Header{
+		ParentHash: batch.ParentHash,
+		Time:       batch.Timestamp,
+	}).WithBody(types.Body{
+		Transactions: txs,
+	}), nil
+}
+
 // a test case for the benchmark controls the number of batches and transactions per batch,
 // as well as the batch type and compressor used
 type BatchingBenchmarkTC struct {
@@ -155,16 +192,17 @@ func BenchmarkFinalBatchChannelOut(b *testing.B) {
 	}
 
 	for _, tc := range tests {
-		chainID := big.NewInt(333)
+		cfg := &rollup.Config{L2ChainID: big.NewInt(333)}
 		rng := rand.New(rand.NewSource(0x543331))
 		// pre-generate batches to keep the benchmark from including the random generation
-		batches := make([]*derive.SingularBatch, tc.BatchCount)
+		blocks := make([]*types.Block, tc.BatchCount)
 		t := time.Now()
 		for i := 0; i < tc.BatchCount; i++ {
-			batches[i] = derive.RandomSingularBatch(rng, tc.txPerBatch, chainID)
 			// set the timestamp to increase with each batch
 			// to leverage optimizations in the Batch Linked List
-			batches[i].Timestamp = uint64(t.Add(time.Duration(i) * time.Second).Unix())
+			var err error
+			blocks[i], err = randomBlock(cfg, rng, tc.txPerBatch, uint64(t.Add(time.Duration(i)*time.Second).Unix()))
+			require.NoError(b, err)
 		}
 		b.Run(tc.String(), func(b *testing.B) {
 			// reset the compressor used in the test case
@@ -174,13 +212,13 @@ func BenchmarkFinalBatchChannelOut(b *testing.B) {
 				cout, _ := channelOutByType(b, tc.BatchType, tc.cd)
 				// add all but the final batch to the channel out
 				for i := 0; i < tc.BatchCount-1; i++ {
-					err := cout.AddSingularBatch(batches[i], 0)
+					_, err := cout.AddBlock(cfg, blocks[i])
 					require.NoError(b, err)
 				}
 				// measure the time to add the final batch
 				b.StartTimer()
 				// add the final batch to the channel out
-				err := cout.AddSingularBatch(batches[tc.BatchCount-1], 0)
+				_, err := cout.AddBlock(cfg, blocks[tc.BatchCount-1])
 				require.NoError(b, err)
 			}
 		})
@@ -193,7 +231,7 @@ func BenchmarkFinalBatchChannelOut(b *testing.B) {
 // Hint: use -benchtime=1x to run the benchmarks for a single iteration
 // it is not currently designed to use b.N
 func BenchmarkIncremental(b *testing.B) {
-	chainID := big.NewInt(333)
+	cfg := &rollup.Config{L2ChainID: big.NewInt(333)}
 	rng := rand.New(rand.NewSource(0x543331))
 	// use the real compressor for this benchmark
 	// use batchCount as the number of batches to add in each benchmark iteration
@@ -226,17 +264,20 @@ func BenchmarkIncremental(b *testing.B) {
 				b.StopTimer()
 				// prepare the batches
 				t := time.Now()
-				batches := make([]*derive.SingularBatch, tc.BatchCount)
+				blocks := make([]*types.Block, tc.BatchCount)
 				for i := 0; i < tc.BatchCount; i++ {
-					t := t.Add(time.Second)
-					batches[i] = derive.RandomSingularBatch(rng, tc.txPerBatch, chainID)
 					// set the timestamp to increase with each batch
 					// to leverage optimizations in the Batch Linked List
-					batches[i].Timestamp = uint64(t.Unix())
+					t = t.Add(time.Second)
+					blocks[i], err = randomBlock(cfg, rng, tc.txPerBatch, uint64(t.Unix()))
+					if err != nil {
+						done = true
+						return
+					}
 				}
 				b.StartTimer()
 				for i := 0; i < tc.BatchCount; i++ {
-					err := cout.AddSingularBatch(batches[i], 0)
+					_, err := cout.AddBlock(cfg, blocks[i])
 					if err != nil {
 						done = true
 						return
@@ -280,16 +321,17 @@ func BenchmarkAllBatchesChannelOut(b *testing.B) {
 	}
 
 	for _, tc := range tests {
-		chainID := big.NewInt(333)
+		cfg := &rollup.Config{L2ChainID: big.NewInt(333)}
 		rng := rand.New(rand.NewSource(0x543331))
 		// pre-generate batches to keep the benchmark from including the random generation
-		batches := make([]*derive.SingularBatch, tc.BatchCount)
+		blocks := make([]*types.Block, tc.BatchCount)
 		t := time.Now()
 		for i := 0; i < tc.BatchCount; i++ {
-			batches[i] = derive.RandomSingularBatch(rng, tc.txPerBatch, chainID)
 			// set the timestamp to increase with each batch
 			// to leverage optimizations in the Batch Linked List
-			batches[i].Timestamp = uint64(t.Add(time.Duration(i) * time.Second).Unix())
+			var err error
+			blocks[i], err = randomBlock(cfg, rng, tc.txPerBatch, uint64(t.Add(time.Duration(i)*time.Second).Unix()))
+			require.NoError(b, err)
 		}
 		b.Run(tc.String(), func(b *testing.B) {
 			// reset the compressor used in the test case
@@ -300,7 +342,7 @@ func BenchmarkAllBatchesChannelOut(b *testing.B) {
 				b.StartTimer()
 				// add all batches to the channel out
 				for i := 0; i < tc.BatchCount; i++ {
-					err := cout.AddSingularBatch(batches[i], 0)
+					_, err := cout.AddBlock(cfg, blocks[i])
 					require.NoError(b, err)
 				}
 			}

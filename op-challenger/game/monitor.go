@@ -56,7 +56,7 @@ type gameMonitor struct {
 }
 
 type MinimalSubscriber interface {
-	EthSubscribe(ctx context.Context, channel interface{}, args ...interface{}) (ethereum.Subscription, error)
+	Subscribe(ctx context.Context, namespace string, channel interface{}, args ...interface{}) (ethereum.Subscription, error)
 }
 
 type headSource struct {
@@ -64,7 +64,7 @@ type headSource struct {
 }
 
 func (s *headSource) SubscribeNewHead(ctx context.Context, ch chan<- *ethTypes.Header) (ethereum.Subscription, error) {
-	return s.inner.EthSubscribe(ctx, ch, "newHeads")
+	return s.inner.Subscribe(ctx, "eth", ch, "newHeads")
 }
 
 func newGameMonitor(

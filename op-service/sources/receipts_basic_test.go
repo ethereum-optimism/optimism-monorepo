@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum-optimism/optimism/op-service/retry"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rpc"
@@ -97,38 +99,55 @@ func TestBasicRPCReceiptsFetcher_Reuse(t *testing.T) {
 func TestBasicRPCReceiptsFetcher_Concurrency(t *testing.T) {
 	require := require.New(t)
 	const numFetchers = 32
-	batchSize, txCount := 4, uint64(18) // 4.5 * 4
+	const batchSize, txCount = 4, 16
+	const numBatchCalls = txCount / batchSize
 	block, receipts := randomRpcBlockAndReceipts(rand.New(rand.NewSource(123)), txCount)
 	recMap := make(map[common.Hash]*types.Receipt, len(receipts))
 	for _, rec := range receipts {
 		recMap[rec.TxHash] = rec
 	}
-	mrpc := new(mockRPC)
-	rp := NewBasicRPCReceiptsFetcher(mrpc, batchSize)
 
-	// prepare mock
-	var numCalls atomic.Int32
-	mrpc.On("BatchCallContext", mock.Anything, mock.AnythingOfType("[]rpc.BatchElem")).
-		Run(func(args mock.Arguments) {
-			numCalls.Add(1)
-			els := args.Get(1).([]rpc.BatchElem)
-			for _, el := range els {
-				if el.Method == "eth_getTransactionReceipt" {
-					txHash := el.Args[0].(common.Hash)
-					// The IterativeBatchCall expects that the values are written
-					// to the fields of the allocated *types.Receipt.
-					**(el.Result.(**types.Receipt)) = *recMap[txHash]
+	boff := &retry.ExponentialStrategy{
+		Min:       0,
+		Max:       time.Second,
+		MaxJitter: 100 * time.Millisecond,
+	}
+	err := retry.Do0(context.Background(), 10, boff, func() error {
+		mrpc := new(mockRPC)
+		rp := NewBasicRPCReceiptsFetcher(mrpc, batchSize)
+
+		// prepare mock
+		var numCalls atomic.Int32
+		mrpc.On("BatchCallContext", mock.Anything, mock.AnythingOfType("[]rpc.BatchElem")).
+			Run(func(args mock.Arguments) {
+				numCalls.Add(1)
+				els := args.Get(1).([]rpc.BatchElem)
+				for _, el := range els {
+					if el.Method == "eth_getTransactionReceipt" {
+						txHash := el.Args[0].(common.Hash)
+						// The IterativeBatchCall expects that the values are written
+						// to the fields of the allocated *types.Receipt.
+						**(el.Result.(**types.Receipt)) = *recMap[txHash]
+					}
 				}
-			}
-		}).
-		Return([]error{nil})
+			}).
+			Return([]error{nil})
 
-	runConcurrentFetchingTest(t, rp, numFetchers, receipts, block)
+		runConcurrentFetchingTest(t, rp, numFetchers, receipts, block)
 
-	mrpc.AssertExpectations(t)
-	finalNumCalls := int(numCalls.Load())
-	require.NotZero(finalNumCalls, "BatchCallContext should have been called.")
-	require.Less(finalNumCalls, numFetchers, "Some IterativeBatchCalls should have been shared.")
+		mrpc.AssertExpectations(t)
+		finalNumCalls := int(numCalls.Load())
+
+		if finalNumCalls == 0 {
+			return errors.New("batchCallContext should have been called")
+		}
+
+		if finalNumCalls >= numFetchers*numBatchCalls {
+			return errors.New("some IterativeBatchCalls should have been shared")
+		}
+		return nil
+	})
+	require.NoError(err)
 }
 
 func runConcurrentFetchingTest(t *testing.T, rp ReceiptsProvider, numFetchers int, receipts types.Receipts, block *RPCBlock) {

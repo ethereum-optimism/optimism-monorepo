@@ -2,19 +2,15 @@
 pragma solidity ^0.8.15;
 
 // Testing
-import { Test } from "forge-std/Test.sol";
 import { CommonTest } from "test/setup/CommonTest.sol";
-
-// Contracts
-import { Proxy } from "src/universal/Proxy.sol";
 
 // Libraries
 import "src/dispute/lib/Types.sol";
 import "src/dispute/lib/Errors.sol";
 
 // Interfaces
-import { IDisputeGameFactory } from "src/dispute/interfaces/IDisputeGameFactory.sol";
-import { IDisputeGame } from "src/dispute/interfaces/IDisputeGame.sol";
+import { IDisputeGameFactory } from "interfaces/dispute/IDisputeGameFactory.sol";
+import { IDisputeGame } from "interfaces/dispute/IDisputeGame.sol";
 
 contract DisputeGameFactory_Init is CommonTest {
     FakeClone fakeClone;
@@ -24,12 +20,11 @@ contract DisputeGameFactory_Init is CommonTest {
     event InitBondUpdated(GameType indexed gameType, uint256 indexed newBond);
 
     function setUp() public virtual override {
-        super.enableFaultProofs();
         super.setUp();
         fakeClone = new FakeClone();
 
         // Transfer ownership of the factory to the test contract.
-        vm.prank(deploy.mustGetAddress("SystemOwnerSafe"));
+        vm.prank(disputeGameFactory.owner());
         disputeGameFactory.transferOwnership(address(this));
     }
 }
@@ -59,6 +54,8 @@ contract DisputeGameFactory_Create_Test is DisputeGameFactory_Init {
 
         vm.deal(address(this), _value);
 
+        uint256 gameCountBefore = disputeGameFactory.gameCount();
+
         vm.expectEmit(false, true, true, false);
         emit DisputeGameCreated(address(0), gt, rootClaim);
         IDisputeGame proxy = disputeGameFactory.create{ value: _value }(gt, rootClaim, extraData);
@@ -68,9 +65,9 @@ contract DisputeGameFactory_Create_Test is DisputeGameFactory_Init {
         // Ensure that the dispute game was assigned to the `disputeGames` mapping.
         assertEq(address(game), address(proxy));
         assertEq(Timestamp.unwrap(timestamp), block.timestamp);
-        assertEq(disputeGameFactory.gameCount(), 1);
+        assertEq(disputeGameFactory.gameCount(), gameCountBefore + 1);
 
-        (, Timestamp timestamp2, IDisputeGame game2) = disputeGameFactory.gameAtIndex(0);
+        (, Timestamp timestamp2, IDisputeGame game2) = disputeGameFactory.gameAtIndex(gameCountBefore);
         assertEq(address(game2), address(proxy));
         assertEq(Timestamp.unwrap(timestamp2), block.timestamp);
 
@@ -127,10 +124,12 @@ contract DisputeGameFactory_Create_Test is DisputeGameFactory_Init {
             disputeGameFactory.setImplementation(GameType.wrap(i), IDisputeGame(address(fakeClone)));
         }
 
+        uint256 bondAmount = disputeGameFactory.initBonds(gt);
+
         // Create our first dispute game - this should succeed.
         vm.expectEmit(false, true, true, false);
         emit DisputeGameCreated(address(0), gt, rootClaim);
-        IDisputeGame proxy = disputeGameFactory.create(gt, rootClaim, extraData);
+        IDisputeGame proxy = disputeGameFactory.create{ value: bondAmount }(gt, rootClaim, extraData);
 
         (IDisputeGame game, Timestamp timestamp) = disputeGameFactory.games(gt, rootClaim, extraData);
         // Ensure that the dispute game was assigned to the `disputeGames` mapping.
@@ -141,7 +140,7 @@ contract DisputeGameFactory_Create_Test is DisputeGameFactory_Init {
         vm.expectRevert(
             abi.encodeWithSelector(GameAlreadyExists.selector, disputeGameFactory.getGameUUID(gt, rootClaim, extraData))
         );
-        disputeGameFactory.create(gt, rootClaim, extraData);
+        disputeGameFactory.create{ value: bondAmount }(gt, rootClaim, extraData);
     }
 
     function changeClaimStatus(Claim _claim, VMStatus _status) public pure returns (Claim out_) {
@@ -177,7 +176,9 @@ contract DisputeGameFactory_SetInitBond_Test is DisputeGameFactory_Init {
     /// @dev Tests that the `setInitBond` function properly sets the init bond for a given `GameType`.
     function test_setInitBond_succeeds() public {
         // There should be no init bond for the `GameTypes.CANNON` enum value, it has not been set.
-        assertEq(disputeGameFactory.initBonds(GameTypes.CANNON), 0);
+        if (!isForkTest()) {
+            assertEq(disputeGameFactory.initBonds(GameTypes.CANNON), 0);
+        }
 
         vm.expectEmit(true, true, true, true, address(disputeGameFactory));
         emit InitBondUpdated(GameTypes.CANNON, 1 ether);
@@ -266,7 +267,8 @@ contract DisputeGameFactory_FindLatestGames_Test is DisputeGameFactory_Init {
 
     /// @dev Tests that `findLatestGames` returns the correct games.
     function test_findLatestGames_static_succeeds() public {
-        // Create some dispute games of varying game types.
+        // Create some dispute games of varying game types, repeatedly iterating over the game types 0, 1, 2.
+        // 1 << 5 = 32, resulting in the final three games added being ordered 2, 0, 1.
         for (uint256 i; i < 1 << 5; i++) {
             disputeGameFactory.create(GameType.wrap(uint8(i % 3)), Claim.wrap(bytes32(i)), abi.encode(i));
         }
@@ -275,23 +277,31 @@ contract DisputeGameFactory_FindLatestGames_Test is DisputeGameFactory_Init {
 
         IDisputeGameFactory.GameSearchResult[] memory games;
 
-        games = disputeGameFactory.findLatestGames(GameType.wrap(0), gameCount - 1, 1);
-        assertEq(games.length, 1);
-        assertEq(games[0].index, 30);
-        (GameType gameType, Timestamp createdAt, address game) = games[0].metadata.unpack();
-        assertEq(gameType.raw(), 0);
-        assertEq(createdAt.raw(), block.timestamp);
+        uint256 start = gameCount - 1;
 
-        games = disputeGameFactory.findLatestGames(GameType.wrap(1), gameCount - 1, 1);
+        // Find type 1 games.
+        games = disputeGameFactory.findLatestGames(GameType.wrap(1), start, 1);
         assertEq(games.length, 1);
-        assertEq(games[0].index, 31);
-        (gameType, createdAt, game) = games[0].metadata.unpack();
+        // The type 1 game should be the last one added.
+        assertEq(games[0].index, start);
+        (GameType gameType, Timestamp createdAt, address game) = games[0].metadata.unpack();
         assertEq(gameType.raw(), 1);
         assertEq(createdAt.raw(), block.timestamp);
 
-        games = disputeGameFactory.findLatestGames(GameType.wrap(2), gameCount - 1, 1);
+        // Find type 0 games.
+        games = disputeGameFactory.findLatestGames(GameType.wrap(0), start, 1);
         assertEq(games.length, 1);
-        assertEq(games[0].index, 29);
+        // The type 0 game should be the second to last one added.
+        assertEq(games[0].index, start - 1);
+        (gameType, createdAt, game) = games[0].metadata.unpack();
+        assertEq(gameType.raw(), 0);
+        assertEq(createdAt.raw(), block.timestamp);
+
+        // Find type 2 games.
+        games = disputeGameFactory.findLatestGames(GameType.wrap(2), start, 1);
+        assertEq(games.length, 1);
+        // The type 2 game should be the third to last one added.
+        assertEq(games[0].index, start - 2);
         (gameType, createdAt, game) = games[0].metadata.unpack();
         assertEq(gameType.raw(), 2);
         assertEq(createdAt.raw(), block.timestamp);
@@ -314,10 +324,13 @@ contract DisputeGameFactory_FindLatestGames_Test is DisputeGameFactory_Init {
         games = disputeGameFactory.findLatestGames(GameType.wrap(2), gameCount - 1, 5);
         assertEq(games.length, 0);
 
-        games = disputeGameFactory.findLatestGames(GameType.wrap(1), gameCount - 1, 5);
-        assertEq(games.length, 2);
-        assertEq(games[0].index, 1);
-        assertEq(games[1].index, 0);
+        // Forked network will have an indefinite, but very large number of games, so we skip this test when forking.
+        if (!isForkTest()) {
+            games = disputeGameFactory.findLatestGames(GameType.wrap(1), gameCount - 1, 5);
+            assertEq(games.length, 2);
+            assertEq(games[0].index, 1);
+            assertEq(games[1].index, 0);
+        }
     }
 
     /// @dev Tests that the expected number of games are returned when `findLatestGames` is called.

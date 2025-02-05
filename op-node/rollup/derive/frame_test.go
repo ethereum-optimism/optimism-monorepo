@@ -9,8 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum-optimism/optimism/op-service/testutils"
 	"github.com/stretchr/testify/require"
+
+	"github.com/ethereum-optimism/optimism/op-node/rollup/derive/params"
+	"github.com/ethereum-optimism/optimism/op-service/testutils"
 )
 
 func FuzzFrameUnmarshalBinary(f *testing.F) {
@@ -164,7 +166,7 @@ func TestParseFramesInvalidVer(t *testing.T) {
 }
 
 func TestParseFramesOnlyVersion(t *testing.T) {
-	frames, err := ParseFrames([]byte{DerivationVersion0})
+	frames, err := ParseFrames([]byte{params.DerivationVersion0})
 	require.Empty(t, frames)
 	require.Error(t, err)
 }
@@ -206,7 +208,7 @@ func TestParseFramesTruncated(t *testing.T) {
 // frames.
 func txMarshalFrames(frames []Frame) ([]byte, error) {
 	var data bytes.Buffer
-	if err := data.WriteByte(DerivationVersion0); err != nil {
+	if err := data.WriteByte(params.DerivationVersion0); err != nil {
 		return nil, err
 	}
 	for _, frame := range frames {
