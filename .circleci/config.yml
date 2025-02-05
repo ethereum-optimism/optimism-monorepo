@@ -1497,6 +1497,8 @@ workflows:
           uses_artifacts: true
           requires: ["contracts-bedrock-build"]
       - go-tests:
+          environment_overrides: |
+            export PARALLEL=48
           packages: |
             op-alt-da
             op-batcher
