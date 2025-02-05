@@ -1,16 +1,22 @@
 package upgrades
 
 import (
+	"bytes"
 	"context"
 	"math/big"
 	"testing"
 	"time"
 
+	batcherFlags "github.com/ethereum-optimism/optimism/op-batcher/flags"
 	"github.com/ethereum-optimism/optimism/op-e2e/actions/helpers"
+	actionsHelpers "github.com/ethereum-optimism/optimism/op-e2e/actions/helpers"
+	upgradesHelpers "github.com/ethereum-optimism/optimism/op-e2e/actions/upgrades/helpers"
 	"github.com/ethereum-optimism/optimism/op-e2e/bindings"
+	"github.com/ethereum-optimism/optimism/op-e2e/config"
 	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils"
 	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/geth"
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
+	"github.com/ethereum-optimism/optimism/op-node/rollup/sync"
 	"github.com/ethereum-optimism/optimism/op-service/client"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/predeploys"
@@ -20,8 +26,10 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/core/vm/program"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
+	"github.com/holiman/uint256"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -393,4 +401,137 @@ func TestIsthmusNetworkUpgradeTransactions(gt *testing.T) {
 	latestBlock, err = ethCl.BlockByNumber(context.Background(), nil)
 	require.NoError(t, err)
 	checkRecentBlockHash(latestBlock.NumberU64()-1, latestBlock.Header().ParentHash, "post-activation")
+}
+
+func TestSetCodeTxTypeIsthmus(gt *testing.T) {
+	// go-ethereum test called TestEIP7702 reimplemented here
+	// https://github.com/ethereum/go-ethereum/blob/39638c81c56db2b2dfe6f51999ffd3029ee212cb/core/blockchain_test.go#L4180
+	t := actionsHelpers.NewDefaultTesting(gt)
+	p := &e2eutils.TestParams{
+		MaxSequencerDrift:   20,
+		SequencerWindowSize: 24,
+		ChannelTimeout:      20,
+		L1BlockTime:         12,
+		AllocType:           config.AllocTypeStandard,
+	}
+	dp := e2eutils.MakeDeployParams(t, p)
+	dp.DeployConfig.ActivateForkAtGenesis(rollup.Isthmus)
+	minTs := hexutil.Uint64(0)
+	upgradesHelpers.ApplyDeltaTimeOffset(dp, &minTs)
+
+	var (
+		aa = common.HexToAddress("0x000000000000000000000000000000000000aaaa")
+		bb = common.HexToAddress("0x000000000000000000000000000000000000bbbb")
+	)
+
+	// Create 2 contracts, (1) writes 42 to slot 42, (2) calls (1)
+	store42Program := program.New().Sstore(0x42, 0x42)
+	callBobProgram := program.New().Call(nil, dp.Addresses.Bob, 1, 0, 0, 0, 0)
+
+	alloc := actionsHelpers.DefaultAlloc
+	alloc.L2Alloc = make(map[common.Address]types.Account)
+	alloc.L2Alloc[aa] = types.Account{
+		Code: store42Program.Bytes(),
+	}
+	alloc.L2Alloc[bb] = types.Account{
+		Code: callBobProgram.Bytes(),
+	}
+
+	sd := e2eutils.Setup(t, dp, alloc)
+	log := testlog.Logger(t, log.LevelError)
+	miner, seqEngine, sequencer := actionsHelpers.SetupSequencerTest(t, sd, log)
+	_, verifier := actionsHelpers.SetupVerifier(t, sd, log, miner.L1Client(t, sd.RollupCfg), miner.BlobStore(), &sync.Config{})
+	rollupSeqCl := sequencer.RollupClient()
+	cl := seqEngine.EthClient()
+
+	batcher := actionsHelpers.NewL2Batcher(log, sd.RollupCfg, &actionsHelpers.BatcherCfg{
+		MinL1TxSize:          0,
+		MaxL1TxSize:          128_000,
+		BatcherKey:           dp.Secrets.Batcher,
+		DataAvailabilityType: batcherFlags.CalldataType,
+	}, rollupSeqCl, miner.EthClient(), seqEngine.EthClient(), seqEngine.EngineClient(t, sd.RollupCfg))
+
+	sequencer.ActL2PipelineFull(t)
+	verifier.ActL2PipelineFull(t)
+
+	miner.ActEmptyBlock(t)
+
+	sequencer.ActL2StartBlock(t)
+
+	// Sign authorization tuples.
+	// The way the auths are combined, it becomes
+	// 1. tx -> addr1 which is delegated to 0xaaaa
+	// 2. addr1:0xaaaa calls into addr2:0xbbbb
+	// 3. addr2:0xbbbb  writes to storage
+	auth1, err := types.SignSetCode(dp.Secrets.Alice, types.SetCodeAuthorization{
+		ChainID: *uint256.NewInt(dp.DeployConfig.L2ChainID),
+		Address: bb,
+		Nonce:   1,
+	})
+	require.NoError(gt, err, "failed to sign auth1")
+	auth2, err := types.SignSetCode(dp.Secrets.Bob, types.SetCodeAuthorization{
+		Address: aa,
+		Nonce:   0,
+	})
+	require.NoError(gt, err, "failed to sign auth2")
+
+	txdata := &types.SetCodeTx{
+		ChainID:   uint256.NewInt(dp.DeployConfig.L2ChainID),
+		Nonce:     0,
+		To:        dp.Addresses.Alice,
+		Gas:       500000,
+		GasFeeCap: uint256.NewInt(5000000000),
+		GasTipCap: uint256.NewInt(2),
+		AuthList:  []types.SetCodeAuthorization{auth1, auth2},
+	}
+	signer := types.NewPragueSigner(new(big.Int).SetUint64(dp.DeployConfig.L2ChainID))
+	tx := types.MustSignNewTx(dp.Secrets.Alice, signer, txdata)
+
+	err = cl.SendTransaction(t.Ctx(), tx)
+	require.NoError(gt, err, "failed to send set code tx")
+
+	seqEngine.EngineApi.IncludeTx(tx, dp.Addresses.Alice)
+	seqEngine.EngineApi.IncludeTx(tx, dp.Addresses.Bob)
+
+	sequencer.ActL2EndBlock(t)
+
+	// Verify delegation designations were deployed.
+	bobCode, err := cl.PendingCodeAt(t.Ctx(), dp.Addresses.Bob)
+	require.NoError(gt, err, "failed to get bob code")
+	want := types.AddressToDelegation(auth2.Address)
+	if !bytes.Equal(bobCode, want) {
+		t.Fatalf("addr1 code incorrect: got %s, want %s", common.Bytes2Hex(bobCode), common.Bytes2Hex(want))
+	}
+	aliceCode, err := cl.PendingCodeAt(t.Ctx(), dp.Addresses.Alice)
+	require.NoError(gt, err, "failed to get alice code")
+	want = types.AddressToDelegation(auth1.Address)
+	if !bytes.Equal(aliceCode, want) {
+		t.Fatalf("addr2 code incorrect: got %s, want %s", common.Bytes2Hex(aliceCode), common.Bytes2Hex(want))
+	}
+
+	// Verify delegation executed the correct code.
+	fortyTwo := common.BytesToHash([]byte{0x42})
+	actual, err := cl.PendingStorageAt(t.Ctx(), dp.Addresses.Bob, fortyTwo)
+	require.NoError(gt, err, "failed to get addr1 storage")
+
+	if !bytes.Equal(actual, fortyTwo[:]) {
+		t.Fatalf("addr2 storage wrong: expected %d, got %d", fortyTwo, actual)
+	}
+
+	// batch submit to L1. batcher should submit span batches.
+	batcher.ActSubmitAll(t)
+	miner.ActL1StartBlock(12)(t)
+	miner.ActL1IncludeTx(dp.Addresses.Batcher)(t)
+	miner.ActL1EndBlock(t)
+
+	sequencer.ActL1HeadSignal(t)
+	sequencer.ActL2PipelineFull(t)
+
+	// ensure verifier can verify the batch (needs authorization list or tx will fail)
+	verifier.ActL1HeadSignal(t)
+	verifier.ActL2PipelineFull(t)
+
+	require.Equal(t, sequencer.L2Unsafe(), sequencer.L2Safe())
+	require.Equal(t, verifier.L2Unsafe(), verifier.L2Safe())
+	require.Equal(t, sequencer.L2Safe(), verifier.L2Safe())
 }

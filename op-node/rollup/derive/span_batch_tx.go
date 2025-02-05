@@ -8,6 +8,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/holiman/uint256"
 )
 
 type spanBatchTxData interface {
@@ -44,6 +45,17 @@ type spanBatchDynamicFeeTxData struct {
 }
 
 func (txData *spanBatchDynamicFeeTxData) txType() byte { return types.DynamicFeeTxType }
+
+type spanBatchSetCodeTxData struct {
+	Value             *uint256.Int
+	GasTipCap         *uint256.Int // a.k.a. maxPriorityFeePerGas
+	GasFeeCap         *uint256.Int // a.k.a. maxFeePerGas
+	Data              []byte
+	AccessList        types.AccessList
+	AuthorizationList []types.SetCodeAuthorization
+}
+
+func (txData *spanBatchSetCodeTxData) txType() byte { return types.SetCodeTxType }
 
 // Type returns the transaction type.
 func (tx *spanBatchTx) Type() uint8 {
@@ -91,6 +103,13 @@ func (tx *spanBatchTx) decodeTyped(b []byte) (spanBatchTxData, error) {
 		err := rlp.DecodeBytes(b[1:], &inner)
 		if err != nil {
 			return nil, fmt.Errorf("failed to decode spanBatchDynamicFeeTxData: %w", err)
+		}
+		return &inner, nil
+	case types.SetCodeTxType:
+		var inner spanBatchSetCodeTxData
+		err := rlp.DecodeBytes(b[1:], &inner)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode spanBatchSetCodeTxData: %w", err)
 		}
 		return &inner, nil
 	default:
@@ -168,6 +187,23 @@ func (tx *spanBatchTx) convertToFullTx(nonce, gas uint64, to *common.Address, ch
 			R:          R,
 			S:          S,
 		}
+	case types.SetCodeTxType:
+		setCodeTxInner := tx.inner.(*spanBatchSetCodeTxData)
+		inner = &types.SetCodeTx{
+			ChainID:    uint256.MustFromBig(chainID),
+			Nonce:      nonce,
+			GasTipCap:  setCodeTxInner.GasTipCap,
+			GasFeeCap:  setCodeTxInner.GasFeeCap,
+			Gas:        gas,
+			To:         *to,
+			Value:      setCodeTxInner.Value,
+			Data:       setCodeTxInner.Data,
+			AccessList: setCodeTxInner.AccessList,
+			AuthList:   setCodeTxInner.AuthorizationList,
+			V:          uint256.MustFromBig(V),
+			R:          uint256.MustFromBig(R),
+			S:          uint256.MustFromBig(S),
+		}
 	default:
 		return nil, fmt.Errorf("invalid tx type: %d", tx.Type())
 	}
@@ -198,6 +234,15 @@ func newSpanBatchTx(tx *types.Transaction) (*spanBatchTx, error) {
 			Value:      tx.Value(),
 			Data:       tx.Data(),
 			AccessList: tx.AccessList(),
+		}
+	case types.SetCodeTxType:
+		inner = &spanBatchSetCodeTxData{
+			GasTipCap:         uint256.MustFromBig(tx.GasTipCap()),
+			GasFeeCap:         uint256.MustFromBig(tx.GasFeeCap()),
+			Value:             uint256.MustFromBig(tx.Value()),
+			Data:              tx.Data(),
+			AccessList:        tx.AccessList(),
+			AuthorizationList: tx.SetCodeAuthorizations(),
 		}
 	default:
 		return nil, fmt.Errorf("invalid tx type: %d", tx.Type())
