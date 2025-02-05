@@ -24,8 +24,8 @@ func TestHazardSafeFrontierChecks(t *testing.T) {
 	t.Run("unknown chain", func(t *testing.T) {
 		sfcd := &mockSafeFrontierCheckDeps{
 			deps: mockDependencySet{
-				chainIDFromIndexfn: func() (types.ChainID, error) {
-					return types.ChainID{}, types.ErrUnknownChain
+				chainIDFromIndexfn: func() (eth.ChainID, error) {
+					return eth.ChainID{}, types.ErrUnknownChain
 				},
 			},
 		}
@@ -67,9 +67,10 @@ func TestHazardSafeFrontierChecks(t *testing.T) {
 		sfcd.crossDerivedFromFn = func() (types.BlockSeal, error) {
 			return types.BlockSeal{Number: 3}, types.ErrFuture
 		}
-		sfcd.candidateCrossSafeFn = func() (derivedFromScope, crossSafe eth.BlockRef, err error) {
-			return eth.BlockRef{},
-				eth.BlockRef{Number: 3, Hash: common.BytesToHash([]byte{0x01})},
+		sfcd.candidateCrossSafeFn = func() (candidate types.DerivedBlockRefPair, err error) {
+			return types.DerivedBlockRefPair{
+					DerivedFrom: eth.BlockRef{},
+					Derived:     eth.BlockRef{Number: 3, Hash: common.BytesToHash([]byte{0x01})}},
 				errors.New("some error")
 		}
 		l1DerivedFrom := eth.BlockID{}
@@ -85,10 +86,11 @@ func TestHazardSafeFrontierChecks(t *testing.T) {
 		sfcd.crossDerivedFromFn = func() (types.BlockSeal, error) {
 			return types.BlockSeal{}, types.ErrFuture
 		}
-		sfcd.candidateCrossSafeFn = func() (derivedFromScope, crossSafe eth.BlockRef, err error) {
-			return eth.BlockRef{},
-				eth.BlockRef{Number: 3, Hash: common.BytesToHash([]byte{0x01})},
-				nil
+		sfcd.candidateCrossSafeFn = func() (candidate types.DerivedBlockRefPair, err error) {
+			return types.DerivedBlockRefPair{
+				DerivedFrom: eth.BlockRef{},
+				Derived:     eth.BlockRef{Number: 3, Hash: common.BytesToHash([]byte{0x01})},
+			}, nil
 		}
 		l1DerivedFrom := eth.BlockID{}
 		hazards := map[types.ChainIndex]types.BlockSeal{types.ChainIndex(0): {Number: 3, Hash: common.BytesToHash([]byte{0x02})}}
@@ -104,9 +106,10 @@ func TestHazardSafeFrontierChecks(t *testing.T) {
 		sfcd.crossDerivedFromFn = func() (types.BlockSeal, error) {
 			return types.BlockSeal{}, types.ErrFuture
 		}
-		sfcd.candidateCrossSafeFn = func() (derivedFromScope, crossSafe eth.BlockRef, err error) {
-			return eth.BlockRef{Number: 9},
-				eth.BlockRef{},
+		sfcd.candidateCrossSafeFn = func() (candidate types.DerivedBlockRefPair, err error) {
+			return types.DerivedBlockRefPair{
+					DerivedFrom: eth.BlockRef{Number: 9},
+					Derived:     eth.BlockRef{}},
 				nil
 		}
 		l1DerivedFrom := eth.BlockID{Number: 8}
@@ -122,10 +125,11 @@ func TestHazardSafeFrontierChecks(t *testing.T) {
 		sfcd.crossDerivedFromFn = func() (types.BlockSeal, error) {
 			return types.BlockSeal{}, errors.New("some error")
 		}
-		sfcd.candidateCrossSafeFn = func() (derivedFromScope, crossSafe eth.BlockRef, err error) {
-			return eth.BlockRef{Number: 9},
-				eth.BlockRef{},
-				nil
+		sfcd.candidateCrossSafeFn = func() (candidate types.DerivedBlockRefPair, err error) {
+			return types.DerivedBlockRefPair{
+				DerivedFrom: eth.BlockRef{Number: 9},
+				Derived:     eth.BlockRef{},
+			}, nil
 		}
 		l1DerivedFrom := eth.BlockID{Number: 8}
 		hazards := map[types.ChainIndex]types.BlockSeal{types.ChainIndex(0): {Number: 3, Hash: common.BytesToHash([]byte{0x02})}}
@@ -139,18 +143,18 @@ func TestHazardSafeFrontierChecks(t *testing.T) {
 
 type mockSafeFrontierCheckDeps struct {
 	deps                 mockDependencySet
-	candidateCrossSafeFn func() (derivedFromScope, crossSafe eth.BlockRef, err error)
+	candidateCrossSafeFn func() (candidate types.DerivedBlockRefPair, err error)
 	crossDerivedFromFn   func() (derivedFrom types.BlockSeal, err error)
 }
 
-func (m *mockSafeFrontierCheckDeps) CandidateCrossSafe(chain types.ChainID) (derivedFromScope, crossSafe eth.BlockRef, err error) {
+func (m *mockSafeFrontierCheckDeps) CandidateCrossSafe(chain eth.ChainID) (candidate types.DerivedBlockRefPair, err error) {
 	if m.candidateCrossSafeFn != nil {
 		return m.candidateCrossSafeFn()
 	}
-	return eth.BlockRef{}, eth.BlockRef{}, nil
+	return types.DerivedBlockRefPair{}, nil
 }
 
-func (m *mockSafeFrontierCheckDeps) CrossDerivedFrom(chainID types.ChainID, derived eth.BlockID) (derivedFrom types.BlockSeal, err error) {
+func (m *mockSafeFrontierCheckDeps) CrossDerivedFrom(chainID eth.ChainID, derived eth.BlockID) (derivedFrom types.BlockSeal, err error) {
 	if m.crossDerivedFromFn != nil {
 		return m.crossDerivedFromFn()
 	}
@@ -162,40 +166,46 @@ func (m *mockSafeFrontierCheckDeps) DependencySet() depset.DependencySet {
 }
 
 type mockDependencySet struct {
-	chainIDFromIndexfn func() (types.ChainID, error)
+	chainIDFromIndexfn func() (eth.ChainID, error)
 	canExecuteAtfn     func() (bool, error)
 	canInitiateAtfn    func() (bool, error)
 }
 
-func (m mockDependencySet) CanExecuteAt(chain types.ChainID, timestamp uint64) (bool, error) {
+func (m mockDependencySet) CanExecuteAt(chain eth.ChainID, timestamp uint64) (bool, error) {
 	if m.canExecuteAtfn != nil {
 		return m.canExecuteAtfn()
 	}
 	return true, nil
 }
 
-func (m mockDependencySet) CanInitiateAt(chain types.ChainID, timestamp uint64) (bool, error) {
+func (m mockDependencySet) CanInitiateAt(chain eth.ChainID, timestamp uint64) (bool, error) {
 	if m.canInitiateAtfn != nil {
 		return m.canInitiateAtfn()
 	}
 	return true, nil
 }
 
-func (m mockDependencySet) ChainIDFromIndex(index types.ChainIndex) (types.ChainID, error) {
+func (m mockDependencySet) ChainIDFromIndex(index types.ChainIndex) (eth.ChainID, error) {
 	if m.chainIDFromIndexfn != nil {
 		return m.chainIDFromIndexfn()
 	}
-	return types.ChainID{}, nil
+	id := eth.ChainIDFromUInt64(uint64(index) - 1000)
+	return id, nil
 }
 
-func (m mockDependencySet) ChainIndexFromID(chain types.ChainID) (types.ChainIndex, error) {
-	return types.ChainIndex(0), nil
+func (m mockDependencySet) ChainIndexFromID(chain eth.ChainID) (types.ChainIndex, error) {
+	v, err := chain.ToUInt32()
+	if err != nil {
+		return 0, err
+	}
+	// offset, so we catch improper manual conversion that doesn't apply this offset
+	return types.ChainIndex(v + 1000), nil
 }
 
-func (m mockDependencySet) Chains() []types.ChainID {
+func (m mockDependencySet) Chains() []eth.ChainID {
 	return nil
 }
 
-func (m mockDependencySet) HasChain(chain types.ChainID) bool {
+func (m mockDependencySet) HasChain(chain eth.ChainID) bool {
 	return true
 }

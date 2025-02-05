@@ -6,11 +6,12 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/api/interfaces"
+	"github.com/ethereum-optimism/optimism/devnet-sdk/descriptors"
+	apiInterfaces "github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/api/interfaces"
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/api/run"
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/api/wrappers"
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/sources/deployer"
-	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/sources/inspect"
+	srcInterfaces "github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/sources/interfaces"
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/sources/spec"
 )
 
@@ -19,39 +20,9 @@ const (
 	DefaultEnclave     = "devnet"
 )
 
-type EndpointMap map[string]inspect.PortInfo
-
-type ServiceMap map[string]Service
-
-type Service struct {
-	Name      string      `json:"name"`
-	Endpoints EndpointMap `json:"endpoints"`
-}
-
-type Node struct {
-	Services ServiceMap `json:"services"`
-}
-
-type Chain struct {
-	Name      string                       `json:"name"`
-	ID        string                       `json:"id,omitempty"`
-	Services  ServiceMap                   `json:"services,omitempty"`
-	Nodes     []Node                       `json:"nodes"`
-	Addresses deployer.DeploymentAddresses `json:"addresses,omitempty"`
-	Wallets   WalletMap                    `json:"wallets,omitempty"`
-}
-
-type Wallet struct {
-	Address    string `json:"address"`
-	PrivateKey string `json:"private_key,omitempty"`
-}
-
-type WalletMap map[string]Wallet
-
 // KurtosisEnvironment represents the output of a Kurtosis deployment
 type KurtosisEnvironment struct {
-	L1 *Chain   `json:"l1"`
-	L2 []*Chain `json:"l2"`
+	descriptors.DevnetEnvironment
 }
 
 // KurtosisDeployer handles deploying packages using Kurtosis
@@ -65,10 +36,14 @@ type KurtosisDeployer struct {
 	// Enclave name
 	enclave string
 
-	enclaveSpec      EnclaveSpecifier
-	enclaveInspecter EnclaveInspecter
-	enclaveObserver  EnclaveObserver
-	kurtosisCtx      interfaces.KurtosisContextInterface
+	// interfaces for kurtosis sources
+	enclaveSpec      srcInterfaces.EnclaveSpecifier
+	enclaveInspecter srcInterfaces.EnclaveInspecter
+	enclaveObserver  srcInterfaces.EnclaveObserver
+	jwtExtractor     srcInterfaces.JWTExtractor
+
+	// interface for kurtosis interactions
+	kurtosisCtx apiInterfaces.KurtosisContextInterface
 }
 
 type KurtosisDeployerOptions func(*KurtosisDeployer)
@@ -97,25 +72,31 @@ func WithKurtosisEnclave(enclave string) KurtosisDeployerOptions {
 	}
 }
 
-func WithKurtosisEnclaveSpec(enclaveSpec EnclaveSpecifier) KurtosisDeployerOptions {
+func WithKurtosisEnclaveSpec(enclaveSpec srcInterfaces.EnclaveSpecifier) KurtosisDeployerOptions {
 	return func(d *KurtosisDeployer) {
 		d.enclaveSpec = enclaveSpec
 	}
 }
 
-func WithKurtosisEnclaveInspecter(enclaveInspecter EnclaveInspecter) KurtosisDeployerOptions {
+func WithKurtosisEnclaveInspecter(enclaveInspecter srcInterfaces.EnclaveInspecter) KurtosisDeployerOptions {
 	return func(d *KurtosisDeployer) {
 		d.enclaveInspecter = enclaveInspecter
 	}
 }
 
-func WithKurtosisEnclaveObserver(enclaveObserver EnclaveObserver) KurtosisDeployerOptions {
+func WithKurtosisEnclaveObserver(enclaveObserver srcInterfaces.EnclaveObserver) KurtosisDeployerOptions {
 	return func(d *KurtosisDeployer) {
 		d.enclaveObserver = enclaveObserver
 	}
 }
 
-func WithKurtosisKurtosisContext(kurtosisCtx interfaces.KurtosisContextInterface) KurtosisDeployerOptions {
+func WithKurtosisJWTExtractor(extractor srcInterfaces.JWTExtractor) KurtosisDeployerOptions {
+	return func(d *KurtosisDeployer) {
+		d.jwtExtractor = extractor
+	}
+}
+
+func WithKurtosisKurtosisContext(kurtosisCtx apiInterfaces.KurtosisContextInterface) KurtosisDeployerOptions {
 	return func(d *KurtosisDeployer) {
 		d.kurtosisCtx = kurtosisCtx
 	}
@@ -132,6 +113,7 @@ func NewKurtosisDeployer(opts ...KurtosisDeployerOptions) (*KurtosisDeployer, er
 		enclaveSpec:      &enclaveSpecAdapter{},
 		enclaveInspecter: &enclaveInspectAdapter{},
 		enclaveObserver:  &enclaveDeployerAdapter{},
+		jwtExtractor:     &enclaveJWTAdapter{},
 	}
 
 	for _, opt := range opts {
@@ -149,10 +131,10 @@ func NewKurtosisDeployer(opts ...KurtosisDeployerOptions) (*KurtosisDeployer, er
 	return d, nil
 }
 
-func (d *KurtosisDeployer) getWallets(wallets deployer.WalletList) WalletMap {
-	walletMap := make(WalletMap)
+func (d *KurtosisDeployer) getWallets(wallets deployer.WalletList) descriptors.WalletMap {
+	walletMap := make(descriptors.WalletMap)
 	for _, wallet := range wallets {
-		walletMap[wallet.Name] = Wallet{
+		walletMap[wallet.Name] = descriptors.Wallet{
 			Address:    wallet.Address,
 			PrivateKey: wallet.PrivateKey,
 		}
@@ -160,7 +142,7 @@ func (d *KurtosisDeployer) getWallets(wallets deployer.WalletList) WalletMap {
 	return walletMap
 }
 
-// getEnvironmentInfo parses the input spec and inspect output to create KurtosisEnvironment
+// GetEnvironmentInfo parses the input spec and inspect output to create KurtosisEnvironment
 func (d *KurtosisDeployer) GetEnvironmentInfo(ctx context.Context, spec *spec.EnclaveSpec) (*KurtosisEnvironment, error) {
 	inspectResult, err := d.enclaveInspecter.EnclaveInspect(ctx, d.enclave)
 	if err != nil {
@@ -173,20 +155,30 @@ func (d *KurtosisDeployer) GetEnvironmentInfo(ctx context.Context, spec *spec.En
 		return nil, fmt.Errorf("failed to parse deployer state: %w", err)
 	}
 
+	// Get JWT data
+	jwtData, err := d.jwtExtractor.ExtractData(ctx, d.enclave)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract JWT data: %w", err)
+	}
+
 	env := &KurtosisEnvironment{
-		L2: make([]*Chain, 0, len(spec.Chains)),
+		DevnetEnvironment: descriptors.DevnetEnvironment{
+			L2:       make([]*descriptors.Chain, 0, len(spec.Chains)),
+			Features: spec.Features,
+		},
 	}
 
 	// Find L1 endpoint
 	finder := NewServiceFinder(inspectResult.UserServices)
 	if nodes, services := finder.FindL1Services(); len(nodes) > 0 {
-		chain := &Chain{
+		chain := &descriptors.Chain{
 			Name:     "Ethereum",
 			Services: services,
 			Nodes:    nodes,
+			JWT:      jwtData.L1JWT,
 		}
 		if deployerState.State != nil {
-			chain.Addresses = deployerState.State.Addresses
+			chain.Addresses = descriptors.AddressMap(deployerState.State.Addresses)
 			chain.Wallets = d.getWallets(deployerState.Wallets)
 		}
 		env.L1 = chain
@@ -196,17 +188,18 @@ func (d *KurtosisDeployer) GetEnvironmentInfo(ctx context.Context, spec *spec.En
 	for _, chainSpec := range spec.Chains {
 		nodes, services := finder.FindL2Services(chainSpec.Name)
 
-		chain := &Chain{
+		chain := &descriptors.Chain{
 			Name:     chainSpec.Name,
 			ID:       chainSpec.NetworkID,
 			Services: services,
 			Nodes:    nodes,
+			JWT:      jwtData.L2JWT,
 		}
 
 		// Add contract addresses if available
 		if deployerState.State != nil && deployerState.State.Deployments != nil {
 			if addresses, ok := deployerState.State.Deployments[chainSpec.NetworkID]; ok {
-				chain.Addresses = addresses.Addresses
+				chain.Addresses = descriptors.AddressMap(addresses.Addresses)
 			}
 			if wallets, ok := deployerState.State.Deployments[chainSpec.NetworkID]; ok {
 				chain.Wallets = d.getWallets(wallets.Wallets)

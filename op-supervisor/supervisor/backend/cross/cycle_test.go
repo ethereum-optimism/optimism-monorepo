@@ -9,14 +9,29 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ethereum-optimism/optimism/op-service/eth"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 )
 
-type mockCycleCheckDeps struct {
-	openBlockFn func(chainID types.ChainID, blockNum uint64) (eth.BlockRef, uint32, map[uint32]*types.ExecutingMessage, error)
+type testDepSet struct {
+	mapping map[types.ChainIndex]eth.ChainID
 }
 
-func (m *mockCycleCheckDeps) OpenBlock(chainID types.ChainID, blockNum uint64) (eth.BlockRef, uint32, map[uint32]*types.ExecutingMessage, error) {
+func (t testDepSet) ChainIDFromIndex(index types.ChainIndex) (eth.ChainID, error) {
+	v, ok := t.mapping[index]
+	if !ok {
+		return eth.ChainID{}, types.ErrUnknownChain
+	}
+	return v, nil
+}
+
+var _ depset.ChainIDFromIndex = (*testDepSet)(nil)
+
+type mockCycleCheckDeps struct {
+	openBlockFn func(chainID eth.ChainID, blockNum uint64) (eth.BlockRef, uint32, map[uint32]*types.ExecutingMessage, error)
+}
+
+func (m *mockCycleCheckDeps) OpenBlock(chainID eth.ChainID, blockNum uint64) (eth.BlockRef, uint32, map[uint32]*types.ExecutingMessage, error) {
 	return m.openBlockFn(chainID, blockNum)
 }
 
@@ -34,7 +49,7 @@ type hazardCycleChecksTestCase struct {
 
 	// Optional overrides
 	hazards     map[types.ChainIndex]types.BlockSeal
-	openBlockFn func(chainID types.ChainID, blockNum uint64) (eth.BlockRef, uint32, map[uint32]*types.ExecutingMessage, error)
+	openBlockFn func(chainID eth.ChainID, blockNum uint64) (eth.BlockRef, uint32, map[uint32]*types.ExecutingMessage, error)
 }
 
 func runHazardCycleChecksTestCaseGroup(t *testing.T, group string, tests []hazardCycleChecksTestCase) {
@@ -48,7 +63,7 @@ func runHazardCycleChecksTestCaseGroup(t *testing.T, group string, tests []hazar
 func runHazardCycleChecksTestCase(t *testing.T, tc hazardCycleChecksTestCase) {
 	// Create mocked dependencies
 	deps := &mockCycleCheckDeps{
-		openBlockFn: func(chainID types.ChainID, blockNum uint64) (eth.BlockRef, uint32, map[uint32]*types.ExecutingMessage, error) {
+		openBlockFn: func(chainID eth.ChainID, blockNum uint64) (eth.BlockRef, uint32, map[uint32]*types.ExecutingMessage, error) {
 			// Use override if provided
 			if tc.openBlockFn != nil {
 				return tc.openBlockFn(chainID, blockNum)
@@ -78,8 +93,15 @@ func runHazardCycleChecksTestCase(t *testing.T, tc hazardCycleChecksTestCase) {
 		}
 	}
 
+	depSet := &testDepSet{
+		mapping: make(map[types.ChainIndex]eth.ChainID),
+	}
+	for chainStr := range tc.chainBlocks {
+		index := chainIndex(chainStr)
+		depSet.mapping[index] = eth.ChainIDFromUInt64(uint64(index))
+	}
 	// Run the test
-	err := HazardCycleChecks(deps, 100, hazards)
+	err := HazardCycleChecks(depSet, deps, 100, hazards)
 
 	// No error expected
 	if tc.expectErr == nil {
@@ -150,7 +172,7 @@ func TestHazardCycleChecksFailures(t *testing.T) {
 		{
 			name:        "failed to open block error",
 			chainBlocks: emptyChainBlocks,
-			openBlockFn: func(chainID types.ChainID, blockNum uint64) (eth.BlockRef, uint32, map[uint32]*types.ExecutingMessage, error) {
+			openBlockFn: func(chainID eth.ChainID, blockNum uint64) (eth.BlockRef, uint32, map[uint32]*types.ExecutingMessage, error) {
 				return eth.BlockRef{}, 0, nil, testOpenBlockErr
 			},
 			expectErr: errors.New("failed to open block"),
@@ -160,7 +182,7 @@ func TestHazardCycleChecksFailures(t *testing.T) {
 			name:        "block mismatch error",
 			chainBlocks: emptyChainBlocks,
 			// openBlockFn returns a block number that doesn't match the expected block number.
-			openBlockFn: func(chainID types.ChainID, blockNum uint64) (eth.BlockRef, uint32, map[uint32]*types.ExecutingMessage, error) {
+			openBlockFn: func(chainID eth.ChainID, blockNum uint64) (eth.BlockRef, uint32, map[uint32]*types.ExecutingMessage, error) {
 				return eth.BlockRef{Number: blockNum + 1}, 0, make(map[uint32]*types.ExecutingMessage), nil
 			},
 			expectErr: errors.New("tried to open block"),

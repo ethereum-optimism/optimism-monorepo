@@ -3,6 +3,7 @@ package config
 import (
 	"testing"
 
+	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ethereum-optimism/optimism/op-service/metrics"
@@ -10,7 +11,6 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/rpc"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/syncnode"
-	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 )
 
 func TestDefaultConfigIsValid(t *testing.T) {
@@ -57,8 +57,8 @@ func TestValidateRPCConfig(t *testing.T) {
 }
 
 func validConfig() *Config {
-	depSet, err := depset.NewStaticConfigDependencySet(map[types.ChainID]*depset.StaticConfigDependency{
-		types.ChainIDFromUInt64(900): &depset.StaticConfigDependency{
+	depSet, err := depset.NewStaticConfigDependencySet(map[eth.ChainID]*depset.StaticConfigDependency{
+		eth.ChainIDFromUInt64(900): &depset.StaticConfigDependency{
 			ChainIndex:     900,
 			ActivationTime: 0,
 			HistoryMinTime: 0,

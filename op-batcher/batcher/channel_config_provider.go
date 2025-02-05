@@ -10,11 +10,9 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 )
 
-const randomByteCalldataGas = params.TxDataNonZeroGasEIP2028
-
 type (
 	ChannelConfigProvider interface {
-		ChannelConfig() ChannelConfig
+		ChannelConfig(isPectra bool) ChannelConfig
 	}
 
 	GasPricer interface {
@@ -52,7 +50,7 @@ func NewDynamicEthChannelConfig(lgr log.Logger,
 // calldata and for blobs, given current market conditions: it will return
 // the appropriate ChannelConfig depending on which is cheaper. It makes
 // assumptions about the typical makeup of channel data.
-func (dec *DynamicEthChannelConfig) ChannelConfig() ChannelConfig {
+func (dec *DynamicEthChannelConfig) ChannelConfig(isPectra bool) ChannelConfig {
 	ctx, cancel := context.WithTimeout(context.Background(), dec.timeout)
 	defer cancel()
 	tipCap, baseFee, blobBaseFee, err := dec.gasPricer.SuggestGasPriceCaps(ctx)
@@ -61,36 +59,36 @@ func (dec *DynamicEthChannelConfig) ChannelConfig() ChannelConfig {
 		return *dec.lastConfig
 	}
 
-	// We estimate the gas costs of a calldata and blob tx under the assumption that we'd fill
-	// a frame fully and compressed random channel data has few zeros, so they can be
-	// ignored in the calldata gas price estimation.
-	// It is also assumed that a calldata tx would contain exactly one full frame
-	// and a blob tx would contain target-num-frames many blobs.
+	// Channels built for blobs have higher capacity than channels built for calldata.
+	// If we have a channel built for calldata, we want to switch to blobs if the cost per byte is lower. Doing so
+	// will mean a new channel is built which will not be full but will eventually fill up with additional data.
+	// If we have a channel built for blobs, we similarly want to switch to calldata if the cost per byte is lower. Doing so
+	// will mean several new (full) channels will be built resulting in several calldata txs. We compute the cost per byte
+	// for a _single_ transaction in either case.
 
-	// It would be nicer to use core.IntrinsicGas, but we don't have the actual data at hand
-	calldataBytes := dec.calldataConfig.MaxFrameSize + 1 // + 1 version byte
-	calldataGas := big.NewInt(int64(calldataBytes*randomByteCalldataGas + params.TxGas))
-	calldataPrice := new(big.Int).Add(baseFee, tipCap)
-	calldataCost := new(big.Int).Mul(calldataGas, calldataPrice)
+	// We assume that compressed random channel data has few zeros so they can be ignored (in actuality,
+	// zero bytes are worth one token instead of four):
+	calldataBytesPerTx := dec.calldataConfig.MaxFrameSize + 1 // +1 for the version byte
+	tokensPerCalldataTx := uint64(calldataBytesPerTx * 4)
+	numBlobsPerTx := dec.blobConfig.TargetNumFrames
 
-	blobGas := big.NewInt(params.BlobTxBlobGasPerBlob * int64(dec.blobConfig.TargetNumFrames))
-	blobCost := new(big.Int).Mul(blobGas, blobBaseFee)
-	// blobs still have intrinsic calldata costs
-	blobCalldataCost := new(big.Int).Mul(big.NewInt(int64(params.TxGas)), calldataPrice)
-	blobCost = blobCost.Add(blobCost, blobCalldataCost)
+	// Compute the total absolute cost of submitting either a single calldata tx or a single blob tx.
+	calldataCost, blobCost := computeSingleCalldataTxCost(tokensPerCalldataTx, baseFee, tipCap, isPectra),
+		computeSingleBlobTxCost(numBlobsPerTx, baseFee, tipCap, blobBaseFee)
 
-	// Now we compare the prices divided by the number of bytes that can be
-	// submitted for that price.
-	blobDataBytes := big.NewInt(eth.MaxBlobDataSize * int64(dec.blobConfig.TargetNumFrames))
+	// Now we compare the absolute cost per tx divided by the number of bytes per tx:
+	blobDataBytesPerTx := big.NewInt(eth.MaxBlobDataSize * int64(numBlobsPerTx))
+
 	// The following will compare blobCost(a)/blobDataBytes(x) > calldataCost(b)/calldataBytes(y):
-	ay := new(big.Int).Mul(blobCost, big.NewInt(int64(calldataBytes)))
-	bx := new(big.Int).Mul(calldataCost, blobDataBytes)
+	ay := new(big.Int).Mul(blobCost, big.NewInt(int64(calldataBytesPerTx)))
+	bx := new(big.Int).Mul(calldataCost, blobDataBytesPerTx)
+
 	// ratio only used for logging, more correct multiplicative calculation used for comparison
 	ayf, bxf := new(big.Float).SetInt(ay), new(big.Float).SetInt(bx)
 	costRatio := new(big.Float).Quo(ayf, bxf)
 	lgr := dec.log.New("base_fee", baseFee, "blob_base_fee", blobBaseFee, "tip_cap", tipCap,
-		"calldata_bytes", calldataBytes, "calldata_cost", calldataCost,
-		"blob_data_bytes", blobDataBytes, "blob_cost", blobCost,
+		"calldata_bytes", calldataBytesPerTx, "calldata_cost", calldataCost,
+		"blob_data_bytes", blobDataBytesPerTx, "blob_cost", blobCost,
 		"cost_ratio", costRatio)
 
 	if ay.Cmp(bx) == 1 {
@@ -101,4 +99,35 @@ func (dec *DynamicEthChannelConfig) ChannelConfig() ChannelConfig {
 	lgr.Info("Using blob channel config")
 	dec.lastConfig = &dec.blobConfig
 	return dec.blobConfig
+}
+
+func computeSingleCalldataTxCost(numTokens uint64, baseFee, tipCap *big.Int, isPectra bool) *big.Int {
+	// We assume isContractCreation = false and execution_gas_used = 0 in https://eips.ethereum.org/EIPS/eip-7623
+	// This is a safe assumption given how batcher transactions are constructed.
+	const (
+		standardTokenCost      = 4
+		totalCostFloorPerToken = 10
+	)
+	var multiplier uint64
+	if isPectra {
+		multiplier = totalCostFloorPerToken
+	} else {
+		multiplier = standardTokenCost
+	}
+
+	calldataPrice := new(big.Int).Add(baseFee, tipCap)
+	calldataGas := big.NewInt(int64(params.TxGas + numTokens*multiplier))
+
+	return new(big.Int).Mul(calldataGas, calldataPrice)
+}
+
+func computeSingleBlobTxCost(numBlobs int, baseFee, tipCap, blobBaseFee *big.Int) *big.Int {
+	// There is no execution gas or contract creation cost for blob transactions
+	calldataPrice := new(big.Int).Add(baseFee, tipCap)
+	blobCalldataCost := new(big.Int).Mul(big.NewInt(int64(params.TxGas)), calldataPrice)
+
+	blobGas := big.NewInt(params.BlobTxBlobGasPerBlob * int64(numBlobs))
+	blobCost := new(big.Int).Mul(blobGas, blobBaseFee)
+
+	return blobCost.Add(blobCost, blobCalldataCost)
 }

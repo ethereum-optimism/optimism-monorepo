@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/ethereum-optimism/optimism/op-service/client"
+	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/retry"
-	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 )
 
 var (
@@ -57,7 +57,7 @@ func NewClient(config Config, serverURL string) (*Client, error) {
 }
 
 // SyncAll syncs all known databases for the given chains.
-func (c *Client) SyncAll(ctx context.Context, chains []types.ChainID, resume bool) error {
+func (c *Client) SyncAll(ctx context.Context, chains []eth.ChainID, resume bool) error {
 	for _, chain := range chains {
 		for fileAlias := range Databases {
 			if err := c.SyncDatabase(ctx, chain, fileAlias, resume); err != nil {
@@ -70,7 +70,7 @@ func (c *Client) SyncAll(ctx context.Context, chains []types.ChainID, resume boo
 
 // SyncDatabase downloads the named file from the server.
 // If the local file exists, it will attempt to resume the download if resume is true.
-func (c *Client) SyncDatabase(ctx context.Context, chainID types.ChainID, database Database, resume bool) error {
+func (c *Client) SyncDatabase(ctx context.Context, chainID eth.ChainID, database Database, resume bool) error {
 	// Validate file alias
 	filePath, exists := Databases[database]
 	if !exists {
@@ -111,7 +111,7 @@ func (c *Client) SyncDatabase(ctx context.Context, chainID types.ChainID, databa
 }
 
 // attemptSync makes a single attempt to sync the file
-func (c *Client) attemptSync(ctx context.Context, chainID types.ChainID, database Database, absPath string, initialSize int64) error {
+func (c *Client) attemptSync(ctx context.Context, chainID eth.ChainID, database Database, absPath string, initialSize int64) error {
 	// First do a HEAD request to get the file size
 	path := c.buildURLPath(chainID, database)
 	resp, err := c.httpClient.Get(ctx, path, nil, http.Header{"X-HTTP-Method-Override": []string{"HEAD"}})
@@ -178,7 +178,7 @@ func (c *Client) attemptSync(ctx context.Context, chainID types.ChainID, databas
 }
 
 // buildURLPath creates the URL path for a given database download request
-func (c *Client) buildURLPath(chainID types.ChainID, database Database) string {
+func (c *Client) buildURLPath(chainID eth.ChainID, database Database) string {
 	return fmt.Sprintf("dbsync/%s/%s", chainID.String(), database)
 }
 

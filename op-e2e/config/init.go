@@ -192,6 +192,7 @@ func init() {
 
 	configPath := path.Join(root, "op-e2e", "config")
 	forks := []genesis.L2AllocsMode{
+		genesis.L2AllocsIsthmus,
 		genesis.L2AllocsHolocene,
 		genesis.L2AllocsGranite,
 		genesis.L2AllocsFjord,
@@ -244,6 +245,7 @@ func initAllocType(root string, allocType AllocType) {
 	lgr := log.New()
 
 	allocModes := []genesis.L2AllocsMode{
+		genesis.L2AllocsIsthmus,
 		genesis.L2AllocsHolocene,
 		genesis.L2AllocsGranite,
 		genesis.L2AllocsFjord,
@@ -287,6 +289,7 @@ func initAllocType(root string, allocType AllocType) {
 				"l2GenesisFjordTimeOffset":    nil,
 				"l2GenesisGraniteTimeOffset":  nil,
 				"l2GenesisHoloceneTimeOffset": nil,
+				"l2GenesisIsthmusTimeOffset":  nil,
 			}
 
 			upgradeSchedule := new(genesis.UpgradeScheduleDeployConfig)
@@ -443,7 +446,6 @@ func defaultIntent(root string, loc *artifacts.Locator, deployer common.Address,
 						OracleMinProposalSize:        10000,
 						OracleChallengePeriodSeconds: 0,
 						MakeRespected:                true,
-						StartingAnchorRoot:           genesisOutputRoot,
 					},
 					{
 						ChainProofParams: state.ChainProofParams{
@@ -455,8 +457,7 @@ func defaultIntent(root string, loc *artifacts.Locator, deployer common.Address,
 							DisputeClockExtension:   0,
 							DisputeMaxClockDuration: 1200,
 						},
-						VMType:             state.VMTypeAlphabet,
-						StartingAnchorRoot: genesisOutputRoot,
+						VMType: state.VMTypeAlphabet,
 					},
 					{
 						ChainProofParams: state.ChainProofParams{
@@ -467,8 +468,7 @@ func defaultIntent(root string, loc *artifacts.Locator, deployer common.Address,
 							DisputeClockExtension:   0,
 							DisputeMaxClockDuration: 1200,
 						},
-						VMType:             cannonVMType(allocType),
-						StartingAnchorRoot: genesisOutputRoot,
+						VMType: cannonVMType(allocType),
 					},
 				},
 			},
@@ -530,7 +530,7 @@ func cannonPrestate(monorepoRoot string, allocType AllocType) common.Hash {
 		once = &cannonPrestateSTOnce
 		cacheVar = &cannonPrestateST
 	} else {
-		filename = "prestate-proof-mt.json"
+		filename = "prestate-proof-mt64.json"
 		once = &cannonPrestateMTOnce
 		cacheVar = &cannonPrestateMT
 	}

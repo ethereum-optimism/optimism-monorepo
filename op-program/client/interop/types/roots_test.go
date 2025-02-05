@@ -13,8 +13,8 @@ func TestTransitionStateCodec(t *testing.T) {
 		superRoot := &eth.SuperV1{
 			Timestamp: 9842494,
 			Chains: []eth.ChainIDAndOutput{
-				{ChainID: 34, Output: eth.Bytes32{0x01}},
-				{ChainID: 35, Output: eth.Bytes32{0x02}},
+				{ChainID: eth.ChainIDFromUInt64(34), Output: eth.Bytes32{0x01}},
+				{ChainID: eth.ChainIDFromUInt64(35), Output: eth.Bytes32{0x02}},
 			},
 		}
 		state := &TransitionState{
@@ -25,8 +25,7 @@ func TestTransitionStateCodec(t *testing.T) {
 			},
 			Step: 2,
 		}
-		data, err := state.Marshal()
-		require.NoError(t, err)
+		data := state.Marshal()
 		actual, err := UnmarshalTransitionState(data)
 		require.NoError(t, err)
 		require.Equal(t, state, actual)
@@ -36,8 +35,8 @@ func TestTransitionStateCodec(t *testing.T) {
 		superRoot := &eth.SuperV1{
 			Timestamp: 9842494,
 			Chains: []eth.ChainIDAndOutput{
-				{ChainID: 34, Output: eth.Bytes32{0x01}},
-				{ChainID: 35, Output: eth.Bytes32{0x02}},
+				{ChainID: eth.ChainIDFromUInt64(34), Output: eth.Bytes32{0x01}},
+				{ChainID: eth.ChainIDFromUInt64(35), Output: eth.Bytes32{0x02}},
 			},
 		}
 		expected := &TransitionState{

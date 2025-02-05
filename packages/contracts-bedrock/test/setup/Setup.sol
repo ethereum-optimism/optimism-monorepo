@@ -21,6 +21,7 @@ import { AddressAliasHelper } from "src/vendor/AddressAliasHelper.sol";
 import { Chains } from "scripts/libraries/Chains.sol";
 
 // Interfaces
+import { IOPContractsManager } from "interfaces/L1/IOPContractsManager.sol";
 import { IOptimismPortal2 } from "interfaces/L1/IOptimismPortal2.sol";
 import { IL1CrossDomainMessenger } from "interfaces/L1/IL1CrossDomainMessenger.sol";
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
@@ -51,6 +52,8 @@ import { IWETH98 } from "interfaces/universal/IWETH98.sol";
 import { IGovernanceToken } from "interfaces/governance/IGovernanceToken.sol";
 import { ILegacyMessagePasser } from "interfaces/legacy/ILegacyMessagePasser.sol";
 import { ISuperchainTokenBridge } from "interfaces/L2/ISuperchainTokenBridge.sol";
+import { IPermissionedDisputeGame } from "interfaces/dispute/IPermissionedDisputeGame.sol";
+import { IFaultDisputeGame } from "interfaces/dispute/IFaultDisputeGame.sol";
 
 /// @title Setup
 /// @dev This contact is responsible for setting up the contracts in state. It currently
@@ -83,10 +86,15 @@ contract Setup {
     /// @notice Allows users of Setup to override what L2 genesis is being created.
     Fork l2Fork = LATEST_FORK;
 
-    // L1 contracts
+    // L1 contracts - dispute
     IDisputeGameFactory disputeGameFactory;
     IAnchorStateRegistry anchorStateRegistry;
+    IFaultDisputeGame faultDisputeGame;
     IDelayedWETH delayedWeth;
+    IPermissionedDisputeGame permissionedDisputeGame;
+    IDelayedWETH delayedWETHPermissionedGameProxy;
+
+    // L1 contracts - core
     IOptimismPortal2 optimismPortal2;
     ISystemConfig systemConfig;
     IL1StandardBridge l1StandardBridge;
@@ -97,6 +105,7 @@ contract Setup {
     IProtocolVersions protocolVersions;
     ISuperchainConfig superchainConfig;
     IDataAvailabilityChallenge dataAvailabilityChallenge;
+    IOPContractsManager opcm;
 
     // L2 contracts
     IL2CrossDomainMessenger l2CrossDomainMessenger =
@@ -174,6 +183,14 @@ contract Setup {
         }
     }
 
+    /// @dev Skips tests when running against a forked production network using the superchain ops repo.
+    function skipIfOpsRepoTest(string memory message) public {
+        if (forkLive.useOpsRepo()) {
+            vm.skip(true);
+            console.log(string.concat("Skipping ops repo test: ", message));
+        }
+    }
+
     /// @dev Returns early when running against a forked production network. Useful for allowing a portion of a test
     ///      to run.
     function returnIfForkTest(string memory message) public view {
@@ -218,6 +235,7 @@ contract Setup {
         anchorStateRegistry = IAnchorStateRegistry(artifacts.mustGetAddress("AnchorStateRegistryProxy"));
         disputeGameFactory = IDisputeGameFactory(artifacts.mustGetAddress("DisputeGameFactoryProxy"));
         delayedWeth = IDelayedWETH(artifacts.mustGetAddress("DelayedWETHProxy"));
+        opcm = IOPContractsManager(artifacts.mustGetAddress("OPContractsManager"));
 
         if (deploy.cfg().useAltDA()) {
             dataAvailabilityChallenge =

@@ -9,14 +9,13 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/stretchr/testify/require"
-
-	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 )
 
 func TestSyncBasic(t *testing.T) {
 	serverRoot, clientRoot := setupTest(t)
-	chainID := types.ChainID{1}
+	chainID := eth.ChainID{1}
 
 	// Create a test file on the server
 	serverFile := filepath.Join(serverRoot, chainID.String(), DBLocalSafe.File())
@@ -26,7 +25,7 @@ func TestSyncBasic(t *testing.T) {
 	serverCfg := Config{
 		DataDir: serverRoot,
 	}
-	server, err := NewServer(serverCfg, []types.ChainID{chainID})
+	server, err := NewServer(serverCfg, []eth.ChainID{chainID})
 	require.NoError(t, err)
 	ts := httptest.NewServer(server)
 	defer ts.Close()
@@ -46,7 +45,7 @@ func TestSyncBasic(t *testing.T) {
 
 func TestSyncResume(t *testing.T) {
 	serverRoot, clientRoot := setupTest(t)
-	chainID := types.ChainID{1} // Use chain ID 1 for testing
+	chainID := eth.ChainID{1} // Use chain ID 1 for testing
 
 	// Create a test file on the server and partial file on the client
 	serverFile := filepath.Join(serverRoot, chainID.String(), DBLocalSafe.File())
@@ -59,7 +58,7 @@ func TestSyncResume(t *testing.T) {
 	serverCfg := Config{
 		DataDir: serverRoot,
 	}
-	server, err := NewServer(serverCfg, []types.ChainID{chainID})
+	server, err := NewServer(serverCfg, []eth.ChainID{chainID})
 	require.NoError(t, err)
 	ts := httptest.NewServer(server)
 	defer ts.Close()
@@ -78,7 +77,7 @@ func TestSyncResume(t *testing.T) {
 
 func TestSyncRetry(t *testing.T) {
 	serverRoot, clientRoot := setupTest(t)
-	chainID := types.ChainID{1}
+	chainID := eth.ChainID{1}
 
 	// Create a test file
 	serverFile := filepath.Join(serverRoot, chainID.String(), DBLocalSafe.File())
@@ -88,7 +87,7 @@ func TestSyncRetry(t *testing.T) {
 	serverCfg := Config{
 		DataDir: serverRoot,
 	}
-	server, err := NewServer(serverCfg, []types.ChainID{chainID})
+	server, err := NewServer(serverCfg, []eth.ChainID{chainID})
 	require.NoError(t, err)
 
 	failureCount := 0
@@ -118,12 +117,12 @@ func TestSyncRetry(t *testing.T) {
 
 func TestSyncErrors(t *testing.T) {
 	serverRoot, clientRoot := setupTest(t)
-	chainID := types.ChainID{1}
+	chainID := eth.ChainID{1}
 
 	serverCfg := Config{
 		DataDir: serverRoot,
 	}
-	server, err := NewServer(serverCfg, []types.ChainID{chainID})
+	server, err := NewServer(serverCfg, []eth.ChainID{chainID})
 	require.NoError(t, err)
 
 	ts := httptest.NewServer(server)

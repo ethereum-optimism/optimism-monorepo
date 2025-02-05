@@ -18,8 +18,10 @@ import (
 	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/ethdb/memorydb"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
+	"github.com/ethereum/go-ethereum/trie"
 	"github.com/ethereum/go-ethereum/triedb"
 	"github.com/ethereum/go-ethereum/triedb/hashdb"
 	"github.com/stretchr/testify/require"
@@ -115,6 +117,26 @@ func TestSetSafe(t *testing.T) {
 	}
 	chain.SetSafe(blocks[2].Header())
 	require.Equal(t, blocks[2].Header(), chain.CurrentSafeBlock())
+}
+
+func TestGetReceiptsByBlockHash(t *testing.T) {
+	blocks, chain := setupOracleBackedChain(t, 1)
+
+	_, err := chain.InsertBlockWithoutSetHead(blocks[1], false)
+	require.NoError(t, err)
+	require.Equal(t,
+		blocks[1].ReceiptHash(),
+		types.DeriveSha(chain.GetReceiptsByBlockHash(blocks[1].Hash()), trie.NewStackTrie(nil)),
+		"Lookup block1 receipt",
+	)
+
+	// create block with txs/receipts
+	newBlock := createBlock(t, chain)
+	_, err = chain.InsertBlockWithoutSetHead(newBlock, false)
+	require.NoError(t, err)
+	receipts := chain.GetReceiptsByBlockHash(newBlock.Hash())
+	require.NotNil(t, receipts)
+	require.Equal(t, newBlock.ReceiptHash(), types.DeriveSha(receipts, trie.NewStackTrie(nil)))
 }
 
 func TestUpdateStateDatabaseWhenImportingBlock(t *testing.T) {
@@ -259,7 +281,7 @@ func TestPrecompileOracle(t *testing.T) {
 			precompileOracle.Results = map[common.Hash]l2test.PrecompileResult{
 				crypto.Keccak256Hash(arg): {Result: test.result, Ok: true},
 			}
-			chain, err := NewOracleBackedL2Chain(logger, oracle, precompileOracle, chainCfg, common.Hash(eth.OutputRoot(&stubOutput)))
+			chain, err := NewOracleBackedL2Chain(logger, oracle, precompileOracle, chainCfg, common.Hash(eth.OutputRoot(&stubOutput)), memorydb.New())
 			require.NoError(t, err)
 
 			newBlock := createBlock(t, chain, WithInput(test.input), WithTargetAddress(test.target))
@@ -288,7 +310,7 @@ func setupOracleBackedChainWithLowerHead(t *testing.T, blockCount int, headBlock
 	head := blocks[headBlockNumber].Hash()
 	stubOutput := eth.OutputV0{BlockHash: head}
 	precompileOracle := l2test.NewStubPrecompileOracle(t)
-	chain, err := NewOracleBackedL2Chain(logger, oracle, precompileOracle, chainCfg, common.Hash(eth.OutputRoot(&stubOutput)))
+	chain, err := NewOracleBackedL2Chain(logger, oracle, precompileOracle, chainCfg, common.Hash(eth.OutputRoot(&stubOutput)), memorydb.New())
 	require.NoError(t, err)
 	return blocks, chain
 }
@@ -378,7 +400,7 @@ func createBlock(t *testing.T, chain *OracleBackedL2Chain, opts ...blockCreateOp
 	require.NoError(t, err)
 	nonce := parentDB.GetNonce(fundedAddress)
 	config := chain.Config()
-	db := rawdb.NewDatabase(NewOracleBackedDB(chain.oracle))
+	db := rawdb.NewDatabase(NewOracleBackedDB(memorydb.New(), chain.oracle, eth.ChainIDFromBig(config.ChainID)))
 	blocks, _ := core.GenerateChain(config, parent, chain.Engine(), db, 1, func(i int, gen *core.BlockGen) {
 		rawTx := &types.DynamicFeeTx{
 			ChainID:   config.ChainID,

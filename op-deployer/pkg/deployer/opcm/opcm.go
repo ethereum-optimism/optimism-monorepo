@@ -11,16 +11,18 @@ type DeployOPCMInput struct {
 	SuperchainConfig   common.Address
 	ProtocolVersions   common.Address
 	L1ContractsRelease string
+	UpgradeController  common.Address
 
 	AddressManagerBlueprint           common.Address
 	ProxyBlueprint                    common.Address
 	ProxyAdminBlueprint               common.Address
 	L1ChugSplashProxyBlueprint        common.Address
 	ResolvedDelegateProxyBlueprint    common.Address
-	AnchorStateRegistryBlueprint      common.Address
 	PermissionedDisputeGame1Blueprint common.Address
 	PermissionedDisputeGame2Blueprint common.Address
 
+	SuperchainConfigImpl             common.Address
+	ProtocolVersionsImpl             common.Address
 	L1ERC721BridgeImpl               common.Address
 	OptimismPortalImpl               common.Address
 	SystemConfigImpl                 common.Address
@@ -28,6 +30,7 @@ type DeployOPCMInput struct {
 	L1CrossDomainMessengerImpl       common.Address
 	L1StandardBridgeImpl             common.Address
 	DisputeGameFactoryImpl           common.Address
+	AnchorStateRegistryImpl          common.Address
 	DelayedWETHImpl                  common.Address
 	MipsImpl                         common.Address
 }

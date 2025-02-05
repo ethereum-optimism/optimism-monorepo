@@ -4,6 +4,7 @@ import (
 	"context"
 	"math"
 
+	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	hosttypes "github.com/ethereum-optimism/optimism/op-program/host/types"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/retry"
@@ -102,6 +103,14 @@ type RetryingL2Source struct {
 	strategy retry.Strategy
 }
 
+func (s *RetryingL2Source) RollupConfig() *rollup.Config {
+	return s.source.RollupConfig()
+}
+
+func (s *RetryingL2Source) ExperimentalEnabled() bool {
+	return s.source.ExperimentalEnabled()
+}
+
 func (s *RetryingL2Source) InfoAndTxsByHash(ctx context.Context, blockHash common.Hash) (eth.BlockInfo, types.Transactions, error) {
 	return retry.Do2(ctx, maxAttempts, s.strategy, func() (eth.BlockInfo, types.Transactions, error) {
 		i, t, err := s.source.InfoAndTxsByHash(ctx, blockHash)
@@ -132,11 +141,32 @@ func (s *RetryingL2Source) CodeByHash(ctx context.Context, hash common.Hash) ([]
 	})
 }
 
-func (s *RetryingL2Source) OutputByRoot(ctx context.Context, root common.Hash) (eth.Output, error) {
-	return retry.Do(ctx, maxAttempts, s.strategy, func() (eth.Output, error) {
-		o, err := s.source.OutputByRoot(ctx, root)
+func (s *RetryingL2Source) FetchReceipts(ctx context.Context, blockHash common.Hash) (eth.BlockInfo, types.Receipts, error) {
+	return retry.Do2(ctx, maxAttempts, s.strategy, func() (eth.BlockInfo, types.Receipts, error) {
+		i, r, err := s.source.FetchReceipts(ctx, blockHash)
 		if err != nil {
-			s.logger.Warn("Failed to fetch l2 output", "root", root, "err", err)
+			s.logger.Warn("Failed to fetch receipts", "hash", blockHash, "err", err)
+		}
+		return i, r, err
+	})
+}
+
+func (s *RetryingL2Source) OutputByRoot(ctx context.Context, blockRoot common.Hash) (eth.Output, error) {
+	return retry.Do(ctx, maxAttempts, s.strategy, func() (eth.Output, error) {
+		o, err := s.source.OutputByRoot(ctx, blockRoot)
+		if err != nil {
+			s.logger.Warn("Failed to fetch l2 output", "block", blockRoot, "err", err)
+			return o, err
+		}
+		return o, nil
+	})
+}
+
+func (s *RetryingL2Source) OutputByNumber(ctx context.Context, blockNum uint64) (eth.Output, error) {
+	return retry.Do(ctx, maxAttempts, s.strategy, func() (eth.Output, error) {
+		o, err := s.source.OutputByNumber(ctx, blockNum)
+		if err != nil {
+			s.logger.Warn("Failed to fetch l2 output", "block", blockNum, "err", err)
 			return o, err
 		}
 		return o, nil

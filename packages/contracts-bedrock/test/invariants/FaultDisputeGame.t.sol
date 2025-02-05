@@ -45,6 +45,16 @@ contract FaultDisputeGame_Solvency_Invariant is FaultDisputeGame_Init {
         }
         gameProxy.resolve();
 
+        // Wait for finalization delay
+        vm.warp(block.timestamp + 3.5 days + 1 seconds);
+
+        // Close the game.
+        gameProxy.closeGame();
+
+        // Claim credit once to trigger unlock period.
+        gameProxy.claimCredit(address(this));
+        gameProxy.claimCredit(address(actor));
+
         // Wait for the withdrawal delay.
         vm.warp(block.timestamp + 7 days + 1 seconds);
 

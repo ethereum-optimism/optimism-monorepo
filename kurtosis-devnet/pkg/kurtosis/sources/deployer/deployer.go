@@ -8,6 +8,8 @@ import (
 	"io"
 	"math/big"
 	"strings"
+
+	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/sources/artifact"
 )
 
 const (
@@ -242,21 +244,21 @@ func parseStateFile(r io.Reader) (*DeployerState, error) {
 
 // ExtractData downloads and parses the op-deployer state
 func (d *Deployer) ExtractData(ctx context.Context) (*DeployerData, error) {
-	fs, err := NewEnclaveFS(ctx, d.enclave)
+	fs, err := artifact.NewEnclaveFS(ctx, d.enclave)
 	if err != nil {
 		return nil, err
 	}
 
-	artifact, err := fs.GetArtifact(ctx, d.deployerArtifactName)
+	a, err := fs.GetArtifact(ctx, d.deployerArtifactName)
 	if err != nil {
 		return nil, err
 	}
 
 	stateBuffer := bytes.NewBuffer(nil)
 	walletsBuffer := bytes.NewBuffer(nil)
-	if err := artifact.ExtractFiles(
-		&ArtifactFileWriter{path: d.stateName, writer: stateBuffer},
-		&ArtifactFileWriter{path: d.walletsName, writer: walletsBuffer},
+	if err := a.ExtractFiles(
+		artifact.NewArtifactFileWriter(d.stateName, stateBuffer),
+		artifact.NewArtifactFileWriter(d.walletsName, walletsBuffer),
 	); err != nil {
 		return nil, err
 	}
@@ -283,5 +285,8 @@ func (d *Deployer) ExtractData(ctx context.Context) (*DeployerData, error) {
 		return nil, err
 	}
 
-	return &DeployerData{State: state, Wallets: knownWallets}, nil
+	return &DeployerData{
+		State:   state,
+		Wallets: knownWallets,
+	}, nil
 }

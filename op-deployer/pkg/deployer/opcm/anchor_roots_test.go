@@ -9,34 +9,22 @@ import (
 )
 
 func TestEncodeStartingAnchorRoots(t *testing.T) {
-	encoded, err := EncodeStartingAnchorRoots([]StartingAnchorRoot{
-		DefaultStartingAnchorRoot,
-	})
+	encoded, err := EncodeStartingAnchorRoot(DefaultStartingAnchorRoot)
 	require.NoError(t, err)
-	require.EqualValues(t, PermissionedGameStartingAnchorRoots, encoded)
+	require.EqualValues(t, PermissionedGameStartingAnchorRoot, encoded)
 
-	encoded, err = EncodeStartingAnchorRoots([]StartingAnchorRoot{
-		{
-			GameType:      0,
-			L2BlockNumber: common.Big0,
-		},
-		{
-			GameType:      1,
-			Root:          common.Hash{0xde, 0xad},
-			L2BlockNumber: big.NewInt(0),
-		},
+	encoded, err = EncodeStartingAnchorRoot(StartingAnchorRoot{
+		Root:          common.Hash{0xde, 0xad, 0xbe, 0xef},
+		L2BlockNumber: big.NewInt(9),
 	})
 	require.NoError(t, err)
 	require.EqualValues(t,
-		common.Hex2Bytes(
-			"0000000000000000000000000000000000000000000000000000000000000020"+
-				"0000000000000000000000000000000000000000000000000000000000000002"+
-				"0000000000000000000000000000000000000000000000000000000000000000"+
-				"0000000000000000000000000000000000000000000000000000000000000000"+
-				"0000000000000000000000000000000000000000000000000000000000000000"+
-				"0000000000000000000000000000000000000000000000000000000000000001"+
-				"dead000000000000000000000000000000000000000000000000000000000000"+
-				"0000000000000000000000000000000000000000000000000000000000000000"),
+		[]byte{
+			0xde, 0xad, 0xbe, 0xef, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+			0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+			0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+			0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x09,
+		},
 		encoded,
 	)
 }

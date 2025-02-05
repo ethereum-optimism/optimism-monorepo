@@ -3,6 +3,7 @@ package kurtosis
 import (
 	"testing"
 
+	"github.com/ethereum-optimism/optimism/devnet-sdk/descriptors"
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/sources/inspect"
 	"github.com/stretchr/testify/assert"
 )
@@ -52,31 +53,31 @@ func TestFindRPCEndpoints(t *testing.T) {
 	tests := []struct {
 		name         string
 		services     inspect.ServiceMap
-		findFn       func(*ServiceFinder) ([]Node, ServiceMap)
-		wantNodes    []Node
-		wantServices ServiceMap
+		findFn       func(*ServiceFinder) ([]descriptors.Node, descriptors.ServiceMap)
+		wantNodes    []descriptors.Node
+		wantServices descriptors.ServiceMap
 	}{
 		{
 			name:     "find L1 endpoints",
 			services: testServices,
-			findFn: func(f *ServiceFinder) ([]Node, ServiceMap) {
+			findFn: func(f *ServiceFinder) ([]descriptors.Node, descriptors.ServiceMap) {
 				return f.FindL1Services()
 			},
-			wantNodes: []Node{
+			wantNodes: []descriptors.Node{
 				{
-					Services: ServiceMap{
-						"cl": Service{
+					Services: descriptors.ServiceMap{
+						"cl": descriptors.Service{
 							Name: "cl-1-lighthouse-geth",
-							Endpoints: EndpointMap{
+							Endpoints: descriptors.EndpointMap{
 								"metrics":       {Port: 52691},
 								"tcp-discovery": {Port: 52692},
 								"udp-discovery": {Port: 58275},
 								"http":          {Port: 52693},
 							},
 						},
-						"el": Service{
+						"el": descriptors.Service{
 							Name: "el-1-geth-lighthouse",
-							Endpoints: EndpointMap{
+							Endpoints: descriptors.EndpointMap{
 								"metrics":       {Port: 52643},
 								"tcp-discovery": {Port: 52644},
 								"udp-discovery": {Port: 51936},
@@ -88,28 +89,28 @@ func TestFindRPCEndpoints(t *testing.T) {
 					},
 				},
 			},
-			wantServices: ServiceMap{},
+			wantServices: descriptors.ServiceMap{},
 		},
 		{
 			name:     "find op-kurtosis L2 endpoints",
 			services: testServices,
-			findFn: func(f *ServiceFinder) ([]Node, ServiceMap) {
+			findFn: func(f *ServiceFinder) ([]descriptors.Node, descriptors.ServiceMap) {
 				return f.FindL2Services("op-kurtosis")
 			},
-			wantNodes: []Node{
+			wantNodes: []descriptors.Node{
 				{
-					Services: ServiceMap{
-						"cl": Service{
+					Services: descriptors.ServiceMap{
+						"cl": descriptors.Service{
 							Name: "op-cl-1-op-node-op-geth-op-kurtosis",
-							Endpoints: EndpointMap{
+							Endpoints: descriptors.EndpointMap{
 								"udp-discovery": {Port: 50990},
 								"http":          {Port: 53503},
 								"tcp-discovery": {Port: 53504},
 							},
 						},
-						"el": Service{
+						"el": descriptors.Service{
 							Name: "op-el-1-op-geth-op-node-op-kurtosis",
-							Endpoints: EndpointMap{
+							Endpoints: descriptors.EndpointMap{
 								"udp-discovery": {Port: 53233},
 								"engine-rpc":    {Port: 53399},
 								"metrics":       {Port: 53400},
@@ -121,10 +122,10 @@ func TestFindRPCEndpoints(t *testing.T) {
 					},
 				},
 			},
-			wantServices: ServiceMap{
-				"batcher": Service{
+			wantServices: descriptors.ServiceMap{
+				"batcher": descriptors.Service{
 					Name: "op-batcher-op-kurtosis",
-					Endpoints: EndpointMap{
+					Endpoints: descriptors.EndpointMap{
 						"http": {Port: 53572},
 					},
 				},
@@ -137,14 +138,14 @@ func TestFindRPCEndpoints(t *testing.T) {
 					"http": {Host: "custom.host", Port: 8080},
 				},
 			},
-			findFn: func(f *ServiceFinder) ([]Node, ServiceMap) {
+			findFn: func(f *ServiceFinder) ([]descriptors.Node, descriptors.ServiceMap) {
 				return f.FindL2Services("custom-host")
 			},
 			wantNodes: nil,
-			wantServices: ServiceMap{
-				"batcher": Service{
+			wantServices: descriptors.ServiceMap{
+				"batcher": descriptors.Service{
 					Name: "op-batcher-custom-host",
-					Endpoints: EndpointMap{
+					Endpoints: descriptors.EndpointMap{
 						"http": {Host: "custom.host", Port: 8080},
 					},
 				},

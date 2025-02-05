@@ -209,12 +209,11 @@ func NewHost(
 		GrayGlacierBlock:    big.NewInt(0),
 		MergeNetsplitBlock:  big.NewInt(0),
 		// Ethereum forks in proof-of-stake era.
-		TerminalTotalDifficulty:       big.NewInt(1),
-		TerminalTotalDifficultyPassed: true,
-		ShanghaiTime:                  new(uint64),
-		CancunTime:                    new(uint64),
-		PragueTime:                    nil,
-		VerkleTime:                    nil,
+		TerminalTotalDifficulty: big.NewInt(1),
+		ShanghaiTime:            new(uint64),
+		CancunTime:              new(uint64),
+		PragueTime:              nil,
+		VerkleTime:              nil,
 		// OP-Stack forks are disabled, since we use this for L1.
 		BedrockBlock: nil,
 		RegolithTime: nil,
@@ -290,7 +289,8 @@ func NewHost(
 		CallerOverride:      h.handleCaller,
 	}
 
-	h.env = vm.NewEVM(blockContext, txContext, h.state, h.chainCfg, vmCfg)
+	h.env = vm.NewEVM(blockContext, h.state, h.chainCfg, vmCfg)
+	h.env.SetTxContext(txContext)
 
 	return h
 }
@@ -698,7 +698,7 @@ func (h *Host) StateDump() (*foundry.ForgeAllocs, error) {
 	baseState := h.baseState
 	// We have to commit the existing state to the trie,
 	// for all the state-changes to be captured by the trie iterator.
-	root, err := baseState.Commit(h.env.Context.BlockNumber.Uint64(), true)
+	root, err := baseState.Commit(h.env.Context.BlockNumber.Uint64(), true, false)
 	if err != nil {
 		return nil, fmt.Errorf("failed to commit state: %w", err)
 	}

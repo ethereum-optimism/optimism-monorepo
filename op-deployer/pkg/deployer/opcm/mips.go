@@ -15,10 +15,6 @@ type DeployMIPSOutput struct {
 	MipsSingleton common.Address
 }
 
-type DeployMIPSScript struct {
-	Run func(input, output common.Address) error
-}
-
 func DeployMIPS(
 	host *script.Host,
 	input DeployMIPSInput,

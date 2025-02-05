@@ -33,10 +33,6 @@ func (output *DeploySuperchainOutput) CheckOutput(input common.Address) error {
 	return nil
 }
 
-type DeploySuperchainScript struct {
-	Run func(in common.Address, out common.Address) error
-}
-
 type DeploySuperchainOpts struct {
 	ChainID     *big.Int
 	ArtifactsFS foundry.StatDirFs

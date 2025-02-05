@@ -3,7 +3,6 @@ package eth
 import (
 	"bytes"
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"math"
 	"testing"
@@ -49,7 +48,7 @@ func TestExecutionPayloadUnmarshalMaliciousData(t *testing.T) {
 	require.Error(t, err)
 }
 
-// FuzzExecutionPayloadMarshalUnmarshal checks that our SSZ encoding>decoding round trips properly
+// FuzzExecutionPayloadMarshalUnmarshalV1 checks that our SSZ encoding>decoding round trips properly
 func FuzzExecutionPayloadMarshalUnmarshalV1(f *testing.F) {
 	f.Fuzz(func(t *testing.T, data []byte, a, b, c, d uint64, extraData []byte, txs uint16, txsData []byte) {
 		if len(data) < 32+20+32+32+256+32+32+32 {
@@ -249,6 +248,79 @@ func FuzzExecutionPayloadMarshalUnmarshalV3(f *testing.F) {
 	})
 }
 
+func FuzzExecutionPayloadMarshalUnmarshalV4(f *testing.F) {
+	f.Fuzz(func(t *testing.T, data []byte, a, b, c, d uint64, extraData []byte, txs uint16, txsData []byte, wCount uint16, blobGasUsed, excessBlobGas uint64) {
+		if len(data) < 32+20+32+32+256+32+32+32+32 {
+			return
+		}
+		var payload ExecutionPayload
+		payload.ParentHash = *(*common.Hash)(data[:32])
+		data = data[32:]
+		payload.FeeRecipient = *(*common.Address)(data[:20])
+		data = data[20:]
+		payload.StateRoot = *(*Bytes32)(data[:32])
+		data = data[32:]
+		payload.ReceiptsRoot = *(*Bytes32)(data[:32])
+		data = data[32:]
+		payload.LogsBloom = *(*Bytes256)(data[:256])
+		data = data[256:]
+		payload.PrevRandao = *(*Bytes32)(data[:32])
+		data = data[32:]
+		payload.BlockNumber = Uint64Quantity(a)
+		payload.GasLimit = Uint64Quantity(a)
+		payload.GasUsed = Uint64Quantity(a)
+		payload.Timestamp = Uint64Quantity(a)
+		payload.BlobGasUsed = (*Uint64Quantity)(&blobGasUsed)
+		payload.ExcessBlobGas = (*Uint64Quantity)(&excessBlobGas)
+		payload.WithdrawalsRoot = (*common.Hash)(data[:32])
+		if len(extraData) > 32 {
+			extraData = extraData[:32]
+		}
+		payload.ExtraData = extraData
+		(*uint256.Int)(&payload.BaseFeePerGas).SetBytes(data[:32])
+		payload.BlockHash = *(*common.Hash)(data[:32])
+		payload.Transactions = make([]Data, txs)
+		for i := 0; i < int(txs); i++ {
+			if len(txsData) < 2 {
+				payload.Transactions[i] = make(Data, 0)
+				continue
+			}
+			txSize := binary.LittleEndian.Uint16(txsData[:2])
+			txsData = txsData[2:]
+			if int(txSize) > len(txsData) {
+				txSize = uint16(len(txsData))
+			}
+			payload.Transactions[i] = txsData[:txSize]
+			txsData = txsData[txSize:]
+		}
+
+		wCount = wCount % maxWithdrawalsPerPayload
+		withdrawals := make(types.Withdrawals, wCount)
+		for i := 0; i < int(wCount); i++ {
+			withdrawals[i] = &types.Withdrawal{
+				Index:     a,
+				Validator: b,
+				Address:   common.BytesToAddress(data[:20]),
+				Amount:    c,
+			}
+		}
+		payload.Withdrawals = &withdrawals
+
+		var buf bytes.Buffer
+		if _, err := payload.MarshalSSZ(&buf); err != nil {
+			t.Fatalf("failed to marshal ExecutionPayload: %v", err)
+		}
+		var roundTripped ExecutionPayload
+		err := roundTripped.UnmarshalSSZ(BlockV4, uint32(len(buf.Bytes())), bytes.NewReader(buf.Bytes()))
+		if err != nil {
+			t.Fatalf("failed to decode previously marshalled payload: %v", err)
+		}
+		if diff := cmp.Diff(payload, roundTripped); diff != "" {
+			t.Fatalf("The data did not round trip correctly:\n%s", diff)
+		}
+	})
+}
+
 func FuzzOBP01(f *testing.F) {
 	payload := &ExecutionPayload{
 		ExtraData: make([]byte, 32),
@@ -339,8 +411,9 @@ func TestOPB04(t *testing.T) {
 	}
 }
 
-func createPayloadWithWithdrawals(w *types.Withdrawals) *ExecutionPayload {
-	return &ExecutionPayload{
+func createPayloadWithWithdrawals(w *types.Withdrawals, version BlockVersion, withdrawalsRoot *common.Hash) *ExecutionPayload {
+	zero := uint64(0)
+	payload := &ExecutionPayload{
 		ParentHash:    common.HexToHash("0x123"),
 		FeeRecipient:  common.HexToAddress("0x456"),
 		StateRoot:     Bytes32(common.HexToHash("0x789")),
@@ -357,6 +430,17 @@ func createPayloadWithWithdrawals(w *types.Withdrawals) *ExecutionPayload {
 		Withdrawals:   w,
 		Transactions:  []Data{common.FromHex("9999")},
 	}
+
+	if version.HasBlobProperties() {
+		payload.BlobGasUsed = (*Uint64Quantity)(&zero)
+		payload.ExcessBlobGas = (*Uint64Quantity)(&zero)
+	}
+
+	if version.HasWithdrawalsRoot() {
+		payload.WithdrawalsRoot = withdrawalsRoot
+	}
+
+	return payload
 }
 
 func TestMarshalUnmarshalWithdrawals(t *testing.T) {
@@ -406,7 +490,7 @@ func TestMarshalUnmarshalWithdrawals(t *testing.T) {
 		test := test
 
 		t.Run(fmt.Sprintf("TestWithdrawalUnmarshalMarshal_%s", test.name), func(t *testing.T) {
-			input := createPayloadWithWithdrawals(test.withdrawals)
+			input := createPayloadWithWithdrawals(test.withdrawals, test.version, nil)
 
 			var buf bytes.Buffer
 			_, err := input.MarshalSSZ(&buf)
@@ -432,32 +516,47 @@ func TestMarshalUnmarshalWithdrawals(t *testing.T) {
 func TestMarshalUnmarshalExecutionPayloadEnvelopes(t *testing.T) {
 	hash := common.HexToHash("0x123")
 
-	zero := uint64(0)
-	validInput := &ExecutionPayloadEnvelope{
-		ParentBeaconBlockRoot: &hash,
-		ExecutionPayload:      createPayloadWithWithdrawals(&types.Withdrawals{}),
-	}
-	validInput.ExecutionPayload.ExcessBlobGas = (*Uint64Quantity)(&zero)
-	validInput.ExecutionPayload.BlobGasUsed = (*Uint64Quantity)(&zero)
-
-	missingHash := &ExecutionPayloadEnvelope{
-		ParentBeaconBlockRoot: nil,
-		ExecutionPayload:      createPayloadWithWithdrawals(&types.Withdrawals{}),
-	}
-
-	missingExecutionPayload := &ExecutionPayloadEnvelope{
-		ParentBeaconBlockRoot: &hash,
-		ExecutionPayload:      nil,
+	type input struct {
+		version               BlockVersion
+		usePayload            bool
+		parentBeaconBlockRoot *common.Hash
+		withdrawalsRoot       *common.Hash
+		withdrawals           *types.Withdrawals
 	}
 
 	tests := []struct {
 		name  string
-		input *ExecutionPayloadEnvelope
+		input input
 		err   error
 	}{
-		{"ValidInputSucceeds", validInput, nil},
-		{"MissingHashFailsToSerialize", missingHash, ErrMissingData},
-		{"MissingExecutionDataFailsToSerialize", missingExecutionPayload, ErrMissingData},
+		{"ValidInputSucceeds", input{
+			version:               BlockV3,
+			usePayload:            true,
+			parentBeaconBlockRoot: &hash,
+			withdrawalsRoot:       nil,
+			withdrawals:           &types.Withdrawals{},
+		}, nil},
+		{"MissingHashFailsToSerialize", input{
+			version:               BlockV3,
+			usePayload:            true,
+			parentBeaconBlockRoot: nil,
+			withdrawalsRoot:       nil,
+			withdrawals:           &types.Withdrawals{},
+		}, ErrMissingData},
+		{"MissingExecutionDataFailsToSerialize", input{
+			version:               BlockV3,
+			usePayload:            false,
+			parentBeaconBlockRoot: &hash,
+			withdrawalsRoot:       nil,
+			withdrawals:           nil,
+		}, ErrMissingData},
+		{"WithWithdrawalRootSucceeds", input{
+			version:               BlockV4,
+			usePayload:            true,
+			parentBeaconBlockRoot: &hash,
+			withdrawalsRoot:       &hash,
+			withdrawals:           &types.Withdrawals{},
+		}, nil},
 	}
 
 	for _, test := range tests {
@@ -466,8 +565,15 @@ func TestMarshalUnmarshalExecutionPayloadEnvelopes(t *testing.T) {
 		t.Run(fmt.Sprintf("TestExecutionPayloadEnvelopeMarshalUnmarshal_%s", test.name), func(t *testing.T) {
 			hash := common.HexToHash("0x123")
 
+			envelope := &ExecutionPayloadEnvelope{
+				ParentBeaconBlockRoot: test.input.parentBeaconBlockRoot,
+			}
+			if test.input.usePayload {
+				envelope.ExecutionPayload = createPayloadWithWithdrawals(test.input.withdrawals, test.input.version, test.input.withdrawalsRoot)
+			}
+
 			var buf bytes.Buffer
-			_, err := test.input.MarshalSSZ(&buf)
+			_, err := envelope.MarshalSSZ(&buf)
 
 			if test.err != nil {
 				require.ErrorIs(t, err, test.err)
@@ -479,15 +585,14 @@ func TestMarshalUnmarshalExecutionPayloadEnvelopes(t *testing.T) {
 			data := buf.Bytes()
 
 			output := &ExecutionPayloadEnvelope{}
-			err = output.UnmarshalSSZ(uint32(len(data)), bytes.NewReader(data))
-
+			err = output.UnmarshalSSZ(test.input.version, uint32(len(data)), bytes.NewReader(data))
 			require.NoError(t, err)
 
 			require.NotNil(t, output.ParentBeaconBlockRoot)
 			assert.Equal(t, hash, *output.ParentBeaconBlockRoot)
 
 			require.NotNil(t, output.ExecutionPayload)
-			if diff := cmp.Diff(*test.input.ExecutionPayload, *output.ExecutionPayload); diff != "" {
+			if diff := cmp.Diff(*envelope.ExecutionPayload, *output.ExecutionPayload); diff != "" {
 				t.Fatalf("The data did not round trip correctly:\n%s", diff)
 			}
 		})
@@ -496,6 +601,24 @@ func TestMarshalUnmarshalExecutionPayloadEnvelopes(t *testing.T) {
 
 func TestFailsToDeserializeTooLittleData(t *testing.T) {
 	var payload ExecutionPayloadEnvelope
-	err := payload.UnmarshalSSZ(1, bytes.NewReader([]byte{0x00}))
-	assert.Equal(t, err, errors.New("scope too small to decode execution payload envelope: 1"))
+	err := payload.UnmarshalSSZ(BlockV1, 0, bytes.NewReader([]byte{0x00}))
+	require.ErrorIs(t, err, ErrScopeTooSmall)
+}
+
+func TestFailsWrongVersionWithWithdrawalRoot(t *testing.T) {
+	hash := common.HexToHash("0x123")
+	envelope := &ExecutionPayloadEnvelope{
+		ParentBeaconBlockRoot: &hash,
+		ExecutionPayload:      createPayloadWithWithdrawals(&types.Withdrawals{}, BlockV4, &hash),
+	}
+
+	var buf bytes.Buffer
+	_, err := envelope.MarshalSSZ(&buf)
+	require.NoError(t, err)
+
+	data := buf.Bytes()
+
+	var payload ExecutionPayloadEnvelope
+	err = payload.UnmarshalSSZ(BlockV3, uint32(len(data)), bytes.NewReader(data))
+	require.ErrorContains(t, err, ErrBadExtraDataOffset.Error())
 }

@@ -23,6 +23,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/ethdb"
+	"github.com/ethereum/go-ethereum/ethdb/leveldb"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ethereum/go-ethereum/trie"
@@ -43,17 +44,13 @@ type Cheater struct {
 
 func OpenGethRawDB(dataDirPath string, readOnly bool) (ethdb.Database, error) {
 	// don't use readonly mode in actual DB, it doesn't work with Geth.
-	db, err := rawdb.Open(rawdb.OpenOptions{
-		Type:              "leveldb",
-		Directory:         dataDirPath,
-		AncientsDirectory: filepath.Join(dataDirPath, "ancient"),
-		Namespace:         "",
-		Cache:             2048,
-		Handles:           500,
-		ReadOnly:          readOnly,
-	})
+	kvs, err := leveldb.New(dataDirPath, 2048, 500, "", readOnly)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open leveldb: %w", err)
+	}
+	db, err := rawdb.NewDatabaseWithFreezer(kvs, filepath.Join(dataDirPath, "ancient"), "", readOnly)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open db with freezer: %w", err)
 	}
 	return db, nil
 }
@@ -104,8 +101,9 @@ func (ch *Cheater) RunAndClose(fn HeadFn) error {
 		return ch.Close()
 	}
 
+	isCancun := ch.Blockchain.Config().IsCancun(preHeader.Number, preHeader.Time)
 	// commit the changes, and then update the state-root
-	stateRoot, err := state.Commit(preHeader.Number.Uint64()+1, true)
+	stateRoot, err := state.Commit(preHeader.Number.Uint64()+1, true, isCancun)
 	if err != nil {
 		_ = ch.Close()
 		return fmt.Errorf("failed to commit state change: %w", err)
@@ -327,7 +325,8 @@ func StoragePatch(patch io.Reader, address common.Address) HeadFn {
 			}
 			i += 1
 			if i%1000 == 0 { // for every 1000 values, commit to disk
-				if _, err := headState.Commit(head.Number.Uint64(), true); err != nil {
+				// warning: if the account is empty, the storage change will not persist.
+				if _, err := headState.Commit(head.Number.Uint64(), true, false); err != nil {
 					return fmt.Errorf("failed to commit state to disk after patching %d entries: %w", i, err)
 				}
 			}

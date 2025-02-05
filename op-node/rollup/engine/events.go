@@ -15,6 +15,16 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 )
 
+// ReplaceBlockDerivedFrom is a magic value for the "DerivedFrom" attribute,
+// used when a L2 block is a replacement of an invalidated block.
+// After the replacement has been processed, a reset is performed to derive the next L2 blocks.
+var ReplaceBlockDerivedFrom = eth.L1BlockRef{
+	Hash:       common.HexToHash("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"),
+	Number:     ^uint64(0),
+	ParentHash: common.Hash{},
+	Time:       0,
+}
+
 type Metrics interface {
 	CountSequencedTxsInBlock(txns int, deposits int)
 
@@ -96,15 +106,6 @@ type PendingSafeUpdateEvent struct {
 
 func (ev PendingSafeUpdateEvent) String() string {
 	return "pending-safe-update"
-}
-
-type InteropPendingSafeChangedEvent struct {
-	Ref         eth.L2BlockRef
-	DerivedFrom eth.L1BlockRef
-}
-
-func (ev InteropPendingSafeChangedEvent) String() string {
-	return "interop-pending-safe-changed"
 }
 
 // PromotePendingSafeEvent signals that a block can be marked as pending-safe, and/or safe.
@@ -265,14 +266,6 @@ func (ev TryUpdateEngineEvent) getBlockProcessingMetrics() []interface{} {
 	return logValues
 }
 
-type ForceEngineResetEvent struct {
-	Unsafe, Safe, Finalized eth.L2BlockRef
-}
-
-func (ev ForceEngineResetEvent) String() string {
-	return "force-engine-reset"
-}
-
 type EngineResetConfirmedEvent struct {
 	Unsafe, Safe, Finalized eth.L2BlockRef
 }
@@ -314,6 +307,26 @@ type CrossUpdateRequestEvent struct {
 
 func (ev CrossUpdateRequestEvent) String() string {
 	return "cross-update-request"
+}
+
+// InteropInvalidateBlockEvent is emitted when a block needs to be invalidated, and a replacement is needed.
+type InteropInvalidateBlockEvent struct {
+	Invalidated eth.BlockRef
+	Attributes  *derive.AttributesWithParent
+}
+
+func (ev InteropInvalidateBlockEvent) String() string {
+	return "interop-invalidate-block"
+}
+
+// InteropReplacedBlockEvent is emitted when a replacement is done.
+type InteropReplacedBlockEvent struct {
+	Ref      eth.BlockRef
+	Envelope *eth.ExecutionPayloadEnvelope
+}
+
+func (ev InteropReplacedBlockEvent) String() string {
+	return "interop-replaced-block"
 }
 
 type EngDeriver struct {
@@ -411,7 +424,7 @@ func (d *EngDeriver) OnEvent(ev event.Event) bool {
 			SafeL2Head:      d.ec.SafeL2Head(),
 			FinalizedL2Head: d.ec.Finalized(),
 		})
-	case ForceEngineResetEvent:
+	case rollup.ForceResetEvent:
 		ForceEngineReset(d.ec, x)
 
 		// Time to apply the changes to the underlying engine
@@ -473,11 +486,6 @@ func (d *EngDeriver) OnEvent(ev event.Event) bool {
 				DerivedFrom: x.DerivedFrom,
 			})
 		}
-		// TODO(#12646): temporary interop work-around, assumes Holocene local-safe progression behavior.
-		d.emitter.Emit(InteropPendingSafeChangedEvent{
-			Ref:         x.Ref,
-			DerivedFrom: x.DerivedFrom,
-		})
 	case PromoteLocalSafeEvent:
 		d.log.Debug("Updating local safe", "local_safe", x.Ref, "safe", d.ec.SafeL2Head(), "unsafe", d.ec.UnsafeL2Head())
 		d.ec.SetLocalSafeHead(x.Ref)
@@ -526,6 +534,8 @@ func (d *EngDeriver) OnEvent(ev event.Event) bool {
 				LocalSafe: d.ec.LocalSafeL2Head(),
 			})
 		}
+	case InteropInvalidateBlockEvent:
+		d.emitter.Emit(BuildStartEvent{Attributes: x.Attributes})
 	case BuildStartEvent:
 		d.onBuildStart(x)
 	case BuildStartedEvent:
@@ -561,7 +571,7 @@ type ResetEngineControl interface {
 }
 
 // ForceEngineReset is not to be used. The op-program needs it for now, until event processing is adopted there.
-func ForceEngineReset(ec ResetEngineControl, x ForceEngineResetEvent) {
+func ForceEngineReset(ec ResetEngineControl, x rollup.ForceResetEvent) {
 	ec.SetUnsafeHead(x.Unsafe)
 	ec.SetLocalSafeHead(x.Safe)
 	ec.SetPendingSafeL2Head(x.Safe)

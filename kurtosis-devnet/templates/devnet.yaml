@@ -1,0 +1,47 @@
+{{- $context := or . (dict)}}
+{{- $default_l2s := dict 
+    "2151908" (dict "nodes" (list "op-geth")) 
+    "2151909" (dict "nodes" (list "op-geth"))
+}}
+{{- $l2s := dig "l2s" $default_l2s $context }}
+{{- $overrides := dig "overrides" (dict) $context }}
+{{- $interop := dig "interop" false $context }}
+---
+optimism_package:
+{{ if $interop }}
+  interop:
+    enabled: true
+    supervisor_params:
+      image: {{ dig "overrides" "images" "op_supervisor" (localDockerImage "op-supervisor") $context }}
+      extra_params:
+      - {{ dig "overrides" "flags" "log_level" "!!str" $context }}
+{{ end }}
+  chains:
+  {{ range $l2_id, $l2 := $l2s }}
+    - {{ include "l2.yaml" (dict "chain_id" $l2_id "overrides" $overrides "nodes" $l2.nodes) }}
+  {{ end }}
+  op_contract_deployer_params:
+    image: {{ dig "overrides" "images" "op_deployer" (localDockerImage "op-deployer") $context }}
+    l1_artifacts_locator: {{ dig "overrides" "urls" "l1_artifacts" (localContractArtifacts "l1") $context }}
+    l2_artifacts_locator: {{ dig "overrides" "urls" "l2_artifacts" (localContractArtifacts "l2") $context }}
+{{ if $interop }}
+    global_deploy_overrides:
+      faultGameAbsolutePrestate: {{ dig "overrides" "deployer" "prestate" (localPrestate.Hashes.prestate) $context }}
+{{ end }}
+  global_log_level: "info"
+  global_node_selectors: {}
+  global_tolerations: []
+  persistent: false
+ethereum_package:
+  network_params:
+    preset: minimal
+    genesis_delay: 5
+    additional_preloaded_contracts: |
+      {
+        "0x4e59b44847b379578588920cA78FbF26c0B4956C": {
+          "balance": "0ETH",
+          "code": "0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe03601600081602082378035828234f58015156039578182fd5b8082525050506014600cf3",
+          "storage": {},
+          "nonce": "1"
+        }
+      }

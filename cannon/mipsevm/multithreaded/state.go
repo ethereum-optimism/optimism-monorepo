@@ -12,7 +12,6 @@ import (
 
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm"
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/arch"
-	"github.com/ethereum-optimism/optimism/cannon/mipsevm/exec"
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/memory"
 	"github.com/ethereum-optimism/optimism/op-service/serialize"
 )
@@ -30,13 +29,12 @@ const (
 	EXITED_WITNESS_OFFSET                     = EXITCODE_WITNESS_OFFSET + 1
 	STEP_WITNESS_OFFSET                       = EXITED_WITNESS_OFFSET + 1
 	STEPS_SINCE_CONTEXT_SWITCH_WITNESS_OFFSET = STEP_WITNESS_OFFSET + 8
-	WAKEUP_WITNESS_OFFSET                     = STEPS_SINCE_CONTEXT_SWITCH_WITNESS_OFFSET + 8
-	TRAVERSE_RIGHT_WITNESS_OFFSET             = WAKEUP_WITNESS_OFFSET + arch.WordSizeBytes
+	TRAVERSE_RIGHT_WITNESS_OFFSET             = STEPS_SINCE_CONTEXT_SWITCH_WITNESS_OFFSET + 8
 	LEFT_THREADS_ROOT_WITNESS_OFFSET          = TRAVERSE_RIGHT_WITNESS_OFFSET + 1
 	RIGHT_THREADS_ROOT_WITNESS_OFFSET         = LEFT_THREADS_ROOT_WITNESS_OFFSET + 32
 	THREAD_ID_WITNESS_OFFSET                  = RIGHT_THREADS_ROOT_WITNESS_OFFSET + 32
 
-	// 172 and 196 bytes for 32 and 64-bit respectively
+	// 168 and 188 bytes for 32 and 64-bit respectively
 	STATE_WITNESS_SIZE = THREAD_ID_WITNESS_OFFSET + arch.WordSizeBytes
 )
 
@@ -64,7 +62,6 @@ type State struct {
 
 	Step                        uint64
 	StepsSinceLastContextSwitch uint64
-	Wakeup                      Word
 
 	TraverseRight    bool
 	LeftThreadStack  []*ThreadState
@@ -89,7 +86,6 @@ func CreateEmptyState() *State {
 		ExitCode:            0,
 		Exited:              false,
 		Step:                0,
-		Wakeup:              exec.FutexEmptyAddr,
 		TraverseRight:       false,
 		LeftThreadStack:     []*ThreadState{initThread},
 		RightThreadStack:    []*ThreadState{},
@@ -215,7 +211,6 @@ func (s *State) EncodeWitness() ([]byte, common.Hash) {
 
 	out = binary.BigEndian.AppendUint64(out, s.Step)
 	out = binary.BigEndian.AppendUint64(out, s.StepsSinceLastContextSwitch)
-	out = arch.ByteOrderWord.AppendWord(out, s.Wakeup)
 
 	leftStackRoot := s.getLeftThreadStackRoot()
 	rightStackRoot := s.getRightThreadStackRoot()
@@ -262,7 +257,6 @@ func (s *State) ThreadCount() int {
 // Exited                      uint8 - 0 for false, 1 for true
 // Step                        uint64
 // StepsSinceLastContextSwitch uint64
-// Wakeup                      Word
 // TraverseRight               uint8 - 0 for false, 1 for true
 // NextThreadId                Word
 // len(LeftThreadStack)        Word
@@ -305,9 +299,6 @@ func (s *State) Serialize(out io.Writer) error {
 		return err
 	}
 	if err := bout.WriteUInt(s.StepsSinceLastContextSwitch); err != nil {
-		return err
-	}
-	if err := bout.WriteUInt(s.Wakeup); err != nil {
 		return err
 	}
 	if err := bout.WriteBool(s.TraverseRight); err != nil {
@@ -374,9 +365,6 @@ func (s *State) Deserialize(in io.Reader) error {
 		return err
 	}
 	if err := bin.ReadUInt(&s.StepsSinceLastContextSwitch); err != nil {
-		return err
-	}
-	if err := bin.ReadUInt(&s.Wakeup); err != nil {
 		return err
 	}
 	if err := bin.ReadBool(&s.TraverseRight); err != nil {

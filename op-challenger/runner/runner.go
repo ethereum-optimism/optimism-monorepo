@@ -18,7 +18,6 @@ import (
 
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm"
 	"github.com/ethereum-optimism/optimism/op-challenger/config"
-	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/contracts"
 	contractMetrics "github.com/ethereum-optimism/optimism/op-challenger/game/fault/contracts/metrics"
 	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/trace/utils"
 	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/types"
@@ -45,9 +44,10 @@ type Metricer interface {
 }
 
 type RunConfig struct {
-	TraceType types.TraceType
-	Name      string
-	Prestate  common.Hash
+	TraceType        types.TraceType
+	Name             string
+	Prestate         common.Hash
+	PrestateFilename string
 }
 
 type Runner struct {
@@ -68,7 +68,7 @@ func NewRunner(logger log.Logger, cfg *config.Config, runConfigs []RunConfig) *R
 		log:        logger,
 		cfg:        cfg,
 		runConfigs: runConfigs,
-		m:          NewMetrics(),
+		m:          NewMetrics(runConfigs),
 	}
 }
 
@@ -131,17 +131,24 @@ func (r *Runner) runAndRecordOnce(ctx context.Context, runConfig RunConfig, clie
 		}
 	}
 
-	prestateHash := runConfig.Prestate
-	if prestateHash == (common.Hash{}) {
-		hash, err := r.getPrestateHash(ctx, runConfig.TraceType, caller)
-		if err != nil {
-			recordError(err, runConfig.Name, r.m, r.log)
-			return
+	var prestateSource prestateFetcher
+	if runConfig.PrestateFilename != "" {
+		r.log.Info("Using named prestate", "type", runConfig.TraceType, "filename", runConfig.PrestateFilename)
+		prestateSource = &NamedPrestateFetcher{filename: runConfig.PrestateFilename}
+	} else if runConfig.Prestate == (common.Hash{}) {
+		r.log.Info("Using on chain prestate", "type", runConfig.TraceType)
+		prestateSource = &OnChainPrestateFetcher{
+			m:                  r.m,
+			gameFactoryAddress: r.cfg.GameFactoryAddress,
+			gameType:           runConfig.TraceType.GameType(),
+			caller:             caller,
 		}
-		prestateHash = hash
+	} else {
+		r.log.Info("Using specific prestate", "type", runConfig.TraceType, "hash", runConfig.Prestate)
+		prestateSource = &HashPrestateFetcher{prestateHash: runConfig.Prestate}
 	}
 
-	localInputs, err := r.createGameInputs(ctx, client)
+	localInputs, err := r.createGameInputs(ctx, client, runConfig.Name)
 	if err != nil {
 		recordError(err, runConfig.Name, r.m, r.log)
 		return
@@ -155,12 +162,12 @@ func (r *Runner) runAndRecordOnce(ctx context.Context, runConfig RunConfig, clie
 		recordError(err, runConfig.Name, r.m, r.log)
 		return
 	}
-	err = r.runOnce(ctx, inputsLogger.With("type", runConfig.Name), runConfig.Name, runConfig.TraceType, prestateHash, localInputs, dir)
+	err = r.runOnce(ctx, inputsLogger.With("type", runConfig.Name), runConfig.Name, runConfig.TraceType, prestateSource, localInputs, dir)
 	recordError(err, runConfig.Name, r.m, r.log)
 }
 
-func (r *Runner) runOnce(ctx context.Context, logger log.Logger, name string, traceType types.TraceType, prestateHash common.Hash, localInputs utils.LocalGameInputs, dir string) error {
-	provider, err := createTraceProvider(ctx, logger, metrics.NewTypedVmMetrics(r.m, name), r.cfg, prestateHash, traceType, localInputs, dir)
+func (r *Runner) runOnce(ctx context.Context, logger log.Logger, name string, traceType types.TraceType, prestateSource prestateFetcher, localInputs utils.LocalGameInputs, dir string) error {
+	provider, err := createTraceProvider(ctx, logger, metrics.NewTypedVmMetrics(r.m, name), r.cfg, prestateSource, traceType, localInputs, dir)
 	if err != nil {
 		return fmt.Errorf("failed to create trace provider: %w", err)
 	}
@@ -185,11 +192,12 @@ func (r *Runner) prepDatadir(name string) (string, error) {
 	return dir, nil
 }
 
-func (r *Runner) createGameInputs(ctx context.Context, client *sources.RollupClient) (utils.LocalGameInputs, error) {
+func (r *Runner) createGameInputs(ctx context.Context, client *sources.RollupClient, traceType string) (utils.LocalGameInputs, error) {
 	status, err := client.SyncStatus(ctx)
 	if err != nil {
 		return utils.LocalGameInputs{}, fmt.Errorf("failed to get rollup sync status: %w", err)
 	}
+	r.log.Info("Got sync status", "status", status, "type", traceType)
 
 	if status.FinalizedL2.Number == 0 {
 		return utils.LocalGameInputs{}, errors.New("safe head is 0")
@@ -199,7 +207,14 @@ func (r *Runner) createGameInputs(ctx context.Context, client *sources.RollupCli
 		// Restrict the L1 head to a block that has actually been processed by op-node.
 		// This only matters if op-node is behind and hasn't processed all finalized L1 blocks yet.
 		l1Head = status.CurrentL1
+		r.log.Info("Node has not completed syncing finalized L1 block, using CurrentL1 instead", "type", traceType)
+	} else if status.FinalizedL1.Number == 0 {
+		// The node is resetting its pipeline and has set FinalizedL1 to 0, use the current L1 instead as it is the best
+		// hope of getting a non-zero L1 block
+		l1Head = status.CurrentL1
+		r.log.Warn("Node has zero finalized L1 block, using CurrentL1 instead", "type", traceType)
 	}
+	r.log.Info("Using L1 head", "head", l1Head, "type", traceType)
 	if l1Head.Number == 0 {
 		return utils.LocalGameInputs{}, errors.New("l1 head is 0")
 	}
@@ -266,26 +281,6 @@ func (r *Runner) findL2BlockNumberToDispute(ctx context.Context, client *sources
 	}
 	r.log.Warn("Failed to find prior batch", "l2BlockNum", l2BlockNum, "earliestCheckL1Block", l1HeadNum)
 	return l2BlockNum, nil
-}
-
-func (r *Runner) getPrestateHash(ctx context.Context, traceType types.TraceType, caller *batching.MultiCaller) (common.Hash, error) {
-	gameFactory := contracts.NewDisputeGameFactoryContract(r.m, r.cfg.GameFactoryAddress, caller)
-	gameImplAddr, err := gameFactory.GetGameImpl(ctx, traceType.GameType())
-	if err != nil {
-		return common.Hash{}, fmt.Errorf("failed to load game impl: %w", err)
-	}
-	if gameImplAddr == (common.Address{}) {
-		return common.Hash{}, nil // No prestate is set, will only work if a single prestate is specified
-	}
-	gameImpl, err := contracts.NewFaultDisputeGameContract(ctx, r.m, gameImplAddr, caller)
-	if err != nil {
-		return common.Hash{}, fmt.Errorf("failed to create fault dispute game contract bindings for %v: %w", gameImplAddr, err)
-	}
-	prestateHash, err := gameImpl.GetAbsolutePrestateHash(ctx)
-	if err != nil {
-		return common.Hash{}, fmt.Errorf("failed to get absolute prestate hash for %v: %w", gameImplAddr, err)
-	}
-	return prestateHash, err
 }
 
 func (r *Runner) Stop(ctx context.Context) error {

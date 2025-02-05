@@ -26,76 +26,82 @@ type OracleBackedL2Chain struct {
 	chainCfg   *params.ChainConfig
 	engine     consensus.Engine
 	oracleHead *types.Header
-	head       *types.Header
 	safe       *types.Header
 	finalized  *types.Header
 	vmCfg      vm.Config
 
-	// Block by number cache
-	hashByNum            map[uint64]common.Hash
-	earliestIndexedBlock *types.Header
+	canon *CanonicalBlockHeaderOracle
 
 	// Inserted blocks
 	blocks map[common.Hash]*types.Block
-	db     ethdb.KeyValueStore
+	// Receipts of inserted blocks
+	receiptsByBlockHash map[common.Hash]types.Receipts
+	db                  ethdb.KeyValueStore
 }
 
 // Must implement CachingEngineBackend, not just EngineBackend to ensure that blocks are stored when they are created
 // and don't need to be re-executed when sent back via execution_newPayload.
 var _ engineapi.CachingEngineBackend = (*OracleBackedL2Chain)(nil)
 
-func NewOracleBackedL2Chain(logger log.Logger, oracle Oracle, precompileOracle engineapi.PrecompileOracle, chainCfg *params.ChainConfig, l2OutputRoot common.Hash) (*OracleBackedL2Chain, error) {
-	output := oracle.OutputByRoot(l2OutputRoot)
+func NewOracleBackedL2Chain(
+	logger log.Logger,
+	oracle Oracle,
+	precompileOracle engineapi.PrecompileOracle,
+	chainCfg *params.ChainConfig,
+	l2OutputRoot common.Hash,
+	db KeyValueStore,
+) (*OracleBackedL2Chain, error) {
+	chainID := eth.ChainIDFromBig(chainCfg.ChainID)
+	output := oracle.OutputByRoot(l2OutputRoot, chainID)
 	outputV0, ok := output.(*eth.OutputV0)
 	if !ok {
 		return nil, fmt.Errorf("unsupported L2 output version: %d", output.Version())
 	}
-	head := oracle.BlockByHash(outputV0.BlockHash)
+	head := oracle.BlockByHash(outputV0.BlockHash, chainID)
 	logger.Info("Loaded L2 head", "hash", head.Hash(), "number", head.Number())
-	return &OracleBackedL2Chain{
+	return NewOracleBackedL2ChainFromHead(logger, oracle, precompileOracle, chainCfg, head, db), nil
+}
+
+func NewOracleBackedL2ChainFromHead(
+	logger log.Logger,
+	oracle Oracle,
+	precompileOracle engineapi.PrecompileOracle,
+	chainCfg *params.ChainConfig,
+	head *types.Block,
+	db KeyValueStore,
+) *OracleBackedL2Chain {
+	chainID := eth.ChainIDFromBig(chainCfg.ChainID)
+	chain := &OracleBackedL2Chain{
 		log:      logger,
 		oracle:   oracle,
 		chainCfg: chainCfg,
 		engine:   beacon.New(nil),
 
-		hashByNum: map[uint64]common.Hash{
-			head.NumberU64(): head.Hash(),
-		},
-		earliestIndexedBlock: head.Header(),
-
 		// Treat the agreed starting head as finalized - nothing before it can be disputed
-		head:       head.Header(),
-		safe:       head.Header(),
-		finalized:  head.Header(),
-		oracleHead: head.Header(),
-		blocks:     make(map[common.Hash]*types.Block),
-		db:         NewOracleBackedDB(oracle),
+		safe:                head.Header(),
+		finalized:           head.Header(),
+		oracleHead:          head.Header(),
+		blocks:              make(map[common.Hash]*types.Block),
+		receiptsByBlockHash: make(map[common.Hash]types.Receipts),
+		db:                  NewOracleBackedDB(db, oracle, chainID),
 		vmCfg: vm.Config{
 			PrecompileOverrides: engineapi.CreatePrecompileOverrides(precompileOracle),
 		},
-	}, nil
+	}
+	// Use the chain's GetBlockByHash to ensure newly built blocks are visible to the canonical chain
+	blockByHash := func(hash common.Hash) *types.Block {
+		return chain.GetBlockByHash(hash)
+	}
+	chain.canon = NewCanonicalBlockHeaderOracle(head.Header(), blockByHash)
+	return chain
 }
 
 func (o *OracleBackedL2Chain) CurrentHeader() *types.Header {
-	return o.head
+	return o.canon.CurrentHeader()
 }
 
 func (o *OracleBackedL2Chain) GetHeaderByNumber(n uint64) *types.Header {
-	if o.head.Number.Uint64() < n {
-		return nil
-	}
-	hash, ok := o.hashByNum[n]
-	if ok {
-		return o.GetHeaderByHash(hash)
-	}
-	// Walk back from current head to the requested block number
-	h := o.head
-	for h.Number.Uint64() > n {
-		h = o.GetHeaderByHash(h.ParentHash)
-		o.hashByNum[h.Number.Uint64()] = h.Hash()
-	}
-	o.earliestIndexedBlock = h
-	return h
+	return o.canon.GetHeaderByNumber(n)
 }
 
 func (o *OracleBackedL2Chain) GetTd(hash common.Hash, number uint64) *big.Int {
@@ -122,7 +128,7 @@ func (o *OracleBackedL2Chain) GetBlockByHash(hash common.Hash) *types.Block {
 		return block
 	}
 	// Retrieve from the oracle
-	return o.oracle.BlockByHash(hash)
+	return o.oracle.BlockByHash(hash, eth.ChainIDFromBig(o.chainCfg.ChainID))
 }
 
 func (o *OracleBackedL2Chain) GetBlock(hash common.Hash, number uint64) *types.Block {
@@ -159,6 +165,15 @@ func (o *OracleBackedL2Chain) GetCanonicalHash(n uint64) common.Hash {
 		return common.Hash{}
 	}
 	return header.Hash()
+}
+
+func (o *OracleBackedL2Chain) GetReceiptsByBlockHash(hash common.Hash) types.Receipts {
+	receipts, ok := o.receiptsByBlockHash[hash]
+	if ok {
+		return receipts
+	}
+	_, receipts = o.oracle.ReceiptsByBlockHash(hash, eth.ChainIDFromBig(o.chainCfg.ChainID))
+	return receipts
 }
 
 func (o *OracleBackedL2Chain) GetVMConfig() *vm.Config {
@@ -204,7 +219,7 @@ func (o *OracleBackedL2Chain) InsertBlockWithoutSetHead(block *types.Block, make
 }
 
 func (o *OracleBackedL2Chain) AssembleAndInsertBlockWithoutSetHead(processor *engineapi.BlockProcessor) (*types.Block, error) {
-	block, err := processor.Assemble()
+	block, receipts, err := processor.Assemble()
 	if err != nil {
 		return nil, fmt.Errorf("invalid block: %w", err)
 	}
@@ -213,33 +228,12 @@ func (o *OracleBackedL2Chain) AssembleAndInsertBlockWithoutSetHead(processor *en
 		return nil, fmt.Errorf("commit block: %w", err)
 	}
 	o.blocks[block.Hash()] = block
+	o.receiptsByBlockHash[block.Hash()] = receipts
 	return block, nil
 }
 
 func (o *OracleBackedL2Chain) SetCanonical(head *types.Block) (common.Hash, error) {
-	oldHead := o.head
-	o.head = head.Header()
-
-	// Remove canonical hashes after the new header
-	for n := head.NumberU64() + 1; n <= oldHead.Number.Uint64(); n++ {
-		delete(o.hashByNum, n)
-	}
-
-	// Add new canonical blocks to the block by number cache
-	// Since the original head is added to the block number cache and acts as the finalized block,
-	// at some point we must reach the existing canonical chain and can stop updating.
-	h := o.head
-	for {
-		newHash := h.Hash()
-		prevHash, ok := o.hashByNum[h.Number.Uint64()]
-		if ok && prevHash == newHash {
-			// Connected with the existing canonical chain so stop updating
-			break
-		}
-		o.hashByNum[h.Number.Uint64()] = newHash
-		h = o.GetHeaderByHash(h.ParentHash)
-	}
-	return head.Hash(), nil
+	return o.canon.SetCanonical(head.Header()), nil
 }
 
 func (o *OracleBackedL2Chain) SetFinalized(header *types.Header) {

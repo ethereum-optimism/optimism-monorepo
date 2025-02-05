@@ -5,7 +5,7 @@ pragma solidity 0.8.15;
 import { CommonTest } from "test/setup/CommonTest.sol";
 
 // Error imports
-import { Unauthorized, NotCustomGasToken } from "src/libraries/errors/CommonErrors.sol";
+import { Unauthorized } from "src/libraries/errors/CommonErrors.sol";
 
 /// @title ETHLiquidity_Test
 /// @notice Contract for testing the ETHLiquidity contract.
@@ -73,26 +73,6 @@ contract ETHLiquidity_Test is CommonTest {
         assertEq(address(ethLiquidity).balance, STARTING_LIQUIDITY_BALANCE);
     }
 
-    /// @notice Tests that the burn function reverts when called on a custom gas token chain.
-    /// @param _amount Amount of ETH (in wei) to call the burn function with.
-    function testFuzz_burn_fromCustomGasTokenChain_fails(uint256 _amount) public {
-        // Assume
-        _amount = bound(_amount, 0, type(uint248).max - 1);
-
-        // Arrange
-        vm.deal(address(superchainWeth), _amount);
-        vm.mockCall(address(l1Block), abi.encodeCall(l1Block.isCustomGasToken, ()), abi.encode(true));
-
-        // Act
-        vm.prank(address(superchainWeth));
-        vm.expectRevert(NotCustomGasToken.selector);
-        ethLiquidity.burn{ value: _amount }();
-
-        // Assert
-        assertEq(address(superchainWeth).balance, _amount);
-        assertEq(address(ethLiquidity).balance, STARTING_LIQUIDITY_BALANCE);
-    }
-
     /// @notice Tests that the mint function fails when the amount requested is greater than the
     ///         available balance. In practice this should never happen because the starting
     ///         balance is expected to be uint248 wei, the total ETH supply is far less than that
@@ -154,26 +134,6 @@ contract ETHLiquidity_Test is CommonTest {
 
         // Assert
         assertEq(_caller.balance, 0);
-        assertEq(address(ethLiquidity).balance, STARTING_LIQUIDITY_BALANCE);
-        assertEq(superchainWeth.balanceOf(address(ethLiquidity)), 0);
-    }
-
-    /// @notice Tests that the mint function reverts when called on a custom gas token chain.
-    /// @param _amount Amount of ETH (in wei) to call the mint function with.
-    function testFuzz_mint_fromCustomGasTokenChain_fails(uint256 _amount) public {
-        // Assume
-        _amount = bound(_amount, 0, type(uint248).max - 1);
-
-        // Arrange
-        vm.mockCall(address(l1Block), abi.encodeCall(l1Block.isCustomGasToken, ()), abi.encode(true));
-
-        // Act
-        vm.prank(address(superchainWeth));
-        vm.expectRevert(NotCustomGasToken.selector);
-        ethLiquidity.mint(_amount);
-
-        // Assert
-        assertEq(address(superchainWeth).balance, 0);
         assertEq(address(ethLiquidity).balance, STARTING_LIQUIDITY_BALANCE);
         assertEq(superchainWeth.balanceOf(address(ethLiquidity)), 0);
     }

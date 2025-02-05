@@ -11,6 +11,7 @@ import { RLPReader } from "src/libraries/rlp/RLPReader.sol";
 import {
     GameStatus,
     GameType,
+    BondDistributionMode,
     Claim,
     Clock,
     Duration,
@@ -51,7 +52,11 @@ import {
     BondTransferFailed,
     NoCreditToClaim,
     InvalidOutputRootProof,
-    ClaimAboveSplit
+    ClaimAboveSplit,
+    GameNotFinalized,
+    InvalidBondDistributionMode,
+    GameNotResolved,
+    ReservedGameType
 } from "src/dispute/lib/Errors.sol";
 
 // Interfaces
@@ -59,6 +64,7 @@ import { ISemver } from "interfaces/universal/ISemver.sol";
 import { IDelayedWETH } from "interfaces/dispute/IDelayedWETH.sol";
 import { IBigStepper, IPreimageOracle } from "interfaces/dispute/IBigStepper.sol";
 import { IAnchorStateRegistry } from "interfaces/dispute/IAnchorStateRegistry.sol";
+import { IDisputeGame } from "interfaces/dispute/IDisputeGame.sol";
 
 /// @title FaultDisputeGame
 /// @notice An implementation of the `IFaultDisputeGame` interface.
@@ -115,6 +121,9 @@ contract FaultDisputeGame is Clone, ISemver {
     /// @param claimant The address of the claimant
     event Move(uint256 indexed parentIndex, Claim indexed claim, address indexed claimant);
 
+    /// @notice Emitted when the game is closed.
+    event GameClosed(BondDistributionMode bondDistributionMode);
+
     ////////////////////////////////////////////////////////////////
     //                         State Vars                         //
     ////////////////////////////////////////////////////////////////
@@ -161,8 +170,10 @@ contract FaultDisputeGame is Clone, ISemver {
     uint256 internal constant HEADER_BLOCK_NUMBER_INDEX = 8;
 
     /// @notice Semantic version.
-    /// @custom:semver 1.3.1-beta.9
-    string public constant version = "1.3.1-beta.9";
+    /// @custom:semver 1.4.0
+    function version() public pure virtual returns (string memory) {
+        return "1.4.0";
+    }
 
     /// @notice The starting timestamp of the game
     Timestamp public createdAt;
@@ -187,7 +198,7 @@ contract FaultDisputeGame is Clone, ISemver {
     ClaimData[] public claimData;
 
     /// @notice Credited balances for winning participants.
-    mapping(address => uint256) public credit;
+    mapping(address => uint256) public normalModeCredit;
 
     /// @notice A mapping to allow for constant-time lookups of existing claims.
     mapping(Hash => bool) public claims;
@@ -203,6 +214,18 @@ contract FaultDisputeGame is Clone, ISemver {
 
     /// @notice The latest finalized output root, serving as the anchor for output bisection.
     OutputRoot public startingOutputRoot;
+
+    /// @notice A boolean for whether or not the game type was respected when the game was created.
+    bool public wasRespectedGameTypeWhenCreated;
+
+    /// @notice A mapping of each claimant's refund mode credit.
+    mapping(address => uint256) public refundModeCredit;
+
+    /// @notice A mapping of whether a claimant has unlocked their credit.
+    mapping(address => bool) public hasUnlockedCredit;
+
+    /// @notice The bond distribution mode of the game.
+    BondDistributionMode public bondDistributionMode;
 
     /// @param _params Parameters for creating a new FaultDisputeGame.
     constructor(GameConstructorParams memory _params) {
@@ -239,6 +262,10 @@ contract FaultDisputeGame is Clone, ISemver {
         // The maximum clock extension may not be greater than the maximum clock duration.
         if (uint64(maxClockExtension) > _params.maxClockDuration.raw()) revert InvalidClockExtension();
 
+        // Block type(uint32).max from being used as a game type so that it can be used in the
+        // OptimismPortal respected game type trick.
+        if (_params.gameType.raw() == type(uint32).max) revert ReservedGameType();
+
         // Set up initial game state.
         GAME_TYPE = _params.gameType;
         ABSOLUTE_PRESTATE = _params.absolutePrestate;
@@ -270,7 +297,7 @@ contract FaultDisputeGame is Clone, ISemver {
         if (initialized) revert AlreadyInitialized();
 
         // Grab the latest anchor root.
-        (Hash root, uint256 rootBlockNumber) = ANCHOR_STATE_REGISTRY.anchors(GAME_TYPE);
+        (Hash root, uint256 rootBlockNumber) = ANCHOR_STATE_REGISTRY.getAnchorRoot();
 
         // Should only happen if this is a new game type that hasn't been set up yet.
         if (root.raw() == bytes32(0)) revert AnchorRootNotFound();
@@ -320,10 +347,15 @@ contract FaultDisputeGame is Clone, ISemver {
         initialized = true;
 
         // Deposit the bond.
+        refundModeCredit[gameCreator()] += msg.value;
         WETH.deposit{ value: msg.value }();
 
         // Set the game's starting timestamp
         createdAt = Timestamp.wrap(uint64(block.timestamp));
+
+        // Set whether the game type was respected when the game was created.
+        wasRespectedGameTypeWhenCreated =
+            GameType.unwrap(ANCHOR_STATE_REGISTRY.respectedGameType()) == GameType.unwrap(GAME_TYPE);
     }
 
     ////////////////////////////////////////////////////////////////
@@ -531,6 +563,7 @@ contract FaultDisputeGame is Clone, ISemver {
         subgames[_challengeIndex].push(claimData.length - 1);
 
         // Deposit the bond.
+        refundModeCredit[msg.sender] += msg.value;
         WETH.deposit{ value: msg.value }();
 
         // Emit the appropriate event for the attack or defense.
@@ -695,9 +728,6 @@ contract FaultDisputeGame is Clone, ISemver {
 
         // Update the status and emit the resolved event, note that we're performing an assignment here.
         emit Resolved(status = status_);
-
-        // Try to update the anchor state, this should not revert.
-        ANCHOR_STATE_REGISTRY.tryUpdateAnchorState();
     }
 
     /// @notice Resolves the subgame rooted at the given claim index. `_numToResolve` specifies how many children of
@@ -913,15 +943,42 @@ contract FaultDisputeGame is Clone, ISemver {
         requiredBond_ = assumedBaseFee * requiredGas;
     }
 
-    /// @notice Claim the credit belonging to the recipient address.
+    /// @notice Claim the credit belonging to the recipient address. Reverts if the game isn't
+    ///         finalized, if the recipient has no credit to claim, or if the bond transfer
+    ///         fails. If the game is finalized but no bond has been paid out yet, this method
+    ///         will determine the bond distribution mode and also try to update anchor game.
     /// @param _recipient The owner and recipient of the credit.
     function claimCredit(address _recipient) external {
-        // Remove the credit from the recipient prior to performing the external call.
-        uint256 recipientCredit = credit[_recipient];
-        credit[_recipient] = 0;
+        // Close out the game and determine the bond distribution mode if not already set.
+        // We call this as part of claim credit to reduce the number of additional calls that a
+        // Challenger needs to make to this contract.
+        closeGame();
+
+        // Fetch the recipient's credit balance based on the bond distribution mode.
+        uint256 recipientCredit;
+        if (bondDistributionMode == BondDistributionMode.REFUND) {
+            recipientCredit = refundModeCredit[_recipient];
+        } else if (bondDistributionMode == BondDistributionMode.NORMAL) {
+            recipientCredit = normalModeCredit[_recipient];
+        } else {
+            // We shouldn't get here, but sanity check just in case.
+            revert InvalidBondDistributionMode();
+        }
+
+        // If the game is in refund mode, and the recipient has not unlocked their refund mode
+        // credit, we unlock it and return early.
+        if (!hasUnlockedCredit[_recipient]) {
+            hasUnlockedCredit[_recipient] = true;
+            WETH.unlock(_recipient, recipientCredit);
+            return;
+        }
 
         // Revert if the recipient has no credit to claim.
         if (recipientCredit == 0) revert NoCreditToClaim();
+
+        // Set the recipient's credit balances to 0.
+        refundModeCredit[_recipient] = 0;
+        normalModeCredit[_recipient] = 0;
 
         // Try to withdraw the WETH amount so it can be used here.
         WETH.withdraw(_recipient, recipientCredit);
@@ -929,6 +986,50 @@ contract FaultDisputeGame is Clone, ISemver {
         // Transfer the credit to the recipient.
         (bool success,) = _recipient.call{ value: recipientCredit }(hex"");
         if (!success) revert BondTransferFailed();
+    }
+
+    /// @notice Closes out the game, determines the bond distribution mode, attempts to register
+    ///         the game as the anchor game, and emits an event.
+    function closeGame() public {
+        // If the bond distribution mode has already been determined, we can return early.
+        if (bondDistributionMode == BondDistributionMode.REFUND || bondDistributionMode == BondDistributionMode.NORMAL)
+        {
+            // We can't revert or we'd break claimCredit().
+            return;
+        } else if (bondDistributionMode != BondDistributionMode.UNDECIDED) {
+            // We shouldn't get here, but sanity check just in case.
+            revert InvalidBondDistributionMode();
+        }
+
+        // Make sure that the game is resolved.
+        // AnchorStateRegistry should be checking this but we're being defensive here.
+        if (resolvedAt.raw() == 0) {
+            revert GameNotResolved();
+        }
+
+        // Game must be finalized according to the AnchorStateRegistry.
+        bool finalized = ANCHOR_STATE_REGISTRY.isGameFinalized(IDisputeGame(address(this)));
+        if (!finalized) {
+            revert GameNotFinalized();
+        }
+
+        // Try to update the anchor game first. Won't always succeed because delays can lead
+        // to situations in which this game might not be eligible to be a new anchor game.
+        try ANCHOR_STATE_REGISTRY.setAnchorState(IDisputeGame(address(this))) { } catch { }
+
+        // Check if the game is a proper game, which will determine the bond distribution mode.
+        bool properGame = ANCHOR_STATE_REGISTRY.isGameProper(IDisputeGame(address(this)));
+
+        // If the game is a proper game, the bonds should be distributed normally. Otherwise, go
+        // into refund mode and distribute bonds back to their original depositors.
+        if (properGame) {
+            bondDistributionMode = BondDistributionMode.NORMAL;
+        } else {
+            bondDistributionMode = BondDistributionMode.REFUND;
+        }
+
+        // Emit an event to signal that the game has been closed.
+        emit GameClosed(bondDistributionMode);
     }
 
     /// @notice Returns the amount of time elapsed on the potential challenger to `_claimIndex`'s chess clock. Maxes
@@ -959,6 +1060,18 @@ contract FaultDisputeGame is Clone, ISemver {
     /// @notice Returns the length of the `claimData` array.
     function claimDataLen() external view returns (uint256 len_) {
         len_ = claimData.length;
+    }
+
+    /// @notice Returns the credit balance of a given recipient.
+    /// @param _recipient The recipient of the credit.
+    /// @return credit_ The credit balance of the recipient.
+    function credit(address _recipient) external view returns (uint256 credit_) {
+        if (bondDistributionMode == BondDistributionMode.REFUND) {
+            credit_ = refundModeCredit[_recipient];
+        } else {
+            // Always return normal credit balance by default unless we're in refund mode.
+            credit_ = normalModeCredit[_recipient];
+        }
     }
 
     ////////////////////////////////////////////////////////////////
@@ -1018,14 +1131,7 @@ contract FaultDisputeGame is Clone, ISemver {
     /// @param _recipient The recipient of the bond.
     /// @param _bonded The claim to pay out the bond of.
     function _distributeBond(address _recipient, ClaimData storage _bonded) internal {
-        // Set all bits in the bond value to indicate that the bond has been paid out.
-        uint256 bond = _bonded.bond;
-
-        // Increase the recipient's credit.
-        credit[_recipient] += bond;
-
-        // Unlock the bond.
-        WETH.unlock(_recipient, bond);
+        normalModeCredit[_recipient] += _bonded.bond;
     }
 
     /// @notice Verifies the integrity of an execution bisection subgame's root claim. Reverts if the claim

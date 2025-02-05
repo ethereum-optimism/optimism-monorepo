@@ -23,7 +23,6 @@ func TestDebugInfo_Serialization(t *testing.T) {
 		MaxStepsBetweenLLAndSC:       7,
 		ReservationInvalidationCount: 8,
 		ForcedPreemptionCount:        9,
-		FailedWakeupCount:            10,
 		IdleStepCountThread0:         math.MaxUint64,
 	}
 

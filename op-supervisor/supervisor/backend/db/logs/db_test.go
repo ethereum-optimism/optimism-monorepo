@@ -19,6 +19,13 @@ import (
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 )
 
+func createID(i int) eth.BlockID {
+	return eth.BlockID{
+		Hash:   createHash(i),
+		Number: uint64(i),
+	}
+}
+
 func createHash(i int) common.Hash {
 	if i == -1 { // parent-hash of genesis is zero
 		return common.Hash{}
@@ -75,8 +82,8 @@ func TestEmptyDbDoesNotFindEntry(t *testing.T) {
 	runDBTest(t,
 		func(t *testing.T, db *DB, m *stubMetrics) {},
 		func(t *testing.T, db *DB, m *stubMetrics) {
-			requireFuture(t, db, 1, 0, createHash(1))
-			requireFuture(t, db, 1, 0, common.Hash{})
+			requireFuture(t, db, 1, 0, 1, createHash(1))
+			requireFuture(t, db, 1, 0, 1, common.Hash{})
 		})
 }
 
@@ -85,9 +92,9 @@ func TestLatestSealedBlockNum(t *testing.T) {
 		runDBTest(t,
 			func(t *testing.T, db *DB, m *stubMetrics) {},
 			func(t *testing.T, db *DB, m *stubMetrics) {
-				n, ok := db.LatestSealedBlockNum()
+				head, ok := db.LatestSealedBlock()
 				require.False(t, ok, "empty db expected")
-				require.Zero(t, n)
+				require.Equal(t, eth.BlockID{}, head)
 				idx, err := db.searchCheckpoint(0, 0)
 				require.ErrorIs(t, err, types.ErrFuture, "no checkpoint in empty db")
 				require.ErrorIs(t, err, types.ErrFuture, "no checkpoint in empty db")
@@ -101,9 +108,9 @@ func TestLatestSealedBlockNum(t *testing.T) {
 				require.NoError(t, db.SealBlock(common.Hash{}, genesis, 5000), "seal genesis")
 			},
 			func(t *testing.T, db *DB, m *stubMetrics) {
-				n, ok := db.LatestSealedBlockNum()
+				head, ok := db.LatestSealedBlock()
 				require.True(t, ok, "genesis block expected")
-				require.Equal(t, genesis.Number, n)
+				require.Equal(t, genesis, head)
 				idx, err := db.searchCheckpoint(0, 0)
 				require.NoError(t, err)
 				require.Zero(t, idx, "genesis block as checkpoint 0")
@@ -124,9 +131,9 @@ func TestLatestSealedBlockNum(t *testing.T) {
 				require.NoError(t, db.SealBlock(common.Hash{}, genesis, 5000), "seal genesis")
 			},
 			func(t *testing.T, db *DB, m *stubMetrics) {
-				n, ok := db.LatestSealedBlockNum()
+				head, ok := db.LatestSealedBlock()
 				require.True(t, ok, "genesis block expected")
-				require.Equal(t, genesis.Number, n)
+				require.Equal(t, genesis, head)
 				idx, err := db.searchCheckpoint(genesis.Number, 0)
 				require.NoError(t, err)
 				require.Zero(t, idx, "anchor block as checkpoint 0")
@@ -152,9 +159,9 @@ func TestLatestSealedBlockNum(t *testing.T) {
 				require.NoError(t, db.SealBlock(genesis.Hash, block1, 5001), "seal block 1")
 			},
 			func(t *testing.T, db *DB, m *stubMetrics) {
-				n, ok := db.LatestSealedBlockNum()
+				head, ok := db.LatestSealedBlock()
 				require.True(t, ok, "block 1 expected")
-				require.Equal(t, block1.Number, n)
+				require.Equal(t, block1, head)
 				idx, err := db.searchCheckpoint(block1.Number, 0)
 				require.NoError(t, err)
 				require.Equal(t, entrydb.EntryIdx(0), idx, "checkpoint 0 still for block 1")
@@ -187,10 +194,10 @@ func TestLatestSealedBlockNum(t *testing.T) {
 				}
 			},
 			func(t *testing.T, db *DB, m *stubMetrics) {
-				n, ok := db.LatestSealedBlockNum()
+				head, ok := db.LatestSealedBlock()
 				require.True(t, ok, "latest block expected")
 				expected := uint64(260)
-				require.Equal(t, expected, n)
+				require.Equal(t, expected, head.Number)
 				idx, err := db.searchCheckpoint(expected, 0)
 				require.NoError(t, err)
 				// It costs 2 entries per block, so if we add more than 1 checkpoint worth of blocks,
@@ -198,12 +205,12 @@ func TestLatestSealedBlockNum(t *testing.T) {
 				require.Equal(t, entrydb.EntryIdx(searchCheckpointFrequency*2), idx, "checkpoint 1 reached")
 
 				// Test if we can open the block
-				ref, logCount, execMsgs, err := db.OpenBlock(n)
+				ref, logCount, execMsgs, err := db.OpenBlock(head.Number)
 				require.NoError(t, err)
 				require.Empty(t, execMsgs)
 				require.Zero(t, logCount)
-				require.Equal(t, createHash(int(n)), ref.Hash)
-				require.Equal(t, uint64(5000)+n, ref.Time)
+				require.Equal(t, head.Hash, ref.Hash)
+				require.Equal(t, uint64(5000)+head.Number, ref.Time)
 			})
 	})
 }
@@ -225,13 +232,13 @@ func TestAddLog(t *testing.T) {
 		runDBTest(t,
 			func(t *testing.T, db *DB, m *stubMetrics) {
 				genesis := eth.BlockID{Hash: createHash(15), Number: 15}
-				require.NoError(t, db.SealBlock(common.Hash{}, genesis, 5000), "seal genesis")
+				require.NoError(t, db.SealBlock(common.Hash{}, genesis, 5001), "seal genesis")
 				err := db.AddLog(createHash(1), genesis, 0, nil)
 				require.NoError(t, err, "first log after genesis")
 				require.NoError(t, db.SealBlock(genesis.Hash, eth.BlockID{Hash: createHash(16), Number: 16}, 5001))
 			},
 			func(t *testing.T, db *DB, m *stubMetrics) {
-				requireContains(t, db, 16, 0, createHash(1))
+				requireContains(t, db, 16, 0, 5001, createHash(1))
 
 				ref, logCount, execMsgs, err := db.OpenBlock(16)
 				require.NoError(t, err)
@@ -264,9 +271,9 @@ func TestAddLog(t *testing.T) {
 			},
 			func(t *testing.T, db *DB, m *stubMetrics) {
 				require.EqualValues(t, 16*2+3+2, m.entryCount, "empty blocks have logs")
-				requireContains(t, db, 16, 0, createHash(1))
-				requireContains(t, db, 16, 1, createHash(2))
-				requireContains(t, db, 16, 2, createHash(3))
+				requireContains(t, db, 16, 0, 5016, createHash(1))
+				requireContains(t, db, 16, 1, 5016, createHash(2))
+				requireContains(t, db, 16, 2, 5016, createHash(3))
 
 				ref, logCount, execMsgs, err := db.OpenBlock(13)
 				require.NoError(t, err)
@@ -283,35 +290,36 @@ func TestAddLog(t *testing.T) {
 	})
 
 	t.Run("MultipleEntriesFromMultipleBlocks", func(t *testing.T) {
+		t14, t15, t16, t17 := uint64(5000), uint64(5001), uint64(5003), uint64(5003)
 		runDBTest(t,
 			func(t *testing.T, db *DB, m *stubMetrics) {
 				bl14 := eth.BlockID{Hash: createHash(14), Number: 14}
-				err := db.SealBlock(createHash(13), bl14, 5000)
+				err := db.SealBlock(createHash(13), bl14, t14)
 				require.NoError(t, err)
 				bl15 := eth.BlockID{Hash: createHash(15), Number: 15}
-				err = db.SealBlock(createHash(14), bl15, 5001)
+				err = db.SealBlock(createHash(14), bl15, t15)
 				require.NoError(t, err)
 				err = db.AddLog(createHash(1), bl15, 0, nil)
 				require.NoError(t, err)
 				err = db.AddLog(createHash(2), bl15, 1, nil)
 				require.NoError(t, err)
 				bl16 := eth.BlockID{Hash: createHash(16), Number: 16}
-				err = db.SealBlock(bl15.Hash, bl16, 5003)
+				err = db.SealBlock(bl15.Hash, bl16, t16)
 				require.NoError(t, err)
 				err = db.AddLog(createHash(3), bl16, 0, nil)
 				require.NoError(t, err)
 				err = db.AddLog(createHash(4), bl16, 1, nil)
 				require.NoError(t, err)
 				bl17 := eth.BlockID{Hash: createHash(17), Number: 17}
-				err = db.SealBlock(bl16.Hash, bl17, 5003)
+				err = db.SealBlock(bl16.Hash, bl17, t17)
 				require.NoError(t, err)
 			},
 			func(t *testing.T, db *DB, m *stubMetrics) {
 				require.EqualValues(t, 2+2+1+1+2+1+1+2, m.entryCount, "should not output new searchCheckpoint for every block")
-				requireContains(t, db, 16, 0, createHash(1))
-				requireContains(t, db, 16, 1, createHash(2))
-				requireContains(t, db, 17, 0, createHash(3))
-				requireContains(t, db, 17, 1, createHash(4))
+				requireContains(t, db, 16, 0, t16, createHash(1))
+				requireContains(t, db, 16, 1, t16, createHash(2))
+				requireContains(t, db, 17, 0, t17, createHash(3))
+				requireContains(t, db, 17, 1, t17, createHash(4))
 			})
 	})
 
@@ -482,10 +490,11 @@ func TestAddLog(t *testing.T) {
 		// Block 3 logs extend to immediately before the fourth search-checkpoint
 		block3LogCount := searchCheckpointFrequency - 19
 		block4LogCount := 2
+		t0, t1, t2, t3, t4 := uint64(3000), uint64(3001), uint64(3002), uint64(3003), uint64(3003)
 		runDBTest(t,
 			func(t *testing.T, db *DB, m *stubMetrics) {
 				// force in block 0
-				require.NoError(t, db.lastEntryContext.forceBlock(block0, 3000))
+				require.NoError(t, db.lastEntryContext.forceBlock(block0, t0))
 				expectedIndex := entrydb.EntryIdx(2)
 				t.Logf("block 0 complete, at entry %d", db.lastEntryContext.NextIndex())
 				require.Equal(t, expectedIndex, db.lastEntryContext.NextIndex())
@@ -494,7 +503,7 @@ func TestAddLog(t *testing.T) {
 						err := db.AddLog(createHash(i), block0, uint32(i), nil)
 						require.NoError(t, err)
 					}
-					err := db.SealBlock(block0.Hash, block1, 3001) // second seal-checkpoint
+					err := db.SealBlock(block0.Hash, block1, t1) // second seal-checkpoint
 					require.NoError(t, err)
 				}
 				expectedIndex += entrydb.EntryIdx(block1LogCount) + 2
@@ -506,7 +515,7 @@ func TestAddLog(t *testing.T) {
 						err := db.AddLog(createHash(i), block1, uint32(i), nil)
 						require.NoError(t, err)
 					}
-					err := db.SealBlock(block1.Hash, block2, 3002) // third seal-checkpoint
+					err := db.SealBlock(block1.Hash, block2, t2) // third seal-checkpoint
 					require.NoError(t, err)
 				}
 				expectedIndex += entrydb.EntryIdx(block2LogCount) + 2 + 2 + 2
@@ -517,7 +526,7 @@ func TestAddLog(t *testing.T) {
 						err := db.AddLog(createHash(i), block2, uint32(i), nil)
 						require.NoError(t, err)
 					}
-					err := db.SealBlock(block2.Hash, block3, 3003)
+					err := db.SealBlock(block2.Hash, block3, t3)
 					require.NoError(t, err)
 				}
 				expectedIndex += entrydb.EntryIdx(block3LogCount) + 2
@@ -535,7 +544,7 @@ func TestAddLog(t *testing.T) {
 						err := db.AddLog(createHash(i), block3, uint32(i), nil)
 						require.NoError(t, err)
 					}
-					err := db.SealBlock(block3.Hash, block4, 3003) // fourth seal checkpoint
+					err := db.SealBlock(block3.Hash, block4, t4) // fourth seal checkpoint
 					require.NoError(t, err)
 				}
 				expectedIndex += entrydb.EntryIdx(block4LogCount) + 2 + 2
@@ -549,19 +558,19 @@ func TestAddLog(t *testing.T) {
 				require.EqualValues(t, expectedEntryCount, m.entryCount)
 				// Check we can find all the logs.
 				for i := 0; i < block1LogCount; i++ {
-					requireContains(t, db, block1.Number, uint32(i), createHash(i))
+					requireContains(t, db, block1.Number, uint32(i), t1, createHash(i))
 				}
 				// Block 2 logs extend to just after the third checkpoint
 				for i := 0; i < block2LogCount; i++ {
-					requireContains(t, db, block2.Number, uint32(i), createHash(i))
+					requireContains(t, db, block2.Number, uint32(i), t2, createHash(i))
 				}
 				// Block 3 logs extend to immediately before the fourth checkpoint
 				for i := 0; i < block3LogCount; i++ {
-					requireContains(t, db, block3.Number, uint32(i), createHash(i))
+					requireContains(t, db, block3.Number, uint32(i), t3, createHash(i))
 				}
 				// Block 4 logs start immediately after the fourth checkpoint
 				for i := 0; i < block4LogCount; i++ {
-					requireContains(t, db, block4.Number, uint32(i), createHash(i))
+					requireContains(t, db, block4.Number, uint32(i), t4, createHash(i))
 				}
 			})
 	})
@@ -586,7 +595,7 @@ func TestAddDependentLog(t *testing.T) {
 				require.NoError(t, db.SealBlock(bl15.Hash, bl16, 5002))
 			},
 			func(t *testing.T, db *DB, m *stubMetrics) {
-				requireContains(t, db, 16, 0, createHash(1), execMsg)
+				requireContains(t, db, 16, 0, 5002, createHash(1), execMsg)
 			})
 	})
 
@@ -608,8 +617,8 @@ func TestAddDependentLog(t *testing.T) {
 				require.NoError(t, db.SealBlock(bl16.Hash, bl17, 5002))
 			},
 			func(t *testing.T, db *DB, m *stubMetrics) {
-				requireContains(t, db, 16, 0, createHash(9))
-				requireContains(t, db, 17, 0, createHash(1), execMsg)
+				requireContains(t, db, 16, 0, 5001, createHash(9))
+				requireContains(t, db, 17, 0, 5002, createHash(1), execMsg)
 			})
 	})
 
@@ -640,8 +649,8 @@ func TestAddDependentLog(t *testing.T) {
 				require.NoError(t, db.SealBlock(bl15.Hash, bl16, 5001))
 			},
 			func(t *testing.T, db *DB, m *stubMetrics) {
-				requireContains(t, db, 16, 251, createHash(9))
-				requireContains(t, db, 16, 252, createHash(1), execMsg)
+				requireContains(t, db, 16, 251, 5001, createHash(9))
+				requireContains(t, db, 16, 252, 5001, createHash(1), execMsg)
 			})
 	})
 
@@ -671,45 +680,57 @@ func TestAddDependentLog(t *testing.T) {
 				require.NoError(t, db.SealBlock(bl15.Hash, bl16, 5001))
 			},
 			func(t *testing.T, db *DB, m *stubMetrics) {
-				requireContains(t, db, 16, 252, createHash(9))
-				requireContains(t, db, 16, 253, createHash(1), execMsg)
+				requireContains(t, db, 16, 252, 5001, createHash(9))
+				requireContains(t, db, 16, 253, 5001, createHash(1), execMsg)
 			})
 	})
 }
 
 func TestContains(t *testing.T) {
+	// t53 and t54 are not not expected to be in the database because those blocks are never Sealed
+	t50, t51, t52, t53, t54 := uint64(5000), uint64(5001), uint64(5001), uint64(5003), uint64(5004)
 	runDBTest(t,
 		func(t *testing.T, db *DB, m *stubMetrics) {
 			bl50 := eth.BlockID{Hash: createHash(50), Number: 50}
-			require.NoError(t, db.lastEntryContext.forceBlock(bl50, 5000))
+			require.NoError(t, db.lastEntryContext.forceBlock(bl50, t50))
 			require.NoError(t, db.AddLog(createHash(1), bl50, 0, nil))
 			require.NoError(t, db.AddLog(createHash(3), bl50, 1, nil))
 			require.NoError(t, db.AddLog(createHash(2), bl50, 2, nil))
 			bl51 := eth.BlockID{Hash: createHash(51), Number: 51}
-			require.NoError(t, db.SealBlock(bl50.Hash, bl51, 5001))
+			require.NoError(t, db.SealBlock(bl50.Hash, bl51, t51))
 			bl52 := eth.BlockID{Hash: createHash(52), Number: 52}
-			require.NoError(t, db.SealBlock(bl51.Hash, bl52, 5001))
+			require.NoError(t, db.SealBlock(bl51.Hash, bl52, t52))
 			require.NoError(t, db.AddLog(createHash(1), bl52, 0, nil))
 			require.NoError(t, db.AddLog(createHash(3), bl52, 1, nil))
 		},
 		func(t *testing.T, db *DB, m *stubMetrics) {
 			// Should find added logs
-			requireContains(t, db, 51, 0, createHash(1))
-			requireContains(t, db, 51, 1, createHash(3))
-			requireContains(t, db, 51, 2, createHash(2))
-			requireFuture(t, db, 53, 0, createHash(1))
-			requireFuture(t, db, 53, 1, createHash(3))
+			requireContains(t, db, 51, 0, t51, createHash(1))
+			requireContains(t, db, 51, 1, t51, createHash(3))
+			requireContains(t, db, 51, 2, t51, createHash(2))
+			requireFuture(t, db, 53, 0, t53, createHash(1))
+			requireFuture(t, db, 53, 1, t53, createHash(3))
+			// When the block is in the future but the timestamp is within the database,
+			// ErrConflict is returned, because the timestamp invariant is broken.
+			requireConflicts(t, db, 53, 1, t50, createHash(3))
+			// However, when the timestamp is equal to the last timestamp in the database,
+			// ErrFuture is used because the timestamp may be equal between blocks.
+			requireFuture(t, db, 53, 1, t52, createHash(3))
 
 			// 52 was sealed as empty
-			requireConflicts(t, db, 52, 0, createHash(1))
+			requireConflicts(t, db, 52, 0, t52, createHash(1))
 
 			// 53 only contained 2 logs, not 3, and is not sealed yet
-			requireFuture(t, db, 53, 2, createHash(3))
+			requireFuture(t, db, 53, 2, t53, createHash(3))
 			// 54 doesn't exist yet
-			requireFuture(t, db, 54, 0, createHash(3))
+			requireFuture(t, db, 54, 0, t54, createHash(3))
 
 			// 51 only contained 3 logs, not 4
-			requireConflicts(t, db, 51, 3, createHash(2))
+			requireConflicts(t, db, 51, 3, t51, createHash(2))
+
+			// when the timestamp invariant is broken, ErrConflict is returned
+			requireConflicts(t, db, 51, 2, 4000, createHash(2)) // 4000 != 5001
+
 		})
 }
 
@@ -735,17 +756,18 @@ func TestExecutes(t *testing.T) {
 		Timestamp: 6578567,
 		Hash:      createHash(778889),
 	}
+	t50, t51, t52, t53, t54 := uint64(500), uint64(5001), uint64(5002), uint64(5003), uint64(5004)
 	runDBTest(t,
 		func(t *testing.T, db *DB, m *stubMetrics) {
 			bl50 := eth.BlockID{Hash: createHash(50), Number: 50}
-			require.NoError(t, db.lastEntryContext.forceBlock(bl50, 500))
+			require.NoError(t, db.lastEntryContext.forceBlock(bl50, t50))
 			require.NoError(t, db.AddLog(createHash(1), bl50, 0, nil))
 			require.NoError(t, db.AddLog(createHash(3), bl50, 1, &execMsg1))
 			require.NoError(t, db.AddLog(createHash(2), bl50, 2, nil))
 			bl51 := eth.BlockID{Hash: createHash(51), Number: 51}
-			require.NoError(t, db.SealBlock(bl50.Hash, bl51, 5001))
+			require.NoError(t, db.SealBlock(bl50.Hash, bl51, t51))
 			bl52 := eth.BlockID{Hash: createHash(52), Number: 52}
-			require.NoError(t, db.SealBlock(bl51.Hash, bl52, 5001))
+			require.NoError(t, db.SealBlock(bl51.Hash, bl52, t52))
 			require.NoError(t, db.AddLog(createHash(1), bl52, 0, &execMsg2))
 			require.NoError(t, db.AddLog(createHash(3), bl52, 1, &execMsg3))
 		},
@@ -758,15 +780,15 @@ func TestExecutes(t *testing.T) {
 			requireExecutingMessage(t, db, 53, 1, execMsg3)
 
 			// 52 was sealed without logs
-			requireConflicts(t, db, 52, 0, createHash(1))
+			requireConflicts(t, db, 52, 0, t52, createHash(1))
 
 			// 53 only contained 2 logs, not 3, and is not sealed yet
-			requireFuture(t, db, 53, 2, createHash(3))
+			requireFuture(t, db, 53, 2, t53, createHash(3))
 			// 54 doesn't exist yet
-			requireFuture(t, db, 54, 0, createHash(3))
+			requireFuture(t, db, 54, 0, t54, createHash(3))
 
 			// 51 only contained 3 logs, not 4
-			requireConflicts(t, db, 51, 3, createHash(2))
+			requireConflicts(t, db, 51, 3, t51, createHash(2))
 
 			// 51 contains an executing message, and 2 other non-executing logs
 			ref, logCount, execMsgs, err := db.OpenBlock(51)
@@ -826,11 +848,16 @@ func TestGetBlockInfo(t *testing.T) {
 	})
 }
 
-func requireContains(t *testing.T, db *DB, blockNum uint64, logIdx uint32, logHash common.Hash, execMsg ...types.ExecutingMessage) {
+func requireContains(t *testing.T, db *DB, blockNum uint64, logIdx uint32, timestamp uint64, logHash common.Hash, execMsg ...types.ExecutingMessage) {
 	require.LessOrEqual(t, len(execMsg), 1, "cannot have multiple executing messages for a single log")
 	m, ok := db.m.(*stubMetrics)
 	require.True(t, ok, "Did not get the expected metrics type")
-	_, err := db.Contains(blockNum, logIdx, logHash)
+	_, err := db.Contains(types.ContainsQuery{
+		Timestamp: timestamp,
+		BlockNum:  blockNum,
+		LogIdx:    logIdx,
+		LogHash:   logHash,
+	})
 	require.NoErrorf(t, err, "Error searching for log %v in block %v", logIdx, blockNum)
 	require.LessOrEqual(t, m.entriesReadForSearch, int64(searchCheckpointFrequency*2), "Should not need to read more than between two checkpoints")
 	require.NotZero(t, m.entriesReadForSearch, "Must read at least some entries to find the log")
@@ -842,20 +869,28 @@ func requireContains(t *testing.T, db *DB, blockNum uint64, logIdx uint32, logHa
 	requireExecutingMessage(t, db, blockNum, logIdx, expectedExecMsg)
 }
 
-func requireConflicts(t *testing.T, db *DB, blockNum uint64, logIdx uint32, logHash common.Hash) {
+func requireConflicts(t *testing.T, db *DB, blockNum uint64, logIdx uint32, timestamp uint64, logHash common.Hash) {
 	m, ok := db.m.(*stubMetrics)
 	require.True(t, ok, "Did not get the expected metrics type")
-	_, err := db.Contains(blockNum, logIdx, logHash)
-	require.ErrorIs(t, err, types.ErrConflict, "canonical chain must not include this log")
+	_, err := db.Contains(types.ContainsQuery{
+		Timestamp: timestamp,
+		BlockNum:  blockNum,
+		LogIdx:    logIdx,
+		LogHash:   logHash,
+	})
 	require.ErrorIs(t, err, types.ErrConflict, "canonical chain must not include this log")
 	require.LessOrEqual(t, m.entriesReadForSearch, int64(searchCheckpointFrequency*2), "Should not need to read more than between two checkpoints")
 }
 
-func requireFuture(t *testing.T, db *DB, blockNum uint64, logIdx uint32, logHash common.Hash) {
+func requireFuture(t *testing.T, db *DB, blockNum uint64, logIdx uint32, timestamp uint64, logHash common.Hash) {
 	m, ok := db.m.(*stubMetrics)
 	require.True(t, ok, "Did not get the expected metrics type")
-	_, err := db.Contains(blockNum, logIdx, logHash)
-	require.ErrorIs(t, err, types.ErrFuture, "canonical chain does not yet include this log")
+	_, err := db.Contains(types.ContainsQuery{
+		Timestamp: timestamp,
+		BlockNum:  blockNum,
+		LogIdx:    logIdx,
+		LogHash:   logHash,
+	})
 	require.ErrorIs(t, err, types.ErrFuture, "canonical chain does not yet include this log")
 	require.LessOrEqual(t, m.entriesReadForSearch, int64(searchCheckpointFrequency*2), "Should not need to read more than between two checkpoints")
 }
@@ -908,7 +943,7 @@ func TestRecoverOnCreate(t *testing.T) {
 		db, m, err := createDb(t, store)
 		require.NoError(t, err)
 		require.EqualValues(t, int64(4*2+3), m.entryCount)
-		requireContains(t, db, 4, 0, createHash(1))
+		requireContains(t, db, 4, 0, 104, createHash(1))
 	})
 
 	t.Run("NoTruncateWhenLastEntryIsExecutingCheckSealed", func(t *testing.T) {
@@ -937,7 +972,7 @@ func TestRecoverOnCreate(t *testing.T) {
 		db, m, err := createDb(t, store)
 		require.NoError(t, err)
 		require.EqualValues(t, int64(3*2+5), m.entryCount)
-		requireContains(t, db, 3, 0, createHash(1111), execMsg)
+		requireContains(t, db, 3, 0, 103, createHash(1111), execMsg)
 	})
 
 	t.Run("TruncateWhenLastEntrySearchCheckpoint", func(t *testing.T) {
@@ -1017,86 +1052,90 @@ func TestRewind(t *testing.T) {
 	t.Run("WhenEmpty", func(t *testing.T) {
 		runDBTest(t, func(t *testing.T, db *DB, m *stubMetrics) {},
 			func(t *testing.T, db *DB, m *stubMetrics) {
-				require.ErrorIs(t, db.Rewind(100), types.ErrFuture)
-				require.ErrorIs(t, db.Rewind(100), types.ErrFuture)
+				require.ErrorIs(t, db.Rewind(createID(100)), types.ErrFuture)
+				require.ErrorIs(t, db.Rewind(createID(100)), types.ErrFuture)
 				// Genesis is a block to, not present in an empty DB
-				require.ErrorIs(t, db.Rewind(0), types.ErrFuture)
-				require.ErrorIs(t, db.Rewind(0), types.ErrFuture)
+				require.ErrorIs(t, db.Rewind(createID(0)), types.ErrFuture)
+				require.ErrorIs(t, db.Rewind(createID(0)), types.ErrFuture)
 			})
 	})
 
 	t.Run("AfterLastBlock", func(t *testing.T) {
+		t50, t51, t52, t53 := uint64(500), uint64(502), uint64(504), uint64(506)
 		runDBTest(t,
 			func(t *testing.T, db *DB, m *stubMetrics) {
 				bl50 := eth.BlockID{Hash: createHash(50), Number: 50}
-				require.NoError(t, db.SealBlock(createHash(49), bl50, 500))
+				require.NoError(t, db.SealBlock(createHash(49), bl50, t50))
 				require.NoError(t, db.AddLog(createHash(1), bl50, 0, nil))
 				require.NoError(t, db.AddLog(createHash(2), bl50, 1, nil))
 				bl51 := eth.BlockID{Hash: createHash(51), Number: 51}
-				require.NoError(t, db.SealBlock(bl50.Hash, bl51, 502))
+				require.NoError(t, db.SealBlock(bl50.Hash, bl51, t51))
 				require.NoError(t, db.AddLog(createHash(3), bl51, 0, nil))
 				bl52 := eth.BlockID{Hash: createHash(52), Number: 52}
-				require.NoError(t, db.SealBlock(bl51.Hash, bl52, 504))
+				require.NoError(t, db.SealBlock(bl51.Hash, bl52, t52))
 				require.NoError(t, db.AddLog(createHash(4), bl52, 0, nil))
 				// cannot rewind to a block that is not sealed yet
-				require.ErrorIs(t, db.Rewind(53), types.ErrFuture)
-				require.ErrorIs(t, db.Rewind(53), types.ErrFuture)
+				require.ErrorIs(t, db.Rewind(createID(53)), types.ErrFuture)
+				require.ErrorIs(t, db.Rewind(createID(53)), types.ErrFuture)
 			},
 			func(t *testing.T, db *DB, m *stubMetrics) {
-				requireContains(t, db, 51, 0, createHash(1))
-				requireContains(t, db, 51, 1, createHash(2))
-				requireContains(t, db, 52, 0, createHash(3))
+				requireContains(t, db, 51, 0, t51, createHash(1))
+				requireContains(t, db, 51, 1, t51, createHash(2))
+				requireContains(t, db, 52, 0, t52, createHash(3))
 				// Still have the pending log of unsealed block if the rewind to unknown sealed block fails
-				requireFuture(t, db, 53, 0, createHash(4))
+				requireFuture(t, db, 53, 0, t53, createHash(4))
 			})
 	})
 
 	t.Run("BeforeFirstBlock", func(t *testing.T) {
+		t50, t51 := uint64(500), uint64(501)
 		runDBTest(t,
 			func(t *testing.T, db *DB, m *stubMetrics) {
 				bl50 := eth.BlockID{Hash: createHash(50), Number: 50}
-				require.NoError(t, db.SealBlock(createHash(49), bl50, 500))
+				require.NoError(t, db.SealBlock(createHash(49), bl50, t50))
 				require.NoError(t, db.AddLog(createHash(1), bl50, 0, nil))
 				require.NoError(t, db.AddLog(createHash(2), bl50, 1, nil))
 				// cannot go back to an unknown block
-				require.ErrorIs(t, db.Rewind(25), types.ErrSkipped)
-				require.ErrorIs(t, db.Rewind(25), types.ErrSkipped)
+				require.ErrorIs(t, db.Rewind(createID(25)), types.ErrSkipped)
+				require.ErrorIs(t, db.Rewind(createID(25)), types.ErrSkipped)
 			},
 			func(t *testing.T, db *DB, m *stubMetrics) {
 				// block 51 is not sealed yet
-				requireFuture(t, db, 51, 0, createHash(1))
-				requireFuture(t, db, 51, 0, createHash(1))
+				requireFuture(t, db, 51, 0, t51, createHash(1))
+				requireFuture(t, db, 51, 0, t51, createHash(1))
 			})
 	})
 
 	t.Run("AtFirstBlock", func(t *testing.T) {
+		t50, t51, t52 := uint64(500), uint64(502), uint64(504)
 		runDBTest(t,
 			func(t *testing.T, db *DB, m *stubMetrics) {
 				bl50 := eth.BlockID{Hash: createHash(50), Number: 50}
-				require.NoError(t, db.SealBlock(createHash(49), bl50, 500))
+				require.NoError(t, db.SealBlock(createHash(49), bl50, t50))
 				require.NoError(t, db.AddLog(createHash(1), bl50, 0, nil))
 				require.NoError(t, db.AddLog(createHash(2), bl50, 1, nil))
 				bl51 := eth.BlockID{Hash: createHash(51), Number: 51}
-				require.NoError(t, db.SealBlock(bl50.Hash, bl51, 502))
+				require.NoError(t, db.SealBlock(bl50.Hash, bl51, t51))
 				require.NoError(t, db.AddLog(createHash(1), bl51, 0, nil))
 				require.NoError(t, db.AddLog(createHash(2), bl51, 1, nil))
 				bl52 := eth.BlockID{Hash: createHash(52), Number: 52}
-				require.NoError(t, db.SealBlock(bl51.Hash, bl52, 504))
-				require.NoError(t, db.Rewind(51))
+				require.NoError(t, db.SealBlock(bl51.Hash, bl52, t52))
+				require.NoError(t, db.Rewind(createID(51)))
 			},
 			func(t *testing.T, db *DB, m *stubMetrics) {
-				requireContains(t, db, 51, 0, createHash(1))
-				requireContains(t, db, 51, 1, createHash(2))
-				requireFuture(t, db, 52, 0, createHash(1))
-				requireFuture(t, db, 52, 1, createHash(2))
+				requireContains(t, db, 51, 0, t51, createHash(1))
+				requireContains(t, db, 51, 1, t51, createHash(2))
+				requireFuture(t, db, 52, 0, t52, createHash(1))
+				requireFuture(t, db, 52, 1, t52, createHash(2))
 			})
 	})
 
 	t.Run("AfterSecondCheckpoint", func(t *testing.T) {
+		t50, t51, t52 := uint64(500), uint64(502), uint64(504)
 		runDBTest(t,
 			func(t *testing.T, db *DB, m *stubMetrics) {
 				bl50 := eth.BlockID{Hash: createHash(50), Number: 50}
-				require.NoError(t, db.SealBlock(createHash(49), bl50, 500))
+				require.NoError(t, db.SealBlock(createHash(49), bl50, t50))
 				for i := uint32(0); m.entryCount < searchCheckpointFrequency; i++ {
 					require.NoError(t, db.AddLog(createHash(1), bl50, i, nil))
 				}
@@ -1105,22 +1144,27 @@ func TestRewind(t *testing.T) {
 				// Thus add 2 for the checkpoint.
 				require.EqualValues(t, searchCheckpointFrequency+2, m.entryCount)
 				bl51 := eth.BlockID{Hash: createHash(51), Number: 51}
-				require.NoError(t, db.SealBlock(bl50.Hash, bl51, 502))
+				require.NoError(t, db.SealBlock(bl50.Hash, bl51, t51))
 				require.NoError(t, db.AddLog(createHash(1), bl51, 0, nil))
 				require.EqualValues(t, searchCheckpointFrequency+2+3, m.entryCount, "Should have inserted new checkpoint and extra log")
 				require.NoError(t, db.AddLog(createHash(2), bl51, 1, nil))
 				bl52 := eth.BlockID{Hash: createHash(52), Number: 52}
-				require.NoError(t, db.SealBlock(bl51.Hash, bl52, 504))
-				require.NoError(t, db.Rewind(51))
+				require.NoError(t, db.SealBlock(bl51.Hash, bl52, t52))
+				require.NoError(t, db.Rewind(createID(51)))
 			},
 			func(t *testing.T, db *DB, m *stubMetrics) {
 				require.EqualValues(t, searchCheckpointFrequency+2+2, m.entryCount, "Should have deleted second checkpoint")
-				requireContains(t, db, 51, 0, createHash(1))
-				requireContains(t, db, 51, 1, createHash(1))
-				requireFuture(t, db, 52, 0, createHash(1))
-				requireFuture(t, db, 52, 1, createHash(2))
+				requireContains(t, db, 51, 0, t51, createHash(1))
+				requireContains(t, db, 51, 1, t51, createHash(1))
+				requireFuture(t, db, 52, 0, t52, createHash(1))
+				requireFuture(t, db, 52, 1, t52, createHash(2))
 			})
 	})
+
+	// helper function for the below test cases which generate multiple timestamps
+	tOffset := func(i int) uint64 {
+		return uint64(500 + i)
+	}
 
 	t.Run("BetweenBlockEntries", func(t *testing.T) {
 		runDBTest(t,
@@ -1128,19 +1172,19 @@ func TestRewind(t *testing.T) {
 				// create many blocks, and all the odd blocks get 2 logs
 				for i := uint32(0); i < 30; i++ {
 					bl := eth.BlockID{Hash: createHash(int(i)), Number: uint64(i)}
-					require.NoError(t, db.SealBlock(createHash(int(i)-1), bl, 500+uint64(i)))
+					require.NoError(t, db.SealBlock(createHash(int(i)-1), bl, tOffset(int(i))))
 					if i%2 == 0 {
 						require.NoError(t, db.AddLog(createHash(1), bl, 0, nil))
 						require.NoError(t, db.AddLog(createHash(2), bl, 1, nil))
 					}
 				}
-				require.NoError(t, db.Rewind(15))
+				require.NoError(t, db.Rewind(createID(15)))
 			},
 			func(t *testing.T, db *DB, m *stubMetrics) {
-				requireContains(t, db, 15, 0, createHash(1))
-				requireContains(t, db, 15, 1, createHash(2))
-				requireFuture(t, db, 16, 0, createHash(1))
-				requireFuture(t, db, 16, 1, createHash(2))
+				requireContains(t, db, 15, 0, tOffset(15), createHash(1))
+				requireContains(t, db, 15, 1, tOffset(15), createHash(2))
+				requireFuture(t, db, 16, 0, tOffset(16), createHash(1))
+				requireFuture(t, db, 16, 1, tOffset(16), createHash(2))
 			})
 	})
 
@@ -1150,21 +1194,21 @@ func TestRewind(t *testing.T) {
 				// create many blocks, and all the even blocks get 2 logs
 				for i := uint32(0); i <= 30; i++ {
 					bl := eth.BlockID{Hash: createHash(int(i)), Number: uint64(i)}
-					require.NoError(t, db.SealBlock(createHash(int(i)-1), bl, 500+uint64(i)))
+					require.NoError(t, db.SealBlock(createHash(int(i)-1), bl, tOffset(int(i))))
 					if i%2 == 1 {
 						require.NoError(t, db.AddLog(createHash(1), bl, 0, nil))
 						require.NoError(t, db.AddLog(createHash(2), bl, 1, nil))
 					}
 				}
 				// We ended at 30, and sealed it, nothing left to prune
-				require.NoError(t, db.Rewind(30))
+				require.NoError(t, db.Rewind(createID(30)))
 			},
 			func(t *testing.T, db *DB, m *stubMetrics) {
-				requireContains(t, db, 20, 0, createHash(1))
-				requireContains(t, db, 20, 1, createHash(2))
+				requireContains(t, db, 20, 0, tOffset(20), createHash(1))
+				requireContains(t, db, 20, 1, tOffset(20), createHash(2))
 				// built on top of 29, these are in sealed block 30, still around
-				requireContains(t, db, 30, 0, createHash(1))
-				requireContains(t, db, 30, 1, createHash(2))
+				requireContains(t, db, 30, 0, tOffset(30), createHash(1))
+				requireContains(t, db, 30, 1, tOffset(30), createHash(2))
 			})
 	})
 
@@ -1174,13 +1218,13 @@ func TestRewind(t *testing.T) {
 				// create many blocks, and all the odd blocks get 2 logs
 				for i := uint32(0); i < 30; i++ {
 					bl := eth.BlockID{Hash: createHash(int(i)), Number: uint64(i)}
-					require.NoError(t, db.SealBlock(createHash(int(i)-1), bl, 500+uint64(i)))
+					require.NoError(t, db.SealBlock(createHash(int(i)-1), bl, tOffset(int(i))))
 					if i%2 == 0 {
 						require.NoError(t, db.AddLog(createHash(1), bl, 0, nil))
 						require.NoError(t, db.AddLog(createHash(2), bl, 1, nil))
 					}
 				}
-				require.NoError(t, db.Rewind(16))
+				require.NoError(t, db.Rewind(createID(16)))
 			},
 			func(t *testing.T, db *DB, m *stubMetrics) {
 				bl29 := eth.BlockID{Hash: createHash(29), Number: 29}
@@ -1199,7 +1243,7 @@ func TestRewind(t *testing.T) {
 				err = db.AddLog(createHash(42), bl16, 0, nil)
 				require.NoError(t, err)
 				// not sealed yet
-				requireFuture(t, db, 17, 0, createHash(42))
+				requireFuture(t, db, 17, 0, tOffset(17), createHash(42))
 			})
 	})
 }

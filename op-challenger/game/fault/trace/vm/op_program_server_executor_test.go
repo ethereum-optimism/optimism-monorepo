@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math/big"
+	"strings"
 	"testing"
 
 	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/trace/utils"
@@ -34,7 +35,7 @@ func TestOpProgramFillHostCommand(t *testing.T) {
 		cfg := Config{
 			L1:       "http://localhost:8888",
 			L1Beacon: "http://localhost:9000",
-			L2:       "http://localhost:9999",
+			L2s:      []string{"http://localhost:9999", "http://localhost:9999/two"},
 			Server:   "./bin/mockserver",
 		}
 		inputs := utils.LocalGameInputs{
@@ -54,7 +55,7 @@ func TestOpProgramFillHostCommand(t *testing.T) {
 		require.Equal(t, "--server", pairs[cfg.Server])
 		require.Equal(t, cfg.L1, pairs["--l1"])
 		require.Equal(t, cfg.L1Beacon, pairs["--l1.beacon"])
-		require.Equal(t, cfg.L2, pairs["--l2"])
+		require.Equal(t, strings.Join(cfg.L2s, ","), pairs["--l2"])
 		require.Equal(t, dir, pairs["--datadir"])
 		require.Equal(t, inputs.L1Head.Hex(), pairs["--l1.head"])
 		require.Equal(t, inputs.L2Head.Hex(), pairs["--l2.head"])
@@ -73,12 +74,19 @@ func TestOpProgramFillHostCommand(t *testing.T) {
 
 	t.Run("WithNetwork", func(t *testing.T) {
 		pairs := oracleCommand(t, log.LvlInfo, func(c *Config) {
-			c.Network = "op-test"
+			c.Networks = []string{"op-test"}
 		})
 		require.Equal(t, "op-test", pairs["--network"])
 	})
 
-	t.Run("WithL2ChainID", func(t *testing.T) {
+	t.Run("WithMultipleNetworks", func(t *testing.T) {
+		pairs := oracleCommand(t, log.LvlInfo, func(c *Config) {
+			c.Networks = []string{"op-test", "op-other"}
+		})
+		require.Equal(t, "op-test,op-other", pairs["--network"])
+	})
+
+	t.Run("WithL2Custom", func(t *testing.T) {
 		pairs := oracleCommand(t, log.LvlInfo, func(c *Config) {
 			c.L2Custom = true
 		})
@@ -87,23 +95,37 @@ func TestOpProgramFillHostCommand(t *testing.T) {
 
 	t.Run("WithRollupConfigPath", func(t *testing.T) {
 		pairs := oracleCommand(t, log.LvlInfo, func(c *Config) {
-			c.RollupConfigPath = "rollup.config.json"
+			c.RollupConfigPaths = []string{"rollup.config.json"}
 		})
 		require.Equal(t, "rollup.config.json", pairs["--rollup.config"])
 	})
 
+	t.Run("WithMultipleRollupConfigPaths", func(t *testing.T) {
+		pairs := oracleCommand(t, log.LvlInfo, func(c *Config) {
+			c.RollupConfigPaths = []string{"rollup.config.json", "rollup2.json"}
+		})
+		require.Equal(t, "rollup.config.json,rollup2.json", pairs["--rollup.config"])
+	})
+
 	t.Run("WithL2GenesisPath", func(t *testing.T) {
 		pairs := oracleCommand(t, log.LvlInfo, func(c *Config) {
-			c.L2GenesisPath = "genesis.json"
+			c.L2GenesisPaths = []string{"genesis.json"}
 		})
 		require.Equal(t, "genesis.json", pairs["--l2.genesis"])
 	})
 
+	t.Run("WithMultipleL2GenesisPaths", func(t *testing.T) {
+		pairs := oracleCommand(t, log.LvlInfo, func(c *Config) {
+			c.L2GenesisPaths = []string{"genesis.json", "genesis2.json"}
+		})
+		require.Equal(t, "genesis.json,genesis2.json", pairs["--l2.genesis"])
+	})
+
 	t.Run("WithAllExtras", func(t *testing.T) {
 		pairs := oracleCommand(t, log.LvlInfo, func(c *Config) {
-			c.Network = "op-test"
-			c.RollupConfigPath = "rollup.config.json"
-			c.L2GenesisPath = "genesis.json"
+			c.Networks = []string{"op-test"}
+			c.RollupConfigPaths = []string{"rollup.config.json"}
+			c.L2GenesisPaths = []string{"genesis.json"}
 		})
 		require.Equal(t, "op-test", pairs["--network"])
 		require.Equal(t, "rollup.config.json", pairs["--rollup.config"])

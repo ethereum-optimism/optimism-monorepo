@@ -332,6 +332,9 @@ func (cfg *Config) Check() error {
 	if err := checkFork(cfg.GraniteTime, cfg.HoloceneTime, Granite, Holocene); err != nil {
 		return err
 	}
+	if err := checkFork(cfg.HoloceneTime, cfg.IsthmusTime, Holocene, Isthmus); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -556,7 +559,9 @@ func (c *Config) ForkchoiceUpdatedVersion(attr *eth.PayloadAttributes) eth.Engin
 
 // NewPayloadVersion returns the EngineAPIMethod suitable for the chain hard fork version.
 func (c *Config) NewPayloadVersion(timestamp uint64) eth.EngineAPIMethod {
-	if c.IsEcotone(timestamp) {
+	if c.IsIsthmus(timestamp) {
+		return eth.NewPayloadV4
+	} else if c.IsEcotone(timestamp) {
 		// Cancun
 		return eth.NewPayloadV3
 	} else {
@@ -566,7 +571,9 @@ func (c *Config) NewPayloadVersion(timestamp uint64) eth.EngineAPIMethod {
 
 // GetPayloadVersion returns the EngineAPIMethod suitable for the chain hard fork version.
 func (c *Config) GetPayloadVersion(timestamp uint64) eth.EngineAPIMethod {
-	if c.IsEcotone(timestamp) {
+	if c.IsIsthmus(timestamp) {
+		return eth.GetPayloadV4
+	} else if c.IsEcotone(timestamp) {
 		// Cancun
 		return eth.GetPayloadV3
 	} else {

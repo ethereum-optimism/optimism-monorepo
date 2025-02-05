@@ -1,0 +1,16 @@
+{
+    "interop": true,
+    "l2s": {
+        "2151908": {
+            "nodes": ["op-geth", "op-geth"]
+        },
+        "2151909": {
+            "nodes": ["op-reth"]
+        }
+    },
+    "overrides": {
+        "flags": {
+            "log_level": "--log.level=debug"
+        }
+    }
+}

@@ -81,6 +81,7 @@ type ImplementationsDeployment struct {
 	L1StandardBridgeImplAddress             common.Address `json:"l1StandardBridgeImplAddress"`
 	OptimismMintableERC20FactoryImplAddress common.Address `json:"optimismMintableERC20FactoryImplAddress"`
 	DisputeGameFactoryImplAddress           common.Address `json:"disputeGameFactoryImplAddress"`
+	AnchorStateRegistryImplAddress          common.Address `json:"anchorStateRegistryImplAddress"`
 }
 
 type AdditionalDisputeGameState struct {
@@ -104,7 +105,6 @@ type ChainState struct {
 	OptimismPortalProxyAddress                common.Address               `json:"optimismPortalProxyAddress"`
 	DisputeGameFactoryProxyAddress            common.Address               `json:"disputeGameFactoryProxyAddress"`
 	AnchorStateRegistryProxyAddress           common.Address               `json:"anchorStateRegistryProxyAddress"`
-	AnchorStateRegistryImplAddress            common.Address               `json:"anchorStateRegistryImplAddress"`
 	FaultDisputeGameAddress                   common.Address               `json:"faultDisputeGameAddress"`
 	PermissionedDisputeGameAddress            common.Address               `json:"permissionedDisputeGameAddress"`
 	DelayedWETHPermissionedGameProxyAddress   common.Address               `json:"delayedWETHPermissionedGameProxyAddress"`

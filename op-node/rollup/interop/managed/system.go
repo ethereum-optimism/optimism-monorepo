@@ -23,8 +23,11 @@ import (
 type L2Source interface {
 	L2BlockRefByHash(ctx context.Context, hash common.Hash) (eth.L2BlockRef, error)
 	L2BlockRefByNumber(ctx context.Context, num uint64) (eth.L2BlockRef, error)
+	BlockRefByHash(ctx context.Context, hash common.Hash) (eth.BlockRef, error)
+	PayloadByHash(ctx context.Context, hash common.Hash) (*eth.ExecutionPayloadEnvelope, error)
 	BlockRefByNumber(ctx context.Context, num uint64) (eth.BlockRef, error)
 	FetchReceipts(ctx context.Context, blockHash common.Hash) (eth.BlockInfo, types.Receipts, error)
+	OutputV0AtBlock(ctx context.Context, blockHash common.Hash) (*eth.OutputV0, error)
 }
 
 type L1Source interface {
@@ -114,22 +117,44 @@ func (m *ManagedMode) OnEvent(ev event.Event) bool {
 		ref := x.Ref.BlockRef()
 		m.events.Send(&supervisortypes.ManagedEvent{UnsafeBlock: &ref})
 	case engine.LocalSafeUpdateEvent:
+		m.log.Info("Emitting local safe update because of L2 block", "derivedFrom", x.DerivedFrom, "derived", x.Ref)
 		m.events.Send(&supervisortypes.ManagedEvent{DerivationUpdate: &supervisortypes.DerivedBlockRefPair{
 			DerivedFrom: x.DerivedFrom,
 			Derived:     x.Ref.BlockRef(),
 		}})
 	case derive.DeriverL1StatusEvent:
-		m.events.Send(&supervisortypes.ManagedEvent{DerivationUpdate: &supervisortypes.DerivedBlockRefPair{
-			DerivedFrom: x.Origin,
-			Derived:     x.LastL2.BlockRef(),
-		}})
+		m.log.Info("Emitting local safe update because of L1 traversal", "derivedFrom", x.Origin, "derived", x.LastL2)
+		m.events.Send(&supervisortypes.ManagedEvent{
+			DerivationUpdate: &supervisortypes.DerivedBlockRefPair{
+				DerivedFrom: x.Origin,
+				Derived:     x.LastL2.BlockRef(),
+			},
+			DerivationOriginUpdate: &supervisortypes.DerivedBlockRefPair{
+				DerivedFrom: x.Origin,
+				Derived:     x.LastL2.BlockRef(),
+			},
+		})
 	case derive.ExhaustedL1Event:
+		m.log.Info("Exhausted L1 data", "derivedFrom", x.L1Ref, "derived", x.LastL2)
 		m.events.Send(&supervisortypes.ManagedEvent{ExhaustL1: &supervisortypes.DerivedBlockRefPair{
 			DerivedFrom: x.L1Ref,
 			Derived:     x.LastL2.BlockRef(),
 		}})
+	case engine.InteropReplacedBlockEvent:
+		m.log.Info("Replaced block", "replacement", x.Ref)
+		out, err := DecodeInvalidatedBlockTxFromReplacement(x.Envelope.ExecutionPayload.Transactions)
+		if err != nil {
+			m.log.Error("Failed to parse replacement block", "err", err)
+			return true
+		}
+		m.events.Send(&supervisortypes.ManagedEvent{ReplaceBlock: &supervisortypes.BlockReplacement{
+			Replacement: x.Ref,
+			Invalidated: out.BlockHash,
+		}})
+	default:
+		return false
 	}
-	return false
+	return true
 }
 
 func (m *ManagedMode) PullEvent() (*supervisortypes.ManagedEvent, error) {
@@ -182,6 +207,36 @@ func (m *ManagedMode) UpdateFinalized(ctx context.Context, id eth.BlockID) error
 	return nil
 }
 
+func (m *ManagedMode) InvalidateBlock(ctx context.Context, seal supervisortypes.BlockSeal) error {
+	m.log.Info("Invalidating block", "block", seal)
+
+	// Fetch the block we invalidate, so we can re-use the attributes that stay.
+	block, err := m.l2.PayloadByHash(ctx, seal.Hash)
+	if err != nil { // cannot invalidate if it wasn't there.
+		return fmt.Errorf("failed to get block: %w", err)
+	}
+	parentRef, err := m.l2.L2BlockRefByHash(ctx, block.ExecutionPayload.ParentHash)
+	if err != nil {
+		return fmt.Errorf("failed to get parent of invalidated block: %w", err)
+	}
+
+	ref := block.ExecutionPayload.BlockRef()
+
+	// Create the attributes that we build the replacement block with.
+	attributes := AttributesToReplaceInvalidBlock(block)
+	annotated := &derive.AttributesWithParent{
+		Attributes:  attributes,
+		Parent:      parentRef,
+		Concluding:  true,
+		DerivedFrom: engine.ReplaceBlockDerivedFrom,
+	}
+
+	m.emitter.Emit(engine.InteropInvalidateBlockEvent{Invalidated: ref, Attributes: annotated})
+
+	// The node will send an event once the replacement is ready
+	return nil
+}
+
 func (m *ManagedMode) AnchorPoint(ctx context.Context) (supervisortypes.DerivedBlockRefPair, error) {
 	l1Ref, err := m.l1.L1BlockRefByHash(ctx, m.cfg.Genesis.L1.Hash)
 	if err != nil {
@@ -205,6 +260,7 @@ const (
 
 func (m *ManagedMode) Reset(ctx context.Context, unsafe, safe, finalized eth.BlockID) error {
 	logger := m.log.New("unsafe", unsafe, "safe", safe, "finalized", finalized)
+	logger.Debug("Received reset request", "unsafe", unsafe, "safe", safe, "finalized", finalized)
 
 	verify := func(ref eth.BlockID, name string) (eth.L2BlockRef, error) {
 		result, err := m.l2.L2BlockRefByNumber(ctx, ref.Number)
@@ -224,7 +280,7 @@ func (m *ManagedMode) Reset(ctx context.Context, unsafe, safe, finalized eth.Blo
 				Data:    name,
 			}
 		}
-		if result.Hash != unsafe.Hash {
+		if result.Hash != ref.Hash {
 			return eth.L2BlockRef{}, &gethrpc.JsonError{
 				Code:    ConflictingBlockRPCErrCode,
 				Message: "Conflicting block",
@@ -238,16 +294,16 @@ func (m *ManagedMode) Reset(ctx context.Context, unsafe, safe, finalized eth.Blo
 	if err != nil {
 		return err
 	}
-	safeRef, err := verify(unsafe, "safe")
+	safeRef, err := verify(safe, "safe")
 	if err != nil {
 		return err
 	}
-	finalizedRef, err := verify(unsafe, "finalized")
+	finalizedRef, err := verify(finalized, "finalized")
 	if err != nil {
 		return err
 	}
 
-	m.emitter.Emit(engine.ForceEngineResetEvent{
+	m.emitter.Emit(rollup.ForceResetEvent{
 		Unsafe:    unsafeRef,
 		Safe:      safeRef,
 		Finalized: finalizedRef,
@@ -272,6 +328,33 @@ func (m *ManagedMode) BlockRefByNumber(ctx context.Context, num uint64) (eth.Blo
 	return m.l2.BlockRefByNumber(ctx, num)
 }
 
-func (m *ManagedMode) ChainID(ctx context.Context) (supervisortypes.ChainID, error) {
-	return supervisortypes.ChainIDFromBig(m.cfg.L2ChainID), nil
+func (m *ManagedMode) ChainID(ctx context.Context) (eth.ChainID, error) {
+	return eth.ChainIDFromBig(m.cfg.L2ChainID), nil
+}
+
+func (m *ManagedMode) OutputV0AtTimestamp(ctx context.Context, timestamp uint64) (*eth.OutputV0, error) {
+	ref, err := m.L2BlockRefByTimestamp(ctx, timestamp)
+	if err != nil {
+		return nil, err
+	}
+	return m.l2.OutputV0AtBlock(ctx, ref.Hash)
+}
+
+func (m *ManagedMode) PendingOutputV0AtTimestamp(ctx context.Context, timestamp uint64) (*eth.OutputV0, error) {
+	ref, err := m.L2BlockRefByTimestamp(ctx, timestamp)
+	if err != nil {
+		return nil, err
+	}
+	// TODO: Once interop reorgs are supported (see #13645), replace with the output root preimage of an actual pending
+	// block contained in the optimistic block deposited transaction - https://github.com/ethereum-optimism/specs/pull/489
+	// For now, we use the output at timestamp as-if it didn't contain invalid messages for happy path testing.
+	return m.l2.OutputV0AtBlock(ctx, ref.Hash)
+}
+
+func (m *ManagedMode) L2BlockRefByTimestamp(ctx context.Context, timestamp uint64) (eth.L2BlockRef, error) {
+	num, err := m.cfg.TargetBlockNumber(timestamp)
+	if err != nil {
+		return eth.L2BlockRef{}, err
+	}
+	return m.l2.L2BlockRefByNumber(ctx, num)
 }

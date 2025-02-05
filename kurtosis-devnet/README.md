@@ -1,3 +1,50 @@
+# Getting Started
+
+Running a Kurtosis Devnet has the following prerequisites:
+- Kurtosis must be installed
+- Docker Desktop must be installed and running
+
+Platform specific installation instructions for Kurtosis may be found [in Kurtosis documentation](https://docs.kurtosis.com/install/), alternatively Mac, Windows and Linux binaries can be found [here](https://github.com/kurtosis-tech/kurtosis-cli-release-artifacts).
+For Mac users, the following command should suffice:
+```
+brew install kurtosis-tech/tap/kurtosis-cli
+```
+Check your Kurtosis version with `kurtosis version`. The current ideal version for these devnets is `1.4.3`.
+
+Docker Desktop may be substituted by an alternative like Orbstack if you have that installed.
+
+# Running A Devnet
+
+To see available devnets, consult the `justfile` to see what `.*-devnet` targets exist, currently
+- `simple-devnet`
+- `interop-devnet`
+- `user-devnet`
+
+You can read over the referenced `yaml` files located in this directory to see the network definition which would be deployed. Mini and Simple are example network definitions, and User expects a provided network definition.
+
+To run the Interop Devnet, simply:
+```
+just interop-devnet
+```
+
+If all works as expected, you should see a collection of containers appear in Docker. Some of them are Kurtosis infrastructure, while others are the actual hosts for your network. You can observe that the network is running by searching for "supervisor" and watching its logs.
+
+## Resolving Issues
+
+Here is a list of potential pitfalls when running Kurtosis and known solutions.
+
+### `error ensuring kurtosis engine is running`
+This error indicates Docker Desktop (or your alternative) is not running.
+
+### `network with name kt-interop-devnet already exists`
+If your kurtosis network is taken down and destroyed through docker, it is possible that the network resources are left around, preventing you from starting up a new network. To resolve, run:
+```
+kurtosis engine stop
+docker network rm kt-interop-devnet
+```
+
+You can use `docker network ls` to inspect for networks to remove if the error message specifies some other network.
+
 # Kurtosis-devnet support
 
 ## devnet specification

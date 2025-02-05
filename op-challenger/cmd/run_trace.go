@@ -101,9 +101,13 @@ func parseRunArg(arg string) (runner.RunConfig, error) {
 		cfg.Name = cfg.TraceType.String()
 	}
 	if len(opts) > 2 {
-		cfg.Prestate = common.HexToHash(opts[2])
-		if cfg.Prestate == (common.Hash{}) {
-			return runner.RunConfig{}, fmt.Errorf("%w %q for run config %q", ErrInvalidPrestateHash, opts[2], arg)
+		if strings.HasPrefix(opts[2], "0x") {
+			cfg.Prestate = common.HexToHash(opts[2])
+			if cfg.Prestate == (common.Hash{}) {
+				return runner.RunConfig{}, fmt.Errorf("%w %q for run config %q", ErrInvalidPrestateHash, opts[2], arg)
+			}
+		} else {
+			cfg.PrestateFilename = opts[2]
 		}
 	}
 	return cfg, nil

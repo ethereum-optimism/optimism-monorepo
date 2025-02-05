@@ -10,7 +10,14 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 )
 
-func RunPreInteropProgram(logger log.Logger, bootInfo *boot.BootInfo, l1PreimageOracle *l1.CachingOracle, l2PreimageOracle *l2.CachingOracle) error {
+func RunPreInteropProgram(
+	logger log.Logger,
+	bootInfo *boot.BootInfo,
+	l1PreimageOracle *l1.CachingOracle,
+	l2PreimageOracle *l2.CachingOracle,
+	db l2.KeyValueStore,
+	opts tasks.DerivationOptions,
+) error {
 	logger.Info("Program Bootstrapped", "bootInfo", bootInfo)
 	result, err := tasks.RunDerivation(
 		logger,
@@ -21,9 +28,11 @@ func RunPreInteropProgram(logger log.Logger, bootInfo *boot.BootInfo, l1Preimage
 		bootInfo.L2ClaimBlockNumber,
 		l1PreimageOracle,
 		l2PreimageOracle,
+		db,
+		opts,
 	)
 	if err != nil {
 		return err
 	}
-	return claim.ValidateClaim(logger, result.Head, eth.Bytes32(bootInfo.L2Claim), result.OutputRoot)
+	return claim.ValidateClaim(logger, eth.Bytes32(bootInfo.L2Claim), result.OutputRoot)
 }

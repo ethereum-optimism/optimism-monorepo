@@ -63,10 +63,28 @@ func (rs *RPCSyncNode) FetchReceipts(ctx context.Context, blockHash common.Hash)
 	return out, nil
 }
 
-func (rs *RPCSyncNode) ChainID(ctx context.Context) (types.ChainID, error) {
-	var chainID types.ChainID
+func (rs *RPCSyncNode) ChainID(ctx context.Context) (eth.ChainID, error) {
+	var chainID eth.ChainID
 	err := rs.cl.CallContext(ctx, &chainID, "interop_chainID")
 	return chainID, err
+}
+
+func (rs *RPCSyncNode) OutputV0AtTimestamp(ctx context.Context, timestamp uint64) (*eth.OutputV0, error) {
+	var out *eth.OutputV0
+	err := rs.cl.CallContext(ctx, &out, "interop_outputV0AtTimestamp", timestamp)
+	return out, err
+}
+
+func (rs *RPCSyncNode) PendingOutputV0AtTimestamp(ctx context.Context, timestamp uint64) (*eth.OutputV0, error) {
+	var out *eth.OutputV0
+	err := rs.cl.CallContext(ctx, &out, "interop_pendingOutputV0AtTimestamp", timestamp)
+	return out, err
+}
+
+func (rs *RPCSyncNode) L2BlockRefByTimestamp(ctx context.Context, timestamp uint64) (eth.L2BlockRef, error) {
+	var out eth.L2BlockRef
+	err := rs.cl.CallContext(ctx, &out, "interop_l2BlockRefByTimestamp", timestamp)
+	return out, err
 }
 
 func (rs *RPCSyncNode) String() string {
@@ -102,6 +120,10 @@ func (rs *RPCSyncNode) UpdateCrossSafe(ctx context.Context, derived eth.BlockID,
 
 func (rs *RPCSyncNode) UpdateFinalized(ctx context.Context, id eth.BlockID) error {
 	return rs.cl.CallContext(ctx, nil, "interop_updateFinalized", id)
+}
+
+func (rs *RPCSyncNode) InvalidateBlock(ctx context.Context, seal types.BlockSeal) error {
+	return rs.cl.CallContext(ctx, nil, "interop_invalidateBlock", seal)
 }
 
 func (rs *RPCSyncNode) Reset(ctx context.Context, unsafe, safe, finalized eth.BlockID) error {

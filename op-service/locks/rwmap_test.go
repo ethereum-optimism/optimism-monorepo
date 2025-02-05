@@ -60,4 +60,27 @@ func TestRWMap(t *testing.T) {
 
 	// remove a non-existent value
 	m.Delete(132983213)
+
+	m.Set(10001, 100)
+	m.Default(10001, func() int64 {
+		t.Fatal("should not replace existing value")
+		return 0
+	})
+	m.Default(10002, func() int64 {
+		return 42
+	})
+	v, ok = m.Get(10002)
+	require.True(t, ok)
+	require.Equal(t, int64(42), v)
+}
+
+func TestRWMap_DefaultOnEmpty(t *testing.T) {
+	m := &RWMap[uint64, int64]{}
+	// this should work, even if the first call to the map.
+	m.Default(10002, func() int64 {
+		return 42
+	})
+	v, ok := m.Get(10002)
+	require.True(t, ok)
+	require.Equal(t, int64(42), v)
 }

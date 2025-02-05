@@ -25,8 +25,9 @@ op-program-host:
 
 op-program-client:
 	env GO111MODULE=on GOOS=$(TARGETOS) GOARCH=$(TARGETARCH) go build -v -ldflags "$(PC_LDFLAGSSTRING)" -o ./bin/op-program-client ./client/cmd/main.go
+	env GO111MODULE=on GOOS=$(TARGETOS) GOARCH=$(TARGETARCH) go build -v -ldflags "$(PC_LDFLAGSSTRING)" -o ./bin/op-program-client-interop ./client/interopcmd/main.go
 
-op-program-client-mips: op-program-client-mips32 op-program-client-mips64
+op-program-client-mips: op-program-client-mips32 op-program-client-mips64 op-program-client-mips64-interop
 
 op-program-client-mips32:
 	env GO111MODULE=on GOOS=linux GOARCH=mips GOMIPS=softfloat go build -v -ldflags "$(PC_LDFLAGSSTRING)" -o ./bin/op-program-client.elf ./client/cmd/main.go
@@ -38,6 +39,11 @@ op-program-client-mips64:
 	# verify output with: readelf -h bin/op-program-client64.elf
 	# result is mips64, big endian, R3000
 
+op-program-client-mips64-interop:
+	env GO111MODULE=on GOOS=linux GOARCH=mips64 GOMIPS64=softfloat go build -v -ldflags "$(PC_LDFLAGSSTRING)" -o ./bin/op-program-client-interop.elf ./client/interopcmd/main.go
+	# verify output with: readelf -h bin/op-program-client-interop.elf
+	# result is mips64, big endian, R3000
+
 op-program-client-riscv:
 	env GO111MODULE=on GOOS=linux GOARCH=riscv64 go build -v -gcflags="all=-d=softfloat" -ldflags "$(PC_LDFLAGSSTRING)" -o ./bin/op-program-client-riscv.elf ./client/cmd/main.go
 
@@ -45,10 +51,10 @@ reproducible-prestate:
 	@docker build --output ./bin/ --progress plain -f Dockerfile.repro ../
 	@echo "Cannon Absolute prestate hash: "
 	@cat ./bin/prestate-proof.json | jq -r .pre
-	@echo "MT-Cannon Absolute prestate hash: "
-	@cat ./bin/prestate-proof-mt.json | jq -r .pre
 	@echo "Cannon64 Absolute prestate hash: "
 	@cat ./bin/prestate-proof-mt64.json | jq -r .pre
+	@echo "CannonInterop Absolute prestate hash: "
+	@cat ./bin/prestate-proof-interop.json | jq -r .pre
 .PHONY: reproducible-prestate
 
 verify-reproducibility:

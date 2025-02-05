@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
+	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/stretchr/testify/require"
 )
 
@@ -15,7 +15,7 @@ func TestLogDBPath(t *testing.T) {
 	chainIDStr := "42984928492928428424243444"
 	chainIDBig, ok := new(big.Int).SetString(chainIDStr, 10)
 	require.True(t, ok)
-	chainID := types.ChainIDFromBig(chainIDBig)
+	chainID := eth.ChainIDFromBig(chainIDBig)
 	expected := filepath.Join(base, "subdir", chainIDStr, "log.db")
 	path, err := prepLogDBPath(chainID, filepath.Join(base, "subdir"))
 	require.NoError(t, err)

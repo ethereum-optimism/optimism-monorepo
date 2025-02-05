@@ -290,18 +290,20 @@ contract DeployDisputeGame is Script {
         IPermissionedDisputeGame impl;
         if (LibString.eq(_dgi.gameKind(), "FaultDisputeGame")) {
             impl = IPermissionedDisputeGame(
-                DeployUtils.create1({
+                DeployUtils.createDeterministic({
                     _name: "FaultDisputeGame",
-                    _args: DeployUtils.encodeConstructor(abi.encodeCall(IFaultDisputeGame.__constructor__, (args)))
+                    _args: DeployUtils.encodeConstructor(abi.encodeCall(IFaultDisputeGame.__constructor__, (args))),
+                    _salt: DeployUtils.DEFAULT_SALT
                 })
             );
         } else {
             impl = IPermissionedDisputeGame(
-                DeployUtils.create1({
+                DeployUtils.createDeterministic({
                     _name: "PermissionedDisputeGame",
                     _args: DeployUtils.encodeConstructor(
                         abi.encodeCall(IPermissionedDisputeGame.__constructor__, (args, _dgi.proposer(), _dgi.challenger()))
-                    )
+                    ),
+                    _salt: DeployUtils.DEFAULT_SALT
                 })
             );
         }

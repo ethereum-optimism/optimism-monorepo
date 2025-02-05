@@ -106,8 +106,8 @@ func TestNormalizeABI(t *testing.T) {
 	}{
 		{
 			name: "Replace interface types and add constructor",
-			abi:  `[{"inputs":[{"internalType":"contract ITest","name":"test","type":"address"}],"type":"function"}]`,
-			want: `[{"inputs":[{"internalType":"contract Test","name":"test","type":"address"}],"type":"function"},{"inputs":[],"stateMutability":"nonpayable","type":"constructor"}]`,
+			abi:  `[{"inputs":[{"internalType":"contract Test","name":"test","type":"address"}],"type":"function"}]`,
+			want: `[{"inputs":[{"internalType":"contract ITest","name":"test","type":"address"}],"type":"function"},{"inputs":[],"stateMutability":"nonpayable","type":"constructor"}]`,
 		},
 		{
 			name: "Convert __constructor__",
@@ -121,8 +121,8 @@ func TestNormalizeABI(t *testing.T) {
 		},
 		{
 			name: "Replace multiple interface types",
-			abi:  `[{"inputs":[{"internalType":"contract ITest1","name":"test1","type":"address"},{"internalType":"contract ITest2","name":"test2","type":"address"}],"type":"function"}]`,
-			want: `[{"inputs":[{"internalType":"contract Test1","name":"test1","type":"address"},{"internalType":"contract Test2","name":"test2","type":"address"}],"type":"function"},{"inputs":[],"stateMutability":"nonpayable","type":"constructor"}]`,
+			abi:  `[{"inputs":[{"internalType":"contract Test1","name":"test1","type":"address"},{"internalType":"contract ITest2","name":"test2","type":"address"}],"type":"function"}]`,
+			want: `[{"inputs":[{"internalType":"contract ITest1","name":"test1","type":"address"},{"internalType":"contract ITest2","name":"test2","type":"address"}],"type":"function"},{"inputs":[],"stateMutability":"nonpayable","type":"constructor"}]`,
 		},
 	}
 
@@ -230,65 +230,17 @@ func TestNormalizeInternalType(t *testing.T) {
 		internalType string
 		want         string
 	}{
-		{"Replace contract I", "contract ITest", "contract Test"},
-		{"Replace enum I", "enum IMyEnum", "enum MyEnum"},
-		{"Replace struct I", "struct IMyStruct", "struct MyStruct"},
+		{"Replace contract X", "contract Test", "contract ITest"},
+		{"Replace enum X", "enum MyEnum", "enum IMyEnum"},
+		{"Replace struct I", "struct Whatever.MyStruct", "struct IWhatever.MyStruct"},
+		{"Don't replace II", "contract IInternet", "contract IInternet"},
 		{"No replacement needed", "uint256", "uint256"},
-		{"Don't replace non-prefix I", "contract TestI", "contract TestI"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := normalizeInternalType(tt.internalType); got != tt.want {
 				t.Errorf("normalizeInternalType() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestABIItemLess(t *testing.T) {
-	tests := []struct {
-		name string
-		a    map[string]interface{}
-		b    map[string]interface{}
-		want bool
-	}{
-		{
-			name: "Different types",
-			a:    map[string]interface{}{"type": "constructor"},
-			b:    map[string]interface{}{"type": "function"},
-			want: true,
-		},
-		{
-			name: "Same type, different names",
-			a:    map[string]interface{}{"type": "function", "name": "a"},
-			b:    map[string]interface{}{"type": "function", "name": "b"},
-			want: true,
-		},
-		{
-			name: "Same type and name",
-			a:    map[string]interface{}{"type": "function", "name": "test"},
-			b:    map[string]interface{}{"type": "function", "name": "test"},
-			want: false,
-		},
-		{
-			name: "Constructor vs function",
-			a:    map[string]interface{}{"type": "constructor"},
-			b:    map[string]interface{}{"type": "function", "name": "test"},
-			want: true,
-		},
-		{
-			name: "Event vs function",
-			a:    map[string]interface{}{"type": "event", "name": "TestEvent"},
-			b:    map[string]interface{}{"type": "function", "name": "test"},
-			want: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := abiItemLess(tt.a, tt.b); got != tt.want {
-				t.Errorf("abiItemLess() = %v, want %v", got, tt.want)
 			}
 		})
 	}

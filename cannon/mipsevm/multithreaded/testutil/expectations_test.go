@@ -38,7 +38,6 @@ func TestValidate_shouldCatchMutations(t *testing.T) {
 		{name: "LastHint", mut: func(e *ExpectedMTState, st *multithreaded.State) { e.LastHint = []byte{7, 8, 9, 10} }},
 		{name: "MemoryRoot", mut: func(e *ExpectedMTState, st *multithreaded.State) { e.MemoryRoot = emptyHash }},
 		{name: "StepsSinceLastContextSwitch", mut: func(e *ExpectedMTState, st *multithreaded.State) { e.StepsSinceLastContextSwitch += 1 }},
-		{name: "Wakeup", mut: func(e *ExpectedMTState, st *multithreaded.State) { e.Wakeup += 1 }},
 		{name: "TraverseRight", mut: func(e *ExpectedMTState, st *multithreaded.State) { e.TraverseRight = !e.TraverseRight }},
 		{name: "NextThreadId", mut: func(e *ExpectedMTState, st *multithreaded.State) { e.NextThreadId += 1 }},
 		{name: "ThreadCount", mut: func(e *ExpectedMTState, st *multithreaded.State) { e.ThreadCount += 1 }},
@@ -59,15 +58,6 @@ func TestValidate_shouldCatchMutations(t *testing.T) {
 		}},
 		{name: "Active thread exited", mut: func(e *ExpectedMTState, st *multithreaded.State) {
 			e.threadExpectations[st.GetCurrentThread().ThreadId].Exited = !st.GetCurrentThread().Exited
-		}},
-		{name: "Active thread futexAddr", mut: func(e *ExpectedMTState, st *multithreaded.State) {
-			e.threadExpectations[st.GetCurrentThread().ThreadId].FutexAddr += 1
-		}},
-		{name: "Active thread futexVal", mut: func(e *ExpectedMTState, st *multithreaded.State) {
-			e.threadExpectations[st.GetCurrentThread().ThreadId].FutexVal += 1
-		}},
-		{name: "Active thread FutexTimeoutStep", mut: func(e *ExpectedMTState, st *multithreaded.State) {
-			e.threadExpectations[st.GetCurrentThread().ThreadId].FutexTimeoutStep += 1
 		}},
 		{name: "Active thread PC", mut: func(e *ExpectedMTState, st *multithreaded.State) {
 			e.threadExpectations[st.GetCurrentThread().ThreadId].PC += 1
@@ -95,15 +85,6 @@ func TestValidate_shouldCatchMutations(t *testing.T) {
 		}},
 		{name: "Inactive thread exited", mut: func(e *ExpectedMTState, st *multithreaded.State) {
 			e.threadExpectations[FindNextThread(st).ThreadId].Exited = !FindNextThread(st).Exited
-		}},
-		{name: "Inactive thread futexAddr", mut: func(e *ExpectedMTState, st *multithreaded.State) {
-			e.threadExpectations[FindNextThread(st).ThreadId].FutexAddr += 1
-		}},
-		{name: "Inactive thread futexVal", mut: func(e *ExpectedMTState, st *multithreaded.State) {
-			e.threadExpectations[FindNextThread(st).ThreadId].FutexVal += 1
-		}},
-		{name: "Inactive thread FutexTimeoutStep", mut: func(e *ExpectedMTState, st *multithreaded.State) {
-			e.threadExpectations[FindNextThread(st).ThreadId].FutexTimeoutStep += 1
 		}},
 		{name: "Inactive thread PC", mut: func(e *ExpectedMTState, st *multithreaded.State) {
 			e.threadExpectations[FindNextThread(st).ThreadId].PC += 1

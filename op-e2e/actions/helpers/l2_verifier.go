@@ -41,10 +41,6 @@ var interopJWTSecret = [32]byte{4}
 
 type InteropControl interface {
 	PullEvents(ctx context.Context) (pulledAny bool, err error)
-
-	AwaitSentCrossUnsafeUpdate(ctx context.Context, minNum uint64) error
-	AwaitSentCrossSafeUpdate(ctx context.Context, minNum uint64) error
-	AwaitSentFinalizedUpdate(ctx context.Context, minNum uint64) error
 }
 
 // L2Verifier is an actor that functions like a rollup node,
@@ -92,6 +88,7 @@ type L2Verifier struct {
 
 type L2API interface {
 	engine.Engine
+	managed.L2Source
 	L2BlockRefByNumber(ctx context.Context, num uint64) (eth.L2BlockRef, error)
 	InfoByHash(ctx context.Context, hash common.Hash) (eth.BlockInfo, error)
 	// GetProof returns a proof of the account, it may return a nil result without error if the address was not found.
@@ -446,21 +443,6 @@ func (s *L2Verifier) ActL2InsertUnsafePayload(payload *eth.ExecutionPayloadEnvel
 		err = s.engine.InsertUnsafePayload(t.Ctx(), payload, ref)
 		require.NoError(t, err)
 	}
-}
-
-func (s *L2Verifier) AwaitSentCrossUnsafeUpdate(t Testing, minNum uint64) {
-	require.NotNil(t, s.InteropControl, "must be managed by op-supervisor")
-	require.NoError(t, s.InteropControl.AwaitSentCrossUnsafeUpdate(t.Ctx(), minNum))
-}
-
-func (s *L2Verifier) AwaitSentCrossSafeUpdate(t Testing, minNum uint64) {
-	require.NotNil(t, s.InteropControl, "must be managed by op-supervisor")
-	require.NoError(t, s.InteropControl.AwaitSentCrossSafeUpdate(t.Ctx(), minNum))
-}
-
-func (s *L2Verifier) AwaitSentFinalizedUpdate(t Testing, minNum uint64) {
-	require.NotNil(t, s.InteropControl, "must be managed by op-supervisor")
-	require.NoError(t, s.InteropControl.AwaitSentFinalizedUpdate(t.Ctx(), minNum))
 }
 
 func (s *L2Verifier) SyncSupervisor(t Testing) {

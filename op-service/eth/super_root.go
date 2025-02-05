@@ -2,8 +2,12 @@ package eth
 
 import (
 	"encoding/binary"
+	"encoding/json"
 	"errors"
+	"slices"
 
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
@@ -30,15 +34,26 @@ func SuperRoot(super Super) Bytes32 {
 }
 
 type ChainIDAndOutput struct {
-	ChainID uint64
+	ChainID ChainID
 	Output  Bytes32
 }
 
 func (c *ChainIDAndOutput) Marshal() []byte {
 	d := make([]byte, 64)
-	binary.BigEndian.PutUint64(d[24:32], c.ChainID)
+	chainID := c.ChainID.Bytes32()
+	copy(d[0:32], chainID[:])
 	copy(d[32:], c.Output[:])
 	return d
+}
+
+func NewSuperV1(timestamp uint64, chains ...ChainIDAndOutput) *SuperV1 {
+	slices.SortFunc(chains, func(a, b ChainIDAndOutput) int {
+		return a.ChainID.Cmp(b.ChainID)
+	})
+	return &SuperV1{
+		Timestamp: timestamp,
+		Chains:    chains,
+	}
 }
 
 type SuperV1 struct {
@@ -88,10 +103,83 @@ func unmarshalSuperRootV1(data []byte) (*SuperV1, error) {
 	output.Timestamp = binary.BigEndian.Uint64(data[1:9])
 	for i := 9; i < len(data); i += 64 {
 		chainOutput := ChainIDAndOutput{
-			ChainID: binary.BigEndian.Uint64(data[i+24 : i+32]),
+			ChainID: ChainIDFromBytes32([32]byte(data[i : i+32])),
 			Output:  Bytes32(data[i+32 : i+64]),
 		}
 		output.Chains = append(output.Chains, chainOutput)
 	}
 	return &output, nil
+}
+
+type ChainRootInfo struct {
+	ChainID ChainID `json:"chainID"`
+	// Canonical is the output root of the latest canonical block at a particular Timestamp.
+	Canonical Bytes32 `json:"canonical"`
+	// Pending is the output root preimage for the latest block at a particular Timestamp prior to validation of
+	// executing messages. If the original block was valid, this will be the preimage of the
+	// output root from the Canonical array. If it was invalid, it will be the output root preimage from the
+	// Optimistic Block Deposited Transaction added to the deposit-only block.
+	Pending []byte `json:"pending"`
+}
+
+type chainRootInfoMarshalling struct {
+	ChainID   ChainID       `json:"chainID"`
+	Canonical common.Hash   `json:"canonical"`
+	Pending   hexutil.Bytes `json:"pending"`
+}
+
+func (i ChainRootInfo) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&chainRootInfoMarshalling{
+		ChainID:   i.ChainID,
+		Canonical: common.Hash(i.Canonical),
+		Pending:   i.Pending,
+	})
+}
+
+func (i *ChainRootInfo) UnmarshalJSON(input []byte) error {
+	var dec chainRootInfoMarshalling
+	if err := json.Unmarshal(input, &dec); err != nil {
+		return err
+	}
+	i.ChainID = dec.ChainID
+	i.Canonical = Bytes32(dec.Canonical)
+	i.Pending = dec.Pending
+	return nil
+}
+
+type SuperRootResponse struct {
+	CrossSafeDerivedFrom BlockID `json:"crossSafeDerivedFrom"`
+	Timestamp            uint64  `json:"timestamp"`
+	SuperRoot            Bytes32 `json:"superRoot"`
+	// Chains is the list of ChainRootInfo for each chain in the dependency set.
+	// It represents the state of the chain at or before the Timestamp.
+	Chains []ChainRootInfo `json:"chains"`
+}
+
+type superRootResponseMarshalling struct {
+	CrossSafeDerivedFrom BlockID         `json:"crossSafeDerivedFrom"`
+	Timestamp            hexutil.Uint64  `json:"timestamp"`
+	SuperRoot            common.Hash     `json:"superRoot"`
+	Chains               []ChainRootInfo `json:"chains"`
+}
+
+func (r SuperRootResponse) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&superRootResponseMarshalling{
+		CrossSafeDerivedFrom: r.CrossSafeDerivedFrom,
+		Timestamp:            hexutil.Uint64(r.Timestamp),
+		SuperRoot:            common.Hash(r.SuperRoot),
+		Chains:               r.Chains,
+	})
+}
+
+func (r *SuperRootResponse) UnmarshalJSON(input []byte) error {
+	var dec superRootResponseMarshalling
+	if err := json.Unmarshal(input, &dec); err != nil {
+		return err
+	}
+	r.CrossSafeDerivedFrom = dec.CrossSafeDerivedFrom
+	r.Timestamp = uint64(dec.Timestamp)
+	r.SuperRoot = Bytes32(dec.SuperRoot)
+	r.Chains = dec.Chains
+	return nil
 }

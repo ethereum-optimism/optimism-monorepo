@@ -188,13 +188,13 @@ func (n *OpNode) initTracer(ctx context.Context, cfg *Config) error {
 }
 
 func (n *OpNode) initL1(ctx context.Context, cfg *Config) error {
-	l1Node, rpcCfg, err := cfg.L1.Setup(ctx, n.log, &cfg.Rollup)
+	l1RPC, l1Cfg, err := cfg.L1.Setup(ctx, n.log, &cfg.Rollup)
 	if err != nil {
 		return fmt.Errorf("failed to get L1 RPC client: %w", err)
 	}
 
 	n.l1Source, err = sources.NewL1Client(
-		client.NewInstrumentedRPC(l1Node, &n.metrics.RPCMetrics.RPCClientMetrics), n.log, n.metrics.L1SourceCache, rpcCfg)
+		client.NewInstrumentedRPC(l1RPC, &n.metrics.RPCMetrics.RPCClientMetrics), n.log, n.metrics.L1SourceCache, l1Cfg)
 	if err != nil {
 		return fmt.Errorf("failed to create L1 source: %w", err)
 	}

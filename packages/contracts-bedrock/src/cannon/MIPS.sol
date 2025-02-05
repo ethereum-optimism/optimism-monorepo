@@ -47,8 +47,8 @@ contract MIPS is ISemver {
     }
 
     /// @notice The semantic version of the MIPS contract.
-    /// @custom:semver 1.2.1-beta.10
-    string public constant version = "1.2.1-beta.10";
+    /// @custom:semver 1.3.0-beta.1
+    string public constant version = "1.3.0-beta.1";
 
     /// @notice The preimage oracle contract.
     IPreimageOracle internal immutable ORACLE;
@@ -151,7 +151,7 @@ contract MIPS is ISemver {
             }
 
             // Load the syscall numbers and args from the registers
-            (uint32 syscall_no, uint32 a0, uint32 a1, uint32 a2,) = sys.getSyscallArgs(state.registers);
+            (uint32 syscall_no, uint32 a0, uint32 a1, uint32 a2) = sys.getSyscallArgs(state.registers);
 
             uint32 v0 = 0;
             uint32 v1 = 0;

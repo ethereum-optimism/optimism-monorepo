@@ -282,8 +282,6 @@ func (m *SimpleTxManager) SendAsync(ctx context.Context, candidate TxCandidate, 
 		return
 	}
 
-	m.metr.RecordPendingTx(m.pending.Add(1))
-
 	var cancel context.CancelFunc
 	if m.cfg.TxSendTimeout == 0 {
 		ctx, cancel = context.WithCancel(ctx)
@@ -295,7 +293,6 @@ func (m *SimpleTxManager) SendAsync(ctx context.Context, candidate TxCandidate, 
 	if err != nil {
 		m.resetNonce()
 		cancel()
-		m.metr.RecordPendingTx(m.pending.Add(-1))
 		ch <- SendResponse{
 			Receipt: nil,
 			Err:     err,
@@ -303,8 +300,10 @@ func (m *SimpleTxManager) SendAsync(ctx context.Context, candidate TxCandidate, 
 		return
 	}
 
+	m.metr.RecordPendingTx(m.pending.Add(1))
+
 	go func() {
-		defer m.metr.RecordPendingTx(m.pending.Add(-1))
+		defer func() { m.metr.RecordPendingTx(m.pending.Add(-1)) }()
 		defer cancel()
 		receipt, err := m.sendTx(ctx, tx)
 		if err != nil {
@@ -638,9 +637,14 @@ func (m *SimpleTxManager) publishTx(ctx context.Context, tx *types.Transaction, 
 		cancel()
 		sendState.ProcessSendError(err)
 
-		if err == nil {
+		if err == nil || errStringContainsAny(err, m.cfg.AlreadyPublishedCustomErrs) {
+			// only empty error strings are recorded as successful publishes
 			m.metr.TxPublished("")
-			l.Info("Transaction successfully published", "tx", tx.Hash())
+			if err == nil {
+				l.Info("Transaction successfully published", "tx", tx.Hash())
+			} else {
+				l.Info("Transaction successfully published (custom RPC error)", "tx", tx.Hash(), "err", err)
+			}
 			// Tx made it into the mempool, so we'll need a fee bump if we end up trying to replace
 			// it with another publish attempt.
 			sendState.bumpFees = true
@@ -1051,6 +1055,19 @@ func errStringMatch(err, target error) bool {
 		return false
 	}
 	return strings.Contains(err.Error(), target.Error())
+}
+
+func errStringContainsAny(err error, targets []string) bool {
+	if err == nil || len(targets) == 0 {
+		return false
+	}
+
+	for _, target := range targets {
+		if strings.Contains(err.Error(), target) {
+			return true
+		}
+	}
+	return false
 }
 
 // finishBlobTx finishes creating a blob tx message by safely converting bigints to uint256

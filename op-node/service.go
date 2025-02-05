@@ -160,6 +160,7 @@ func NewL1EndpointConfig(ctx *cli.Context) *node.L1EndpointConfig {
 		BatchSize:        ctx.Int(flags.L1RPCMaxBatchSize.Name),
 		HttpPollInterval: ctx.Duration(flags.L1HTTPPollInterval.Name),
 		MaxConcurrency:   ctx.Int(flags.L1RPCMaxConcurrency.Name),
+		CacheSize:        ctx.Uint(flags.L1CacheSize.Name),
 	}
 }
 
@@ -170,9 +171,11 @@ func NewL2EndpointConfig(ctx *cli.Context, logger log.Logger) (*node.L2EndpointC
 	if err != nil {
 		return nil, err
 	}
+	l2RpcTimeout := ctx.Duration(flags.L2EngineRpcTimeout.Name)
 	return &node.L2EndpointConfig{
-		L2EngineAddr:      l2Addr,
-		L2EngineJWTSecret: secret,
+		L2EngineAddr:        l2Addr,
+		L2EngineJWTSecret:   secret,
+		L2EngineCallTimeout: l2RpcTimeout,
 	}, nil
 }
 

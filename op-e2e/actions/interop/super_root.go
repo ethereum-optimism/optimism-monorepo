@@ -3,7 +3,6 @@ package interop
 import (
 	"context"
 	"fmt"
-	"math/big"
 	"slices"
 
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
@@ -16,7 +15,7 @@ type OutputRootSource interface {
 }
 
 type chainInfo struct {
-	chainID *big.Int
+	chainID eth.ChainID
 	source  OutputRootSource
 	config  *rollup.Config
 }
@@ -33,7 +32,7 @@ func NewSuperRootSource(ctx context.Context, sources ...OutputRootSource) (*Supe
 		if err != nil {
 			return nil, fmt.Errorf("failed to load rollup config: %w", err)
 		}
-		chainID := config.L2ChainID
+		chainID := eth.ChainIDFromBig(config.L2ChainID)
 		chains = append(chains, &chainInfo{
 			chainID: chainID,
 			source:  source,
@@ -57,7 +56,7 @@ func (s *SuperRootSource) CreateSuperRoot(ctx context.Context, timestamp uint64)
 		if err != nil {
 			return nil, fmt.Errorf("failed to load output root for chain %v at block %v: %w", chain.chainID, blockNum, err)
 		}
-		chains[i] = eth.ChainIDAndOutput{ChainID: chain.chainID.Uint64(), Output: output.OutputRoot}
+		chains[i] = eth.ChainIDAndOutput{ChainID: chain.chainID, Output: output.OutputRoot}
 	}
 	output := eth.SuperV1{
 		Timestamp: timestamp,

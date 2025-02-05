@@ -7,7 +7,7 @@ variable "REPOSITORY" {
 }
 
 variable "KONA_VERSION" {
-  default = "kona-client-v0.1.0-beta.6"
+  default = "kona-client-v0.1.0-beta.8"
 }
 
 variable "GIT_COMMIT" {
@@ -228,22 +228,6 @@ target "holocene-deployer" {
   target="holocene-deployer"
   platforms = split(",", PLATFORMS)
   tags = [for tag in split(",", IMAGE_TAGS) : "${REGISTRY}/${REPOSITORY}/holocene-deployer:${tag}"]
-}
-
-target "ci-builder" {
-  dockerfile = "./ops/docker/ci-builder/Dockerfile"
-  context = "."
-  platforms = split(",", PLATFORMS)
-  target="base-builder"
-  tags = [for tag in split(",", IMAGE_TAGS) : "${REGISTRY}/${REPOSITORY}/ci-builder:${tag}"]
-}
-
-target "ci-builder-rust" {
-  dockerfile = "./ops/docker/ci-builder/Dockerfile"
-  context = "."
-  platforms = split(",", PLATFORMS)
-  target="rust-builder"
-  tags = [for tag in split(",", IMAGE_TAGS) : "${REGISTRY}/${REPOSITORY}/ci-builder-rust:${tag}"]
 }
 
 target "op-deployer" {

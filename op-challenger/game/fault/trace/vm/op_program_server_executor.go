@@ -2,6 +2,7 @@ package vm
 
 import (
 	"context"
+	"strings"
 
 	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/trace/utils"
 	"github.com/ethereum/go-ethereum/log"
@@ -22,7 +23,7 @@ func (s *OpProgramServerExecutor) OracleCommand(cfg Config, dataDir string, inpu
 		cfg.Server, "--server",
 		"--l1", cfg.L1,
 		"--l1.beacon", cfg.L1Beacon,
-		"--l2", cfg.L2,
+		"--l2", strings.Join(cfg.L2s, ","),
 		"--datadir", dataDir,
 		"--l1.head", inputs.L1Head.Hex(),
 		"--l2.head", inputs.L2Head.Hex(),
@@ -30,14 +31,14 @@ func (s *OpProgramServerExecutor) OracleCommand(cfg Config, dataDir string, inpu
 		"--l2.claim", inputs.L2Claim.Hex(),
 		"--l2.blocknumber", inputs.L2BlockNumber.Text(10),
 	}
-	if cfg.Network != "" {
-		args = append(args, "--network", cfg.Network)
+	if len(cfg.Networks) != 0 {
+		args = append(args, "--network", strings.Join(cfg.Networks, ","))
 	}
-	if cfg.RollupConfigPath != "" {
-		args = append(args, "--rollup.config", cfg.RollupConfigPath)
+	if len(cfg.RollupConfigPaths) != 0 {
+		args = append(args, "--rollup.config", strings.Join(cfg.RollupConfigPaths, ","))
 	}
-	if cfg.L2GenesisPath != "" {
-		args = append(args, "--l2.genesis", cfg.L2GenesisPath)
+	if len(cfg.L2GenesisPaths) != 0 {
+		args = append(args, "--l2.genesis", strings.Join(cfg.L2GenesisPaths, ","))
 	}
 	var logLevel string
 	if s.logger.Enabled(context.Background(), log.LevelTrace) {

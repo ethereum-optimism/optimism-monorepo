@@ -1,18 +1,20 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
 	"strings"
 
+	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/tmpl"
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/tmpl/fake"
 )
 
 func main() {
-
 	// Parse command line flags
 	templateFile := flag.String("template", "", "Path to template file")
+	dataFile := flag.String("data", "", "Optional JSON data file")
 	flag.Parse()
 
 	if *templateFile == "" {
@@ -41,6 +43,23 @@ func main() {
 
 	// Create template context
 	ctx := fake.NewFakeTemplateContext(enclave)
+
+	// Load data file if provided
+	if *dataFile != "" {
+		dataBytes, err := os.ReadFile(*dataFile)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error reading data file: %v\n", err)
+			os.Exit(1)
+		}
+
+		var data interface{}
+		if err := json.Unmarshal(dataBytes, &data); err != nil {
+			fmt.Fprintf(os.Stderr, "Error parsing data file as JSON: %v\n", err)
+			os.Exit(1)
+		}
+
+		tmpl.WithData(data)(ctx)
+	}
 
 	// Process template and write to stdout
 	if err := ctx.InstantiateTemplate(f, os.Stdout); err != nil {

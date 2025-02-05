@@ -234,6 +234,15 @@ contract DeploySuperchain_Test is Test {
         vm.store(address(dsi), bytes32(slot), bytes32(unwrap(defaultRecommendedProtocolVersion)));
     }
 
+    function test_deploySuperchainImplementationContracts_reuseAddresses_succeeds() public {
+        deploySuperchain.deploySuperchainImplementationContracts(dsi, dso);
+        address originalConfig = address(dso.superchainConfigImpl());
+        address originalProtocolVersions = address(dso.protocolVersionsImpl());
+        deploySuperchain.deploySuperchainImplementationContracts(dsi, dso);
+        assertEq(address(dso.superchainConfigImpl()), originalConfig, "100");
+        assertEq(address(dso.protocolVersionsImpl()), originalProtocolVersions, "200");
+    }
+
     function zeroOutSlotForSelector(bytes4 _selector) internal returns (uint256 slot_) {
         slot_ = stdstore.enable_packed_slots().target(address(dsi)).sig(_selector).find();
         vm.store(address(dsi), bytes32(slot_), bytes32(0));

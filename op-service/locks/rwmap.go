@@ -12,6 +12,20 @@ type RWMap[K comparable, V any] struct {
 	mu    sync.RWMutex
 }
 
+// Default creates a value at the given key, if the key is not set yet.
+func (m *RWMap[K, V]) Default(key K, fn func() V) (changed bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.inner == nil {
+		m.inner = make(map[K]V)
+	}
+	_, ok := m.inner[key]
+	if !ok {
+		m.inner[key] = fn()
+	}
+	return !ok // if it exists, nothing changed
+}
+
 func (m *RWMap[K, V]) Has(key K) (ok bool) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()

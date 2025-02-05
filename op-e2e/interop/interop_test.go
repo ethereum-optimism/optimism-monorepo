@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/ethereum-optimism/optimism/op-service/dial"
+	"github.com/ethereum-optimism/optimism/op-service/eth"
 	oplog "github.com/ethereum-optimism/optimism/op-service/log"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
 	"github.com/ethereum/go-ethereum/log"
@@ -198,7 +199,7 @@ func TestInterop_EmitLogs(t *testing.T) {
 				BlockNumber: log.BlockNumber,
 				LogIndex:    uint32(log.Index),
 				Timestamp:   block.Time(),
-				ChainID:     types.ChainIDFromBig(s2.ChainID(chainID)),
+				ChainID:     eth.ChainIDFromBig(s2.ChainID(chainID)),
 			}
 			return identifier, expectedHash
 		}
@@ -290,7 +291,7 @@ func TestInteropBlockBuilding(t *testing.T) {
 			BlockNumber: ev.BlockNumber,
 			LogIndex:    uint32(ev.Index),
 			Timestamp:   header.Time,
-			ChainID:     types.ChainIDFromBig(s2.ChainID(chainA)),
+			ChainID:     eth.ChainIDFromBig(s2.ChainID(chainA)),
 		}
 
 		msgPayload := types.LogToMessagePayload(ev)

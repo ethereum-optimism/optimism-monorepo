@@ -28,10 +28,10 @@ func TestGenerateProof(t *testing.T) {
 		VmType:       "test",
 		L1:           "http://localhost:8888",
 		L1Beacon:     "http://localhost:9000",
-		L2:           "http://localhost:9999",
+		L2s:          []string{"http://localhost:9999", "http://localhost:9999/two"},
 		VmBin:        "./bin/testvm",
 		Server:       "./bin/testserver",
-		Network:      "op-test",
+		Networks:     []string{"op-test", "op-other"},
 		SnapshotFreq: 500,
 		InfoFreq:     900,
 	}
@@ -53,12 +53,11 @@ func TestGenerateProof(t *testing.T) {
 		MaxStepsBetweenLLAndSC:       56,
 		ReservationInvalidationCount: 78,
 		ForcedPreemptionCount:        910,
-		FailedWakeupCount:            1112,
 		IdleStepCountThread0:         1314,
 	}
 
 	captureExec := func(t *testing.T, cfg Config, proofAt uint64, m Metricer) (string, string, map[string]string) {
-		executor := NewExecutor(testlog.Logger(t, log.LevelInfo), m, cfg, NewOpProgramServerExecutor(testlog.Logger(t, log.LvlInfo)), prestate, inputs)
+		executor := NewExecutor(testlog.Logger(t, log.LevelInfo), m, cfg, &noArgServerExecutor{}, prestate, inputs)
 		executor.selectSnapshot = func(logger log.Logger, dir string, absolutePreState string, i uint64, binary bool) (string, error) {
 			return input, nil
 		}
@@ -89,69 +88,8 @@ func TestGenerateProof(t *testing.T) {
 		return binary, subcommand, args
 	}
 
-	t.Run("Network", func(t *testing.T) {
-		m := newMetrics()
-		cfg.Network = "mainnet"
-		cfg.RollupConfigPath = ""
-		cfg.L2GenesisPath = ""
-		cfg.DebugInfo = true
-		binary, subcommand, args := captureExec(t, cfg, 150_000_000, m)
-		require.DirExists(t, filepath.Join(dir, PreimagesDir))
-		require.DirExists(t, filepath.Join(dir, utils.ProofsDir))
-		require.DirExists(t, filepath.Join(dir, SnapsDir))
-		require.Equal(t, cfg.VmBin, binary)
-		require.Equal(t, "run", subcommand)
-		require.Equal(t, input, args["--input"])
-		require.Contains(t, args, "--meta")
-		require.Equal(t, "", args["--meta"])
-		require.Equal(t, FinalStatePath(dir, cfg.BinarySnapshots), args["--output"])
-		require.Equal(t, "=150000000", args["--proof-at"])
-		require.Equal(t, "=150000001", args["--stop-at"])
-		require.Equal(t, "%500", args["--snapshot-at"])
-		require.Equal(t, "%900", args["--info-at"])
-		// Slight quirk of how we pair off args
-		// The server binary winds up as the key and the first arg --server as the value which has no value
-		// Then everything else pairs off correctly again
-		require.Equal(t, "--server", args[cfg.Server])
-		require.Equal(t, cfg.L1, args["--l1"])
-		require.Equal(t, cfg.L1Beacon, args["--l1.beacon"])
-		require.Equal(t, cfg.L2, args["--l2"])
-		require.Equal(t, filepath.Join(dir, PreimagesDir), args["--datadir"])
-		require.Equal(t, filepath.Join(dir, utils.ProofsDir, "%d.json.gz"), args["--proof-fmt"])
-		require.Equal(t, filepath.Join(dir, SnapsDir, "%d.json.gz"), args["--snapshot-fmt"])
-		require.Equal(t, cfg.Network, args["--network"])
-		require.NotContains(t, args, "--rollup.config")
-		require.NotContains(t, args, "--l2.genesis")
-
-		// Local game inputs
-		require.Equal(t, inputs.L1Head.Hex(), args["--l1.head"])
-		require.Equal(t, inputs.L2Head.Hex(), args["--l2.head"])
-		require.Equal(t, inputs.L2OutputRoot.Hex(), args["--l2.outputroot"])
-		require.Equal(t, inputs.L2Claim.Hex(), args["--l2.claim"])
-		require.Equal(t, "3333", args["--l2.blocknumber"])
-
-		// Check metrics
-		validateMetrics(t, m, info, cfg)
-	})
-
-	t.Run("RollupAndGenesis", func(t *testing.T) {
-		m := newMetrics()
-		cfg.Network = ""
-		cfg.RollupConfigPath = "rollup.json"
-		cfg.L2GenesisPath = "genesis.json"
-		cfg.DebugInfo = false
-		_, _, args := captureExec(t, cfg, 150_000_000, m)
-		require.NotContains(t, args, "--network")
-		require.Equal(t, cfg.RollupConfigPath, args["--rollup.config"])
-		require.Equal(t, cfg.L2GenesisPath, args["--l2.genesis"])
-		validateMetrics(t, m, info, cfg)
-	})
-
 	t.Run("NoStopAtWhenProofIsMaxUInt", func(t *testing.T) {
 		m := newMetrics()
-		cfg.Network = "mainnet"
-		cfg.RollupConfigPath = "rollup.json"
-		cfg.L2GenesisPath = "genesis.json"
 		cfg.DebugInfo = true
 		_, _, args := captureExec(t, cfg, math.MaxUint64, m)
 		// stop-at would need to be one more than the proof step which would overflow back to 0
@@ -162,7 +100,6 @@ func TestGenerateProof(t *testing.T) {
 
 	t.Run("BinarySnapshots", func(t *testing.T) {
 		m := newMetrics()
-		cfg.Network = "mainnet"
 		cfg.BinarySnapshots = true
 		_, _, args := captureExec(t, cfg, 100, m)
 		require.Equal(t, filepath.Join(dir, SnapsDir, "%d.bin.gz"), args["--snapshot-fmt"])
@@ -171,7 +108,6 @@ func TestGenerateProof(t *testing.T) {
 
 	t.Run("JsonSnapshots", func(t *testing.T) {
 		m := newMetrics()
-		cfg.Network = "mainnet"
 		cfg.BinarySnapshots = false
 		_, _, args := captureExec(t, cfg, 100, m)
 		require.Equal(t, filepath.Join(dir, SnapsDir, "%d.json.gz"), args["--snapshot-fmt"])
@@ -191,7 +127,6 @@ func validateMetrics(t require.TestingT, m *capturingVmMetrics, expected *mipsev
 		require.Equal(t, expected.MaxStepsBetweenLLAndSC, m.maxStepsBetweenLLAndSC)
 		require.Equal(t, expected.ReservationInvalidationCount, m.reservationInvalidations)
 		require.Equal(t, expected.ForcedPreemptionCount, m.forcedPreemptions)
-		require.Equal(t, expected.FailedWakeupCount, m.failedWakeup)
 		require.Equal(t, expected.IdleStepCountThread0, m.idleStepsThread0)
 	} else {
 		// If debugInfo is disabled, json file should not be written and metrics should be zeroed out
@@ -202,7 +137,6 @@ func validateMetrics(t require.TestingT, m *capturingVmMetrics, expected *mipsev
 		require.Equal(t, uint64(0), m.maxStepsBetweenLLAndSC)
 		require.Equal(t, uint64(0), m.reservationInvalidations)
 		require.Equal(t, uint64(0), m.forcedPreemptions)
-		require.Equal(t, uint64(0), m.failedWakeup)
 		require.Equal(t, uint64(0), m.idleStepsThread0)
 	}
 }
@@ -220,7 +154,6 @@ type capturingVmMetrics struct {
 	maxStepsBetweenLLAndSC   uint64
 	reservationInvalidations uint64
 	forcedPreemptions        uint64
-	failedWakeup             uint64
 	idleStepsThread0         uint64
 }
 
@@ -256,12 +189,14 @@ func (c *capturingVmMetrics) RecordForcedPreemptionCount(val uint64) {
 	c.forcedPreemptions = val
 }
 
-func (c *capturingVmMetrics) RecordFailedWakeupCount(val uint64) {
-	c.failedWakeup = val
-}
-
 func (c *capturingVmMetrics) RecordIdleStepCountThread0(val uint64) {
 	c.idleStepsThread0 = val
 }
 
 var _ Metricer = (*capturingVmMetrics)(nil)
+
+type noArgServerExecutor struct{}
+
+func (n *noArgServerExecutor) OracleCommand(cfg Config, dataDir string, inputs utils.LocalGameInputs) ([]string, error) {
+	return nil, nil
+}

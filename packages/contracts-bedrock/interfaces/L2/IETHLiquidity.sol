@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 interface IETHLiquidity {
-    error NotCustomGasToken();
     error Unauthorized();
 
     event LiquidityBurned(address indexed caller, uint256 value);

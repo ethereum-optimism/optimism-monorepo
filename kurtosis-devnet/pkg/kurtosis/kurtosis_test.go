@@ -7,10 +7,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ethereum-optimism/optimism/devnet-sdk/descriptors"
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/api/fake"
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/api/interfaces"
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/sources/deployer"
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/sources/inspect"
+	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/sources/jwt"
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/sources/spec"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -50,7 +52,21 @@ func TestKurtosisDeployer(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			d, err := NewKurtosisDeployer(tt.opts...)
+			// Create a fake Kurtosis context
+			fakeCtx := &fake.KurtosisContext{
+				EnclaveCtx: &fake.EnclaveContext{
+					Responses: []interfaces.StarlarkResponse{
+						&fake.StarlarkResponse{
+							IsSuccessful: true,
+						},
+					},
+				},
+			}
+
+			// Add the fake context to the options
+			opts := append(tt.opts, WithKurtosisKurtosisContext(fakeCtx))
+
+			d, err := NewKurtosisDeployer(opts...)
 			require.NoError(t, err)
 			assert.Equal(t, tt.wantBaseDir, d.baseDir)
 			assert.Equal(t, tt.wantPkg, d.packageName)
@@ -88,6 +104,16 @@ type fakeEnclaveSpecifier struct {
 
 func (f *fakeEnclaveSpecifier) EnclaveSpec(r io.Reader) (*spec.EnclaveSpec, error) {
 	return f.spec, f.err
+}
+
+// fakeJWTExtractor implements interfaces.JWTExtractor for testing
+type fakeJWTExtractor struct {
+	data *jwt.Data
+	err  error
+}
+
+func (f *fakeJWTExtractor) ExtractData(ctx context.Context, enclave string) (*jwt.Data, error) {
+	return f.data, f.err
 }
 
 func TestDeploy(t *testing.T) {
@@ -189,6 +215,136 @@ func TestDeploy(t *testing.T) {
 			}
 
 			require.NoError(t, err)
+		})
+	}
+}
+
+func TestGetEnvironmentInfo(t *testing.T) {
+	testSpec := &spec.EnclaveSpec{
+		Chains: []spec.ChainSpec{
+			{
+				Name:      "op-kurtosis",
+				NetworkID: "1234",
+			},
+		},
+	}
+
+	// Create test services map with the expected structure
+	testServices := make(inspect.ServiceMap)
+	testServices["el-1-geth-lighthouse"] = inspect.PortMap{
+		"rpc": {Port: 52645},
+	}
+
+	testWallets := deployer.WalletList{
+		{
+			Name:       "test-wallet",
+			Address:    "0x123",
+			PrivateKey: "0xabc",
+		},
+	}
+
+	testJWTs := &jwt.Data{
+		L1JWT: "test-l1-jwt",
+		L2JWT: "test-l2-jwt",
+	}
+
+	// Create expected L1 services
+	l1Services := make(descriptors.ServiceMap)
+	l1Services["el"] = descriptors.Service{
+		Name: "el-1-geth-lighthouse",
+		Endpoints: descriptors.EndpointMap{
+			"rpc": descriptors.PortInfo{Port: 52645},
+		},
+	}
+
+	tests := []struct {
+		name    string
+		spec    *spec.EnclaveSpec
+		inspect *inspect.InspectData
+		deploy  *deployer.DeployerData
+		jwt     *jwt.Data
+		want    *KurtosisEnvironment
+		wantErr bool
+		err     error
+	}{
+		{
+			name:    "successful environment info with JWT",
+			spec:    testSpec,
+			inspect: &inspect.InspectData{UserServices: testServices},
+			deploy:  &deployer.DeployerData{Wallets: testWallets},
+			jwt:     testJWTs,
+			want: &KurtosisEnvironment{
+				DevnetEnvironment: descriptors.DevnetEnvironment{
+					L1: &descriptors.Chain{
+						Name:     "Ethereum",
+						Services: make(descriptors.ServiceMap),
+						Nodes: []descriptors.Node{
+							{
+								Services: l1Services,
+							},
+						},
+						JWT: testJWTs.L1JWT,
+					},
+					L2: []*descriptors.Chain{
+						{
+							Name:     "op-kurtosis",
+							ID:       "1234",
+							Services: make(descriptors.ServiceMap),
+							JWT:      testJWTs.L2JWT,
+						},
+					},
+				},
+			},
+		},
+		{
+			name:    "inspect error",
+			spec:    testSpec,
+			err:     fmt.Errorf("inspect failed"),
+			wantErr: true,
+		},
+		{
+			name:    "deploy error",
+			spec:    testSpec,
+			inspect: &inspect.InspectData{UserServices: testServices},
+			err:     fmt.Errorf("deploy failed"),
+			wantErr: true,
+		},
+		{
+			name:    "jwt error",
+			spec:    testSpec,
+			inspect: &inspect.InspectData{UserServices: testServices},
+			deploy:  &deployer.DeployerData{},
+			err:     fmt.Errorf("jwt failed"),
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			deployer, err := NewKurtosisDeployer(
+				WithKurtosisKurtosisContext(&fake.KurtosisContext{}),
+				WithKurtosisEnclaveInspecter(&fakeEnclaveInspecter{
+					result: tt.inspect,
+					err:    tt.err,
+				}),
+				WithKurtosisEnclaveObserver(&fakeEnclaveObserver{
+					state: tt.deploy,
+					err:   tt.err,
+				}),
+				WithKurtosisJWTExtractor(&fakeJWTExtractor{
+					data: tt.jwt,
+					err:  tt.err,
+				}),
+			)
+			require.NoError(t, err)
+
+			got, err := deployer.GetEnvironmentInfo(context.Background(), tt.spec)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tt.want, got)
 		})
 	}
 }

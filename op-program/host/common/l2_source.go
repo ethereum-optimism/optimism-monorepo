@@ -3,9 +3,8 @@ package common
 import (
 	"context"
 	"errors"
-	"time"
 
-	"github.com/ethereum-optimism/optimism/op-program/host/config"
+	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	hosttypes "github.com/ethereum-optimism/optimism/op-program/host/types"
 	"github.com/ethereum-optimism/optimism/op-service/client"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
@@ -48,36 +47,23 @@ func NewL2SourceWithClient(logger log.Logger, canonicalL2Client *L2Client, canon
 	return source
 }
 
-func NewL2Source(ctx context.Context, logger log.Logger, config *config.Config) (*L2Source, error) {
-	logger.Info("Connecting to canonical L2 source", "url", config.L2URL)
-
-	// eth_getProof calls are expensive and takes time, so we use a longer timeout
-	canonicalL2RPC, err := client.NewRPC(ctx, logger, config.L2URL, client.WithDialAttempts(10), client.WithCallTimeout(5*time.Minute))
-	if err != nil {
-		return nil, err
-	}
+func NewL2SourceFromRPC(logger log.Logger, rollupCfg *rollup.Config, canonicalL2RPC client.RPC, experimentalRPC client.RPC) (*L2Source, error) {
 	canonicalDebugClient := sources.NewDebugClient(canonicalL2RPC.CallContext)
 
-	canonicalL2ClientCfg := sources.L2ClientDefaultConfig(config.Rollup, true)
-	canonicalL2Client, err := NewL2Client(canonicalL2RPC, logger, nil, &L2ClientConfig{L2ClientConfig: canonicalL2ClientCfg, L2Head: config.L2Head})
+	canonicalL2ClientCfg := sources.L2ClientDefaultConfig(rollupCfg, true)
+	canonicalL2Client, err := NewL2Client(canonicalL2RPC, logger, nil, &L2ClientConfig{L2ClientConfig: canonicalL2ClientCfg})
 	if err != nil {
 		return nil, err
 	}
 
 	source := NewL2SourceWithClient(logger, canonicalL2Client, canonicalDebugClient)
 
-	if len(config.L2ExperimentalURL) == 0 {
+	if experimentalRPC == nil {
 		return source, nil
 	}
 
-	logger.Info("Connecting to experimental L2 source", "url", config.L2ExperimentalURL)
-	// debug_executionWitness calls are expensive and takes time, so we use a longer timeout
-	experimentalRPC, err := client.NewRPC(ctx, logger, config.L2ExperimentalURL, client.WithDialAttempts(10), client.WithCallTimeout(5*time.Minute))
-	if err != nil {
-		return nil, err
-	}
-	experimentalL2ClientCfg := sources.L2ClientDefaultConfig(config.Rollup, true)
-	experimentalL2Client, err := NewL2Client(experimentalRPC, logger, nil, &L2ClientConfig{L2ClientConfig: experimentalL2ClientCfg, L2Head: config.L2Head})
+	experimentalL2ClientCfg := sources.L2ClientDefaultConfig(rollupCfg, true)
+	experimentalL2Client, err := NewL2Client(experimentalRPC, logger, nil, &L2ClientConfig{L2ClientConfig: experimentalL2ClientCfg})
 	if err != nil {
 		return nil, err
 	}
@@ -85,6 +71,10 @@ func NewL2Source(ctx context.Context, logger log.Logger, config *config.Config) 
 	source.experimentalClient = experimentalL2Client
 
 	return source, nil
+}
+
+func (s *L2Source) RollupConfig() *rollup.Config {
+	return s.canonicalEthClient.RollupConfig()
 }
 
 func (l *L2Source) ExperimentalEnabled() bool {
@@ -99,6 +89,14 @@ func (l *L2Source) CodeByHash(ctx context.Context, hash common.Hash) ([]byte, er
 		l.logger.Warn("Experimental source failed to retrieve code by hash, falling back to canonical source", "hash", hash)
 	}
 	return l.canonicalDebugClient.CodeByHash(ctx, hash)
+}
+
+// FetchReceipts implements prefetcher.L2Source.
+func (l *L2Source) FetchReceipts(ctx context.Context, blockHash common.Hash) (eth.BlockInfo, types.Receipts, error) {
+	if l.ExperimentalEnabled() {
+		return l.experimentalClient.FetchReceipts(ctx, blockHash)
+	}
+	return l.canonicalEthClient.FetchReceipts(ctx, blockHash)
 }
 
 // NodeByHash implements prefetcher.L2Source.
@@ -120,11 +118,19 @@ func (l *L2Source) InfoAndTxsByHash(ctx context.Context, blockHash common.Hash) 
 }
 
 // OutputByRoot implements prefetcher.L2Source.
-func (l *L2Source) OutputByRoot(ctx context.Context, root common.Hash) (eth.Output, error) {
+func (l *L2Source) OutputByRoot(ctx context.Context, blockRoot common.Hash) (eth.Output, error) {
 	if l.ExperimentalEnabled() {
-		return l.experimentalClient.OutputByRoot(ctx, root)
+		return l.experimentalClient.OutputByRoot(ctx, blockRoot)
 	}
-	return l.canonicalEthClient.OutputByRoot(ctx, root)
+	return l.canonicalEthClient.OutputByRoot(ctx, blockRoot)
+}
+
+// OutputByBlockNumber implements prefetcher.L2Source.
+func (l *L2Source) OutputByNumber(ctx context.Context, blockNum uint64) (eth.Output, error) {
+	if l.ExperimentalEnabled() {
+		return l.experimentalClient.OutputByNumber(ctx, blockNum)
+	}
+	return l.canonicalEthClient.OutputByNumber(ctx, blockNum)
 }
 
 // ExecutionWitness implements prefetcher.L2Source.

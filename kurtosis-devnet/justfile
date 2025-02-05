@@ -1,5 +1,8 @@
 set shell := ["/bin/bash", "-c"]
 
+test:
+    go test --tags=testonly ./...
+
 _kurtosis-run PACKAGE_NAME ARG_FILE ENCLAVE:
 	kurtosis run {{PACKAGE_NAME}} --args-file {{ARG_FILE}} --enclave {{ENCLAVE}} --show-enclave-inspect=false --image-download=missing
 
@@ -41,13 +44,23 @@ op-wheel-image TAG='op-wheel:devnet': (_docker_build_stack TAG "op-wheel-target"
 KURTOSIS_PACKAGE := "github.com/ethpandaops/optimism-package"
 
 # Devnet template recipe
-devnet TEMPLATE_FILE DATA_FILE="":
+devnet TEMPLATE_FILE DATA_FILE="" NAME="":
+    #!/usr/bin/env bash
+    export DEVNET_NAME={{NAME}}
+    if [ -z "{{NAME}}" ]; then
+        export DEVNET_NAME=`basename {{TEMPLATE_FILE}} .yaml`
+        if [ -n "{{DATA_FILE}}" ]; then
+            export DATA_FILE_NAME=`basename {{DATA_FILE}} .json`
+            export DEVNET_NAME="$DEVNET_NAME-$DATA_FILE_NAME"
+        fi
+    fi
+    export ENCL_NAME="$DEVNET_NAME"-devnet
     go run cmd/main.go -kurtosis-package {{KURTOSIS_PACKAGE}} \
-        -environment tests/`basename {{TEMPLATE_FILE}} .yaml`-devnet.json \
+        -environment "tests/$ENCL_NAME.json" \
         -template "{{TEMPLATE_FILE}}" \
         -data "{{DATA_FILE}}" \
-        -enclave `basename {{TEMPLATE_FILE}} .yaml`-devnet
-    cat tests/`basename {{TEMPLATE_FILE}} .yaml`-devnet.json
+        -enclave "$ENCL_NAME" \
+    && cat "tests/$ENCL_NAME.json"
 
 devnet-test DEVNET *TEST:
     #!/usr/bin/env bash
@@ -60,12 +73,20 @@ devnet-test DEVNET *TEST:
 
 # Devnet recipes
 
-# Mini devnet
-mini-devnet: (devnet "mini.yaml")
-
 # Simple devnet
 simple-devnet: (devnet "simple.yaml")
 
 # Interop devnet
 interop-devnet: (devnet "interop.yaml")
 interop-devnet-test: (devnet-test "interop-devnet" "interop-smoke-test.sh")
+
+# User devnet
+user-devnet DATA_FILE:
+    {{just_executable()}} devnet "user.yaml" {{DATA_FILE}} {{file_stem(DATA_FILE)}}
+
+# Pectra devnet
+pectra-devnet: (devnet "pectra.yaml")
+
+# subshells
+enter-devnet DEVNET CHAIN='Ethereum':
+    exec go run ../devnet-sdk/shell/cmd/enter/main.go --devnet tests/{{DEVNET}}.json --chain {{CHAIN}}

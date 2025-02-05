@@ -6,7 +6,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-chain-ops/genesis"
 	e2ecfg "github.com/ethereum-optimism/optimism/op-e2e/config"
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
-	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum-optimism/optimism/op-program/client/boot"
 	"github.com/ethereum/go-ethereum/params"
 
 	altda "github.com/ethereum-optimism/optimism/op-alt-da"
@@ -14,7 +14,6 @@ import (
 	"github.com/ethereum-optimism/optimism/op-e2e/actions/helpers"
 	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils"
 	"github.com/ethereum-optimism/optimism/op-program/host/config"
-	hostTypes "github.com/ethereum-optimism/optimism/op-program/host/types"
 	"github.com/ethereum-optimism/optimism/op-service/sources"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
 	"github.com/ethereum/go-ethereum/common"
@@ -152,27 +151,23 @@ func WithL2Claim(claim common.Hash) FixtureInputParam {
 	}
 }
 
-func WithAgreedPrestate(prestate []byte) FixtureInputParam {
-	return func(f *FixtureInputs) {
-		f.AgreedPrestate = prestate
-		f.L2OutputRoot = crypto.Keccak256Hash(prestate)
-	}
-}
-
 func WithL2BlockNumber(num uint64) FixtureInputParam {
 	return func(f *FixtureInputs) {
 		f.L2BlockNumber = num
 	}
 }
 
-func WithInteropEnabled() FixtureInputParam {
+func WithL1Head(head common.Hash) FixtureInputParam {
 	return func(f *FixtureInputs) {
-		f.InteropEnabled = true
+		f.L1Head = head
 	}
 }
 
 func (env *L2FaultProofEnv) RunFaultProofProgram(t helpers.Testing, l2ClaimBlockNum uint64, checkResult CheckResult, fixtureInputParams ...FixtureInputParam) {
-	RunFaultProofProgram(t, env.log, env.Miner, env.Sequencer.L2Verifier, env.Engine, env.Sd.L2Cfg, l2ClaimBlockNum, checkResult, fixtureInputParams...)
+	defaultParam := WithPreInteropDefaults(t, l2ClaimBlockNum, env.Sequencer.L2Verifier, env.Engine)
+	combinedParams := []FixtureInputParam{defaultParam}
+	combinedParams = append(combinedParams, fixtureInputParams...)
+	RunFaultProofProgram(t, env.log, env.Miner, checkResult, combinedParams...)
 }
 
 type TestParam func(p *e2eutils.TestParams)
@@ -210,17 +205,17 @@ func NewBatcherCfg(params ...BatcherCfgParam) *helpers.BatcherCfg {
 }
 
 func NewOpProgramCfg(
-	t helpers.Testing,
-	rollupCfg *rollup.Config,
-	l2Genesis *params.ChainConfig,
 	fi *FixtureInputs,
 ) *config.Config {
-	dfault := config.NewConfig(rollupCfg, l2Genesis, fi.L1Head, fi.L2Head, fi.L2OutputRoot, fi.L2Claim, fi.L2BlockNumber)
-
-	if dumpFixtures {
-		dfault.DataDir = t.TempDir()
-		dfault.DataFormat = hostTypes.DataFormatPebble
+	var rollupConfigs []*rollup.Config
+	var chainConfigs []*params.ChainConfig
+	for _, source := range fi.L2Sources {
+		rollupConfigs = append(rollupConfigs, source.Node.RollupCfg)
+		chainConfigs = append(chainConfigs, source.ChainConfig)
 	}
+
+	dfault := config.NewConfig(rollupConfigs, chainConfigs, fi.L1Head, fi.L2Head, fi.L2OutputRoot, fi.L2Claim, fi.L2BlockNumber)
+	dfault.L2ChainID = boot.CustomChainIDIndicator
 	if fi.InteropEnabled {
 		dfault.AgreedPrestate = fi.AgreedPrestate
 	}

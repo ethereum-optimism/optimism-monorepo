@@ -9,30 +9,28 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/ethereum-optimism/optimism/op-service/eth"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 )
 
 type LogStorage interface {
-	SealBlock(chain types.ChainID, block eth.BlockRef) error
-	AddLog(chain types.ChainID, logHash common.Hash, parentBlock eth.BlockID, logIdx uint32, execMsg *types.ExecutingMessage) error
-}
-
-type ChainsDBClientForLogProcessor interface {
-	SealBlock(chain types.ChainID, block eth.BlockRef) error
-	AddLog(chain types.ChainID, logHash common.Hash, parentBlock eth.BlockID, logIdx uint32, execMsg *types.ExecutingMessage) error
+	SealBlock(chain eth.ChainID, block eth.BlockRef) error
+	AddLog(chain eth.ChainID, logHash common.Hash, parentBlock eth.BlockID, logIdx uint32, execMsg *types.ExecutingMessage) error
 }
 
 type logProcessor struct {
-	chain        types.ChainID
+	chain        eth.ChainID
 	logStore     LogStorage
 	eventDecoder EventDecoderFn
+	depSet       depset.ChainIndexFromID
 }
 
-func NewLogProcessor(chain types.ChainID, logStore LogStorage) LogProcessor {
+func NewLogProcessor(chain eth.ChainID, logStore LogStorage, depSet depset.ChainIndexFromID) LogProcessor {
 	return &logProcessor{
 		chain:        chain,
 		logStore:     logStore,
 		eventDecoder: DecodeExecutingMessageLog,
+		depSet:       depSet,
 	}
 }
 
@@ -44,7 +42,7 @@ func (p *logProcessor) ProcessLogs(_ context.Context, block eth.BlockRef, rcpts 
 			// log hash represents the hash of *this* log as a potentially initiating message
 			logHash := logToLogHash(l)
 			// The log may be an executing message emitted by the CrossL2Inbox
-			execMsg, err := p.eventDecoder(l)
+			execMsg, err := p.eventDecoder(l, p.depSet)
 			if err != nil {
 				return fmt.Errorf("invalid log %d from block %s: %w", l.Index, block.ID(), err)
 			}

@@ -71,7 +71,7 @@ func (r *InteropDevRecipe) Build(addrs devkeys.Addresses) (*WorldConfig, error) 
 		Implementations: OPCMImplementationsConfig{
 			L1ContractsRelease: "dev",
 			FaultProof: SuperFaultProofConfig{
-				WithdrawalDelaySeconds:          big.NewInt(604800),
+				WithdrawalDelaySeconds:          big.NewInt(302400),
 				MinProposalSizeBytes:            big.NewInt(10000),
 				ChallengePeriodSeconds:          big.NewInt(120),
 				ProofMaturityDelaySeconds:       big.NewInt(12),
@@ -234,8 +234,10 @@ func InteropL2DevConfig(l1ChainID, l2ChainID uint64, addrs devkeys.Addresses) (*
 				L2GenesisFjordTimeOffset:    new(hexutil.Uint64),
 				L2GenesisGraniteTimeOffset:  new(hexutil.Uint64),
 				L2GenesisHoloceneTimeOffset: new(hexutil.Uint64),
+				L2GenesisIsthmusTimeOffset:  new(hexutil.Uint64),
 				L2GenesisInteropTimeOffset:  new(hexutil.Uint64),
 				L1CancunTimeOffset:          new(hexutil.Uint64),
+				L1PragueTimeOffset:          new(hexutil.Uint64),
 				UseInterop:                  true,
 			},
 			L2CoreDeployConfig: genesis.L2CoreDeployConfig{
