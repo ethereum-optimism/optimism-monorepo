@@ -5,6 +5,7 @@ pragma solidity 0.8.15;
 import { LibZip } from "@solady/utils/LibZip.sol";
 import { Predeploys } from "src/libraries/Predeploys.sol";
 import { Constants } from "src/libraries/Constants.sol";
+import { Arithmetic } from "src/libraries/Arithmetic.sol";
 
 // Interfaces
 import { ISemver } from "interfaces/universal/ISemver.sol";
@@ -198,8 +199,10 @@ contract GasPriceOracle is ISemver {
             return 0;
         }
 
-        return (_gasUsed * IL1Block(Predeploys.L1_BLOCK_ATTRIBUTES).operatorFeeScalar() / 1e6)
-            + IL1Block(Predeploys.L1_BLOCK_ATTRIBUTES).operatorFeeConstant();
+        return Arithmetic.saturatingAdd(
+            Arithmetic.saturatingMul(_gasUsed, IL1Block(Predeploys.L1_BLOCK_ATTRIBUTES).operatorFeeScalar()) / 1e6,
+            IL1Block(Predeploys.L1_BLOCK_ATTRIBUTES).operatorFeeConstant()
+        );
     }
 
     /// @notice Computation of the L1 portion of the fee for Bedrock.

@@ -241,8 +241,8 @@ func testFees(t *testing.T, cfg e2esys.SystemConfig) {
 	l1Fee := l1CostFn(tx.RollupCostData(), header.Time)
 	require.Equalf(t, l1Fee, l1FeeRecipientDiff, "L1 fee mismatch: start balance %v, end balance %v", l1FeeRecipientStartBalance, l1FeeRecipientEndBalance)
 
-	operatorFee := operatorFeeFn(gasUsed, false, header.Time)
-	require.Equalf(t, operatorFee, operatorFeeVaultDiff, "operator fee mismatch: start balance %v, end balance %v", operatorFeeVaultStartBalance, operatorFeeVaultEndBalance)
+	operatorFee := operatorFeeFn(gasUsed, header.Time)
+	require.True(t, operatorFeeVaultDiff.Cmp(operatorFee.ToBig()) == 0, "operator fee mismatch: start balance %v, end balance %v", operatorFeeVaultStartBalance, operatorFeeVaultEndBalance)
 
 	gpoEcotone, err := gpoContract.IsEcotone(nil)
 	require.NoError(t, err)
@@ -298,7 +298,7 @@ func testFees(t *testing.T, cfg e2esys.SystemConfig) {
 				),
 				new(big.Int).SetUint64(cfg.DeployConfig.GasPriceOracleOperatorFeeConstant),
 			),
-			operatorFee,
+			operatorFee.ToBig(),
 			"operator fee is correct",
 		)
 
