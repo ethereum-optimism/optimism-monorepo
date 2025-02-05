@@ -676,8 +676,10 @@ jobs:
           working_directory: packages/contracts-bedrock
 
   contracts-bedrock-tests:
-    machine: true
-    resource_class: ethereum-optimism/latitude-1
+    circleci_ip_ranges: true
+    docker:
+      - image: <<pipeline.parameters.default_docker_image>>
+    resource_class: xlarge
     parameters:
       test_list:
         description: List of test files to run
