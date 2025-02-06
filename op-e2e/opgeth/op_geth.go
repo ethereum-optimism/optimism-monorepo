@@ -160,7 +160,7 @@ func (d *OpGeth) AddL2Block(ctx context.Context, txs ...*types.Transaction) (*et
 	if d.L2ChainConfig.IsIsthmus(uint64(payload.Timestamp)) {
 		var getProofResponse *eth.AccountResult
 		rpcClient := d.l2Engine.RPC
-		err := rpcClient.CallContext(ctx, &getProofResponse, "eth_getProof", predeploys.L2ToL1MessagePasserAddr, []common.Hash{}, payload.ParentHash.String())
+		err := rpcClient.CallContext(ctx, &getProofResponse, "eth_getProof", predeploys.L2ToL1MessagePasserAddr, []common.Hash{}, payload.BlockHash.String())
 		if err != nil {
 			return nil, err
 		}
