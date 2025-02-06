@@ -5,6 +5,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
+	"github.com/ethereum/go-ethereum/params"
 
 	altda "github.com/ethereum-optimism/optimism/op-alt-da"
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
@@ -160,6 +161,7 @@ func NewDriver(
 	drain Drain,
 	driverCfg *Config,
 	cfg *rollup.Config,
+	opCfg *params.OptimismConfig,
 	l2 L2Chain,
 	l1 L1Chain,
 	l1Blobs derive.L1BlobsFetcher,
@@ -205,7 +207,7 @@ func NewDriver(
 	sys.Register("finalizer", finalizer, opts)
 
 	sys.Register("attributes-handler",
-		attributes.NewAttributesHandler(log, cfg, driverCtx, l2), opts)
+		attributes.NewAttributesHandler(log, cfg, opCfg, driverCtx, l2), opts)
 
 	derivationPipeline := derive.NewDerivationPipeline(log, cfg, verifConfDepth, l1Blobs, altDA, l2, metrics, managedMode)
 

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/big"
 	gosync "sync"
 	"sync/atomic"
 	"time"
@@ -17,6 +18,7 @@ import (
 	"github.com/ethereum/go-ethereum"
 	gethevent "github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
+	"github.com/ethereum/go-ethereum/params"
 
 	altda "github.com/ethereum-optimism/optimism/op-alt-da"
 	"github.com/ethereum-optimism/optimism/op-node/metrics"
@@ -35,6 +37,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/oppprof"
 	"github.com/ethereum-optimism/optimism/op-service/retry"
 	"github.com/ethereum-optimism/optimism/op-service/sources"
+	"github.com/ethereum-optimism/optimism/op-service/superutil"
 )
 
 var ErrAlreadyClosed = errors.New("node is already closed")
@@ -434,9 +437,31 @@ func (n *OpNode) initL2(ctx context.Context, cfg *Config) error {
 	} else {
 		n.safeDB = safedb.Disabled
 	}
-	n.l2Driver = driver.NewDriver(n.eventSys, n.eventDrain, &cfg.Driver, &cfg.Rollup, n.l2Source, n.l1Source,
+
+	chainCfg, err := loadOrFetchChainConfig(ctx, cfg.Rollup.L2ChainID, rpcClient)
+	if err != nil {
+		return fmt.Errorf("failed to load or fetch chain config for id %v: %w", cfg.Rollup.L2ChainID, err)
+	}
+
+	n.l2Driver = driver.NewDriver(n.eventSys, n.eventDrain, &cfg.Driver, &cfg.Rollup, chainCfg.Optimism, n.l2Source, n.l1Source,
 		n.beacon, n, n, n.log, n.metrics, cfg.ConfigPersistence, n.safeDB, &cfg.Sync, sequencerConductor, altDA, managedMode)
 	return nil
+}
+
+func loadOrFetchChainConfig(ctx context.Context, id *big.Int, cl client.RPC) (*params.ChainConfig, error) {
+	if id.IsUint64() {
+		cfg, err := superutil.LoadOPStackChainConfigFromChainID(id.Uint64())
+		if err == nil {
+			return cfg, nil
+		}
+		// ignore error, try to fetch chain config in full
+	}
+	// if not already recognized, then fetch the chain config manually
+	var config params.ChainConfig
+	if err := cl.CallContext(ctx, &config, "eth_chainConfig"); err != nil {
+		return nil, fmt.Errorf("fetching: %w", err)
+	}
+	return &config, nil
 }
 
 func (n *OpNode) initRPCServer(cfg *Config) error {

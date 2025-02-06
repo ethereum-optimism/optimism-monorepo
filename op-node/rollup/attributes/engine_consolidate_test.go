@@ -4,7 +4,9 @@ import (
 	"math/rand" // nosemgrep
 	"testing"
 
+	"github.com/ethereum/go-ethereum/consensus/misc/eip1559"
 	"github.com/ethereum/go-ethereum/log"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -17,6 +19,16 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
 	"github.com/ethereum-optimism/optimism/op-service/testutils"
 )
+
+var defaultOpConfig = &params.OptimismConfig{
+	EIP1559Elasticity:        6,
+	EIP1559Denominator:       50,
+	EIP1559DenominatorCanyon: ptr(uint64(250)),
+}
+
+func ptr[T any](t T) *T {
+	return &t
+}
 
 type matchArgs struct {
 	envelope   *eth.ExecutionPayloadEnvelope
@@ -35,7 +47,8 @@ func holoceneArgs() matchArgs {
 		validTx               = testutils.RandomLegacyTxNotProtected(rand.New(rand.NewSource(42)))
 		validTxData, _        = validTx.MarshalBinary()
 
-		validHoloceneExtraData     = make(eth.BytesMax32, 9)
+		validHoloceneExtraData = eth.BytesMax32(eip1559.EncodeHoloceneExtraData(
+			*defaultOpConfig.EIP1559DenominatorCanyon, defaultOpConfig.EIP1559Elasticity))
 		validHoloceneEIP1559Params = new(eth.Bytes8)
 	)
 
@@ -166,7 +179,7 @@ func createMismatchedFeeRecipient() matchArgs {
 
 func createMismatchedEIP1559Params() matchArgs {
 	args := holoceneArgs()
-	args.attrs.EIP1559Params[0]++
+	args.attrs.EIP1559Params[0]++ // so denominator is != 0
 	return args
 }
 
@@ -290,7 +303,10 @@ func TestAttributesMatch(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
-			err := AttributesMatchBlock(test.rollupCfg, test.args.attrs, test.args.parentHash, test.args.envelope, testlog.Logger(t, log.LevelInfo))
+			err := AttributesMatchBlock(test.rollupCfg, defaultOpConfig,
+				test.args.attrs, test.args.parentHash, test.args.envelope,
+				testlog.Logger(t, log.LevelInfo),
+			)
 			if test.err == "" {
 				require.NoError(t, err)
 			} else {
@@ -476,6 +492,8 @@ func TestCheckEIP1559ParamsMatch(t *testing.T) {
 	params := eth.Bytes8{1, 2, 3, 4, 5, 6, 7, 8}
 	paramsAlt := eth.Bytes8{1, 2, 3, 4, 5, 6, 7, 9}
 	paramsInvalid := eth.Bytes8{0, 0, 0, 0, 5, 6, 7, 8}
+	defaultExtraData := eth.BytesMax32(eip1559.EncodeHoloceneExtraData(
+		*defaultOpConfig.EIP1559DenominatorCanyon, defaultOpConfig.EIP1559Elasticity))
 
 	for _, test := range []struct {
 		desc           string
@@ -487,14 +505,20 @@ func TestCheckEIP1559ParamsMatch(t *testing.T) {
 			desc: "match-empty",
 		},
 		{
-			desc:           "match-zero",
+			desc:           "match-zero-attrs",
 			attrParams:     new(eth.Bytes8),
-			blockExtraData: make(eth.BytesMax32, 9),
+			blockExtraData: defaultExtraData,
 		},
 		{
 			desc:           "match-non-zero",
 			attrParams:     &params,
 			blockExtraData: append(eth.BytesMax32{0}, params[:]...),
+		},
+		{
+			desc:           "err-both-zero",
+			attrParams:     new(eth.Bytes8),
+			blockExtraData: make(eth.BytesMax32, 9),
+			err:            "eip1559 parameters do not match, attributes: 250, 6 (translated from 0,0), block: 0, 0",
 		},
 		{
 			desc:           "err-invalid-params",
@@ -521,7 +545,7 @@ func TestCheckEIP1559ParamsMatch(t *testing.T) {
 		},
 	} {
 		t.Run(test.desc, func(t *testing.T) {
-			err := checkEIP1559ParamsMatch(test.attrParams, test.blockExtraData)
+			err := checkEIP1559ParamsMatch(defaultOpConfig, test.attrParams, test.blockExtraData)
 			if test.err == "" {
 				require.NoError(t, err)
 			} else {

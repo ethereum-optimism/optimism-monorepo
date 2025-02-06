@@ -10,6 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/consensus/misc/eip1559"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/log"
+	"github.com/ethereum/go-ethereum/params"
 
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/derive"
@@ -26,7 +27,7 @@ var (
 
 // AttributesMatchBlock checks if the L2 attributes pre-inputs match the output
 // nil if it is a match. If err is not nil, the error contains the reason for the mismatch
-func AttributesMatchBlock(rollupCfg *rollup.Config, attrs *eth.PayloadAttributes, parentHash common.Hash, envelope *eth.ExecutionPayloadEnvelope, l log.Logger) error {
+func AttributesMatchBlock(rollupCfg *rollup.Config, opCfg *params.OptimismConfig, attrs *eth.PayloadAttributes, parentHash common.Hash, envelope *eth.ExecutionPayloadEnvelope, l log.Logger) error {
 	block := envelope.ExecutionPayload
 
 	if parentHash != block.ParentHash {
@@ -74,7 +75,7 @@ func AttributesMatchBlock(rollupCfg *rollup.Config, attrs *eth.PayloadAttributes
 	if attrs.SuggestedFeeRecipient != block.FeeRecipient {
 		return fmt.Errorf("fee recipient data does not match, expected %s but got %s", block.FeeRecipient, attrs.SuggestedFeeRecipient)
 	}
-	if err := checkEIP1559ParamsMatch(attrs.EIP1559Params, block.ExtraData); err != nil {
+	if err := checkEIP1559ParamsMatch(opCfg, attrs.EIP1559Params, block.ExtraData); err != nil {
 		return err
 	}
 
@@ -96,7 +97,7 @@ func checkParentBeaconBlockRootMatch(attrRoot, blockRoot *common.Hash) error {
 	return nil
 }
 
-func checkEIP1559ParamsMatch(attrParams *eth.Bytes8, blockExtraData []byte) error {
+func checkEIP1559ParamsMatch(opCfg *params.OptimismConfig, attrParams *eth.Bytes8, blockExtraData []byte) error {
 	// Note that we can assume that the attributes' eip1559params are non-nil iff Holocene is active
 	// according to the local rollup config.
 	if attrParams != nil {
@@ -115,9 +116,22 @@ func checkEIP1559ParamsMatch(attrParams *eth.Bytes8, blockExtraData []byte) erro
 		}
 
 		ad, ae := eip1559.DecodeHolocene1559Params(params)
+		var translated bool
+		// Translate 0,0 to the pre-Holocene protocol constants, like the EL does too.
+		if ad == 0 {
+			// If attrParams are non-nil, Holocene, and so Canyon, must be active.
+			ad = *opCfg.EIP1559DenominatorCanyon
+			ae = opCfg.EIP1559Elasticity
+			translated = true
+		}
+
 		bd, be := eip1559.DecodeHoloceneExtraData(blockExtraData)
 		if ad != bd || ae != be {
-			return fmt.Errorf("eip1559 parameters do not match, attributes: %d, %d, block: %d, %d", ad, ae, bd, be)
+			extraErr := ""
+			if translated {
+				extraErr = " (translated from 0,0)"
+			}
+			return fmt.Errorf("eip1559 parameters do not match, attributes: %d, %d%s, block: %d, %d", ad, ae, extraErr, bd, be)
 		}
 	} else if len(blockExtraData) > 0 {
 		// When deriving pre-Holocene blocks, the extraData must be empty.
