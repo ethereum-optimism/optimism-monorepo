@@ -224,7 +224,7 @@ contract OPPrestateUpdater_Test is Test {
         );
     }
 
-    function test_deploy_reverts() public {
+    function test_deploy_notImplemented_reverts() public {
         OPContractsManager.DeployInput memory input = OPContractsManager.DeployInput({
             roles: OPContractsManager.Roles({
                 opChainProxyAdminOwner: address(0),
@@ -252,7 +252,7 @@ contract OPPrestateUpdater_Test is Test {
         prestateUpdater.deploy(input);
     }
 
-    function test_upgrade_reverts() public {
+    function test_upgrade_notImplemented_reverts() public {
         opChainConfigs.push(
             OPContractsManager.OpChainConfig({
                 systemConfigProxy: ISystemConfig(address(0)),
@@ -265,7 +265,7 @@ contract OPPrestateUpdater_Test is Test {
         prestateUpdater.upgrade(opChainConfigs);
     }
 
-    function test_addGameType_reverts() public {
+    function test_addGameType_notImplemented_reverts() public {
         gameInput.push(
             OPContractsManager.AddGameInput({
                 saltMixer: "hello",
