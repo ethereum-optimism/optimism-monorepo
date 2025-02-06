@@ -41,38 +41,23 @@ func TestInteropFaultProofs(gt *testing.T) {
 	endTimestamp := actors.ChainA.RollupCfg.Genesis.L2Time + actors.ChainA.RollupCfg.BlockTime
 	startTimestamp := endTimestamp - 1
 
-	start := system.SuperRoot(startTimestamp)
-	end := system.SuperRoot(endTimestamp)
+	start := system.Outputs.SuperRoot(startTimestamp)
+	end := system.Outputs.SuperRoot(endTimestamp)
 
-	chain1End := system.OutputRootAtTimestamp(actors.ChainA, endTimestamp)
-	chain2End := system.OutputRootAtTimestamp(actors.ChainB, endTimestamp)
+	step1Expected := system.Outputs.TransitionState(startTimestamp, 1,
+		system.Outputs.OptimisticBlockAtTimestamp(actors.ChainA, endTimestamp),
+	).Marshal()
 
-	step1Expected := (&types.TransitionState{
-		SuperRoot: start.Marshal(),
-		PendingProgress: []types.OptimisticBlock{
-			{BlockHash: chain1End.BlockRef.Hash, OutputRoot: chain1End.OutputRoot},
-		},
-		Step: 1,
-	}).Marshal()
-
-	step2Expected := (&types.TransitionState{
-		SuperRoot: start.Marshal(),
-		PendingProgress: []types.OptimisticBlock{
-			{BlockHash: chain1End.BlockRef.Hash, OutputRoot: chain1End.OutputRoot},
-			{BlockHash: chain2End.BlockRef.Hash, OutputRoot: chain2End.OutputRoot},
-		},
-		Step: 2,
-	}).Marshal()
+	step2Expected := system.Outputs.TransitionState(startTimestamp, 2,
+		system.Outputs.OptimisticBlockAtTimestamp(actors.ChainA, endTimestamp),
+		system.Outputs.OptimisticBlockAtTimestamp(actors.ChainB, endTimestamp),
+	).Marshal()
 
 	paddingStep := func(step uint64) []byte {
-		return (&types.TransitionState{
-			SuperRoot: start.Marshal(),
-			PendingProgress: []types.OptimisticBlock{
-				{BlockHash: chain1End.BlockRef.Hash, OutputRoot: chain1End.OutputRoot},
-				{BlockHash: chain2End.BlockRef.Hash, OutputRoot: chain2End.OutputRoot},
-			},
-			Step: step,
-		}).Marshal()
+		return system.Outputs.TransitionState(startTimestamp, step,
+			system.Outputs.OptimisticBlockAtTimestamp(actors.ChainA, endTimestamp),
+			system.Outputs.OptimisticBlockAtTimestamp(actors.ChainB, endTimestamp),
+		).Marshal()
 	}
 
 	tests := []*transitionTest{
@@ -293,38 +278,25 @@ func TestInteropFaultProofsInvalidBlock(gt *testing.T) {
 	endTimestamp := actors.ChainB.Sequencer.L2Unsafe().Time
 
 	startTimestamp := endTimestamp - 1
-	start := system.SuperRoot(startTimestamp)
-	end := system.SuperRoot(endTimestamp)
+	start := system.Outputs.SuperRoot(startTimestamp)
+	end := system.Outputs.SuperRoot(endTimestamp)
 
-	chain1End := system.OutputRootAtTimestamp(actors.ChainA, endTimestamp)
-	chain2End := system.OutputRootAtTimestamp(actors.ChainB, endTimestamp)
+	step1Expected := system.Outputs.TransitionState(startTimestamp, 1,
+		system.Outputs.OptimisticBlockAtTimestamp(actors.ChainA, endTimestamp),
+	).Marshal()
 
-	step1Expected := (&types.TransitionState{
-		SuperRoot: start.Marshal(),
-		PendingProgress: []types.OptimisticBlock{
-			{BlockHash: chain1End.BlockRef.Hash, OutputRoot: chain1End.OutputRoot},
-		},
-		Step: 1,
-	}).Marshal()
-
-	step2Expected := (&types.TransitionState{
-		SuperRoot: start.Marshal(),
-		PendingProgress: []types.OptimisticBlock{
-			{BlockHash: chain1End.BlockRef.Hash, OutputRoot: chain1End.OutputRoot},
-			{BlockHash: chain2End.BlockRef.Hash, OutputRoot: chain2End.OutputRoot},
-		},
-		Step: 2,
-	}).Marshal()
+	// Capture optimistic blocks now before the invalid block is reorg'd out
+	// Otherwise later calls to paddingStep would incorrectly use the deposit-only block
+	allOptimisticBlocks := []types.OptimisticBlock{
+		system.Outputs.OptimisticBlockAtTimestamp(actors.ChainA, endTimestamp),
+		system.Outputs.OptimisticBlockAtTimestamp(actors.ChainB, endTimestamp),
+	}
+	step2Expected := system.Outputs.TransitionState(startTimestamp, 2,
+		allOptimisticBlocks...,
+	).Marshal()
 
 	paddingStep := func(step uint64) []byte {
-		return (&types.TransitionState{
-			SuperRoot: start.Marshal(),
-			PendingProgress: []types.OptimisticBlock{
-				{BlockHash: chain1End.BlockRef.Hash, OutputRoot: chain1End.OutputRoot},
-				{BlockHash: chain2End.BlockRef.Hash, OutputRoot: chain2End.OutputRoot},
-			},
-			Step: step,
-		}).Marshal()
+		return system.Outputs.TransitionState(startTimestamp, step, allOptimisticBlocks...).Marshal()
 	}
 
 	// Induce block replacement
@@ -334,7 +306,7 @@ func TestInteropFaultProofsInvalidBlock(gt *testing.T) {
 	assertHeads(t, actors.ChainA, 3, 3, 3, 3)
 	assertHeads(t, actors.ChainB, 3, 3, 3, 3)
 
-	crossSafeSuperRootEnd := system.SuperRoot(endTimestamp)
+	crossSafeSuperRootEnd := system.Outputs.SuperRoot(endTimestamp)
 
 	tests := []*transitionTest{
 		{

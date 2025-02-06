@@ -1,9 +1,6 @@
 package dsl
 
 import (
-	"context"
-	"time"
-
 	"github.com/ethereum-optimism/optimism/op-e2e/actions/helpers"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/derive"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/event"
@@ -52,10 +49,10 @@ func (c *ChainOpts) AddChain(chain *Chain) {
 // Common options can be extracted to a reusable struct (e.g. ChainOpts above) which may expose helper methods to aid
 // test readability and reduce boilerplate.
 type InteropDSL struct {
-	t               helpers.Testing
-	Actors          *InteropActors
-	SuperRootSource *SuperRootSource
-	setup           *InteropSetup
+	t       helpers.Testing
+	Actors  *InteropActors
+	Outputs *Outputs
+	setup   *InteropSetup
 
 	// allChains contains all chains in the interop set.
 	// Currently this is always two chains, but as the setup code becomes more flexible it could be more
@@ -86,10 +83,13 @@ func NewInteropDSL(t helpers.Testing) *InteropDSL {
 	require.NoError(t, err)
 
 	return &InteropDSL{
-		t:               t,
-		Actors:          actors,
-		SuperRootSource: superRootSource,
-		setup:           setup,
+		t:      t,
+		Actors: actors,
+		Outputs: &Outputs{
+			t:               t,
+			superRootSource: superRootSource,
+		},
+		setup: setup,
 
 		allChains: allChains,
 	}
@@ -110,24 +110,6 @@ func (d *InteropDSL) CreateUser() *DSLUser {
 		index: keyIndex,
 		keys:  d.setup.Keys,
 	}
-}
-
-func (d *InteropDSL) SuperRoot(timestamp uint64) eth.Super {
-	ctx, cancel := context.WithTimeout(d.t.Ctx(), 30*time.Second)
-	defer cancel()
-	root, err := d.SuperRootSource.CreateSuperRoot(ctx, timestamp)
-	require.NoError(d.t, err)
-	return root
-}
-
-func (d *InteropDSL) OutputRootAtTimestamp(chain *Chain, timestamp uint64) *eth.OutputResponse {
-	ctx, cancel := context.WithTimeout(d.t.Ctx(), 30*time.Second)
-	defer cancel()
-	blockNum, err := chain.RollupCfg.TargetBlockNumber(timestamp)
-	require.NoError(d.t, err)
-	output, err := chain.Sequencer.RollupClient().OutputAtBlock(ctx, blockNum)
-	require.NoError(d.t, err)
-	return output
 }
 
 type TransactionCreator func(chain *Chain) (*types.Transaction, common.Address)
