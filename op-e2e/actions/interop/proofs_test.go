@@ -36,11 +36,6 @@ func TestInteropFaultProofs(gt *testing.T) {
 		opts.SetChains(system.Actors.ChainB)
 	})
 
-	// Add a second block
-	system.AddL2Block(system.Actors.ChainA)
-	system.AddL2Block(system.Actors.ChainB)
-	system.SubmitBatchData()
-
 	actors := system.Actors
 
 	endTimestamp := actors.ChainA.RollupCfg.Genesis.L2Time + actors.ChainA.RollupCfg.BlockTime
@@ -137,6 +132,83 @@ func TestInteropFaultProofs(gt *testing.T) {
 			disputedTraceIndex: 1023,
 			expectValid:        true,
 		},
+		{
+			// The proposed block timestamp is after the unsafe head block timestamp.
+			// Expect to transition to invalid because the unsafe head is reached but challenger needs to handle
+			// not having any data at the next timestamp because the chain doesn't extend that far.
+			name:        "DisputeTimestampAfterChainHeadChainA",
+			agreedClaim: end.Marshal(),
+			// With 2 second block times, we haven't yet reached the next block on the first chain so it's still valid
+			disputedClaim: system.Outputs.TransitionState(endTimestamp, 1,
+				system.Outputs.OptimisticBlockAtTimestamp(actors.ChainA, endTimestamp+1),
+			).Marshal(),
+			proposalTimestamp:  endTimestamp + 100,
+			disputedTraceIndex: 1024,
+			expectValid:        true,
+		},
+		{
+			// The proposed block timestamp is after the unsafe head block timestamp.
+			// Expect to transition to invalid because the unsafe head is reached but challenger needs to handle
+			// not having any data at the next timestamp because the chain doesn't extend that far.
+			name: "DisputeTimestampAfterChainHeadChainB",
+			agreedClaim: system.Outputs.TransitionState(endTimestamp, 1,
+				system.Outputs.OptimisticBlockAtTimestamp(actors.ChainA, endTimestamp+1),
+			).Marshal(),
+			// With 2 second block times, we haven't yet reached the next block on the second chain so it's still valid
+			disputedClaim: system.Outputs.TransitionState(endTimestamp, 2,
+				system.Outputs.OptimisticBlockAtTimestamp(actors.ChainA, endTimestamp+1),
+				system.Outputs.OptimisticBlockAtTimestamp(actors.ChainB, endTimestamp+1),
+			).Marshal(),
+			proposalTimestamp:  endTimestamp + 100,
+			disputedTraceIndex: 1025,
+			expectValid:        true,
+		},
+		{
+			// The proposed block timestamp is after the unsafe head block timestamp.
+			// Expect to transition to invalid because the unsafe head is reached but challenger needs to handle
+			// not having any data at the next timestamp because the chain doesn't extend that far.
+			name: "DisputeTimestampAfterChainHeadConsolidate",
+			agreedClaim: system.Outputs.TransitionState(endTimestamp, 1023,
+				system.Outputs.OptimisticBlockAtTimestamp(actors.ChainA, endTimestamp+1),
+				system.Outputs.OptimisticBlockAtTimestamp(actors.ChainB, endTimestamp+1),
+			).Marshal(),
+			// With 2 second block times, we haven't yet reached the next block on either chain so it's still valid
+			// It will have an incremented timestamp but the same chain output roots
+			disputedClaim:      system.Outputs.SuperRoot(endTimestamp + 1).Marshal(),
+			proposalTimestamp:  endTimestamp + 100,
+			disputedTraceIndex: 2047,
+			expectValid:        true,
+		},
+		{
+			// The proposed block timestamp is after the unsafe head block timestamp.
+			// Expect to transition to invalid because the unsafe head is reached but challenger needs to handle
+			// not having any data at the next timestamp because the chain doesn't extend that far.
+			name:        "DisputeBlockAfterChainHead-FirstChain",
+			agreedClaim: system.Outputs.SuperRoot(endTimestamp + 1).Marshal(),
+			// Timestamp has advanced enough to expect the next block now, but it doesn't exit so transition to invalid
+			disputedClaim:      interop.InvalidTransition,
+			proposalTimestamp:  endTimestamp + 100,
+			disputedTraceIndex: 2048,
+			expectValid:        true,
+		},
+		{
+			// The agreed and disputed claim are both after the current chain head
+			name:               "AgreedBlockAfterChainHead-Consolidate",
+			agreedClaim:        interop.InvalidTransition,
+			disputedClaim:      interop.InvalidTransition,
+			proposalTimestamp:  endTimestamp + 100,
+			disputedTraceIndex: 3071,
+			expectValid:        true,
+		},
+		{
+			// The agreed and disputed claim are both after the current chain head and disputing an optimistic block
+			name:               "AgreedBlockAfterChainHead-Optimistic",
+			agreedClaim:        interop.InvalidTransition,
+			disputedClaim:      interop.InvalidTransition,
+			proposalTimestamp:  endTimestamp + 100,
+			disputedTraceIndex: 3072,
+			expectValid:        true,
+		},
 
 		{
 			name:               "FirstChainReachesL1Head",
@@ -179,70 +251,11 @@ func TestInteropFaultProofs(gt *testing.T) {
 	for _, test := range tests {
 		test := test
 		gt.Run(fmt.Sprintf("%s-fpp", test.name), func(gt *testing.T) {
-			t := helpers.NewDefaultTesting(gt)
-			if test.skipProgram {
-				t.Skip("Not yet implemented")
-				return
-			}
-			logger := testlog.Logger(t, slog.LevelInfo)
-			checkResult := fpHelpers.ExpectNoError()
-			if !test.expectValid {
-				checkResult = fpHelpers.ExpectError(claim.ErrClaimNotValid)
-			}
-			l1Head := test.l1Head
-			if l1Head == (common.Hash{}) {
-				l1Head = actors.L1Miner.L1Chain().CurrentBlock().Hash()
-			}
-			proposalTimestamp := test.proposalTimestamp
-			if proposalTimestamp == 0 {
-				proposalTimestamp = endTimestamp
-			}
-			fpHelpers.RunFaultProofProgram(
-				t,
-				logger,
-				actors.L1Miner,
-				checkResult,
-				WithInteropEnabled(actors, test.agreedClaim, crypto.Keccak256Hash(test.disputedClaim), proposalTimestamp),
-				fpHelpers.WithL1Head(l1Head),
-			)
+			runOpProgramTest(gt, test, actors)
 		})
 
 		gt.Run(fmt.Sprintf("%s-challenger", test.name), func(gt *testing.T) {
-			t := helpers.NewDefaultTesting(gt)
-			if test.skipChallenger {
-				t.Skip("Not yet implemented")
-				return
-			}
-			logger := testlog.Logger(t, slog.LevelInfo)
-			prestateProvider := super.NewSuperRootPrestateProvider(&actors.Supervisor.QueryFrontend, startTimestamp)
-			var l1Head eth.BlockID
-			if test.l1Head == (common.Hash{}) {
-				l1Head = eth.ToBlockID(eth.HeaderBlockInfo(actors.L1Miner.L1Chain().CurrentBlock()))
-			} else {
-				l1Head = eth.ToBlockID(actors.L1Miner.L1Chain().GetBlockByHash(test.l1Head))
-			}
-			gameDepth := challengerTypes.Depth(30)
-			rollupCfgs, err := super.NewRollupConfigsFromParsed(actors.ChainA.RollupCfg, actors.ChainB.RollupCfg)
-			require.NoError(t, err)
-			provider := super.NewSuperTraceProvider(logger, rollupCfgs, prestateProvider, &actors.Supervisor.QueryFrontend, l1Head, gameDepth, startTimestamp, endTimestamp)
-			var agreedPrestate []byte
-			if test.disputedTraceIndex > 0 {
-				agreedPrestate, err = provider.GetPreimageBytes(t.Ctx(), challengerTypes.NewPosition(gameDepth, big.NewInt(test.disputedTraceIndex-1)))
-				require.NoError(t, err)
-			} else {
-				superRoot, err := provider.AbsolutePreState(t.Ctx())
-				require.NoError(t, err)
-				agreedPrestate = superRoot.Marshal()
-			}
-			require.Equal(t, test.agreedClaim, agreedPrestate)
-
-			disputedClaim, err := provider.GetPreimageBytes(t.Ctx(), challengerTypes.NewPosition(gameDepth, big.NewInt(test.disputedTraceIndex)))
-			require.NoError(t, err)
-			if test.expectValid {
-				require.Equal(t, test.disputedClaim, disputedClaim, "Claim is correct so should match challenger's opinion")
-			} else {
-				require.NotEqual(t, test.disputedClaim, disputedClaim, "Claim is incorrect so should not match challenger's opinion")
-			}
+			runChallengerTest(gt, test, actors)
 		})
 	}
 }
@@ -435,71 +448,84 @@ func TestInteropFaultProofsInvalidBlock(gt *testing.T) {
 	for _, test := range tests {
 		test := test
 		gt.Run(fmt.Sprintf("%s-fpp", test.name), func(gt *testing.T) {
-			t := helpers.NewDefaultTesting(gt)
-			if test.skipProgram {
-				t.Skip("Not yet implemented")
-				return
-			}
-			logger := testlog.Logger(t, slog.LevelInfo)
-			checkResult := fpHelpers.ExpectNoError()
-			if !test.expectValid {
-				checkResult = fpHelpers.ExpectError(claim.ErrClaimNotValid)
-			}
-			l1Head := test.l1Head
-			if l1Head == (common.Hash{}) {
-				l1Head = actors.L1Miner.L1Chain().CurrentBlock().Hash()
-			}
-			proposalTimestamp := test.proposalTimestamp
-			if proposalTimestamp == 0 {
-				proposalTimestamp = endTimestamp
-			}
-			fpHelpers.RunFaultProofProgram(
-				t,
-				logger,
-				actors.L1Miner,
-				checkResult,
-				WithInteropEnabled(actors, test.agreedClaim, crypto.Keccak256Hash(test.disputedClaim), proposalTimestamp),
-				fpHelpers.WithL1Head(l1Head),
-			)
+			runOpProgramTest(gt, test, actors)
 		})
 
 		gt.Run(fmt.Sprintf("%s-challenger", test.name), func(gt *testing.T) {
-			t := helpers.NewDefaultTesting(gt)
-			if test.skipChallenger {
-				t.Skip("Not yet implemented")
-				return
-			}
-			logger := testlog.Logger(t, slog.LevelInfo)
-			prestateProvider := super.NewSuperRootPrestateProvider(&actors.Supervisor.QueryFrontend, startTimestamp)
-			var l1Head eth.BlockID
-			if test.l1Head == (common.Hash{}) {
-				l1Head = eth.ToBlockID(eth.HeaderBlockInfo(actors.L1Miner.L1Chain().CurrentBlock()))
-			} else {
-				l1Head = eth.ToBlockID(actors.L1Miner.L1Chain().GetBlockByHash(test.l1Head))
-			}
-			gameDepth := challengerTypes.Depth(30)
-			rollupCfgs, err := super.NewRollupConfigsFromParsed(actors.ChainA.RollupCfg, actors.ChainB.RollupCfg)
-			require.NoError(t, err)
-			provider := super.NewSuperTraceProvider(logger, rollupCfgs, prestateProvider, &actors.Supervisor.QueryFrontend, l1Head, gameDepth, startTimestamp, endTimestamp)
-			var agreedPrestate []byte
-			if test.disputedTraceIndex > 0 {
-				agreedPrestate, err = provider.GetPreimageBytes(t.Ctx(), challengerTypes.NewPosition(gameDepth, big.NewInt(test.disputedTraceIndex-1)))
-				require.NoError(t, err)
-			} else {
-				superRoot, err := provider.AbsolutePreState(t.Ctx())
-				require.NoError(t, err)
-				agreedPrestate = superRoot.Marshal()
-			}
-			require.Equal(t, test.agreedClaim, agreedPrestate, "agreed prestate mismatch")
-
-			disputedClaim, err := provider.GetPreimageBytes(t.Ctx(), challengerTypes.NewPosition(gameDepth, big.NewInt(test.disputedTraceIndex)))
-			require.NoError(t, err)
-			if test.expectValid {
-				require.Equal(t, test.disputedClaim, disputedClaim, "Claim is correct so should match challenger's opinion")
-			} else {
-				require.NotEqual(t, test.disputedClaim, disputedClaim, "Claim is incorrect so should not match challenger's opinion")
-			}
+			runChallengerTest(gt, test, actors)
 		})
+	}
+}
+
+func runOpProgramTest(gt *testing.T, test *transitionTest, actors *dsl.InteropActors) {
+	t := helpers.NewDefaultTesting(gt)
+	if test.skipProgram {
+		t.Skip("Not yet implemented")
+		return
+	}
+	logger := testlog.Logger(t, slog.LevelInfo)
+	checkResult := fpHelpers.ExpectNoError()
+	if !test.expectValid {
+		checkResult = fpHelpers.ExpectError(claim.ErrClaimNotValid)
+	}
+	l1Head := test.l1Head
+	if l1Head == (common.Hash{}) {
+		l1Head = actors.L1Miner.L1Chain().CurrentBlock().Hash()
+	}
+	proposalTimestamp := test.proposalTimestamp
+	if proposalTimestamp == 0 {
+		proposalTimestamp = actors.ChainA.Sequencer.L2Unsafe().Time
+	}
+	fpHelpers.RunFaultProofProgram(
+		t,
+		logger,
+		actors.L1Miner,
+		checkResult,
+		WithInteropEnabled(actors, test.agreedClaim, crypto.Keccak256Hash(test.disputedClaim), proposalTimestamp),
+		fpHelpers.WithL1Head(l1Head),
+	)
+}
+
+func runChallengerTest(gt *testing.T, test *transitionTest, actors *dsl.InteropActors) {
+	t := helpers.NewDefaultTesting(gt)
+	if test.skipChallenger {
+		t.Skip("Not yet implemented")
+		return
+	}
+	logger := testlog.Logger(t, slog.LevelInfo)
+	endTimestamp := test.proposalTimestamp
+	if endTimestamp == 0 {
+		endTimestamp = actors.ChainA.Sequencer.L2Unsafe().Time
+	}
+	startTimestamp := actors.ChainA.Sequencer.L2Unsafe().Time - 1
+	prestateProvider := super.NewSuperRootPrestateProvider(&actors.Supervisor.QueryFrontend, startTimestamp)
+	var l1Head eth.BlockID
+	if test.l1Head == (common.Hash{}) {
+		l1Head = eth.ToBlockID(eth.HeaderBlockInfo(actors.L1Miner.L1Chain().CurrentBlock()))
+	} else {
+		l1Head = eth.ToBlockID(actors.L1Miner.L1Chain().GetBlockByHash(test.l1Head))
+	}
+	gameDepth := challengerTypes.Depth(30)
+	rollupCfgs, err := super.NewRollupConfigsFromParsed(actors.ChainA.RollupCfg, actors.ChainB.RollupCfg)
+	require.NoError(t, err)
+	provider := super.NewSuperTraceProvider(logger, rollupCfgs, prestateProvider, &actors.Supervisor.QueryFrontend, l1Head, gameDepth, startTimestamp, endTimestamp)
+	var agreedPrestate []byte
+	if test.disputedTraceIndex > 0 {
+		agreedPrestate, err = provider.GetPreimageBytes(t.Ctx(), challengerTypes.NewPosition(gameDepth, big.NewInt(test.disputedTraceIndex-1)))
+		require.NoError(t, err)
+	} else {
+		superRoot, err := provider.AbsolutePreState(t.Ctx())
+		require.NoError(t, err)
+		agreedPrestate = superRoot.Marshal()
+	}
+	require.Equal(t, test.agreedClaim, agreedPrestate, "agreed prestate mismatch")
+
+	disputedClaim, err := provider.GetPreimageBytes(t.Ctx(), challengerTypes.NewPosition(gameDepth, big.NewInt(test.disputedTraceIndex)))
+	require.NoError(t, err)
+	if test.expectValid {
+		require.Equal(t, test.disputedClaim, disputedClaim, "Claim is correct so should match challenger's opinion")
+	} else {
+		require.NotEqual(t, test.disputedClaim, disputedClaim, "Claim is incorrect so should not match challenger's opinion")
 	}
 }
 
