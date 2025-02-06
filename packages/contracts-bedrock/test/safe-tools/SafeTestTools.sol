@@ -360,7 +360,7 @@ library SafeTestLib {
         );
     }
 
-    /// @dev Removes an owner from the safe. If not provided explictly, the identification of the prevOwner is handled
+    /// @dev Removes an owner from the safe. If not provided explicitly, the identification of the prevOwner is handled
     ///     automatically.
     function removeOwner(SafeInstance memory instance, address prevOwner, address owner, uint256 threshold) internal {
         prevOwner = prevOwner > address(0) ? prevOwner : SafeTestLib.getPrevOwner(instance, owner);
