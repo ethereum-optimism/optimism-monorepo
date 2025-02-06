@@ -2,14 +2,14 @@ package descriptors
 
 type PortInfo struct {
 	Host        string `json:"host"`
-	Port        int    `json:"port"`
-	PrivatePort int    `json:"private_port"`
+	Port        int    `json:"port,omitempty"`
+	PrivatePort int    `json:"private_port,omitempty"`
 }
 
 // EndpointMap is a map of service names to their endpoints.
 type EndpointMap map[string]PortInfo
 
-// Service represents a chain service.
+// Service represents a chain service (e.g. batcher, proposer, challenger)
 type Service struct {
 	Name      string      `json:"name"`
 	Endpoints EndpointMap `json:"endpoints"`
@@ -18,12 +18,12 @@ type Service struct {
 // ServiceMap is a map of service names to services.
 type ServiceMap map[string]Service
 
-// Node represents a node for a chain.
+// Node represents a node for a chain
 type Node struct {
 	Services ServiceMap `json:"services"`
 }
 
-// AddressMap is a map of addresses to their corresponding chain IDs.
+// AddressMap is a map of address names to their corresponding addresses
 type AddressMap map[string]string
 
 // Chain represents a chain (L1 or L2) in a devnet.
