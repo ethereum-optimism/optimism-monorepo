@@ -674,21 +674,14 @@
       {
         "components": [
           {
-            "components": [
-              {
-                "internalType": "contract ISystemConfig",
-                "name": "systemConfigProxy",
-                "type": "address"
-              },
-              {
-                "internalType": "contract IProxyAdmin",
-                "name": "proxyAdmin",
-                "type": "address"
-              }
-            ],
-            "internalType": "struct OPContractsManager.OpChainConfig",
-            "name": "opChain",
-            "type": "tuple"
+            "internalType": "contract ISystemConfig",
+            "name": "systemConfigProxy",
+            "type": "address"
+          },
+          {
+            "internalType": "contract IProxyAdmin",
+            "name": "proxyAdmin",
+            "type": "address"
           },
           {
             "internalType": "Claim",
@@ -696,7 +689,7 @@
             "type": "bytes32"
           }
         ],
-        "internalType": "struct OPPrestateUpdater.PrestateUpdateInput[]",
+        "internalType": "struct OPContractsManager.OpChainConfig[]",
         "name": "_prestateUpdateInputs",
         "type": "tuple[]"
       }
@@ -719,6 +712,11 @@
             "internalType": "contract IProxyAdmin",
             "name": "proxyAdmin",
             "type": "address"
+          },
+          {
+            "internalType": "Claim",
+            "name": "absolutePrestate",
+            "type": "bytes32"
           }
         ],
         "internalType": "struct OPContractsManager.OpChainConfig[]",
@@ -913,6 +911,11 @@
   {
     "inputs": [],
     "name": "PDGPrestateRequired",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "PrestateNotSet",
     "type": "error"
   },
   {
