@@ -84,11 +84,11 @@ func CreatePrecompileOverrides(precompileOracle PrecompileOracle) vm.PrecompileO
 			}
 		case blsG1MSMPrecompileAddress:
 			return &blsOperationOracleWithSizeLimit{
-				sizeLimit: 513760,
+				sizeLimit: 513760, // TODO: replace with constant from op-geth once implemented
 				blsOperationOracle: blsOperationOracle{
 					Orig:              orig,
 					Oracle:            precompileOracle,
-					checkInputSize:    checkInputSizeMultipleOf(160),
+					checkInputSize:    checkInputSizeNonzeroMultipleOf(160),
 					checkOutput:       checkOutputExactSize(128),
 					precompileAddress: blsG1MSMPrecompileAddress,
 				},
@@ -104,22 +104,22 @@ func CreatePrecompileOverrides(precompileOracle PrecompileOracle) vm.PrecompileO
 			}
 		case blsG2MSMPrecompileAddress:
 			return &blsOperationOracleWithSizeLimit{
-				sizeLimit: 488448,
+				sizeLimit: 488448, // TODO: replace with constant from op-geth once implemented
 				blsOperationOracle: blsOperationOracle{
 					Orig:              orig,
 					Oracle:            precompileOracle,
-					checkInputSize:    checkInputSizeMultipleOf(288),
+					checkInputSize:    checkInputSizeNonzeroMultipleOf(288),
 					checkOutput:       checkOutputExactSize(256),
 					precompileAddress: blsG2MSMPrecompileAddress,
 				},
 			}
 		case blsPairingPrecompileAddress:
 			return &blsOperationOracleWithSizeLimit{
-				sizeLimit: 235008,
+				sizeLimit: 235008, // TODO: replace with constant from op-geth once implemented
 				blsOperationOracle: blsOperationOracle{
 					Orig:              orig,
 					Oracle:            precompileOracle,
-					checkInputSize:    checkInputSizeMultipleOf(384),
+					checkInputSize:    checkInputSizeNonzeroMultipleOf(384),
 					checkOutput:       checkOutputTrueOrFalse(),
 					precompileAddress: blsPairingPrecompileAddress,
 				},
@@ -315,9 +315,9 @@ func checkInputExactSize(size int) func([]byte) bool {
 	}
 }
 
-func checkInputSizeMultipleOf(size int) func([]byte) bool {
+func checkInputSizeNonzeroMultipleOf(size int) func([]byte) bool {
 	return func(input []byte) bool {
-		return len(input)%size == 0
+		return len(input)%size == 0 && len(input) > 0
 	}
 }
 
