@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/ethereum-optimism/optimism/op-e2e/actions/interop/dsl"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -22,7 +23,7 @@ import (
 func TestFullInterop(gt *testing.T) {
 	t := helpers.NewDefaultTesting(gt)
 
-	is := SetupInterop(t)
+	is := dsl.SetupInterop(t)
 	actors := is.CreateActors()
 
 	// get both sequencers set up
@@ -154,7 +155,7 @@ func TestFullInterop(gt *testing.T) {
 // affecting the way Finality would be determined.
 func TestFinality(gt *testing.T) {
 	testFinality := func(t helpers.StatefulTesting, extraBlocks int) {
-		is := SetupInterop(t)
+		is := dsl.SetupInterop(t)
 		actors := is.CreateActors()
 
 		// set up a blank ChainA
@@ -211,8 +212,8 @@ func TestFinality(gt *testing.T) {
 
 		// Process the supervisor to update the finality, and pull L1, L2 finality
 		actors.Supervisor.ProcessFull(t)
-		l1Finalized := actors.Supervisor.backend.FinalizedL1()
-		l2Finalized, err := actors.Supervisor.backend.Finalized(context.Background(), actors.ChainA.ChainID)
+		l1Finalized := actors.Supervisor.FinalizedL1()
+		l2Finalized, err := actors.Supervisor.Finalized(context.Background(), actors.ChainA.ChainID)
 		require.NoError(t, err)
 		require.Equal(t, uint64(tip), l1Finalized.Number)
 		// the L2 finality is the latest L2 block, because L1 finality is beyond anything the L2 used to derive
@@ -235,7 +236,7 @@ func TestFinality(gt *testing.T) {
 func TestInteropLocalSafeInvalidation(gt *testing.T) {
 	t := helpers.NewDefaultTesting(gt)
 
-	is := SetupInterop(t)
+	is := dsl.SetupInterop(t)
 	actors := is.CreateActors()
 
 	// get both sequencers set up

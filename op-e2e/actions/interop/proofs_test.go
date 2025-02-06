@@ -9,6 +9,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/trace/super"
 	challengerTypes "github.com/ethereum-optimism/optimism/op-challenger/game/fault/types"
 	"github.com/ethereum-optimism/optimism/op-e2e/actions/helpers"
+	"github.com/ethereum-optimism/optimism/op-e2e/actions/interop/dsl"
 	fpHelpers "github.com/ethereum-optimism/optimism/op-e2e/actions/proofs/helpers"
 	"github.com/ethereum-optimism/optimism/op-program/client/claim"
 	"github.com/ethereum-optimism/optimism/op-program/client/interop"
@@ -22,29 +23,29 @@ import (
 
 func TestInteropFaultProofs(gt *testing.T) {
 	t := helpers.NewDefaultTesting(gt)
-	dsl := NewInteropDSL(t)
+	system := dsl.NewInteropDSL(t)
 
-	dsl.AddL2Block(dsl.Actors.ChainA)
-	dsl.AddL2Block(dsl.Actors.ChainB)
+	system.AddL2Block(system.Actors.ChainA)
+	system.AddL2Block(system.Actors.ChainB)
 
 	// Submit batch data for each chain in separate L1 blocks so tests can have one chain safe and one unsafe
-	dsl.SubmitBatchData(func(opts *SubmitBatchDataOpts) {
-		opts.SetChains(dsl.Actors.ChainA)
+	system.SubmitBatchData(func(opts *dsl.SubmitBatchDataOpts) {
+		opts.SetChains(system.Actors.ChainA)
 	})
-	dsl.SubmitBatchData(func(opts *SubmitBatchDataOpts) {
-		opts.SetChains(dsl.Actors.ChainB)
+	system.SubmitBatchData(func(opts *dsl.SubmitBatchDataOpts) {
+		opts.SetChains(system.Actors.ChainB)
 	})
 
-	actors := dsl.Actors
+	actors := system.Actors
 
 	endTimestamp := actors.ChainA.RollupCfg.Genesis.L2Time + actors.ChainA.RollupCfg.BlockTime
 	startTimestamp := endTimestamp - 1
 
-	start := dsl.SuperRoot(startTimestamp)
-	end := dsl.SuperRoot(endTimestamp)
+	start := system.SuperRoot(startTimestamp)
+	end := system.SuperRoot(endTimestamp)
 
-	chain1End := dsl.OutputRootAtTimestamp(actors.ChainA, endTimestamp)
-	chain2End := dsl.OutputRootAtTimestamp(actors.ChainB, endTimestamp)
+	chain1End := system.OutputRootAtTimestamp(actors.ChainA, endTimestamp)
+	chain2End := system.OutputRootAtTimestamp(actors.ChainB, endTimestamp)
 
 	step1Expected := (&types.TransitionState{
 		SuperRoot: start.Marshal(),
@@ -247,39 +248,39 @@ func TestInteropFaultProofs(gt *testing.T) {
 func TestInteropFaultProofsInvalidBlock(gt *testing.T) {
 	t := helpers.NewDefaultTesting(gt)
 
-	dsl := NewInteropDSL(t)
+	system := dsl.NewInteropDSL(t)
 
-	actors := dsl.Actors
-	alice := dsl.CreateUser()
-	emitterContract := NewEmitterContract(t)
-	dsl.AddL2Block(actors.ChainA, WithL2BlockTransactions(
+	actors := system.Actors
+	alice := system.CreateUser()
+	emitterContract := dsl.NewEmitterContract(t)
+	system.AddL2Block(actors.ChainA, dsl.WithL2BlockTransactions(
 		emitterContract.Deploy(alice),
 	))
-	dsl.AddL2Block(actors.ChainA, WithL2BlockTransactions(
+	system.AddL2Block(actors.ChainA, dsl.WithL2BlockTransactions(
 		emitterContract.EmitMessage(alice, "test message"),
 	))
 	emitTx := emitterContract.LastEmittedMessage()
 
 	// Bring ChainB to the same height and timestamp
-	dsl.AddL2Block(actors.ChainB)
-	dsl.AddL2Block(actors.ChainB)
-	dsl.SubmitBatchData()
+	system.AddL2Block(actors.ChainB)
+	system.AddL2Block(actors.ChainB)
+	system.SubmitBatchData()
 
 	// Create a message with a conflicting payload
 	fakeMessage := []byte("this message was never emitted")
-	inboxContract := NewInboxContract(t)
-	dsl.AddL2Block(actors.ChainB, func(opts *AddL2BlockOpts) {
-		opts.TransactionCreators = []TransactionCreator{inboxContract.Execute(alice, emitTx.Identifier(), fakeMessage)}
+	inboxContract := dsl.NewInboxContract(t)
+	system.AddL2Block(actors.ChainB, func(opts *dsl.AddL2BlockOpts) {
+		opts.TransactionCreators = []dsl.TransactionCreator{inboxContract.Execute(alice, emitTx.Identifier(), fakeMessage)}
 		opts.BlockIsNotCrossSafe = true
 	})
-	dsl.AddL2Block(actors.ChainA)
+	system.AddL2Block(actors.ChainA)
 
 	// TODO: I wonder if it would be better to have `opts.ExpectInvalid` that specifies the invalid tx
 	// then the DSL can assert that it becomes local safe and is then reorged out automatically
 	// We could still grab the superroot and output roots for the invalid block while it is unsafe
 	// Other tests may still want to have SkipCrossUnsafeUpdate but generally nicer to be more declarative and
 	// high level to avoid leaking the details of when supervisor will trigger the reorg if possible.
-	dsl.SubmitBatchData(func(opts *SubmitBatchDataOpts) {
+	system.SubmitBatchData(func(opts *dsl.SubmitBatchDataOpts) {
 		opts.SkipCrossSafeUpdate = true
 	})
 
@@ -292,11 +293,11 @@ func TestInteropFaultProofsInvalidBlock(gt *testing.T) {
 	endTimestamp := actors.ChainB.Sequencer.L2Unsafe().Time
 
 	startTimestamp := endTimestamp - 1
-	start := dsl.SuperRoot(startTimestamp)
-	end := dsl.SuperRoot(endTimestamp)
+	start := system.SuperRoot(startTimestamp)
+	end := system.SuperRoot(endTimestamp)
 
-	chain1End := dsl.OutputRootAtTimestamp(actors.ChainA, endTimestamp)
-	chain2End := dsl.OutputRootAtTimestamp(actors.ChainB, endTimestamp)
+	chain1End := system.OutputRootAtTimestamp(actors.ChainA, endTimestamp)
+	chain2End := system.OutputRootAtTimestamp(actors.ChainB, endTimestamp)
 
 	step1Expected := (&types.TransitionState{
 		SuperRoot: start.Marshal(),
@@ -327,13 +328,13 @@ func TestInteropFaultProofsInvalidBlock(gt *testing.T) {
 	}
 
 	// Induce block replacement
-	dsl.ProcessCrossSafe()
+	system.ProcessCrossSafe()
 	// assert that the invalid message tx was reorged out
 	execTx.CheckNotIncluded()
 	assertHeads(t, actors.ChainA, 3, 3, 3, 3)
 	assertHeads(t, actors.ChainB, 3, 3, 3, 3)
 
-	crossSafeSuperRootEnd := dsl.SuperRoot(endTimestamp)
+	crossSafeSuperRootEnd := system.SuperRoot(endTimestamp)
 
 	tests := []*transitionTest{
 		{
@@ -519,7 +520,7 @@ func TestInteropFaultProofsInvalidBlock(gt *testing.T) {
 	}
 }
 
-func WithInteropEnabled(actors *InteropActors, agreedPrestate []byte, disputedClaim common.Hash, claimTimestamp uint64) fpHelpers.FixtureInputParam {
+func WithInteropEnabled(actors *dsl.InteropActors, agreedPrestate []byte, disputedClaim common.Hash, claimTimestamp uint64) fpHelpers.FixtureInputParam {
 	return func(f *fpHelpers.FixtureInputs) {
 		f.InteropEnabled = true
 		f.AgreedPrestate = agreedPrestate
@@ -527,7 +528,7 @@ func WithInteropEnabled(actors *InteropActors, agreedPrestate []byte, disputedCl
 		f.L2Claim = disputedClaim
 		f.L2BlockNumber = claimTimestamp
 
-		for _, chain := range []*Chain{actors.ChainA, actors.ChainB} {
+		for _, chain := range []*dsl.Chain{actors.ChainA, actors.ChainB} {
 			f.L2Sources = append(f.L2Sources, &fpHelpers.FaultProofProgramL2Source{
 				Node:        chain.Sequencer.L2Verifier,
 				Engine:      chain.SequencerEngine,

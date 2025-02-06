@@ -1,4 +1,4 @@
-package interop
+package dsl
 
 import (
 	"github.com/ethereum-optimism/optimism/op-e2e/actions/helpers"
