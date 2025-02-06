@@ -282,8 +282,6 @@ func (m *SimpleTxManager) SendAsync(ctx context.Context, candidate TxCandidate, 
 		return
 	}
 
-	m.metr.RecordPendingTx(m.pending.Add(1))
-
 	var cancel context.CancelFunc
 	if m.cfg.TxSendTimeout == 0 {
 		ctx, cancel = context.WithCancel(ctx)
@@ -295,7 +293,6 @@ func (m *SimpleTxManager) SendAsync(ctx context.Context, candidate TxCandidate, 
 	if err != nil {
 		m.resetNonce()
 		cancel()
-		m.metr.RecordPendingTx(m.pending.Add(-1))
 		ch <- SendResponse{
 			Receipt: nil,
 			Err:     err,
@@ -303,8 +300,10 @@ func (m *SimpleTxManager) SendAsync(ctx context.Context, candidate TxCandidate, 
 		return
 	}
 
+	m.metr.RecordPendingTx(m.pending.Add(1))
+
 	go func() {
-		defer m.metr.RecordPendingTx(m.pending.Add(-1))
+		defer func() { m.metr.RecordPendingTx(m.pending.Add(-1)) }()
 		defer cancel()
 		receipt, err := m.sendTx(ctx, tx)
 		if err != nil {

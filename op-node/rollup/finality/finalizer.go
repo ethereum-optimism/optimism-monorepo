@@ -142,7 +142,7 @@ func (fi *Finalizer) OnEvent(ev event.Event) bool {
 	case FinalizeL1Event:
 		fi.onL1Finalized(x.FinalizedL1)
 	case engine.SafeDerivedEvent:
-		fi.onDerivedSafeBlock(x.Safe, x.DerivedFrom)
+		fi.onDerivedSafeBlock(x.Safe, x.Source)
 	case derive.DeriverIdleEvent:
 		fi.onDerivationIdle(x.Origin)
 	case rollup.ResetEvent:

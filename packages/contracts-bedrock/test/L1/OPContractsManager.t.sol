@@ -213,6 +213,7 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
     IProxyAdmin superchainProxyAdmin;
     address upgrader;
     IOPContractsManager.OpChainConfig[] opChainConfigs;
+    Claim absolutePrestate;
 
     function setUp() public virtual override {
         super.disableUpgradedFork();
@@ -226,6 +227,7 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
             "OPContractsManager_Upgrade_Harness: cannot test upgrade on superchain ops repo upgrade tests"
         );
 
+        absolutePrestate = Claim.wrap(bytes32(keccak256("absolutePrestate")));
         proxyAdmin = IProxyAdmin(EIP1967Helper.getAdmin(address(systemConfig)));
         superchainProxyAdmin = IProxyAdmin(EIP1967Helper.getAdmin(address(superchainConfig)));
         upgrader = proxyAdmin.owner();
@@ -235,7 +237,11 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
         vm.etch(upgrader, vm.getDeployedCode("test/mocks/Callers.sol:DelegateCaller"));
 
         opChainConfigs.push(
-            IOPContractsManager.OpChainConfig({ systemConfigProxy: systemConfig, proxyAdmin: proxyAdmin })
+            IOPContractsManager.OpChainConfig({
+                systemConfigProxy: systemConfig,
+                proxyAdmin: proxyAdmin,
+                absolutePrestate: absolutePrestate
+            })
         );
 
         // Retrieve the l2ChainId, which was read from the superchain-registry, and saved in Artifacts
@@ -255,8 +261,6 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
     }
 
     function runUpgradeTestAndChecks(address _delegateCaller) public {
-        vm.etch(_delegateCaller, vm.getDeployedCode("test/mocks/Callers.sol:DelegateCaller"));
-
         IOPContractsManager.Implementations memory impls = opcm.implementations();
 
         // Cache the old L1xDM address so we can look for it in the AddressManager's event
@@ -302,9 +306,14 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
         vm.expectEmit(address(_delegateCaller));
         emit Upgraded(l2ChainId, opChainConfigs[0].systemConfigProxy, address(_delegateCaller));
 
+        // Temporarily replace the upgrader with a DelegateCaller so we can test the upgrade,
+        // then reset its code to the original code.
+        bytes memory delegateCallerCode = address(_delegateCaller).code;
+        vm.etch(_delegateCaller, vm.getDeployedCode("test/mocks/Callers.sol:DelegateCaller"));
         DelegateCaller(_delegateCaller).dcForward(
             address(opcm), abi.encodeCall(IOPContractsManager.upgrade, (opChainConfigs))
         );
+        vm.etch(_delegateCaller, delegateCallerCode);
 
         // Check the implementations of the core addresses
         assertEq(impls.systemConfigImpl, EIP1967Helper.getImplementation(address(systemConfig)));
@@ -465,6 +474,12 @@ contract OPContractsManager_Upgrade_TestFails is OPContractsManager_Upgrade_Harn
             address(opcm), abi.encodeCall(IOPContractsManager.upgrade, (opChainConfigs))
         );
     }
+
+    function test_upgrade_absolutePrestateNotSet_reverts() public {
+        opChainConfigs[0].absolutePrestate = Claim.wrap(bytes32(0));
+        vm.expectRevert(IOPContractsManager.PrestateNotSet.selector);
+        DelegateCaller(upgrader).dcForward(address(opcm), abi.encodeCall(IOPContractsManager.upgrade, (opChainConfigs)));
+    }
 }
 
 contract OPContractsManager_SetRC_Test is OPContractsManager_Upgrade_Harness {
@@ -486,6 +501,7 @@ contract OPContractsManager_SetRC_Test is OPContractsManager_Upgrade_Harness {
 
     /// @notice Tests the setRC function can not be set by non-upgrade controller.
     function test_setRC_nonUpgradeController_reverts(address _nonUpgradeController) public {
+        // Disallow the upgrade controller to have code, or be a 'special' address.
         if (
             _nonUpgradeController == upgrader || _nonUpgradeController == address(0)
                 || _nonUpgradeController < address(0x4200000000000000000000000000000000000000)
@@ -493,6 +509,7 @@ contract OPContractsManager_SetRC_Test is OPContractsManager_Upgrade_Harness {
                 || _nonUpgradeController == address(vm)
                 || _nonUpgradeController == 0x000000000000000000636F6e736F6c652e6c6f67
                 || _nonUpgradeController == 0x4e59b44847b379578588920cA78FbF26c0B4956C
+                || _nonUpgradeController.code.length > 0
         ) {
             _nonUpgradeController = makeAddr("nonUpgradeController");
         }

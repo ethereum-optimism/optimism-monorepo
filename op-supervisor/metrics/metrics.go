@@ -14,8 +14,6 @@ type Metricer interface {
 	RecordUp()
 
 	opmetrics.RPCMetricer
-	RecordCrossUnsafeRef(chainID eth.ChainID, r eth.BlockRef)
-	RecordCrossSafeRef(chainID eth.ChainID, r eth.BlockRef)
 
 	CacheAdd(chainID eth.ChainID, label string, cacheSize int, evicted bool)
 	CacheGet(chainID eth.ChainID, label string, hit bool)
@@ -32,7 +30,6 @@ type Metrics struct {
 	factory  opmetrics.Factory
 
 	opmetrics.RPCMetrics
-	opmetrics.RefMetrics
 
 	CacheSizeVec *prometheus.GaugeVec
 	CacheGetVec  *prometheus.CounterVec
@@ -142,14 +139,6 @@ func (m *Metrics) RecordInfo(version string) {
 func (m *Metrics) RecordUp() {
 	prometheus.MustRegister()
 	m.up.Set(1)
-}
-
-func (m *Metrics) RecordCrossUnsafeRef(chainID eth.ChainID, ref eth.BlockRef) {
-	m.RefMetrics.RecordRef("l2", "cross_unsafe", ref.Number, ref.Time, ref.Hash, chainIDLabel(chainID))
-}
-
-func (m *Metrics) RecordCrossSafeRef(chainID eth.ChainID, ref eth.BlockRef) {
-	m.RefMetrics.RecordRef("l2", "cross_safe", ref.Number, ref.Time, ref.Hash, chainIDLabel(chainID))
 }
 
 func (m *Metrics) CacheAdd(chainID eth.ChainID, label string, cacheSize int, evicted bool) {
