@@ -117,22 +117,25 @@ func (m *ManagedMode) OnEvent(ev event.Event) bool {
 		ref := x.Ref.BlockRef()
 		m.events.Send(&supervisortypes.ManagedEvent{UnsafeBlock: &ref})
 	case engine.LocalSafeUpdateEvent:
-		m.log.Info("Emitting local safe update because of L2 block", "derivedFrom", x.DerivedFrom, "derived", x.Ref)
+		m.log.Info("Emitting local safe update because of L2 block", "derivedFrom", x.Source, "derived", x.Ref)
 		m.events.Send(&supervisortypes.ManagedEvent{DerivationUpdate: &supervisortypes.DerivedBlockRefPair{
-			DerivedFrom: x.DerivedFrom,
-			Derived:     x.Ref.BlockRef(),
+			Source:  x.Source,
+			Derived: x.Ref.BlockRef(),
 		}})
 	case derive.DeriverL1StatusEvent:
 		m.log.Info("Emitting local safe update because of L1 traversal", "derivedFrom", x.Origin, "derived", x.LastL2)
-		m.events.Send(&supervisortypes.ManagedEvent{DerivationUpdate: &supervisortypes.DerivedBlockRefPair{
-			DerivedFrom: x.Origin,
-			Derived:     x.LastL2.BlockRef(),
-		}})
+		m.events.Send(&supervisortypes.ManagedEvent{
+			DerivationUpdate: &supervisortypes.DerivedBlockRefPair{
+				Source:  x.Origin,
+				Derived: x.LastL2.BlockRef(),
+			},
+			DerivationOriginUpdate: &x.Origin,
+		})
 	case derive.ExhaustedL1Event:
 		m.log.Info("Exhausted L1 data", "derivedFrom", x.L1Ref, "derived", x.LastL2)
 		m.events.Send(&supervisortypes.ManagedEvent{ExhaustL1: &supervisortypes.DerivedBlockRefPair{
-			DerivedFrom: x.L1Ref,
-			Derived:     x.LastL2.BlockRef(),
+			Source:  x.L1Ref,
+			Derived: x.LastL2.BlockRef(),
 		}})
 	case engine.InteropReplacedBlockEvent:
 		m.log.Info("Replaced block", "replacement", x.Ref)
@@ -182,8 +185,8 @@ func (m *ManagedMode) UpdateCrossSafe(ctx context.Context, derived eth.BlockID, 
 		return fmt.Errorf("failed to get L1BlockRef: %w", err)
 	}
 	m.emitter.Emit(engine.PromoteSafeEvent{
-		Ref:         l2Ref,
-		DerivedFrom: l1Ref,
+		Ref:    l2Ref,
+		Source: l1Ref,
 	})
 	// We return early: there is no point waiting for the cross-safe engine-update synchronously.
 	// All error-feedback comes to the supervisor by aborting derivation tasks with an error.
@@ -222,7 +225,7 @@ func (m *ManagedMode) InvalidateBlock(ctx context.Context, seal supervisortypes.
 		Attributes:  attributes,
 		Parent:      parentRef,
 		Concluding:  true,
-		DerivedFrom: engine.ReplaceBlockDerivedFrom,
+		DerivedFrom: engine.ReplaceBlockSource,
 	}
 
 	m.emitter.Emit(engine.InteropInvalidateBlockEvent{Invalidated: ref, Attributes: annotated})
@@ -241,8 +244,8 @@ func (m *ManagedMode) AnchorPoint(ctx context.Context) (supervisortypes.DerivedB
 		return supervisortypes.DerivedBlockRefPair{}, fmt.Errorf("failed to fetch L2 block ref: %w", err)
 	}
 	return supervisortypes.DerivedBlockRefPair{
-		DerivedFrom: l1Ref,
-		Derived:     l2Ref.BlockRef(),
+		Source:  l1Ref,
+		Derived: l2Ref.BlockRef(),
 	}, nil
 }
 

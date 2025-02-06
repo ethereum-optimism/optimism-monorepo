@@ -22,8 +22,8 @@ func OpenLogDB(logger log.Logger, chainID eth.ChainID, dataDir string, m logs.Me
 	return logDB, nil
 }
 
-func OpenLocalDerivedFromDB(logger log.Logger, chainID eth.ChainID, dataDir string, m fromda.ChainMetrics) (*fromda.DB, error) {
-	path, err := prepLocalDerivedFromDBPath(chainID, dataDir)
+func OpenLocalDerivationDB(logger log.Logger, chainID eth.ChainID, dataDir string, m fromda.ChainMetrics) (*fromda.DB, error) {
+	path, err := prepLocalDerivationDBPath(chainID, dataDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to prepare datadir for chain %s: %w", chainID, err)
 	}
@@ -34,8 +34,8 @@ func OpenLocalDerivedFromDB(logger log.Logger, chainID eth.ChainID, dataDir stri
 	return db, nil
 }
 
-func OpenCrossDerivedFromDB(logger log.Logger, chainID eth.ChainID, dataDir string, m fromda.ChainMetrics) (*fromda.DB, error) {
-	path, err := prepCrossDerivedFromDBPath(chainID, dataDir)
+func OpenCrossDerivationDB(logger log.Logger, chainID eth.ChainID, dataDir string, m fromda.ChainMetrics) (*fromda.DB, error) {
+	path, err := prepCrossDerivationDBPath(chainID, dataDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to prepare datadir for chain %s: %w", chainID, err)
 	}

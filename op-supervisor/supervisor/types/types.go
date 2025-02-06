@@ -36,6 +36,15 @@ func (ci *ChainIndex) UnmarshalText(data []byte) error {
 	return nil
 }
 
+// ContainsQuery contains all the information needed to check a message
+// against a chain's database, to determine if it is valid (ie all invariants hold).
+type ContainsQuery struct {
+	Timestamp uint64
+	BlockNum  uint64
+	LogIdx    uint32
+	LogHash   common.Hash // LogHash commits to the origin-address and the message payload-hash
+}
+
 type ExecutingMessage struct {
 	Chain     ChainIndex // same as ChainID for now, but will be indirect, i.e. translated to full ID, later
 	BlockNum  uint64
@@ -261,43 +270,43 @@ func LogToMessagePayload(l *ethTypes.Log) []byte {
 	return msg
 }
 
-// DerivedBlockRefPair is a pair of block refs, where Derived (L2) is derived from DerivedFrom (L1).
+// DerivedBlockRefPair is a pair of block refs, where Derived (L2) is derived from Source (L1).
 type DerivedBlockRefPair struct {
-	DerivedFrom eth.BlockRef `json:"derivedFrom"`
-	Derived     eth.BlockRef `json:"derived"`
+	Source  eth.BlockRef `json:"source"`
+	Derived eth.BlockRef `json:"derived"`
 }
 
 func (refs *DerivedBlockRefPair) IDs() DerivedIDPair {
 	return DerivedIDPair{
-		DerivedFrom: refs.DerivedFrom.ID(),
-		Derived:     refs.Derived.ID(),
+		Source:  refs.Source.ID(),
+		Derived: refs.Derived.ID(),
 	}
 }
 
 func (refs *DerivedBlockRefPair) Seals() DerivedBlockSealPair {
 	return DerivedBlockSealPair{
-		DerivedFrom: BlockSealFromRef(refs.DerivedFrom),
-		Derived:     BlockSealFromRef(refs.Derived),
+		Source:  BlockSealFromRef(refs.Source),
+		Derived: BlockSealFromRef(refs.Derived),
 	}
 }
 
-// DerivedBlockSealPair is a pair of block seals, where Derived (L2) is derived from DerivedFrom (L1).
+// DerivedBlockSealPair is a pair of block seals, where Derived (L2) is derived from Source (L1).
 type DerivedBlockSealPair struct {
-	DerivedFrom BlockSeal `json:"derivedFrom"`
-	Derived     BlockSeal `json:"derived"`
+	Source  BlockSeal `json:"source"`
+	Derived BlockSeal `json:"derived"`
 }
 
 func (seals *DerivedBlockSealPair) IDs() DerivedIDPair {
 	return DerivedIDPair{
-		DerivedFrom: seals.DerivedFrom.ID(),
-		Derived:     seals.Derived.ID(),
+		Source:  seals.Source.ID(),
+		Derived: seals.Derived.ID(),
 	}
 }
 
-// DerivedIDPair is a pair of block IDs, where Derived (L2) is derived from DerivedFrom (L1).
+// DerivedIDPair is a pair of block IDs, where Derived (L2) is derived from Source (L1).
 type DerivedIDPair struct {
-	DerivedFrom eth.BlockID `json:"derivedFrom"`
-	Derived     eth.BlockID `json:"derived"`
+	Source  eth.BlockID `json:"source"`
+	Derived eth.BlockID `json:"derived"`
 }
 
 type BlockReplacement struct {
@@ -308,9 +317,10 @@ type BlockReplacement struct {
 // ManagedEvent is an event sent by the managed node to the supervisor,
 // to share an update. One of the fields will be non-null; different kinds of updates may be sent.
 type ManagedEvent struct {
-	Reset            *string              `json:"reset,omitempty"`
-	UnsafeBlock      *eth.BlockRef        `json:"unsafeBlock,omitempty"`
-	DerivationUpdate *DerivedBlockRefPair `json:"derivationUpdate,omitempty"`
-	ExhaustL1        *DerivedBlockRefPair `json:"exhaustL1,omitempty"`
-	ReplaceBlock     *BlockReplacement    `json:"replaceBlock,omitempty"`
+	Reset                  *string              `json:"reset,omitempty"`
+	UnsafeBlock            *eth.BlockRef        `json:"unsafeBlock,omitempty"`
+	DerivationUpdate       *DerivedBlockRefPair `json:"derivationUpdate,omitempty"`
+	ExhaustL1              *DerivedBlockRefPair `json:"exhaustL1,omitempty"`
+	ReplaceBlock           *BlockReplacement    `json:"replaceBlock,omitempty"`
+	DerivationOriginUpdate *eth.BlockRef        `json:"derivationOriginUpdate,omitempty"`
 }

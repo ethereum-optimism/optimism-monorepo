@@ -141,9 +141,10 @@ func sampleDepSet(t *testing.T) depset.DependencySet {
 }
 
 type eventMonitor struct {
-	anchorCalled        int
-	localDerived        int
-	receivedLocalUnsafe int
+	anchorCalled             int
+	localDerived             int
+	receivedLocalUnsafe      int
+	localDerivedOriginUpdate int
 }
 
 func (m *eventMonitor) OnEvent(ev event.Event) bool {
@@ -154,6 +155,8 @@ func (m *eventMonitor) OnEvent(ev event.Event) bool {
 		m.localDerived += 1
 	case superevents.LocalUnsafeReceivedEvent:
 		m.receivedLocalUnsafe += 1
+	case superevents.LocalDerivedOriginUpdateEvent:
+		m.localDerivedOriginUpdate += 1
 	default:
 		return false
 	}
@@ -180,8 +183,8 @@ func TestInitFromAnchorPoint(t *testing.T) {
 	ctrl := mockSyncControl{}
 	ctrl.anchorPointFn = func(ctx context.Context) (types.DerivedBlockRefPair, error) {
 		return types.DerivedBlockRefPair{
-			Derived:     eth.BlockRef{Number: 1},
-			DerivedFrom: eth.BlockRef{Number: 0},
+			Derived: eth.BlockRef{Number: 1},
+			Source:  eth.BlockRef{Number: 0},
 		}, nil
 	}
 
