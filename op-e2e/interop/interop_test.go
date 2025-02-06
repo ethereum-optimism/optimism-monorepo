@@ -246,7 +246,9 @@ func TestInteropBlockBuilding(t *testing.T) {
 		chainA := ids[0]
 		chainB := ids[1]
 		// We will initiate on chain A, and execute on chain B
-		s2.DeployEmitterContract(chainA, "Alice")
+
+		// WEIRD BEHAVIOR: this doesn't work if we use the Alice account. We get a "nonce too low" error.
+		s2.DeployEmitterContract(chainA, "Bob")
 
 		rollupClA, err := dial.DialRollupClientWithTimeout(context.Background(), time.Second*15, logger, s2.OpNode(chainA).UserRPC().RPC())
 		require.NoError(t, err)
