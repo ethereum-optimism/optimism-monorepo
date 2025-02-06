@@ -28,6 +28,7 @@ func DeploySuperchain(env *Env, intent *state.Intent, st *state.State) error {
 			Paused:                     false,
 			RequiredProtocolVersion:    rollup.OPStackSupport,
 			RecommendedProtocolVersion: rollup.OPStackSupport,
+			IsInterop:                  intent.UseInterop,
 		},
 	)
 	if err != nil {
