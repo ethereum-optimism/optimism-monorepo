@@ -1521,7 +1521,7 @@ workflows:
           requires: ["contracts-bedrock-build"]
       - go-tests:
           environment_overrides: |
-            export PARALLEL=48
+            export PARALLEL=24
           packages: |
             op-alt-da
             op-batcher
