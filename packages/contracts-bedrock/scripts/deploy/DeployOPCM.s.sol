@@ -61,6 +61,8 @@ contract DeployOPCMInput is BaseDeployIO {
         else if (_sel == this.permissionlessDisputeGame1Blueprint.selector) _permissionlessDisputeGame1Blueprint = _addr;
         else if (_sel == this.permissionlessDisputeGame2Blueprint.selector) _permissionlessDisputeGame2Blueprint = _addr;
         else if (_sel == this.l1ERC721BridgeImpl.selector) _l1ERC721BridgeImpl = _addr;
+        else if (_sel == this.superchainProxyAdmin.selector) _superchainProxyAdmin = IProxyAdmin(_addr);
+        else if (_sel == this.superchainConfigImpl.selector) _superchainConfigImpl = _addr;
         else if (_sel == this.optimismPortalImpl.selector) _optimismPortalImpl = _addr;
         else if (_sel == this.systemConfigImpl.selector) _systemConfigImpl = _addr;
         else if (_sel == this.optimismMintableERC20FactoryImpl.selector) _optimismMintableERC20FactoryImpl = _addr;
