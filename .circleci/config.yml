@@ -670,14 +670,24 @@ jobs:
       - install-contracts-dependencies
       - check-changed:
           patterns: contracts-bedrock
-      - when:
-          condition:
-            equal: ['develop', << pipeline.git.branch >>]
-          steps:
-            - run:
-                name: Check frozen files
-                command: just check-frozen-code
-                working_directory: packages/contracts-bedrock
+      - run:
+          name: Check if target branch is develop
+          command: |
+            # Get PR number from CIRCLE_PULL_REQUEST
+            PR_NUMBER=$(echo $CIRCLE_PULL_REQUEST | rev | cut -d/ -f1 | rev)
+
+            # Use GitHub API to get target branch
+            TARGET_BRANCH=$(curl -s "https://api.github.com/repos/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}/pulls/${PR_NUMBER}" | jq -r .base.ref)
+
+            # If the target branch is not develop, do not run this check
+            if [ "$TARGET_BRANCH" != "develop" ]; then
+              echo "Target branch is not develop, skipping frozen files check"
+              exit 0
+            fi
+      - run:
+          name: Check frozen files
+          command: just check-frozen-code
+          working_directory: packages/contracts-bedrock
 
   contracts-bedrock-tests:
     machine: true
