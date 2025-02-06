@@ -108,6 +108,11 @@ func (db *ChainsDB) UpdateCrossUnsafe(chain eth.ChainID, crossUnsafe types.Block
 		ChainID:        chain,
 		NewCrossUnsafe: crossUnsafe,
 	})
+	db.m.RecordCrossUnsafeRef(chain, eth.BlockRef{
+		Number: crossUnsafe.Number,
+		Time:   crossUnsafe.Timestamp,
+		Hash:   crossUnsafe.Hash,
+	})
 	return nil
 }
 
@@ -127,6 +132,7 @@ func (db *ChainsDB) UpdateCrossSafe(chain eth.ChainID, l1View eth.BlockRef, last
 			Derived: types.BlockSealFromRef(lastCrossDerived),
 		},
 	})
+	db.m.RecordCrossSafeRef(chain, lastCrossDerived)
 	return nil
 }
 
