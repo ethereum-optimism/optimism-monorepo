@@ -192,8 +192,8 @@ func (l *BatchSubmitter) StartBatchSubmitting() error {
 
 	l.wg.Add(3)
 	go l.processReceiptsLoop(receiptsLoopCtx, receiptsCh)                                     // receives from receiptsCh
-	go l.readLoop(l.shutdownCtx, receiptsCh, cancelReceiptsLoopCtx, cancelThrottlingLoopCtx)  // sends on receiptsCh
-	go l.writeLoop(l.shutdownCtx, receiptsCh, cancelReceiptsLoopCtx, cancelThrottlingLoopCtx) // sends on receiptsCh
+	go l.writeLoop(l.shutdownCtx, receiptsCh, cancelReceiptsLoopCtx, cancelThrottlingLoopCtx) // sends on receiptsCh, receives on blocksLoaded
+	go l.readLoop(l.shutdownCtx, receiptsCh, cancelReceiptsLoopCtx, cancelThrottlingLoopCtx)  // sends on blocksLoaded
 
 	l.Log.Info("Batch Submitter started")
 	return nil
@@ -459,6 +459,7 @@ func (l *BatchSubmitter) syncAndPrune(syncStatus *eth.SyncStatus) *inclusiveBloc
 // -  drives the creation of channels and frames
 // -  sends transactions to the DA layer
 func (l *BatchSubmitter) writeLoop(ctx context.Context, receiptsCh chan txmgr.TxReceipt[txRef], receiptsLoopCancel, throttlingLoopCancel context.CancelFunc) {
+	l.blocksLoaded = make(chan struct{})
 	for {
 		select {
 		case <-ctx.Done():
@@ -507,10 +508,11 @@ func (l *BatchSubmitter) readLoop(ctx context.Context, receiptsCh chan txmgr.TxR
 					l.Log.Warn("error loading blocks, clearing state and waiting for node sync", "err", err)
 					l.waitNodeSyncAndClearState()
 					continue
+				} else {
+					l.promptDAThrottlingCheck() // we have increased the pending data. Signal the throttling loop to check if it should throttle.
+					l.promptWriteLoop()         // we have loaded blocks, signal the write loop to start processing them into channels and submitting.
 				}
 			}
-			l.promptDAThrottlingCheck() // we have likely increased the pending data. Signal the throttling loop to check if it should throttle.
-			l.promptWriteLoop()         // we have loaded blocks, signal the write loop to start processing them into channels and submitting.
 
 		case <-ctx.Done():
 			l.queueCancel()
