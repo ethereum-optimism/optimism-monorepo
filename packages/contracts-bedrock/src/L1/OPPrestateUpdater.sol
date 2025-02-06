@@ -34,7 +34,7 @@ contract OPPrestateUpdater is OPContractsManager {
     error FDGNotFound();
 
     // @return Version string
-    /// @custom:semver +interop.2
+    /// @custom:semver +prestateUpdater.0
     function version() public pure override returns (string memory) {
         return string.concat(super.version(), "+prestateUpdater.0");
     }
