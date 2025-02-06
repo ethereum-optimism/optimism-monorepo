@@ -34,9 +34,9 @@ contract OPPrestateUpdater is OPContractsManager {
     error FDGNotFound();
 
     // @return Version string
-    /// @custom:semver +prestateUpdater.0
+    /// @custom:semver 1.0.0
     function version() public pure override returns (string memory) {
-        return string.concat(super.version(), "+prestateUpdater.0");
+        return "1.0.0";
     }
 
     // @notice Constructs the CustomOPContractsManager contract
@@ -92,7 +92,17 @@ contract OPPrestateUpdater is OPContractsManager {
     function updatePrestate(PrestateUpdateInput[] memory _prestateUpdateInputs) external {
         // Loop through each chain and prestate hash
         for (uint256 i = 0; i < _prestateUpdateInputs.length; i++) {
-            bool hasFDG = Claim.unwrap(_prestateUpdateInputs[i].absolutePrestate) != bytes32(0);
+            IFaultDisputeGame permissionlessDisputeGame = IFaultDisputeGame(
+                address(
+                    getGameImplementation(
+                        IDisputeGameFactory(_prestateUpdateInputs[i].systemConfigProxy.disputeGameFactory()),
+                        GameTypes.CANNON
+                    )
+                )
+            );
+
+            bool hasFDG = address(permissionlessDisputeGame) != address(0);
+
             AddGameInput[] memory inputs = new AddGameInput[](hasFDG ? 2 : 1);
             AddGameInput memory pdgInput;
             AddGameInput memory fdgInput;
@@ -111,12 +121,14 @@ contract OPPrestateUpdater is OPContractsManager {
             IFaultDisputeGame.GameConstructorParams memory pdgParams =
                 getGameConstructorParams(IFaultDisputeGame(address(pdg)));
 
+            string memory saltMixer =
+                string.concat("prestate_update", string(abi.encode(_prestateUpdateInputs[i].systemConfigProxy)));
             // Create game input with updated prestate but same other params
             pdgInput = AddGameInput({
                 disputeAbsolutePrestate: _prestateUpdateInputs[i].absolutePrestate,
-                saltMixer: "prestate_update",
-                systemConfig: _prestateUpdateInputs[i].opChain.systemConfigProxy,
-                proxyAdmin: _prestateUpdateInputs[i].opChain.proxyAdmin,
+                saltMixer: saltMixer,
+                systemConfig: _prestateUpdateInputs[i].systemConfigProxy,
+                proxyAdmin: _prestateUpdateInputs[i].proxyAdmin,
                 delayedWETH: IDelayedWETH(payable(address(pdgParams.weth))),
                 disputeGameType: pdgParams.gameType,
                 disputeMaxGameDepth: pdgParams.maxGameDepth,
@@ -141,9 +153,9 @@ contract OPPrestateUpdater is OPContractsManager {
                 // Create game input with updated prestate but same other params
                 fdgInput = AddGameInput({
                     disputeAbsolutePrestate: _prestateUpdateInputs[i].absolutePrestate,
-                    saltMixer: "prestate_update",
-                    systemConfig: _prestateUpdateInputs[i].opChain.systemConfigProxy,
-                    proxyAdmin: _prestateUpdateInputs[i].opChain.proxyAdmin,
+                    saltMixer: saltMixer,
+                    systemConfig: _prestateUpdateInputs[i].systemConfigProxy,
+                    proxyAdmin: _prestateUpdateInputs[i].proxyAdmin,
                     delayedWETH: IDelayedWETH(payable(address(fdgParams.weth))),
                     disputeGameType: fdgParams.gameType,
                     disputeMaxGameDepth: fdgParams.maxGameDepth,

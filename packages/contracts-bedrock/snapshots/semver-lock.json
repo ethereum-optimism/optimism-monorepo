@@ -16,16 +16,16 @@
     "sourceCodeHash": "0xf9ba98657dc235355146e381b654fe3ed766feb7cd87636ec0c9d4c6dd3e1973"
   },
   "src/L1/OPContractsManager.sol": {
-    "initCodeHash": "0x9ec5fe20fd2be0e5a1cf123ca0c8bfdeace4b3bd0eec5cf903b1ba51d706473a",
+    "initCodeHash": "0xcb3af876ed3a70c649aa6b051a247c7d878a0a5b2cda860d3d5b9d23805e4c0f",
     "sourceCodeHash": "0xd50bb1a58c7465ace045690b0fe1cf3cda1b11ebc2676310d4479a84a1f7c287"
   },
   "src/L1/OPContractsManagerInterop.sol": {
-    "initCodeHash": "0x0d41100e0e3aca2fe4ab55921d97476b2af2bf58aff87a61b3eb9bf6ad807d73",
+    "initCodeHash": "0xbb9db07dffb5d37f2ff39a7a359eebc11368a252ba8970b17b7118296bcc6bc2",
     "sourceCodeHash": "0x0ba9c63e3f00dab87be058fd0091f19c51faeafd24609bc13667214796bcc106"
   },
   "src/L1/OPPrestateUpdater.sol": {
-    "initCodeHash": "0x950aedb866637110c53a662bd16811e8a3133be88e3216edfbd04541d14f5c88",
-    "sourceCodeHash": "0x52c79e401cbd999c0beecee45e709ca7c0702847ffe38fe0b7ca93a8c199f264"
+    "initCodeHash": "0x15db3da5e7c168650122303c309ed5ae027e4a2e9a6bc32f516d107dff80e325",
+    "sourceCodeHash": "0x07aba814feb007b037fa27c862da27aa78e573356efcdd76a7d90d25ae86f056"
   },
   "src/L1/OptimismPortal2.sol": {
     "initCodeHash": "0x2cc5776c92d6cb154aa3d9897c476deaf49d98dc81493fabaea72987b9588853",
@@ -172,11 +172,11 @@
     "sourceCodeHash": "0x08efbce44394f555a4e656816897029e2e80e455e4200a1b887fc18993294660"
   },
   "src/dispute/FaultDisputeGame.sol": {
-    "initCodeHash": "0xb7493f4eac423a07e9a9e318f25d003c74ece97da1fab5d4e47a7d5497d6db2f",
+    "initCodeHash": "0xcf52f355fb87ea97d077e74e7c2288bf6aab6ff00c62ccbacc3acb1c1066d2b6",
     "sourceCodeHash": "0x30ae8a7e5718b9c8b0536034143f8f93f01d6f8b53f287fe4d020eb1d7053ef9"
   },
   "src/dispute/PermissionedDisputeGame.sol": {
-    "initCodeHash": "0x77f51a5cc73ee6e3a1b2f8d406daccd0d4e0fb20751532e9a48f398183c99f94",
+    "initCodeHash": "0xbd05415cb0b4fc4a95d49af37b50163933b6e535233f34942fbfd27991e7374e",
     "sourceCodeHash": "0x73b6788068565814ac516055269910e0c44273edd17978f421d05ba8431ef60b"
   },
   "src/legacy/DeployerWhitelist.sol": {

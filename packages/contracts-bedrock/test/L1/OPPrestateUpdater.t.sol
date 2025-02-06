@@ -155,6 +155,10 @@ contract OPPrestateUpdater_Test is Test {
         );
     }
 
+    function test_semver_works() public view {
+        assertNotEq(abi.encode(prestateUpdater.version()), abi.encode(0));
+    }
+
     function test_updatePrestate_withValidInput_succeeds() public {
         OPPrestateUpdater.PrestateUpdateInput[] memory inputs = new OPPrestateUpdater.PrestateUpdateInput[](1);
         inputs[0] = OPPrestateUpdater.PrestateUpdateInput({
