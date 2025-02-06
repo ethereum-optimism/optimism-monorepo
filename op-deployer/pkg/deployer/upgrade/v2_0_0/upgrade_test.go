@@ -8,10 +8,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum-optimism/optimism/op-service/testutils/devnet"
+
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/broadcaster"
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/testutil"
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/env"
-	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/retryproxy"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -53,23 +54,21 @@ func TestUpgradeOPChainInput_OpChainConfigs(t *testing.T) {
 }
 
 func TestUpgrader_Upgrade(t *testing.T) {
-	_, afactsFS := testutil.LocalArtifacts(t)
-
-	forkRPCURL := os.Getenv("SEPOLIA_RPC_URL")
-	require.NotEmpty(t, forkRPCURL, "must specify RPC url via SEPOLIA_RPC_URL env var")
-
 	lgr := testlog.Logger(t, slog.LevelDebug)
+
+	forkedL1, stopL1, err := devnet.NewForkedSepolia(lgr)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, stopL1())
+	})
+	l1RPC := forkedL1.RPCUrl()
+
+	_, afactsFS := testutil.LocalArtifacts(t)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
-	retryProxy := retryproxy.New(lgr, forkRPCURL)
-	require.NoError(t, retryProxy.Start())
-	t.Cleanup(func() {
-		require.NoError(t, retryProxy.Stop())
-	})
-
-	rpcClient, err := rpc.Dial(retryProxy.Endpoint())
+	rpcClient, err := rpc.Dial(l1RPC)
 	require.NoError(t, err)
 
 	bcast := new(broadcaster.CalldataBroadcaster)

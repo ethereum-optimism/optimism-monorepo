@@ -1,4 +1,4 @@
-package retryproxy
+package devnet
 
 import (
 	"bytes"
@@ -34,7 +34,7 @@ type RetryProxy struct {
 
 type Option func(*RetryProxy)
 
-func New(lgr log.Logger, upstream string, opts ...Option) *RetryProxy {
+func NewRetryProxy(lgr log.Logger, upstream string, opts ...Option) *RetryProxy {
 	strategy := &retry.ExponentialStrategy{
 		Min:       250 * time.Millisecond,
 		Max:       5 * time.Second,
@@ -154,7 +154,7 @@ func (p *RetryProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	p.lgr.Debug("proxied request", "method", jReq.Method, "dur", time.Since(start))
+	p.lgr.Trace("proxied request", "method", jReq.Method, "dur", time.Since(start))
 }
 
 func (p *RetryProxy) doProxyReq(ctx context.Context, body []byte) (*http.Response, error) {
