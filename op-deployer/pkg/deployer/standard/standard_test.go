@@ -1,11 +1,12 @@
 package standard
 
 import (
-	"github.com/ethereum/go-ethereum/common"
 	"reflect"
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/stretchr/testify/require"
 )
