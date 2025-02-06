@@ -91,7 +91,6 @@ func (m *Metrics) Registry() *prometheus.Registry {
 }
 
 func (m *Metrics) RecordUp() {
-	prometheus.MustRegister()
 	m.up.Set(1)
 }
 
