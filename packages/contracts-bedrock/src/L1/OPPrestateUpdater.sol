@@ -101,7 +101,7 @@ contract OPPrestateUpdater is OPContractsManager {
                 )
             );
 
-            bool hasFDG = address(permissionlessDisputeGame) != address(0);
+            bool hasFDG = !(address(permissionlessDisputeGame) == address(0));
 
             AddGameInput[] memory inputs = new AddGameInput[](hasFDG ? 2 : 1);
             AddGameInput memory pdgInput;
