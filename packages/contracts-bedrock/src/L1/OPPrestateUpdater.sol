@@ -33,10 +33,10 @@ contract OPPrestateUpdater is OPContractsManager {
     /// @notice Thrown when the address off a fault dispute game is 0.
     error FDGNotFound();
 
-    // @notice Returns the version string for this contract
     // @return Version string
+    /// @custom:semver +interop.2
     function version() public pure override returns (string memory) {
-        return "1.0.0";
+        return string.concat(super.version(), "+prestateUpdater.0");
     }
 
     // @notice Constructs the CustomOPContractsManager contract
