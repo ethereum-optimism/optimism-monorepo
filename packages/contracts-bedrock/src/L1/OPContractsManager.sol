@@ -29,6 +29,9 @@ import { IL1ERC721Bridge } from "interfaces/L1/IL1ERC721Bridge.sol";
 import { IL1StandardBridge } from "interfaces/L1/IL1StandardBridge.sol";
 import { IOptimismMintableERC20Factory } from "interfaces/universal/IOptimismMintableERC20Factory.sol";
 
+// Contracts
+import { StandardConfigValidator } from "src/L1/StandardConfigValidator.sol";
+
 contract OPContractsManager is ISemver {
     // -------- Structs --------
 
@@ -149,6 +152,9 @@ contract OPContractsManager is ISemver {
         return "1.2.0";
     }
 
+    /// @notice Address of the standard config validator contract.
+    StandardConfigValidator public immutable validator;
+
     /// @notice Address of the SuperchainConfig contract shared by all chains.
     ISuperchainConfig public immutable superchainConfig;
 
@@ -260,6 +266,7 @@ contract OPContractsManager is ISemver {
         implementation = _implementations;
         thisOPCM = this;
         upgradeController = _upgradeController;
+        validator = new StandardConfigValidator();
     }
 
     function deploy(DeployInput calldata _input) external returns (DeployOutput memory) {
@@ -437,6 +444,9 @@ contract OPContractsManager is ISemver {
         transferOwnership(address(output.opChainProxyAdmin), _input.roles.opChainProxyAdminOwner);
 
         emit Deployed(l2ChainId, msg.sender, abi.encode(output));
+
+        validator.validateSuperchain(superchainConfig, protocolVersions, superchainProxyAdmin);
+        validator.validateOpChain(output.systemConfigProxy, output.opChainProxyAdmin);
         return output;
     }
 
@@ -597,7 +607,9 @@ contract OPContractsManager is ISemver {
             // Emit the upgraded event with the address of the caller. Since this will be a delegatecall,
             // the caller will be the value of the ADDRESS opcode.
             emit Upgraded(l2ChainId, _opChainConfigs[i].systemConfigProxy, address(this));
+            validator.validateOpChain(_opChainConfigs[i].systemConfigProxy, _opChainConfigs[i].proxyAdmin);
         }
+        validator.validateSuperchain(superchainConfig, protocolVersions, superchainProxyAdmin);
     }
 
     /// @notice addGameType deploys a new dispute game and links it to the DisputeGameFactory. The inputted _gameConfigs
@@ -705,6 +717,7 @@ contract OPContractsManager is ISemver {
             IDisputeGameFactory dgf = getDisputeGameFactory(gameConfig.systemConfig);
             setDGFImplementation(dgf, gameConfig.disputeGameType, IDisputeGame(address(outputs[i].faultDisputeGame)));
             dgf.setInitBond(gameConfig.disputeGameType, gameConfig.initialBond);
+            validator.validateOpChain(gameConfig.systemConfig, gameConfig.proxyAdmin);
         }
 
         return outputs;
