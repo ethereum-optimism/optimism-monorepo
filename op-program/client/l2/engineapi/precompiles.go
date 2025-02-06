@@ -84,7 +84,7 @@ func CreatePrecompileOverrides(precompileOracle PrecompileOracle) vm.PrecompileO
 			}
 		case blsG1MSMPrecompileAddress:
 			return &blsOperationOracleWithSizeLimit{
-				sizeLimit: 513760, // TODO: replace with constant from op-geth once implemented
+				sizeLimit: params.Bls12381G1MulMaxInputSizeIsthmus,
 				blsOperationOracle: blsOperationOracle{
 					Orig:              orig,
 					Oracle:            precompileOracle,
@@ -104,7 +104,7 @@ func CreatePrecompileOverrides(precompileOracle PrecompileOracle) vm.PrecompileO
 			}
 		case blsG2MSMPrecompileAddress:
 			return &blsOperationOracleWithSizeLimit{
-				sizeLimit: 488448, // TODO: replace with constant from op-geth once implemented
+				sizeLimit: params.Bls12381G1MulMaxInputSizeIsthmus,
 				blsOperationOracle: blsOperationOracle{
 					Orig:              orig,
 					Oracle:            precompileOracle,
@@ -115,7 +115,7 @@ func CreatePrecompileOverrides(precompileOracle PrecompileOracle) vm.PrecompileO
 			}
 		case blsPairingPrecompileAddress:
 			return &blsOperationOracleWithSizeLimit{
-				sizeLimit: 235008, // TODO: replace with constant from op-geth once implemented
+				sizeLimit: params.Bls12381PairingMaxInputSizeIsthmus,
 				blsOperationOracle: blsOperationOracle{
 					Orig:              orig,
 					Oracle:            precompileOracle,
@@ -366,11 +366,11 @@ func (b *blsOperationOracle) Run(input []byte) ([]byte, error) {
 
 type blsOperationOracleWithSizeLimit struct {
 	blsOperationOracle
-	sizeLimit uint
+	sizeLimit uint64
 }
 
 func (b *blsOperationOracleWithSizeLimit) Run(input []byte) ([]byte, error) {
-	if len(input) > int(b.sizeLimit) {
+	if uint64(len(input)) > b.sizeLimit {
 		return nil, errInvalidBlsSize
 	}
 	return b.blsOperationOracle.Run(input)
