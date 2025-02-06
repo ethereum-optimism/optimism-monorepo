@@ -170,9 +170,9 @@ contract FaultDisputeGame is Clone, ISemver {
     uint256 internal constant HEADER_BLOCK_NUMBER_INDEX = 8;
 
     /// @notice Semantic version.
-    /// @custom:semver 1.4.0
+    /// @custom:semver 1.4.1
     function version() public pure virtual returns (string memory) {
-        return "1.4.0";
+        return "1.4.1";
     }
 
     /// @notice The starting timestamp of the game
@@ -1015,6 +1015,7 @@ contract FaultDisputeGame is Clone, ISemver {
 
         // Try to update the anchor game first. Won't always succeed because delays can lead
         // to situations in which this game might not be eligible to be a new anchor game.
+        // eip150-safe
         try ANCHOR_STATE_REGISTRY.setAnchorState(IDisputeGame(address(this))) { } catch { }
 
         // Check if the game is a proper game, which will determine the bond distribution mode.
