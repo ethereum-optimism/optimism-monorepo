@@ -14,7 +14,7 @@ import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 
 /// @custom:proxied true
 /// @title L1StandardBridge
-/// @notice The L1StandardBridge is responsible for transfering ETH and ERC20 tokens between L1 and
+/// @notice The L1StandardBridge is responsible for transferring ETH and ERC20 tokens between L1 and
 ///         L2. In the case that an ERC20 token is native to L1, it will be escrowed within this
 ///         contract. If the ERC20 token is native to L2, it will be burnt. Before Bedrock, ETH was
 ///         stored within this contract. After Bedrock, ETH is instead stored inside the
