@@ -19,7 +19,7 @@ type Metrics struct {
 	*contractMetrics.ContractMetrics
 	*metrics.VmMetrics
 
-	up	                *prometheus.GaugeVec
+	up                  prometheus.Gauge
 	vmLastExecutionTime *prometheus.GaugeVec
 	vmLastMemoryUsed    *prometheus.GaugeVec
 	successTotal        *prometheus.CounterVec
@@ -44,11 +44,11 @@ func NewMetrics(runConfigs []RunConfig) *Metrics {
 		ContractMetrics: contractMetrics.MakeContractMetrics(Namespace, factory),
 		VmMetrics:       metrics.NewVmMetrics(Namespace, factory),
 
-		up: factory.NewGaugeVec(prometheus.GaugeOpts{
+		up: factory.NewGauge(prometheus.GaugeOpts{
 			Namespace: Namespace,
 			Name:      "up",
 			Help:      "The VM runner has started to run",
-		}, []string{"vm"}),
+		}),
 		vmLastExecutionTime: factory.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: Namespace,
 			Name:      "vm_last_execution_time",
@@ -80,7 +80,7 @@ func NewMetrics(runConfigs []RunConfig) *Metrics {
 		metrics.successTotal.WithLabelValues(runConfig.Name).Add(0)
 		metrics.failuresTotal.WithLabelValues(runConfig.Name).Add(0)
 		metrics.invalidTotal.WithLabelValues(runConfig.Name).Add(0)
-		metrics.RecordUp(runConfig.Name)
+		metrics.RecordUp()
 	}
 
 	return metrics
@@ -90,9 +90,9 @@ func (m *Metrics) Registry() *prometheus.Registry {
 	return m.registry
 }
 
-func (m *Metrics) RecordUp(vmType string) {
+func (m *Metrics) RecordUp() {
 	prometheus.MustRegister()
-	m.up.WithLabelValues(vmType).Set(1)
+	m.up.Set(1)
 }
 
 func (m *Metrics) RecordVmExecutionTime(vmType string, dur time.Duration) {
