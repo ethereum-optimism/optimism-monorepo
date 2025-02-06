@@ -54,6 +54,7 @@ contract DeployOPCMInput is BaseDeployIO {
         else if (_sel == this.addressManagerBlueprint.selector) _addressManagerBlueprint = _addr;
         else if (_sel == this.proxyBlueprint.selector) _proxyBlueprint = _addr;
         else if (_sel == this.proxyAdminBlueprint.selector) _proxyAdminBlueprint = _addr;
+        else if (_sel == this.protocolVersionsImpl.selector) _protocolVersionsImpl = _addr;
         else if (_sel == this.l1ChugSplashProxyBlueprint.selector) _l1ChugSplashProxyBlueprint = _addr;
         else if (_sel == this.resolvedDelegateProxyBlueprint.selector) _resolvedDelegateProxyBlueprint = _addr;
         else if (_sel == this.permissionedDisputeGame1Blueprint.selector) _permissionedDisputeGame1Blueprint = _addr;
