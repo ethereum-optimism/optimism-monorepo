@@ -402,9 +402,10 @@ contract DeploySuperchain is Script {
         // broadcaster needs to be the deployer since they are set to the initial proxy admin owner.
         vm.broadcast(msg.sender);
         IProxyAdmin superchainProxyAdmin = IProxyAdmin(
-            DeployUtils.create1({
+            DeployUtils.createDeterministic({
                 _name: "ProxyAdmin",
-                _args: DeployUtils.encodeConstructor(abi.encodeCall(IProxyAdmin.__constructor__, (msg.sender)))
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(IProxyAdmin.__constructor__, (msg.sender))),
+                _salt: DeployUtils.DEFAULT_SALT
             })
         );
 
@@ -485,11 +486,12 @@ contract DeploySuperchain is Script {
 
             vm.startBroadcast(msg.sender);
             superchainConfigProxy = ISuperchainConfig(
-                DeployUtils.create1({
+                DeployUtils.createDeterministic({
                     _name: "Proxy",
                     _args: DeployUtils.encodeConstructor(
                         abi.encodeCall(IProxy.__constructor__, (address(superchainProxyAdmin)))
-                    )
+                    ),
+                    _salt: DeployUtils.DEFAULT_SALT
                 })
             );
 
@@ -516,11 +518,12 @@ contract DeploySuperchain is Script {
 
             vm.startBroadcast(msg.sender);
             protocolVersionsProxy = IProtocolVersions(
-                DeployUtils.create1({
+                DeployUtils.createDeterministic({
                     _name: "Proxy",
                     _args: DeployUtils.encodeConstructor(
                         abi.encodeCall(IProxy.__constructor__, (address(superchainProxyAdmin)))
-                    )
+                    ),
+                    _salt: DeployUtils.DEFAULT_SALT
                 })
             );
 
@@ -677,11 +680,12 @@ contract DeploySuperchainInterop is DeploySuperchain {
 
             vm.startBroadcast(msg.sender);
             sharedLockboxProxy = ISharedLockbox(
-                DeployUtils.create1({
+                DeployUtils.createDeterministic({
                     _name: "Proxy",
                     _args: DeployUtils.encodeConstructor(
                         abi.encodeCall(IProxy.__constructor__, (address(superchainProxyAdmin)))
-                    )
+                    ),
+                    _salt: DeployUtils.DEFAULT_SALT
                 })
             );
 
@@ -722,11 +726,12 @@ contract DeploySuperchainInterop is DeploySuperchain {
 
             vm.startBroadcast(msg.sender);
             superchainConfigProxy = ISuperchainConfigInterop(
-                DeployUtils.create1({
+                DeployUtils.createDeterministic({
                     _name: "Proxy",
                     _args: DeployUtils.encodeConstructor(
                         abi.encodeCall(IProxy.__constructor__, (address(superchainProxyAdmin)))
-                    )
+                    ),
+                    _salt: DeployUtils.DEFAULT_SALT
                 })
             );
 
