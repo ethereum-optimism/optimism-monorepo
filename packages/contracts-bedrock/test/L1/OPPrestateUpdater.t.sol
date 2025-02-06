@@ -1,22 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
-import { console2 as console } from "forge-std/console2.sol";
 // Testing
-import { Test, stdStorage, StdStorage } from "forge-std/Test.sol";
-import { CommonTest } from "test/setup/CommonTest.sol";
-import { DeployOPChain_TestBase } from "test/opcm/DeployOPChain.t.sol";
+import { Test } from "forge-std/Test.sol";
 import { DelegateCaller } from "test/mocks/Callers.sol";
 
 // Scripts
-import { DeployOPChainInput } from "scripts/deploy/DeployOPChain.s.sol";
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 
 // Libraries
-import { EIP1967Helper } from "test/mocks/EIP1967Helper.sol";
 import { Blueprint } from "src/libraries/Blueprint.sol";
-import { ForgeArtifacts } from "scripts/libraries/ForgeArtifacts.sol";
-import { Bytes } from "src/libraries/Bytes.sol";
 
 // Interfaces
 import { IProxyAdmin } from "interfaces/universal/IProxyAdmin.sol";
@@ -25,10 +18,7 @@ import { IProtocolVersions } from "interfaces/L1/IProtocolVersions.sol";
 import { IPreimageOracle } from "interfaces/cannon/IPreimageOracle.sol";
 import { IPermissionedDisputeGame } from "interfaces/dispute/IPermissionedDisputeGame.sol";
 import { IDelayedWETH } from "interfaces/dispute/IDelayedWETH.sol";
-import { IFaultDisputeGame } from "interfaces/dispute/IFaultDisputeGame.sol";
-import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 import { IOPContractsManager } from "interfaces/L1/IOPContractsManager.sol";
-import { ISemver } from "interfaces/universal/ISemver.sol";
 import { IDisputeGameFactory } from "interfaces/dispute/IDisputeGameFactory.sol";
 
 // Contracts
@@ -224,7 +214,7 @@ contract OPPrestateUpdater_Test is Test {
 
         vm.mockCall(
             address(dgf),
-            abi.encodeWithSelector(dgf.gameImpls.selector, GameTypes.CANNON),
+            abi.encodeCall(dgf.gameImpls, GameTypes.CANNON),
             abi.encode(address(0))
         );
 
