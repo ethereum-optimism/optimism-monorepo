@@ -105,8 +105,6 @@ type SuperSystem interface {
 	DeployEmitterContract(network string, username string) common.Address
 	// Use the Emitter Contract to emit an Event Log
 	EmitData(ctx context.Context, network string, username string, data string) *types.Receipt
-	// AddDependency adds a dependency (by chain ID) to the given chain
-	AddDependency(ctx context.Context, network string, dep *big.Int) *types.Receipt
 	// ValidateMessage calls the CrossL2Inbox ValidateMessage function
 	ValidateMessage(
 		ctx context.Context,

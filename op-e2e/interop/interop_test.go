@@ -251,20 +251,10 @@ func TestInteropBlockBuilding(t *testing.T) {
 		// Add chain A as dependency to chain B,
 		// such that we can execute a message on B that was initiated on A.
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		depRec := s2.AddDependency(ctx, chainB, s2.ChainID(chainA))
 		cancel()
-		t.Logf("Dependency set in L1 block %d", depRec.BlockNumber)
 
 		rollupClA, err := dial.DialRollupClientWithTimeout(context.Background(), time.Second*15, logger, s2.OpNode(chainA).UserRPC().RPC())
 		require.NoError(t, err)
-
-		// Now wait for the dependency to be visible in the L2 (receipt needs to be picked up)
-		require.Eventually(t, func() bool {
-			status, err := rollupClA.SyncStatus(context.Background())
-			require.NoError(t, err)
-			return status.CrossUnsafeL2.L1Origin.Number >= depRec.BlockNumber.Uint64()
-		}, time.Second*30, time.Second, "wait for L1 origin to match dependency L1 block")
-		t.Log("Dependency information has been processed in L2 block")
 
 		// emit log on chain A
 		ctx, cancel = context.WithTimeout(context.Background(), 30*time.Second)
