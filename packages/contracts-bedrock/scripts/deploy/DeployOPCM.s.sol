@@ -27,8 +27,6 @@ contract DeployOPCMInput is BaseDeployIO {
     address internal _resolvedDelegateProxyBlueprint;
     address internal _permissionedDisputeGame1Blueprint;
     address internal _permissionedDisputeGame2Blueprint;
-    address internal _permissionlessDisputeGame1Blueprint;
-    address internal _permissionlessDisputeGame2Blueprint;
 
     address internal _superchainConfigImpl;
     address internal _protocolVersionsImpl;
@@ -59,8 +57,6 @@ contract DeployOPCMInput is BaseDeployIO {
         else if (_sel == this.resolvedDelegateProxyBlueprint.selector) _resolvedDelegateProxyBlueprint = _addr;
         else if (_sel == this.permissionedDisputeGame1Blueprint.selector) _permissionedDisputeGame1Blueprint = _addr;
         else if (_sel == this.permissionedDisputeGame2Blueprint.selector) _permissionedDisputeGame2Blueprint = _addr;
-        else if (_sel == this.permissionlessDisputeGame1Blueprint.selector) _permissionlessDisputeGame1Blueprint = _addr;
-        else if (_sel == this.permissionlessDisputeGame2Blueprint.selector) _permissionlessDisputeGame2Blueprint = _addr;
         else if (_sel == this.l1ERC721BridgeImpl.selector) _l1ERC721BridgeImpl = _addr;
         else if (_sel == this.superchainProxyAdmin.selector) _superchainProxyAdmin = IProxyAdmin(_addr);
         else if (_sel == this.superchainConfigImpl.selector) _superchainConfigImpl = _addr;
@@ -143,16 +139,6 @@ contract DeployOPCMInput is BaseDeployIO {
     function permissionedDisputeGame2Blueprint() public view returns (address) {
         require(_permissionedDisputeGame2Blueprint != address(0), "DeployOPCMInput: not set");
         return _permissionedDisputeGame2Blueprint;
-    }
-
-    function permissionlessDisputeGame1Blueprint() public view returns (address) {
-        require(_permissionlessDisputeGame1Blueprint != address(0), "DeployOPCMInput: not set");
-        return _permissionlessDisputeGame1Blueprint;
-    }
-
-    function permissionlessDisputeGame2Blueprint() public view returns (address) {
-        require(_permissionlessDisputeGame2Blueprint != address(0), "DeployOPCMInput: not set");
-        return _permissionlessDisputeGame2Blueprint;
     }
 
     function l1ERC721BridgeImpl() public view returns (address) {
@@ -243,8 +229,8 @@ contract DeployOPCM is Script {
             resolvedDelegateProxy: _doi.resolvedDelegateProxyBlueprint(),
             permissionedDisputeGame1: _doi.permissionedDisputeGame1Blueprint(),
             permissionedDisputeGame2: _doi.permissionedDisputeGame2Blueprint(),
-            permissionlessDisputeGame1: _doi.permissionlessDisputeGame1Blueprint(),
-            permissionlessDisputeGame2: _doi.permissionlessDisputeGame2Blueprint()
+            permissionlessDisputeGame1: address(0),
+            permissionlessDisputeGame2: address(0)
         });
         IOPContractsManager.Implementations memory implementations = IOPContractsManager.Implementations({
             superchainConfigImpl: address(_doi.superchainConfigImpl()),
