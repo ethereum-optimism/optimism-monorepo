@@ -15,7 +15,7 @@ import { OptimismMintableERC20 } from "src/universal/OptimismMintableERC20.sol";
 /// @custom:proxied true
 /// @custom:predeploy 0x4200000000000000000000000000000000000010
 /// @title L2StandardBridge
-/// @notice The L2StandardBridge is responsible for transfering ETH and ERC20 tokens between L1 and
+/// @notice The L2StandardBridge is responsible for transferring ETH and ERC20 tokens between L1 and
 ///         L2. In the case that an ERC20 token is native to L2, it will be escrowed within this
 ///         contract. If the ERC20 token is native to L1, it will be burnt.
 ///         NOTE: this contract is not intended to support all variations of ERC20 tokens. Examples
