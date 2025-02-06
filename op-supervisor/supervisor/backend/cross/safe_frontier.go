@@ -12,7 +12,7 @@ import (
 type SafeFrontierCheckDeps interface {
 	CandidateCrossSafe(chain eth.ChainID) (candidate types.DerivedBlockRefPair, err error)
 
-	CrossDerivedFrom(chainID eth.ChainID, derived eth.BlockID) (derivedFrom types.BlockSeal, err error)
+	CrossDerivedToSource(chainID eth.ChainID, derived eth.BlockID) (derivedFrom types.BlockSeal, err error)
 
 	DependencySet() depset.DependencySet
 }
@@ -21,7 +21,7 @@ type SafeFrontierCheckDeps interface {
 //   - already cross-safe.
 //   - the first (if not first: local blocks to verify before proceeding)
 //     local-safe block, after the cross-safe block.
-func HazardSafeFrontierChecks(d SafeFrontierCheckDeps, inL1DerivedFrom eth.BlockID, hazards map[types.ChainIndex]types.BlockSeal) error {
+func HazardSafeFrontierChecks(d SafeFrontierCheckDeps, inL1Source eth.BlockID, hazards map[types.ChainIndex]types.BlockSeal) error {
 	depSet := d.DependencySet()
 	for hazardChainIndex, hazardBlock := range hazards {
 		hazardChainID, err := depSet.ChainIDFromIndex(hazardChainIndex)
@@ -31,7 +31,7 @@ func HazardSafeFrontierChecks(d SafeFrontierCheckDeps, inL1DerivedFrom eth.Block
 			}
 			return err
 		}
-		initDerivedFrom, err := d.CrossDerivedFrom(hazardChainID, hazardBlock.ID())
+		initSource, err := d.CrossDerivedToSource(hazardChainID, hazardBlock.ID())
 		if err != nil {
 			if errors.Is(err, types.ErrFuture) {
 				// If not in cross-safe scope, then check if it's the candidate cross-safe block.
@@ -43,16 +43,16 @@ func HazardSafeFrontierChecks(d SafeFrontierCheckDeps, inL1DerivedFrom eth.Block
 					return fmt.Errorf("expected block %s (chain %d) does not match candidate local-safe block %s: %w",
 						hazardBlock, hazardChainID, candidate.Derived, types.ErrConflict)
 				}
-				if candidate.DerivedFrom.Number > inL1DerivedFrom.Number {
+				if candidate.Source.Number > inL1Source.Number {
 					return fmt.Errorf("local-safe hazard block %s derived from L1 block %s is after scope %s: %w",
-						hazardBlock.ID(), initDerivedFrom, inL1DerivedFrom, types.ErrOutOfScope)
+						hazardBlock.ID(), initSource, inL1Source, types.ErrOutOfScope)
 				}
 			} else {
 				return fmt.Errorf("failed to determine cross-derived of hazard block %s (chain %s): %w", hazardBlock, hazardChainID, err)
 			}
-		} else if initDerivedFrom.Number > inL1DerivedFrom.Number {
+		} else if initSource.Number > inL1Source.Number {
 			return fmt.Errorf("cross-safe hazard block %s derived from L1 block %s is after scope %s: %w",
-				hazardBlock.ID(), initDerivedFrom, inL1DerivedFrom, types.ErrOutOfScope)
+				hazardBlock.ID(), initSource, inL1Source, types.ErrOutOfScope)
 		}
 	}
 	return nil

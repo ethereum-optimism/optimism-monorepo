@@ -172,14 +172,14 @@ commands:
             user=$(whoami)
             echo "$user" > .executor-user
             echo "Set executor user to $user."
-            
+
             if [[ "$user" == "root" ]]; then
               # Self-hosted runners will persist this cache between runs. Cleaning it up means that we
               # preserve the semantics of the cache regardless of executor type. It's also much faster
               # to delete the cache and recreate it than it is to overwrite it in place.
               rm -rf /data/mise-data
               echo "Cleaned up cache data."
-            
+
               mkdir -p /data/mise-data
               echo "Created Mise data dir."
               mkdir -p ~/.cache
@@ -206,7 +206,7 @@ commands:
             else
               curl https://mise.run | sh
             fi
-            
+
             echo "export PATH=\"$HOME/.local/bin:\$PATH\"" >> "$BASH_ENV"
             echo "export MISE_DATA_DIR=/data/mise-data" >> "$BASH_ENV"
             echo "export MISE_JOBS=$(nproc)" >> "$BASH_ENV"
@@ -307,8 +307,9 @@ jobs:
                 mentions: "@proofs-team"
 
   cannon-build-test-vectors:
-    machine: true
-    resource_class: ethereum-optimism/latitude-1
+    docker:
+      - image: <<pipeline.parameters.default_docker_image>>
+    resource_class: large
     steps:
       - checkout-with-mise
       - check-changed:
@@ -676,8 +677,10 @@ jobs:
           working_directory: packages/contracts-bedrock
 
   contracts-bedrock-tests:
-    machine: true
-    resource_class: ethereum-optimism/latitude-1
+    circleci_ip_ranges: true
+    docker:
+      - image: <<pipeline.parameters.default_docker_image>>
+    resource_class: xlarge
     parameters:
       test_list:
         description: List of test files to run
@@ -760,8 +763,10 @@ jobs:
       - notify-failures-on-develop
 
   contracts-bedrock-coverage:
-    machine: true
-    resource_class: ethereum-optimism/latitude-1
+    circleci_ip_ranges: true
+    docker:
+        - image: <<pipeline.parameters.default_docker_image>>
+    resource_class: 2xlarge
     parameters:
       test_flags:
         description: Additional flags to pass to the test command
@@ -798,6 +803,15 @@ jobs:
           command: |
             sudo apt-get update
             sudo apt-get install -y lcov
+      - run:
+          name: Write pinned block number for cache key
+          command: |
+            just print-pinned-block-number > ./pinnedBlockNumber.txt
+            cat pinnedBlockNumber.txt
+          working_directory: packages/contracts-bedrock
+      - restore_cache:
+          name: Restore forked state
+          key: forked-state-contracts-bedrock-tests-upgrade-{{ checksum "packages/contracts-bedrock/pinnedBlockNumber.txt" }}
       - run:
           name: Run coverage tests
           command: just coverage-lcov-all <<parameters.test_flags>>
@@ -846,7 +860,6 @@ jobs:
           command: |
             just print-pinned-block-number > ./pinnedBlockNumber.txt
             cat pinnedBlockNumber.txt
-            pwd
           working_directory: packages/contracts-bedrock
       - restore_cache:
           name: Restore forked state
@@ -911,8 +924,6 @@ jobs:
       - run-contracts-check:
           command: lint
       - run-contracts-check:
-          command: gas-snapshot-check
-      - run-contracts-check:
           command: snapshots-check-no-build
       - run-contracts-check:
           command: interfaces-check-no-build
@@ -952,8 +963,9 @@ jobs:
         description: should load in foundry artifacts
         type: boolean
         default: false
-    machine: true
-    resource_class: ethereum-optimism/latitude-1
+    docker:
+      - image: <<pipeline.parameters.default_docker_image>>
+    resource_class: xlarge
     steps:
       - checkout-with-mise
       - check-changed:
@@ -1063,7 +1075,8 @@ jobs:
             gotestsum --format=testname \
               --junitfile=./tmp/test-results/results.xml \
               --jsonfile=./tmp/testlogs/log.json \
-              --rerun-fails=2 \
+              --rerun-fails=3 \
+              --rerun-fails-max-failures=50 \
               --packages="$formatted_packages" \
               -- -parallel=$PARALLEL -coverprofile=coverage.out -timeout=<<parameters.test_timeout>>
       - codecov/upload:
@@ -1164,17 +1177,25 @@ jobs:
             echo "Publishing ${PRESTATE_HASH}, ${PRESTATE_MT64_HASH}, ${PRESTATE_INTEROP_HASH} as ${BRANCH_NAME}"
             if [[ "" != "<< pipeline.git.branch >>" ]]
             then
+              # Upload the git commit info for each prestate since this won't be recorded in releases.json
+              (echo "Commit=<< pipeline.git.revision >>" && echo "Prestate=${PRESTATE_HASH}") | gsutil cp - "gs://oplabs-network-data/proofs/op-program/cannon/${BRANCH_NAME}.bin.gz.txt"
+              (echo "Commit=<< pipeline.git.revision >>" && echo "Prestate: ${PRESTATE_MT64_HASH}") | gsutil cp - "gs://oplabs-network-data/proofs/op-program/cannon/${BRANCH_NAME}-mt64.bin.gz.txt"
+              (echo "Commit=<< pipeline.git.revision >>" && echo "Prestate: ${PRESTATE_INTEROP_HASH}") | gsutil cp - "gs://oplabs-network-data/proofs/op-program/cannon/${BRANCH_NAME}-interop.bin.gz.txt"
+
+
               # Use the branch name for branches to provide a consistent URL
               PRESTATE_HASH="${BRANCH_NAME}"
-              PRESTATE_MT64_HASH="${BRANCH_NAME}"
-              PRESTATE_INTEROP_HASH="${BRANCH_NAME}"
+              PRESTATE_MT64_HASH="${BRANCH_NAME}-mt64"
+              PRESTATE_INTEROP_HASH="${BRANCH_NAME}-interop"
             fi
             gsutil cp ./op-program/bin/prestate.bin.gz \
               "gs://oplabs-network-data/proofs/op-program/cannon/${PRESTATE_HASH}.bin.gz"
+
             gsutil cp ./op-program/bin/prestate-mt64.bin.gz \
-              "gs://oplabs-network-data/proofs/op-program/cannon/${PRESTATE_MT64_HASH}-mt64.bin.gz"
+              "gs://oplabs-network-data/proofs/op-program/cannon/${PRESTATE_MT64_HASH}.bin.gz"
+
             gsutil cp ./op-program/bin/prestate-interop.bin.gz \
-              "gs://oplabs-network-data/proofs/op-program/cannon/${PRESTATE_INTEROP_HASH}-interop.bin.gz"
+              "gs://oplabs-network-data/proofs/op-program/cannon/${PRESTATE_INTEROP_HASH}.bin.gz"
       - notify-failures-on-develop:
           mentions: "@proofs-team"
 
@@ -1480,6 +1501,8 @@ workflows:
           uses_artifacts: true
           requires: ["contracts-bedrock-build"]
       - go-tests:
+          environment_overrides: |
+            export PARALLEL=48
           packages: |
             op-alt-da
             op-batcher
@@ -1500,6 +1523,7 @@ workflows:
             op-e2e/actions
             op-e2e/faultproofs
             packages/contracts-bedrock/scripts/checks
+            op-dripper
           requires:
             - contracts-bedrock-build
             - cannon-prestate-quick
@@ -1539,6 +1563,7 @@ workflows:
                 - da-server
                 - op-supervisor
                 - cannon
+                - op-dripper
       - cannon-prestate-quick
       - sanitize-op-program:
           requires:
@@ -1605,6 +1630,7 @@ workflows:
                 - op-supervisor
                 - op-deployer
                 - cannon
+                - op-dripper
           name: <<matrix.docker_name>>-docker-release
           docker_tags: <<pipeline.git.revision>>
           platforms: "linux/amd64,linux/arm64"
@@ -1635,6 +1661,7 @@ workflows:
                 - op-supervisor
                 - op-deployer
                 - cannon
+                - op-dripper
           name: <<matrix.op_component>>-cross-platform
           requires:
             - op-node-docker-release
@@ -1647,6 +1674,7 @@ workflows:
             - op-ufm-docker-release
             - op-supervisor-docker-release
             - cannon-docker-release
+            - op-dripper-docker-release
       # Standard (xlarge) AMD-only docker images go here
       - docker-build:
           matrix:
@@ -1813,6 +1841,7 @@ workflows:
                 - op-conductor
                 - op-supervisor
                 - cannon
+                - op-dripper
           name: <<matrix.docker_name>>-docker-publish
           docker_tags: <<pipeline.git.revision>>,<<pipeline.git.branch>>
           platforms: "linux/amd64,linux/arm64"
@@ -1833,6 +1862,7 @@ workflows:
                 - op-conductor
                 - op-supervisor
                 - cannon
+                - op-dripper
           name: <<matrix.op_component>>-cross-platform
           requires:
             - <<matrix.op_component>>-docker-publish

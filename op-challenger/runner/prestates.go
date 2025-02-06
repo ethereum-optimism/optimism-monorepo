@@ -109,6 +109,32 @@ func (f *NamedPrestateFetcher) getPrestate(ctx context.Context, logger log.Logge
 	if err != nil {
 		return "", fmt.Errorf("invalid prestate file %v: %w", f.filename, err)
 	}
-	logger.Info("Downloaded named prestate", "filename", f.filename, "prestate", proof.ClaimValue)
+
+	metadata, err := f.getPrestateMetadata(ctx, prestateBaseUrl)
+	if err != nil {
+		logger.Warn("Metadata unavailable for prestate", "prestate", f.filename, "err", err)
+	}
+	logger.Info("Downloaded named prestate", "filename", f.filename, "prestate", proof.ClaimValue, "metadata", metadata)
 	return targetFile, nil
+}
+
+func (f *NamedPrestateFetcher) getPrestateMetadata(ctx context.Context, prestateBaseUrl *url.URL) (string, error) {
+	gitInfoUrl := prestateBaseUrl.JoinPath(f.filename + ".txt")
+	req, err := http.NewRequestWithContext(ctx, "GET", gitInfoUrl.String(), nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to create prestate metadata request: %w", err)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch prestate metadata from %v: %w", gitInfoUrl, err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("prestate metadata from url %v: status %v", gitInfoUrl, resp.StatusCode)
+	}
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read metadata from %v: %w", gitInfoUrl, err)
+	}
+	return string(data), nil
 }

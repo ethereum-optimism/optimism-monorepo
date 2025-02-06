@@ -250,11 +250,11 @@ func (m *ManagedNode) onCrossUnsafeUpdate(seal types.BlockSeal) {
 }
 
 func (m *ManagedNode) onCrossSafeUpdate(pair types.DerivedBlockSealPair) {
-	m.log.Debug("updating cross safe", "derived", pair.Derived, "derivedFrom", pair.DerivedFrom)
+	m.log.Debug("updating cross safe", "derived", pair.Derived, "derivedFrom", pair.Source)
 	ctx, cancel := context.WithTimeout(m.ctx, nodeTimeout)
 	defer cancel()
 	pairIDs := pair.IDs()
-	err := m.Node.UpdateCrossSafe(ctx, pairIDs.Derived, pairIDs.DerivedFrom)
+	err := m.Node.UpdateCrossSafe(ctx, pairIDs.Derived, pairIDs.Source)
 	if err != nil {
 		m.log.Warn("Node failed cross-safe updating", "err", err)
 		return
@@ -283,28 +283,18 @@ func (m *ManagedNode) onUnsafeBlock(unsafeRef eth.BlockRef) {
 
 func (m *ManagedNode) onDerivationUpdate(pair types.DerivedBlockRefPair) {
 	m.log.Info("Node derived new block", "derived", pair.Derived,
-		"derivedParent", pair.Derived.ParentID(), "derivedFrom", pair.DerivedFrom)
+		"derivedParent", pair.Derived.ParentID(), "derivedFrom", pair.Source)
 	m.emitter.Emit(superevents.LocalDerivedEvent{
 		ChainID: m.chainID,
 		Derived: pair,
 	})
-	// TODO: keep synchronous local-safe DB update feedback?
-	// We'll still need more async ways of doing this for reorg handling.
-
-	// ctx, cancel := context.WithTimeout(m.ctx, internalTimeout)
-	// defer cancel()
-	// if err := m.backend.UpdateLocalSafe(ctx, m.chainID, pair.DerivedFrom, pair.Derived); err != nil {
-	//	m.log.Warn("Backend failed to process local-safe update",
-	//		"derived", pair.Derived, "derivedFrom", pair.DerivedFrom, "err", err)
-	//	m.resetSignal(err, pair.DerivedFrom)
-	// }
 }
 
-func (m *ManagedNode) onDerivationOriginUpdate(pair types.DerivedBlockRefPair) {
-	m.log.Info("Node derived new origin", "derived", pair.Derived, "derivedFrom", pair.DerivedFrom)
+func (m *ManagedNode) onDerivationOriginUpdate(origin eth.BlockRef) {
+	m.log.Info("Node derived new origin", "origin", origin)
 	m.emitter.Emit(superevents.LocalDerivedOriginUpdateEvent{
 		ChainID: m.chainID,
-		Derived: pair,
+		Origin:  origin,
 	})
 }
 
@@ -448,17 +438,17 @@ func (m *ManagedNode) resolveConflict(ctx context.Context, l1Ref eth.BlockRef, u
 }
 
 func (m *ManagedNode) onExhaustL1Event(completed types.DerivedBlockRefPair) {
-	m.log.Info("Node completed syncing", "l2", completed.Derived, "l1", completed.DerivedFrom)
+	m.log.Info("Node completed syncing", "l2", completed.Derived, "l1", completed.Source)
 
 	internalCtx, cancel := context.WithTimeout(m.ctx, internalTimeout)
 	defer cancel()
-	nextL1, err := m.backend.L1BlockRefByNumber(internalCtx, completed.DerivedFrom.Number+1)
+	nextL1, err := m.backend.L1BlockRefByNumber(internalCtx, completed.Source.Number+1)
 	if err != nil {
 		if errors.Is(err, ethereum.NotFound) {
-			m.log.Debug("Next L1 block is not yet available", "l1Block", completed.DerivedFrom, "err", err)
+			m.log.Debug("Next L1 block is not yet available", "l1Block", completed.Source, "err", err)
 			return
 		}
-		m.log.Error("Failed to retrieve next L1 block for node", "l1Block", completed.DerivedFrom, "err", err)
+		m.log.Error("Failed to retrieve next L1 block for node", "l1Block", completed.Source, "err", err)
 		return
 	}
 
@@ -477,14 +467,14 @@ func (m *ManagedNode) onExhaustL1Event(completed types.DerivedBlockRefPair) {
 // and needs to be replaced with a deposit only block.
 func (m *ManagedNode) onInvalidateLocalSafe(invalidated types.DerivedBlockRefPair) {
 	m.log.Warn("Instructing node to replace invalidated local-safe block",
-		"invalidated", invalidated.Derived, "scope", invalidated.DerivedFrom)
+		"invalidated", invalidated.Derived, "scope", invalidated.Source)
 
 	ctx, cancel := context.WithTimeout(m.ctx, nodeTimeout)
 	defer cancel()
 	// Send instruction to the node to invalidate the block, and build a replacement block.
 	if err := m.Node.InvalidateBlock(ctx, types.BlockSealFromRef(invalidated.Derived)); err != nil {
 		m.log.Warn("Node is unable to invalidate block",
-			"invalidated", invalidated.Derived, "scope", invalidated.DerivedFrom, "err", err)
+			"invalidated", invalidated.Derived, "scope", invalidated.Source, "err", err)
 	}
 }
 

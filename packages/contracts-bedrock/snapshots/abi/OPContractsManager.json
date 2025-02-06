@@ -682,6 +682,11 @@
             "internalType": "contract IProxyAdmin",
             "name": "proxyAdmin",
             "type": "address"
+          },
+          {
+            "internalType": "Claim",
+            "name": "absolutePrestate",
+            "type": "bytes32"
           }
         ],
         "internalType": "struct OPContractsManager.OpChainConfig[]",
@@ -861,6 +866,11 @@
   {
     "inputs": [],
     "name": "OnlyUpgradeController",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "PrestateNotSet",
     "type": "error"
   },
   {
