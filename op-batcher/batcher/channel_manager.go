@@ -83,6 +83,7 @@ func (s *channelManager) Clear(l1OriginLastSubmittedChannel eth.BlockID) {
 	s.tip = common.Hash{}
 	s.currentChannel = nil
 	s.channelQueue = nil
+	s.metr.RecordChannelQueueLength(0)
 	s.txChannels = make(map[string]*channel)
 }
 
@@ -155,6 +156,7 @@ func (s *channelManager) handleChannelInvalidated(c *channel) {
 	for i := range s.channelQueue {
 		if s.channelQueue[i] == c {
 			s.channelQueue = s.channelQueue[:i]
+			s.metr.RecordChannelQueueLength(len(s.channelQueue))
 			break
 		}
 	}
@@ -306,8 +308,6 @@ func (s *channelManager) ensureChannelWithSpace(l1Head eth.BlockID) error {
 	pc := newChannel(s.log, s.metr, cfg, s.rollupCfg, s.l1OriginLastSubmittedChannel.Number, channelOut)
 
 	s.currentChannel = pc
-	s.channelQueue = append(s.channelQueue, pc)
-
 	s.log.Info("Created channel",
 		"id", pc.ID(),
 		"l1Head", l1Head,
@@ -320,6 +320,9 @@ func (s *channelManager) ensureChannelWithSpace(l1Head eth.BlockID) error {
 		"use_blobs", cfg.UseBlobs,
 	)
 	s.metr.RecordChannelOpened(pc.ID(), s.pendingBlocks())
+
+	s.channelQueue = append(s.channelQueue, pc)
+	s.metr.RecordChannelQueueLength(len(s.channelQueue))
 
 	return nil
 }
@@ -473,9 +476,11 @@ func (s *channelManager) PruneChannels(num int) {
 		}
 	}
 	s.channelQueue = s.channelQueue[num:]
+	s.metr.RecordChannelQueueLength(len(s.channelQueue))
 	if clearCurrentChannel {
 		s.currentChannel = nil
 	}
+
 }
 
 // PendingDABytes returns the current number of bytes pending to be written to the DA layer (from blocks fetched from L2
