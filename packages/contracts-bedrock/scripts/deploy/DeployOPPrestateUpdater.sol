@@ -12,12 +12,9 @@ import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 import { IProtocolVersions } from "interfaces/L1/IProtocolVersions.sol";
 import { IOPContractsManager } from "interfaces/L1/IOPContractsManager.sol";
 
-import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 import { IProxyAdmin } from "interfaces/universal/IProxyAdmin.sol";
 
 import { OPPrestateUpdater } from "src/L1/OPPrestateUpdater.sol";
-import { OPContractsManager } from "src/L1/OPContractsManager.sol";
-import { Claim, Hash, Duration, GameType, GameTypes, OutputRoot } from "src/dispute/lib/Types.sol";
 
 contract DeployOPPrestateUpdaterInput is BaseDeployIO {
     ISuperchainConfig internal _superchainConfig;

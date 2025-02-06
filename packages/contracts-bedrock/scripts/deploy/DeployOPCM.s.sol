@@ -13,9 +13,6 @@ import { IProtocolVersions } from "interfaces/L1/IProtocolVersions.sol";
 import { IOPContractsManager } from "interfaces/L1/IOPContractsManager.sol";
 import { IProxyAdmin } from "interfaces/universal/IProxyAdmin.sol";
 
-import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
-import { IProxyAdmin } from "interfaces/universal/IProxyAdmin.sol";
-
 contract DeployOPCMInput is BaseDeployIO {
     ISuperchainConfig internal _superchainConfig;
     IProtocolVersions internal _protocolVersions;
