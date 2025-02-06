@@ -73,18 +73,21 @@ print-pinned-block-number:
 #   rpc call responses in ~/.foundry/cache/rpc. The default block will need to be updated
 #   when the L1 chain is upgraded.
 # TODO(opcm upgrades): unskip the "NMC" tests which fail on the forked upgrade path with "UnexpectedRootClaim" errors.
+# TODO(#14201): re-enable the findLatestGames tests once not so slow anymore
 prepare-upgrade-env *ARGS : build-go-ffi
   #!/bin/bash
   echo "Running upgrade tests at block $pinnedBlockNumber"
   export FORK_BLOCK_NUMBER=$pinnedBlockNumber
   export NO_MATCH_CONTRACTS="OptimismPortal2WithMockERC20_Test|OptimismPortal2_FinalizeWithdrawal_Test|'AnchorStateRegistry_*'|FaultDisputeGame_Test|PermissionedDisputeGame_Test|FaultDispute_1v1_Actors_Test|DelayedWETH_Hold_Test"
   export NO_MATCH_PATHS="test/dispute/AnchorStateRegistry.t.sol"
+  export NO_MATCH_TESTS="test_findLatestGames|testFuzz_findLatestGames"
   export FORK_RPC_URL=$ETH_RPC_URL
   export FORK_TEST=true
   {{ARGS}} \
   --match-path "test/{L1,dispute}/**" \
   --no-match-contract "$NO_MATCH_CONTRACTS" \
-  --no-match-path "$NO_MATCH_PATHS"
+  --no-match-path "$NO_MATCH_PATHS" \
+  --no-match-test "$NO_MATCH_TESTS"
 
 # Runs upgrade path variant of contract tests.
 test-upgrade *ARGS:
