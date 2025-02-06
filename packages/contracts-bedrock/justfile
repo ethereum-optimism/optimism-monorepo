@@ -81,7 +81,7 @@ prepare-upgrade-env *ARGS : build-go-ffi
   export FORK_RPC_URL=$ETH_RPC_URL
   export FORK_TEST=true
   {{ARGS}} \
-  --match-path "test/{L1,dispute}/**" \
+  --match-path "test/{L1,dispute,cannon}/**" \
   --no-match-contract "$NO_MATCH_CONTRACTS"
 
 # Runs upgrade path variant of contract tests.
@@ -106,7 +106,7 @@ test-upgrade-against-anvil *ARGS: build-go-ffi
   export FORK_RPC_URL=http://127.0.0.1:8545
   export FORK_TEST=true
   forge test {{ARGS}} \
-  --match-path "test/{L1,dispute}/**" \
+  --match-path "test/{L1,dispute,cannon}/**" \
   --no-match-contract "$NO_MATCH_CONTRACTS"
 
 # Runs standard contract tests with rerun flag.
