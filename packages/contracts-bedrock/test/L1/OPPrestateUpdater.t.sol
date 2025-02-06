@@ -30,6 +30,7 @@ import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 import { IOPContractsManager } from "interfaces/L1/IOPContractsManager.sol";
 import { ISemver } from "interfaces/universal/ISemver.sol";
 import { IDisputeGameFactory } from "interfaces/dispute/IDisputeGameFactory.sol";
+
 // Contracts
 import { OPContractsManager } from "src/L1/OPContractsManager.sol";
 import { OPPrestateUpdater } from "src/L1/OPPrestateUpdater.sol";
@@ -45,6 +46,7 @@ contract OPPrestateUpdater_Test is Test {
     IOPContractsManager.DeployOutput internal chainDeployOutput;
 
     function setUp() public {
+        IProxyAdmin superchainProxyAdmin = IProxyAdmin(makeAddr("superchainProxyAdmin"));
         ISuperchainConfig superchainConfigProxy = ISuperchainConfig(makeAddr("superchainConfig"));
         IProtocolVersions protocolVersionsProxy = IProtocolVersions(makeAddr("protocolVersions"));
         bytes32 salt = hex"01";
@@ -62,6 +64,8 @@ contract OPPrestateUpdater_Test is Test {
         IPreimageOracle oracle = IPreimageOracle(DeployUtils.create1("PreimageOracle", abi.encode(126000, 86400)));
 
         IOPContractsManager.Implementations memory impls = IOPContractsManager.Implementations({
+            superchainConfigImpl: DeployUtils.create1("SuperchainConfig"),
+            protocolVersionsImpl: DeployUtils.create1("ProtocolVersions"),
             l1ERC721BridgeImpl: DeployUtils.create1("L1ERC721Bridge"),
             optimismPortalImpl: DeployUtils.create1("OptimismPortal2", abi.encode(1, 1)),
             systemConfigImpl: DeployUtils.create1("SystemConfig"),
@@ -83,7 +87,15 @@ contract OPPrestateUpdater_Test is Test {
                 _args: DeployUtils.encodeConstructor(
                     abi.encodeCall(
                         IOPContractsManager.__constructor__,
-                        (superchainConfigProxy, protocolVersionsProxy, "dev", blueprints, impls, address(this))
+                        (
+                            superchainConfigProxy,
+                            protocolVersionsProxy,
+                            superchainProxyAdmin,
+                            "dev",
+                            blueprints,
+                            impls,
+                            address(this)
+                        )
                     )
                 ),
                 _salt: DeployUtils.DEFAULT_SALT
@@ -136,6 +148,7 @@ contract OPPrestateUpdater_Test is Test {
                         (
                             ISuperchainConfig(address(this)),
                             IProtocolVersions(address(this)),
+                            superchainProxyAdmin,
                             "dev",
                             blueprints,
                             impls,
@@ -148,15 +161,14 @@ contract OPPrestateUpdater_Test is Test {
         );
     }
 
-    function test_updatePrestate_succeeds() public {
+    function test_updatePrestate_succeedsWithValidInput() public {
         OPPrestateUpdater.PrestateUpdateInput[] memory inputs = new OPPrestateUpdater.PrestateUpdateInput[](1);
         inputs[0] = OPPrestateUpdater.PrestateUpdateInput({
-            opChain: OPContractsManager.OpChain({
+            opChain: OPContractsManager.OpChainConfig({
                 systemConfigProxy: chainDeployOutput.systemConfigProxy,
                 proxyAdmin: chainDeployOutput.opChainProxyAdmin
             }),
-            permissionedDisputePrestate: Claim.wrap(bytes32(hex"ABBA")),
-            faultDisputePrestate: Claim.wrap(bytes32(hex"ACDC"))
+            absolutePrestate: Claim.wrap(bytes32(hex"ABBA"))
         });
         address proxyAdminOwner = chainDeployOutput.opChainProxyAdmin.owner();
 
@@ -165,13 +177,6 @@ contract OPPrestateUpdater_Test is Test {
             address(prestateUpdater), abi.encodeCall(OPPrestateUpdater.updatePrestate, (inputs))
         );
 
-        IFaultDisputeGame fdg = IFaultDisputeGame(
-            address(
-                IDisputeGameFactory(chainDeployOutput.systemConfigProxy.disputeGameFactory()).gameImpls(
-                    GameTypes.CANNON
-                )
-            )
-        );
         IPermissionedDisputeGame pdg = IPermissionedDisputeGame(
             address(
                 IDisputeGameFactory(chainDeployOutput.systemConfigProxy.disputeGameFactory()).gameImpls(
@@ -181,6 +186,56 @@ contract OPPrestateUpdater_Test is Test {
         );
 
         assertEq(pdg.absolutePrestate().raw(), inputs[0].absolutePrestate.raw(), "pdg prestate mismatch");
+    }
+
+    function test_updatePrestate_revertsWhenPDGPrestateIsZero() public {
+        OPPrestateUpdater.PrestateUpdateInput[] memory inputs = new OPPrestateUpdater.PrestateUpdateInput[](1);
+        inputs[0] = OPPrestateUpdater.PrestateUpdateInput({
+            opChain: OPContractsManager.OpChainConfig({
+            systemConfigProxy: chainDeployOutput.systemConfigProxy,
+            proxyAdmin: chainDeployOutput.opChainProxyAdmin
+        }),
+            absolutePrestate: Claim.wrap(bytes32(0))
+        });
+
+        address proxyAdminOwner = chainDeployOutput.opChainProxyAdmin.owner();
+        vm.etch(address(proxyAdminOwner), vm.getDeployedCode("test/mocks/Callers.sol:DelegateCaller"));
+
+        vm.expectRevert(OPPrestateUpdater.PDGPrestateRequired.selector);
+        DelegateCaller(proxyAdminOwner).dcForward(
+            address(prestateUpdater),
+            abi.encodeCall(OPPrestateUpdater.updatePrestate, (inputs))
+        );
+    }
+
+    function test_updatePrestate_revertsWhenFDGNotFound() public {
+        OPPrestateUpdater.PrestateUpdateInput[] memory inputs = new OPPrestateUpdater.PrestateUpdateInput[](1);
+        inputs[0] = OPPrestateUpdater.PrestateUpdateInput({
+            opChain: OPContractsManager.OpChainConfig({
+            systemConfigProxy: chainDeployOutput.systemConfigProxy,
+            proxyAdmin: chainDeployOutput.opChainProxyAdmin
+        }),
+            absolutePrestate: Claim.wrap(bytes32(hex"ABBA"))
+        });
+
+        IDisputeGameFactory dgf = IDisputeGameFactory(
+            chainDeployOutput.systemConfigProxy.disputeGameFactory()
+        );
+
+        vm.mockCall(
+            address(dgf),
+            abi.encodeWithSelector(dgf.gameImpls.selector, GameTypes.CANNON),
+            abi.encode(address(0))
+        );
+
+        address proxyAdminOwner = chainDeployOutput.opChainProxyAdmin.owner();
+        vm.etch(address(proxyAdminOwner), vm.getDeployedCode("test/mocks/Callers.sol:DelegateCaller"));
+
+        vm.expectRevert(OPPrestateUpdater.FDGNotFound.selector);
+        DelegateCaller(proxyAdminOwner).dcForward(
+            address(prestateUpdater),
+            abi.encodeCall(OPPrestateUpdater.updatePrestate, (inputs))
+        );
     }
 
     function addGameType(IOPContractsManager.AddGameInput memory input)

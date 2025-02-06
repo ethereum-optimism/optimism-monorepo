@@ -12,46 +12,46 @@ import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 import { IDisputeGameFactory } from "interfaces/dispute/IDisputeGameFactory.sol";
 import { IFaultDisputeGame } from "interfaces/dispute/IFaultDisputeGame.sol";
 import { IDelayedWETH } from "interfaces/dispute/IDelayedWETH.sol";
+import { IProxyAdmin } from "interfaces/universal/IProxyAdmin.sol";
 
 // Libraries
 import { Constants } from "src/libraries/Constants.sol";
 import { Claim, GameTypes } from "src/dispute/lib/Types.sol";
 
-/**
- * @title OPPrestateUpdater
- * @notice A custom implementation of OPContractsManager that allows for modified deployment parameters
- */
+///  @title OPPrestateUpdater
+///  @notice A custom implementation of OPContractsManager that allows for modified deployment parameters
 contract OPPrestateUpdater is OPContractsManager {
     struct PrestateUpdateInput {
-        OpChain opChain;
+        OpChainConfig opChain;
         Claim absolutePrestate;
-        bool newFDG;
-        address pdgProposer;
-        address pdgChallenger;
-        address vm;
-        uint256 initBond;
     }
 
-    /**
-     * @notice Returns the version string for this contract
-     * @return Version string
-     */
+    /// @notice Thrown when a function from the parent (OPCM) is not implemented.
+    error NotImplemented();
+
+    /// @notice Thrown when the prestate of a permissioned disputed game is 0.
+    error PDGPrestateRequired();
+
+    /// @notice Thrown when the address off a fault dispute game is 0.
+    error FDGNotFound();
+
+    // @notice Returns the version string for this contract
+    // @return Version string
     function version() public pure override returns (string memory) {
         return "1.0.0";
     }
 
-    /**
-     * @notice Constructs the CustomOPContractsManager contract
-     * @param _superchainConfig Address of the SuperchainConfig contract
-     * @param _protocolVersions Address of the ProtocolVersions contract
-     * @param _l1ContractsRelease Version string for L1 contracts release
-     * @param _blueprints Addresses of Blueprint contracts
-     * @param _implementations Addresses of implementation contracts
-     * @param _upgradeController Address of the upgrade controller
-     */
+    // @notice Constructs the CustomOPContractsManager contract
+    // @param _superchainConfig Address of the SuperchainConfig contract
+    // @param _protocolVersions Address of the ProtocolVersions contract
+    // @param _l1ContractsRelease Version string for L1 contracts release
+    // @param _blueprints Addresses of Blueprint contracts
+    // @param _implementations Addresses of implementation contracts
+    // @param _upgradeController Address of the upgrade controller
     constructor(
         ISuperchainConfig _superchainConfig,
         IProtocolVersions _protocolVersions,
+        IProxyAdmin _superchainProxyAdmin,
         string memory _l1ContractsRelease,
         Blueprints memory _blueprints,
         Implementations memory _implementations,
@@ -60,6 +60,7 @@ contract OPPrestateUpdater is OPContractsManager {
         OPContractsManager(
             _superchainConfig,
             _protocolVersions,
+            _superchainProxyAdmin,
             _l1ContractsRelease,
             _blueprints,
             _implementations,
@@ -74,15 +75,15 @@ contract OPPrestateUpdater is OPContractsManager {
     }
 
     function deploy(DeployInput memory) external pure override returns (DeployOutput memory) {
-        revert("Not implemented");
+        revert NotImplemented();
     }
 
-    function upgrade(OpChain[] memory) external pure override {
-        revert("Not implemented");
+    function upgrade(OpChainConfig[] memory) external pure override {
+        revert NotImplemented();
     }
 
     function addGameType(AddGameInput[] memory) public pure override returns (AddGameOutput[] memory) {
-        revert("Not implemented");
+        revert NotImplemented();
     }
 
     /// @notice Updates the prestate hash for a new game type while keeping all other parameters the same
@@ -96,7 +97,7 @@ contract OPPrestateUpdater is OPContractsManager {
             AddGameInput memory fdgInput;
 
             if (Claim.unwrap(_prestateUpdateInputs[i].absolutePrestate) == bytes32(0)) {
-                revert("Permissioned dispute prestate is required");
+                revert PDGPrestateRequired();
             }
             // Get the current game implementation to copy parameters from
             IDisputeGameFactory dgf =
@@ -130,7 +131,7 @@ contract OPPrestateUpdater is OPContractsManager {
             if (hasFDG) {
                 // Get the current game implementation to copy parameters from
                 IFaultDisputeGame fdg = IFaultDisputeGame(address(getGameImplementation(dgf, GameTypes.CANNON)));
-                if (address(fdg) == address(0)) revert("Fault dispute game not found");
+                if (address(fdg) == address(0)) revert FDGNotFound();
                 initBond = dgf.initBonds(GameTypes.CANNON);
                 // Get the existing game parameters
                 IFaultDisputeGame.GameConstructorParams memory fdgParams =

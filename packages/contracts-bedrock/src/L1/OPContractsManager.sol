@@ -254,8 +254,8 @@ contract OPContractsManager is ISemver {
         assertValidContractAddress(address(_protocolVersions));
         superchainConfig = _superchainConfig;
         protocolVersions = _protocolVersions;
-        L1_CONTRACTS_RELEASE = _l1ContractsRelease;
         superchainProxyAdmin = _superchainProxyAdmin;
+        L1_CONTRACTS_RELEASE = _l1ContractsRelease;
         blueprint = _blueprints;
         implementation = _implementations;
         thisOPCM = this;
@@ -443,7 +443,7 @@ contract OPContractsManager is ISemver {
     /// @notice Upgrades a set of chains to the latest implementation contracts
     /// @param _opChainConfigs Array of OpChain structs, one per chain to upgrade
     /// @dev This function is intended to be called via DELEGATECALL from the Upgrade Controller Safe
-    function upgrade(OpChainConfig[] memory _opChainConfigs) external {
+    function upgrade(OpChainConfig[] memory _opChainConfigs) external virtual {
         if (address(this) == address(thisOPCM)) revert OnlyDelegatecall();
 
         // If this is delegatecalled by the upgrade controller, set isRC to false first, else, continue execution.

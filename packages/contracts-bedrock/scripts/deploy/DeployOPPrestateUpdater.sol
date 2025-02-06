@@ -22,6 +22,7 @@ import { Claim, Hash, Duration, GameType, GameTypes, OutputRoot } from "src/disp
 contract DeployOPPrestateUpdaterInput is BaseDeployIO {
     ISuperchainConfig internal _superchainConfig;
     IProtocolVersions internal _protocolVersions;
+    IProxyAdmin internal _superchainProxyAdmin;
     string internal _l1ContractsRelease;
     address internal _upgradeController;
 
@@ -35,6 +36,8 @@ contract DeployOPPrestateUpdaterInput is BaseDeployIO {
     address internal _permissionlessDisputeGame1Blueprint;
     address internal _permissionlessDisputeGame2Blueprint;
 
+    address internal _superchainConfigImpl;
+    address internal _protocolVersionsImpl;
     address internal _l1ERC721BridgeImpl;
     address internal _optimismPortalImpl;
     address internal _systemConfigImpl;
@@ -58,7 +61,7 @@ contract DeployOPPrestateUpdaterInput is BaseDeployIO {
         else if (_sel == this.proxyBlueprint.selector) _proxyBlueprint = _addr;
         else if (_sel == this.proxyAdminBlueprint.selector) _proxyAdminBlueprint = _addr;
         else if (_sel == this.l1ChugSplashProxyBlueprint.selector) _l1ChugSplashProxyBlueprint = _addr;
-        else if (_sel == this.resolvedDelegateProxyBlueprint.selector) resolvedDelegateProxyBlueprint = _addr;
+        else if (_sel == this.resolvedDelegateProxyBlueprint.selector) _resolvedDelegateProxyBlueprint = _addr;
         else if (_sel == this.permissionedDisputeGame1Blueprint.selector) _permissionedDisputeGame1Blueprint = _addr;
         else if (_sel == this.permissionedDisputeGame2Blueprint.selector) _permissionedDisputeGame2Blueprint = _addr;
         else if (_sel == this.permissionlessDisputeGame1Blueprint.selector) _permissionlessDisputeGame1Blueprint = _addr;
@@ -93,6 +96,11 @@ contract DeployOPPrestateUpdaterInput is BaseDeployIO {
     function protocolVersions() public view returns (IProtocolVersions) {
         require(address(_protocolVersions) != address(0), "DeployOPPrestateUpdaterInput: not set");
         return _protocolVersions;
+    }
+
+    function superchainProxyAdmin() public view returns (IProxyAdmin) {
+        require(address(_superchainProxyAdmin) != address(0), "DeployOPCMInput: not set");
+        return _superchainProxyAdmin;
     }
 
     function l1ContractsRelease() public view returns (string memory) {
@@ -190,6 +198,16 @@ contract DeployOPPrestateUpdaterInput is BaseDeployIO {
         return _anchorStateRegistryImpl;
     }
 
+    function superchainConfigImpl() public view returns (address) {
+        require(_superchainConfigImpl != address(0), "DeployOPCMInput: not set");
+        return _superchainConfigImpl;
+    }
+
+    function protocolVersionsImpl() public view returns (address) {
+        require(_protocolVersionsImpl != address(0), "DeployOPCMInput: not set");
+        return _protocolVersionsImpl;
+    }
+
     function delayedWETHImpl() public view returns (address) {
         require(_delayedWETHImpl != address(0), "DeployOPPrestateUpdaterInput: not set");
         return _delayedWETHImpl;
@@ -235,6 +253,8 @@ contract DeployOPPrestateUpdater is Script {
         });
 
         IOPContractsManager.Implementations memory implementations = IOPContractsManager.Implementations({
+            superchainConfigImpl: address(_doi.superchainConfigImpl()),
+            protocolVersionsImpl: address(_doi.protocolVersionsImpl()),
             l1ERC721BridgeImpl: address(_doi.l1ERC721BridgeImpl()),
             optimismPortalImpl: address(_doi.optimismPortalImpl()),
             systemConfigImpl: address(_doi.systemConfigImpl()),
@@ -250,6 +270,7 @@ contract DeployOPPrestateUpdater is Script {
         OPPrestateUpdater oppu_ = deployOPPrestateUpdater(
             _doi.superchainConfig(),
             _doi.protocolVersions(),
+            _doi.superchainProxyAdmin(),
             blueprints,
             implementations,
             _doi.l1ContractsRelease(),
@@ -263,6 +284,7 @@ contract DeployOPPrestateUpdater is Script {
     function deployOPPrestateUpdater(
         ISuperchainConfig _superchainConfig,
         IProtocolVersions _protocolVersions,
+        IProxyAdmin _superchainProxyAdmin,
         IOPContractsManager.Blueprints memory _blueprints,
         IOPContractsManager.Implementations memory _implementations,
         string memory _l1ContractsRelease,
@@ -281,6 +303,7 @@ contract DeployOPPrestateUpdater is Script {
                         (
                             _superchainConfig,
                             _protocolVersions,
+                            _superchainProxyAdmin,
                             _l1ContractsRelease,
                             _blueprints,
                             _implementations,
