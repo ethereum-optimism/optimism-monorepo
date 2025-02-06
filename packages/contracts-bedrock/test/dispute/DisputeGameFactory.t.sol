@@ -4,6 +4,9 @@ pragma solidity ^0.8.15;
 // Testing
 import { CommonTest } from "test/setup/CommonTest.sol";
 
+// Scripts
+import { ForgeArtifacts } from "scripts/libraries/ForgeArtifacts.sol";
+
 // Libraries
 import "src/dispute/lib/Types.sol";
 import "src/dispute/lib/Errors.sol";
@@ -318,6 +321,15 @@ contract DisputeGameFactory_FindLatestGames_Test is DisputeGameFactory_Init {
     /// @dev Tests that `findLatestGames` returns the correct games, if there are less than `_n` games of the given type
     ///      available.
     function test_findLatestGames_lessThanNAvailable_succeeds() public {
+        // Need to clear out the length of the game list on forked list to avoid massive iteration.
+        if (isForkTest()) {
+            vm.store(
+                address(disputeGameFactory),
+                bytes32(ForgeArtifacts.getSlot("DisputeGameFactory", "_disputeGameList").slot),
+                bytes32(0)
+            );
+        }
+
         // Create some dispute games of varying game types.
         disputeGameFactory.create(GameType.wrap(1), Claim.wrap(bytes32(0)), abi.encode(0));
         disputeGameFactory.create(GameType.wrap(1), Claim.wrap(bytes32(uint256(1))), abi.encode(1));
@@ -325,20 +337,19 @@ contract DisputeGameFactory_FindLatestGames_Test is DisputeGameFactory_Init {
             disputeGameFactory.create(GameType.wrap(0), Claim.wrap(bytes32(i)), abi.encode(i));
         }
 
+        // Grab the existing game count.
         uint256 gameCount = disputeGameFactory.gameCount();
 
+        // Try to find 5 games of type 2, but there are none.
         IDisputeGameFactory.GameSearchResult[] memory games;
-
         games = disputeGameFactory.findLatestGames(GameType.wrap(2), gameCount - 1, 5);
         assertEq(games.length, 0);
 
-        // Forked network will have an indefinite, but very large number of games, so we skip this test when forking.
-        if (!isForkTest()) {
-            games = disputeGameFactory.findLatestGames(GameType.wrap(1), gameCount - 1, 5);
-            assertEq(games.length, 2);
-            assertEq(games[0].index, 1);
-            assertEq(games[1].index, 0);
-        }
+        // Try to find 2 games of type 1, but there are only 2.
+        games = disputeGameFactory.findLatestGames(GameType.wrap(1), gameCount - 1, 5);
+        assertEq(games.length, 2);
+        assertEq(games[0].index, 1);
+        assertEq(games[1].index, 0);
     }
 
     /// @dev Tests that the expected number of games are returned when `findLatestGames` is called.
