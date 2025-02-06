@@ -72,15 +72,18 @@ contract OPPrestateUpdater is OPContractsManager {
         return "none";
     }
 
-    function deploy(DeployInput memory) external pure override returns (DeployOutput memory) {
+    function deploy(DeployInput memory _input) external pure override returns (DeployOutput memory) {
+        _input; // Silence warning
         revert NotImplemented();
     }
 
-    function upgrade(OpChainConfig[] memory) external pure override {
+    function upgrade(OpChainConfig[] memory _opChainConfigs) external pure override {
+        _opChainConfigs; // Silence warning
         revert NotImplemented();
     }
 
-    function addGameType(AddGameInput[] memory) public pure override returns (AddGameOutput[] memory) {
+    function addGameType(AddGameInput[] memory _gameConfigs) public pure override returns (AddGameOutput[] memory) {
+        _gameConfigs; // Silence warning
         revert NotImplemented();
     }
 
