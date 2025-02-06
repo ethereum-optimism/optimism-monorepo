@@ -423,24 +423,13 @@ func TestInteropFaultProofsInvalidBlock(gt *testing.T) {
 			expectValid: true,
 		},
 		{
-			name:               "SecondChainReachesL1Head",
-			agreedClaim:        step1Expected,
-			disputedClaim:      interop.InvalidTransition,
-			disputedTraceIndex: 1,
-			// The derivation reaches the L1 head before the next block can be created
-			l1Head:         actors.L1Miner.L1Chain().Genesis().Hash(),
-			expectValid:    true,
-			skipChallenger: true, // Challenger doesn't yet check if blocks were safe
-		},
-		{
 			name:               "SuperRootInvalidIfUnsupportedByL1Data",
-			agreedClaim:        step1Expected,
-			disputedClaim:      step2Expected,
-			disputedTraceIndex: 1,
+			agreedClaim:        start.Marshal(),
+			disputedClaim:      step1Expected,
+			disputedTraceIndex: 0,
 			// The derivation reaches the L1 head before the next block can be created
-			l1Head:         actors.L1Miner.L1Chain().Genesis().Hash(),
-			expectValid:    false,
-			skipChallenger: true, // Challenger doesn't yet check if blocks were safe
+			l1Head:      actors.L1Miner.L1Chain().Genesis().Hash(),
+			expectValid: false,
 		},
 		{
 			name:               "FromInvalidTransitionHash",
