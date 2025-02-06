@@ -248,16 +248,11 @@ func TestInteropBlockBuilding(t *testing.T) {
 		// We will initiate on chain A, and execute on chain B
 		s2.DeployEmitterContract(chainA, "Alice")
 
-		// Add chain A as dependency to chain B,
-		// such that we can execute a message on B that was initiated on A.
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		cancel()
-
 		rollupClA, err := dial.DialRollupClientWithTimeout(context.Background(), time.Second*15, logger, s2.OpNode(chainA).UserRPC().RPC())
 		require.NoError(t, err)
 
 		// emit log on chain A
-		ctx, cancel = context.WithTimeout(context.Background(), 30*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		emitRec := s2.EmitData(ctx, chainA, "Alice", "hello world")
 		cancel()
 		t.Logf("Emitted a log event in block %d", emitRec.BlockNumber.Uint64())
