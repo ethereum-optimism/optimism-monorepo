@@ -196,6 +196,7 @@ func RegolithSystemConfig(t *testing.T, regolithTimeOffset *hexutil.Uint64, opts
 	cfg.DeployConfig.L2GenesisFjordTimeOffset = nil
 	cfg.DeployConfig.L2GenesisGraniteTimeOffset = nil
 	cfg.DeployConfig.L2GenesisHoloceneTimeOffset = nil
+	cfg.DeployConfig.L2GenesisIsthmusTimeOffset = nil
 	// ADD NEW FORKS HERE!
 	return cfg
 }
@@ -238,6 +239,12 @@ func HoloceneSystemConfig(t *testing.T, holoceneTimeOffset *hexutil.Uint64, opts
 	return cfg
 }
 
+func IsthmusSystemConfig(t *testing.T, isthmusTimeOffset *hexutil.Uint64, opts ...SystemConfigOpt) SystemConfig {
+	cfg := HoloceneSystemConfig(t, &genesisTime, opts...)
+	cfg.DeployConfig.L1PragueTimeOffset = isthmusTimeOffset
+	cfg.DeployConfig.L2GenesisIsthmusTimeOffset = isthmusTimeOffset
+	return cfg
+}
 func writeDefaultJWT(t testing.TB) string {
 	// Sadly the geth node config cannot load JWT secret from memory, it has to be a file
 	jwtPath := path.Join(t.TempDir(), "jwt_secret")

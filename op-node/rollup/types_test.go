@@ -693,6 +693,7 @@ func TestNewPayloadVersion(t *testing.T) {
 	tests := []struct {
 		name           string
 		ecotoneTime    uint64
+		isthmusTime    uint64
 		payloadTime    uint64
 		expectedMethod eth.EngineAPIMethod
 	}{
@@ -700,13 +701,22 @@ func TestNewPayloadVersion(t *testing.T) {
 			name:           "BeforeEcotone",
 			ecotoneTime:    10,
 			payloadTime:    5,
+			isthmusTime:    20,
 			expectedMethod: eth.NewPayloadV2,
 		},
 		{
 			name:           "Ecotone",
 			ecotoneTime:    10,
 			payloadTime:    15,
+			isthmusTime:    20,
 			expectedMethod: eth.NewPayloadV3,
+		},
+		{
+			name:           "Isthmus",
+			ecotoneTime:    10,
+			payloadTime:    25,
+			isthmusTime:    20,
+			expectedMethod: eth.NewPayloadV4,
 		},
 	}
 
@@ -714,6 +724,7 @@ func TestNewPayloadVersion(t *testing.T) {
 		test := test
 		t.Run(fmt.Sprintf("TestNewPayloadVersion_%s", test.name), func(t *testing.T) {
 			config.EcotoneTime = &test.ecotoneTime
+			config.IsthmusTime = &test.isthmusTime
 			assert.Equal(t, config.NewPayloadVersion(test.payloadTime), test.expectedMethod)
 		})
 	}
@@ -725,6 +736,7 @@ func TestGetPayloadVersion(t *testing.T) {
 	config.CanyonTime = &canyonTime
 	tests := []struct {
 		name           string
+		isthmusTime    uint64
 		ecotoneTime    uint64
 		payloadTime    uint64
 		expectedMethod eth.EngineAPIMethod
@@ -733,13 +745,22 @@ func TestGetPayloadVersion(t *testing.T) {
 			name:           "BeforeEcotone",
 			ecotoneTime:    10,
 			payloadTime:    5,
+			isthmusTime:    20,
 			expectedMethod: eth.GetPayloadV2,
 		},
 		{
 			name:           "Ecotone",
 			ecotoneTime:    10,
 			payloadTime:    15,
+			isthmusTime:    20,
 			expectedMethod: eth.GetPayloadV3,
+		},
+		{
+			name:           "Isthmus",
+			ecotoneTime:    10,
+			payloadTime:    25,
+			isthmusTime:    20,
+			expectedMethod: eth.GetPayloadV4,
 		},
 	}
 
@@ -747,6 +768,7 @@ func TestGetPayloadVersion(t *testing.T) {
 		test := test
 		t.Run(fmt.Sprintf("TestGetPayloadVersion_%s", test.name), func(t *testing.T) {
 			config.EcotoneTime = &test.ecotoneTime
+			config.IsthmusTime = &test.isthmusTime
 			assert.Equal(t, config.GetPayloadVersion(test.payloadTime), test.expectedMethod)
 		})
 	}

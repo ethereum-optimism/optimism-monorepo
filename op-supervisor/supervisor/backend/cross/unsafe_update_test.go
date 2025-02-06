@@ -198,9 +198,9 @@ func (m *mockCrossUnsafeDeps) DependencySet() depset.DependencySet {
 	return m.deps
 }
 
-func (m *mockCrossUnsafeDeps) Check(chainID eth.ChainID, blockNum uint64, timestamp uint64, logIdx uint32, logHash common.Hash) (types.BlockSeal, error) {
+func (m *mockCrossUnsafeDeps) Contains(chainID eth.ChainID, q types.ContainsQuery) (types.BlockSeal, error) {
 	if m.checkFn != nil {
-		return m.checkFn(chainID, blockNum, timestamp, logIdx, logHash)
+		return m.checkFn(chainID, q.BlockNum, q.Timestamp, q.LogIdx, q.LogHash)
 	}
 	return types.BlockSeal{}, nil
 }

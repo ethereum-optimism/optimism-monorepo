@@ -250,8 +250,11 @@ contract DisputeGameFactory_FindLatestGames_Test is DisputeGameFactory_Init {
     /// @dev Tests that `findLatestGames` returns an empty array when the passed starting index is greater than or equal
     ///      to the game count.
     function testFuzz_findLatestGames_greaterThanLength_succeeds(uint256 _start) public {
+        // Creation count should be 32 for normal tests, 5 for upgrade tests.
+        uint256 creationCount = isForkTest() ? 5 : 32;
+
         // Create some dispute games of varying game types.
-        for (uint256 i; i < 1 << 5; i++) {
+        for (uint256 i; i < creationCount; i++) {
             disputeGameFactory.create(GameType.wrap(uint8(i % 2)), Claim.wrap(bytes32(i)), abi.encode(i));
         }
 
@@ -267,9 +270,11 @@ contract DisputeGameFactory_FindLatestGames_Test is DisputeGameFactory_Init {
 
     /// @dev Tests that `findLatestGames` returns the correct games.
     function test_findLatestGames_static_succeeds() public {
+        // Creation count should be 32 for normal tests, 5 for upgrade tests.
+        uint256 creationCount = isForkTest() ? 5 : 32;
+
         // Create some dispute games of varying game types, repeatedly iterating over the game types 0, 1, 2.
-        // 1 << 5 = 32, resulting in the final three games added being ordered 2, 0, 1.
-        for (uint256 i; i < 1 << 5; i++) {
+        for (uint256 i; i < creationCount; i++) {
             disputeGameFactory.create(GameType.wrap(uint8(i % 3)), Claim.wrap(bytes32(i)), abi.encode(i));
         }
 
@@ -282,6 +287,7 @@ contract DisputeGameFactory_FindLatestGames_Test is DisputeGameFactory_Init {
         // Find type 1 games.
         games = disputeGameFactory.findLatestGames(GameType.wrap(1), start, 1);
         assertEq(games.length, 1);
+
         // The type 1 game should be the last one added.
         assertEq(games[0].index, start);
         (GameType gameType, Timestamp createdAt, address game) = games[0].metadata.unpack();
@@ -291,6 +297,7 @@ contract DisputeGameFactory_FindLatestGames_Test is DisputeGameFactory_Init {
         // Find type 0 games.
         games = disputeGameFactory.findLatestGames(GameType.wrap(0), start, 1);
         assertEq(games.length, 1);
+
         // The type 0 game should be the second to last one added.
         assertEq(games[0].index, start - 1);
         (gameType, createdAt, game) = games[0].metadata.unpack();
@@ -300,6 +307,7 @@ contract DisputeGameFactory_FindLatestGames_Test is DisputeGameFactory_Init {
         // Find type 2 games.
         games = disputeGameFactory.findLatestGames(GameType.wrap(2), start, 1);
         assertEq(games.length, 1);
+
         // The type 2 game should be the third to last one added.
         assertEq(games[0].index, start - 2);
         (gameType, createdAt, game) = games[0].metadata.unpack();
@@ -341,7 +349,7 @@ contract DisputeGameFactory_FindLatestGames_Test is DisputeGameFactory_Init {
     )
         public
     {
-        _numGames = bound(_numGames, 0, 1 << 8);
+        _numGames = bound(_numGames, 0, isForkTest() ? 5 : 256);
         _numSearchedGames = bound(_numSearchedGames, 0, _numGames);
         _n = bound(_n, 0, _numSearchedGames);
 

@@ -71,12 +71,16 @@ func (m *MockBackend) FinalizedL1() eth.BlockRef {
 	return eth.BlockRef{}
 }
 
-func (m *MockBackend) CrossDerivedFrom(ctx context.Context, chainID eth.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error) {
+func (m *MockBackend) CrossDerivedToSource(ctx context.Context, chainID eth.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error) {
 	return eth.BlockRef{}, nil
 }
 
 func (m *MockBackend) SuperRootAtTimestamp(ctx context.Context, timestamp hexutil.Uint64) (eth.SuperRootResponse, error) {
 	return eth.SuperRootResponse{}, nil
+}
+
+func (m *MockBackend) SyncStatus() (eth.SupervisorSyncStatus, error) {
+	return eth.SupervisorSyncStatus{}, nil
 }
 
 func (m *MockBackend) Close() error {

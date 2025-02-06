@@ -261,7 +261,7 @@ type mockUnsafeStartDeps struct {
 	isCrossUnsafeFn func() error
 }
 
-func (m *mockUnsafeStartDeps) Check(chain eth.ChainID, blockNum uint64, timestamp uint64, logIdx uint32, logHash common.Hash) (includedIn types.BlockSeal, err error) {
+func (m *mockUnsafeStartDeps) Contains(chain eth.ChainID, q types.ContainsQuery) (includedIn types.BlockSeal, err error) {
 	if m.checkFn != nil {
 		return m.checkFn()
 	}

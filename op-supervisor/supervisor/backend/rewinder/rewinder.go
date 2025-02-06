@@ -21,9 +21,9 @@ type l1Node interface {
 type rewinderDB interface {
 	DependencySet() depset.DependencySet
 
-	LastCrossDerivedFrom(chainID eth.ChainID, derivedFrom eth.BlockID) (derived types.BlockSeal, err error)
-	PreviousDerivedFrom(chain eth.ChainID, derivedFrom eth.BlockID) (prevDerivedFrom types.BlockSeal, err error)
-	CrossDerivedFromBlockRef(chainID eth.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error)
+	CrossSourceToLastDerived(chainID eth.ChainID, derivedFrom eth.BlockID) (derived types.BlockSeal, err error)
+	PreviousSource(chain eth.ChainID, source eth.BlockID) (prevSource types.BlockSeal, err error)
+	CrossDerivedToSourceRef(chainID eth.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error)
 
 	LocalSafe(eth.ChainID) (types.DerivedBlockSealPair, error)
 	CrossSafe(eth.ChainID) (types.DerivedBlockSealPair, error)
@@ -35,7 +35,7 @@ type rewinderDB interface {
 	FindSealedBlock(eth.ChainID, uint64) (types.BlockSeal, error)
 	Finalized(eth.ChainID) (types.BlockSeal, error)
 
-	LocalDerivedFrom(chain eth.ChainID, derived eth.BlockID) (derivedFrom types.BlockSeal, err error)
+	LocalDerivedToSource(chain eth.ChainID, derived eth.BlockID) (derivedFrom types.BlockSeal, err error)
 }
 
 // Rewinder is responsible for handling the rewinding of databases to the latest common ancestor between
@@ -121,7 +121,7 @@ func (r *Rewinder) handleLocalDerivedEvent(ev superevents.LocalSafeUpdateEvent) 
 			return
 		}
 
-		_, err := r.db.LocalDerivedFrom(ev.ChainID, target.ID())
+		_, err := r.db.LocalDerivedToSource(ev.ChainID, target.ID())
 		if err != nil {
 			if errors.Is(err, types.ErrConflict) || errors.Is(err, types.ErrFuture) {
 				continue
@@ -153,7 +153,7 @@ func (r *Rewinder) rewindL1ChainIfReorged(chainID eth.ChainID, newTip eth.BlockI
 	if err != nil {
 		return fmt.Errorf("failed to get local safe for chain %s: %w", chainID, err)
 	}
-	localSafeL1 := localSafe.DerivedFrom
+	localSafeL1 := localSafe.Source
 
 	// Get the canonical L1 block at our local head's height
 	canonicalL1, err := r.l1Node.L1BlockRefByNumber(context.Background(), localSafeL1.Number)
@@ -179,7 +179,7 @@ func (r *Rewinder) rewindL1ChainIfReorged(chainID eth.ChainID, newTip eth.BlockI
 			return fmt.Errorf("failed to get finalized block for chain %s: %w", chainID, err)
 		}
 	}
-	finalizedL1, err := r.db.CrossDerivedFromBlockRef(chainID, finalized.ID())
+	finalizedL1, err := r.db.CrossDerivedToSourceRef(chainID, finalized.ID())
 	if err != nil {
 		return fmt.Errorf("failed to get finalized L1 block for chain %s: %w", chainID, err)
 	}
@@ -201,7 +201,7 @@ func (r *Rewinder) rewindL1ChainIfReorged(chainID eth.ChainID, newTip eth.BlockI
 		}
 
 		// Get the previous L1 block from our DB
-		prevDerivedFrom, err := r.db.PreviousDerivedFrom(chainID, currentL1)
+		prevDerivedFrom, err := r.db.PreviousSource(chainID, currentL1)
 		if err != nil {
 			// If we hit the first block, use it as common ancestor
 			if errors.Is(err, types.ErrPreviousToFirst) {

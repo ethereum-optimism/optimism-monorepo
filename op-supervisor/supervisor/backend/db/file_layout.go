@@ -8,7 +8,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 )
 
-func prepLocalDerivedFromDBPath(chainID eth.ChainID, datadir string) (string, error) {
+func prepLocalDerivationDBPath(chainID eth.ChainID, datadir string) (string, error) {
 	dir, err := prepChainDir(chainID, datadir)
 	if err != nil {
 		return "", err
@@ -16,7 +16,7 @@ func prepLocalDerivedFromDBPath(chainID eth.ChainID, datadir string) (string, er
 	return filepath.Join(dir, "local_safe.db"), nil
 }
 
-func prepCrossDerivedFromDBPath(chainID eth.ChainID, datadir string) (string, error) {
+func prepCrossDerivationDBPath(chainID eth.ChainID, datadir string) (string, error) {
 	dir, err := prepChainDir(chainID, datadir)
 	if err != nil {
 		return "", err
