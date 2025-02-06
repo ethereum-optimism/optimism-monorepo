@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
 	"testing"
 
@@ -158,6 +159,18 @@ func TestTruncateTrailingPartialEntries(t *testing.T) {
 	stat, err := os.Stat(file)
 	require.NoError(t, err)
 	require.EqualValues(t, 2*TestEntrySize, stat.Size())
+
+	entry3 := createEntry(3)
+	require.NoError(t, db.Append(entry3))
+	f := db.data.(*os.File)
+	//require.NoError(t, f.Sync())
+	info, err := f.Stat()
+	require.NoError(t, err)
+	require.Equal(t, info.Size(), int64(TestEntrySize*3))
+	data := make([]byte, TestEntrySize*3)
+	_, err = f.ReadAt(data[:], 0)
+	require.NoError(t, err)
+	require.Equal(t, data[TestEntrySize*2:], entry3[:])
 }
 
 func TestWriteErrors(t *testing.T) {
@@ -271,3 +284,29 @@ func (s *stubDataAccess) Truncate(size int64) error {
 }
 
 var _ dataAccess = (*stubDataAccess)(nil)
+
+func TestTruncateBehavior(t *testing.T) {
+	// Create and open a file
+	fpath := path.Join(t.TempDir(), "testfile")
+	f, err := os.Create(fpath)
+	if err != nil {
+		panic(err)
+	}
+
+	for i := 0; i < 10000; i++ {
+		// Write some data
+		_, err = f.WriteString("Hello, World!")
+		require.NoError(t, err)
+		require.NoError(t, f.Sync())
+
+		require.NoError(t, f.Truncate(5+int64(i%2)))
+
+		// Get file stats
+		stat, err := f.Stat()
+		require.NoError(t, err)
+
+		require.Equal(t, int64(5)+int64(i%2), stat.Size())
+	}
+	require.NoError(t, f.Close())
+	require.NoError(t, os.Remove(fpath))
+}

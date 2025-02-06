@@ -73,12 +73,13 @@ func NewEntryDB[T EntryType, E Entry[T], B Binary[T, E]](logger log.Logger, path
 		return nil, fmt.Errorf("failed to stat database at %v: %w", path, err)
 	}
 	var b B
-	size := info.Size() / int64(b.EntrySize())
+	// info.Size() = n*34 + 64
+	size := info.Size() / int64(b.EntrySize()) // (n*34 + 64) / 34 = n + 1
 	db := &EntryDB[T, E, B]{
 		data:         file,
-		lastEntryIdx: EntryIdx(size - 1),
+		lastEntryIdx: EntryIdx(size - 1), // n + 1 - 1 = n
 	}
-	if size*int64(b.EntrySize()) != info.Size() {
+	if size*int64(b.EntrySize()) != info.Size() { // ((n+1) * 34) = n*34 + 34, != n*34 + 64
 		logger.Warn("File size is not a multiple of entry size. Truncating to last complete entry", "fileSize", size, "entrySize", b.EntrySize())
 		if err := db.recover(); err != nil {
 			return nil, fmt.Errorf("failed to recover database at %v: %w", path, err)
@@ -157,6 +158,9 @@ func (e *EntryDB[T, E, B]) Truncate(idx EntryIdx) error {
 
 // recover an invalid database by truncating back to the last complete event.
 func (e *EntryDB[T, E, B]) recover() error {
+	// lastEntryIdx = n
+	// Size() = lastEntryIdx + 1 = n + 1
+	// Truncate to: (n+1) * 34 = n*34 + 34  -> correct!
 	if err := e.data.Truncate(e.Size() * int64(e.b.EntrySize())); err != nil {
 		return fmt.Errorf("failed to truncate trailing partial entries: %w", err)
 	}
