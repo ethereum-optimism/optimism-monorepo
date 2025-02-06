@@ -116,15 +116,25 @@ type BatchSubmitter struct {
 
 	channelMgrMutex sync.Mutex // guards channelMgr and prevCurrentL1
 	channelMgr      *channelManager
-	prevCurrentL1   eth.L1BlockRef // cached CurrentL1 from the last syncStatus
+
+	txQueue     *txmgr.Queue[txRef]
+	queueCtx    context.Context
+	queueCancel context.CancelFunc
+	daGroup     *errgroup.Group
+
+	blocksLoaded chan struct{}
+
+	prevCurrentL1 eth.L1BlockRef // cached CurrentL1 from the last syncStatus
 }
 
 // NewBatchSubmitter initializes the BatchSubmitter driver from a preconfigured DriverSetup
 func NewBatchSubmitter(setup DriverSetup) *BatchSubmitter {
 	state := NewChannelManager(setup.Log, setup.Metr, setup.ChannelConfig, setup.RollupConfig)
+
 	if setup.ChannelOutFactory != nil {
 		state.SetChannelOutFactory(setup.ChannelOutFactory)
 	}
+
 	return &BatchSubmitter{
 		DriverSetup: setup,
 		channelMgr:  state,
@@ -168,9 +178,22 @@ func (l *BatchSubmitter) StartBatchSubmitting() error {
 	} else {
 		l.Log.Warn("Throttling loop is DISABLED due to 0 throttle-interval. This should not be disabled in prod.")
 	}
-	l.wg.Add(2)
-	go l.processReceiptsLoop(receiptsLoopCtx, receiptsCh)                                    // receives from receiptsCh
-	go l.mainLoop(l.shutdownCtx, receiptsCh, cancelReceiptsLoopCtx, cancelThrottlingLoopCtx) // sends on receiptsCh
+
+	queueCtx, queueCancel := context.WithCancel(l.killCtx)
+	l.queueCtx = queueCtx
+	l.queueCancel = queueCancel
+	l.txQueue = txmgr.NewQueue[txRef](queueCtx, l.Txmgr, l.Config.MaxPendingTransactions)
+	l.daGroup = &errgroup.Group{}
+	// errgroup with limit of 0 means no goroutine is able to run concurrently,
+	// so we only set the limit if it is greater than 0.
+	if l.Config.MaxConcurrentDARequests > 0 {
+		l.daGroup.SetLimit(int(l.Config.MaxConcurrentDARequests))
+	}
+
+	l.wg.Add(3)
+	go l.processReceiptsLoop(receiptsLoopCtx, receiptsCh)                                     // receives from receiptsCh
+	go l.readLoop(l.shutdownCtx, receiptsCh, cancelReceiptsLoopCtx, cancelThrottlingLoopCtx)  // sends on receiptsCh
+	go l.writeLoop(l.shutdownCtx, receiptsCh, cancelReceiptsLoopCtx, cancelThrottlingLoopCtx) // sends on receiptsCh
 
 	l.Log.Info("Batch Submitter started")
 	return nil
@@ -300,12 +323,6 @@ func (l *BatchSubmitter) loadBlockIntoState(ctx context.Context, blockNumber uin
 		return nil, fmt.Errorf("adding L2 block to state: %w", err)
 	}
 
-	// notify the throttling loop it may be time to initiate throttling without blocking
-	select {
-	case l.pendingBytesUpdated <- l.channelMgr.PendingDABytes():
-	default:
-	}
-
 	l.Log.Info("Added L2 block to local state", "block", eth.ToBlockID(block), "tx_count", len(block.Transactions()), "time", block.Time())
 	return block, nil
 }
@@ -382,6 +399,24 @@ const (
 	TxpoolCancelPending
 )
 
+// promptDAThrottlingCheck sends the current pending bytes to the throttling loop.
+// It is not blocking, no signal will be sent if the channel is full.
+func (l *BatchSubmitter) promptDAThrottlingCheck() {
+	if l.Config.ThrottleInterval == 0 {
+		return
+	}
+	// notify the throttling loop it may be time to initiate throttling without blocking
+	select {
+	case l.pendingBytesUpdated <- l.channelMgr.PendingDABytes():
+	default:
+	}
+}
+
+// promptWriteLoop signals the write loop to start processing the loaded blocks.
+func (l *BatchSubmitter) promptWriteLoop() {
+	l.blocksLoaded <- struct{}{}
+}
+
 // setTxPoolState locks the mutex, sets the parameters to the supplied ones, and release the mutex.
 func (l *BatchSubmitter) setTxPoolState(txPoolState TxPoolState, txPoolBlockedBlob bool) {
 	l.txpoolMutex.Lock()
@@ -419,23 +454,26 @@ func (l *BatchSubmitter) syncAndPrune(syncStatus *eth.SyncStatus) *inclusiveBloc
 	return syncActions.blocksToLoad
 }
 
-// mainLoop periodically:
+// writeLoop:
+// -  waits for a singal that blocks have been loaded
+// -  drives the creation of channels and frames
+// -  sends transactions to the DA layer
+func (l *BatchSubmitter) writeLoop(ctx context.Context, receiptsCh chan txmgr.TxReceipt[txRef], receiptsLoopCancel, throttlingLoopCancel context.CancelFunc) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-l.blocksLoaded:
+			l.publishStateToL1(l.txQueue, receiptsCh, l.daGroup)
+		}
+	}
+}
+
+// readLoop
 // -  polls the sequencer,
 // -  prunes the channel manager state (i.e. safe blocks)
 // -  loads unsafe blocks from the sequencer
-// -  drives the creation of channels and frames
-// -  sends transactions to the DA layer
-func (l *BatchSubmitter) mainLoop(ctx context.Context, receiptsCh chan txmgr.TxReceipt[txRef], receiptsLoopCancel, throttlingLoopCancel context.CancelFunc) {
-
-	queueCtx, queueCancel := context.WithCancel(l.killCtx)
-
-	queue := txmgr.NewQueue[txRef](queueCtx, l.Txmgr, l.Config.MaxPendingTransactions)
-	daGroup := &errgroup.Group{}
-	// errgroup with limit of 0 means no goroutine is able to run concurrently,
-	// so we only set the limit if it is greater than 0.
-	if l.Config.MaxConcurrentDARequests > 0 {
-		daGroup.SetLimit(int(l.Config.MaxConcurrentDARequests))
-	}
+func (l *BatchSubmitter) readLoop(ctx context.Context, receiptsCh chan txmgr.TxReceipt[txRef], receiptsLoopCancel, throttlingLoopCancel context.CancelFunc) {
 
 	l.txpoolMutex.Lock()
 	l.txpoolState = TxpoolGood
@@ -451,7 +489,7 @@ func (l *BatchSubmitter) mainLoop(ctx context.Context, receiptsCh chan txmgr.TxR
 		select {
 		case <-ticker.C:
 
-			if !l.checkTxpool(queue, receiptsCh) {
+			if !l.checkTxpool(l.txQueue, receiptsCh) {
 				continue
 			}
 
@@ -471,12 +509,12 @@ func (l *BatchSubmitter) mainLoop(ctx context.Context, receiptsCh chan txmgr.TxR
 					continue
 				}
 			}
-
-			l.publishStateToL1(queue, receiptsCh, daGroup, l.Config.PollInterval)
+			l.promptDAThrottlingCheck() // we have likely increased the pending data. Signal the throttling loop to check if it should throttle.
+			l.promptWriteLoop()         // we have loaded blocks, signal the write loop to start processing them into channels and submitting.
 
 		case <-ctx.Done():
-			queueCancel()
-			if err := queue.Wait(); err != nil {
+			l.queueCancel()
+			if err := l.txQueue.Wait(); err != nil {
 				if !errors.Is(err, context.Canceled) {
 					l.Log.Error("error waiting for transactions to complete", "err", err)
 				}
@@ -522,9 +560,8 @@ func (l *BatchSubmitter) processReceiptsLoop(ctx context.Context, receiptsCh cha
 func (l *BatchSubmitter) throttlingLoop(ctx context.Context) {
 	defer l.wg.Done()
 	l.Log.Info("Starting DA throttling loop")
-	ticker := time.NewTicker(l.Config.ThrottleInterval)
-	defer ticker.Stop()
 
+	// TODO reinstate some retry logic, depending on the error
 	updateParams := func(pendingBytes int64) {
 		ctx, cancel := context.WithTimeout(ctx, l.Config.NetworkTimeout)
 		defer cancel()
@@ -576,14 +613,11 @@ func (l *BatchSubmitter) throttlingLoop(ctx context.Context) {
 		}
 	}
 
-	cachedPendingBytes := int64(0)
 	for {
 		select {
-		case <-ticker.C:
-			updateParams(int64(cachedPendingBytes))
 		case pendingBytes := <-l.pendingBytesUpdated:
-			cachedPendingBytes = pendingBytes
 			updateParams(pendingBytes)
+			// TODO add case for active sequencer change event
 		case <-ctx.Done():
 			l.Log.Info("DA throttling loop done")
 			return
@@ -635,10 +669,8 @@ func (l *BatchSubmitter) waitNodeSync() error {
 }
 
 // publishStateToL1 queues up all pending TxData to be published to the L1, returning when there is no more data to
-// queue for publishing or if there was an error queing the data.  maxDuration tells this function to return from state
-// publishing after this amount of time has been exceeded even if there is more data remaining.
-func (l *BatchSubmitter) publishStateToL1(queue *txmgr.Queue[txRef], receiptsCh chan txmgr.TxReceipt[txRef], daGroup *errgroup.Group, maxDuration time.Duration) {
-	start := time.Now()
+// queue for publishing or if there was an error queing the data.
+func (l *BatchSubmitter) publishStateToL1(queue *txmgr.Queue[txRef], receiptsCh chan txmgr.TxReceipt[txRef], daGroup *errgroup.Group) {
 	for {
 		// if the txmgr is closed, we stop the transaction sending
 		if l.Txmgr.IsClosed() {
@@ -658,11 +690,8 @@ func (l *BatchSubmitter) publishStateToL1(queue *txmgr.Queue[txRef], receiptsCh 
 			}
 			return
 		}
-		if time.Since(start) > maxDuration {
-			l.Log.Warn("Aborting state publishing, max duration exceeded")
-			return
-		}
 	}
+
 }
 
 // clearState clears the state of the channel manager
