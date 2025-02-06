@@ -151,7 +151,7 @@ contract OPPrestateUpdater_Test is Test {
         );
     }
 
-    function test_updatePrestate_WithValidInput_succeeds() public {
+    function test_updatePrestate_withValidInput_succeeds() public {
         OPPrestateUpdater.PrestateUpdateInput[] memory inputs = new OPPrestateUpdater.PrestateUpdateInput[](1);
         inputs[0] = OPPrestateUpdater.PrestateUpdateInput({
             opChain: OPContractsManager.OpChainConfig({
@@ -178,13 +178,13 @@ contract OPPrestateUpdater_Test is Test {
         assertEq(pdg.absolutePrestate().raw(), inputs[0].absolutePrestate.raw(), "pdg prestate mismatch");
     }
 
-    function test_updatePrestate_WhenPDGPrestateIsZero_reverts() public {
+    function test_updatePrestate_whenPDGPrestateIsZero_reverts() public {
         OPPrestateUpdater.PrestateUpdateInput[] memory inputs = new OPPrestateUpdater.PrestateUpdateInput[](1);
         inputs[0] = OPPrestateUpdater.PrestateUpdateInput({
             opChain: OPContractsManager.OpChainConfig({
-            systemConfigProxy: chainDeployOutput.systemConfigProxy,
-            proxyAdmin: chainDeployOutput.opChainProxyAdmin
-        }),
+                systemConfigProxy: chainDeployOutput.systemConfigProxy,
+                proxyAdmin: chainDeployOutput.opChainProxyAdmin
+            }),
             absolutePrestate: Claim.wrap(bytes32(0))
         });
 
@@ -193,38 +193,30 @@ contract OPPrestateUpdater_Test is Test {
 
         vm.expectRevert(OPPrestateUpdater.PDGPrestateRequired.selector);
         DelegateCaller(proxyAdminOwner).dcForward(
-            address(prestateUpdater),
-            abi.encodeCall(OPPrestateUpdater.updatePrestate, (inputs))
+            address(prestateUpdater), abi.encodeCall(OPPrestateUpdater.updatePrestate, (inputs))
         );
     }
 
-    function test_updatePrestate_WhenFDGNotFound_reverts() public {
+    function test_updatePrestate_whenFDGNotFound_reverts() public {
         OPPrestateUpdater.PrestateUpdateInput[] memory inputs = new OPPrestateUpdater.PrestateUpdateInput[](1);
         inputs[0] = OPPrestateUpdater.PrestateUpdateInput({
             opChain: OPContractsManager.OpChainConfig({
-            systemConfigProxy: chainDeployOutput.systemConfigProxy,
-            proxyAdmin: chainDeployOutput.opChainProxyAdmin
-        }),
+                systemConfigProxy: chainDeployOutput.systemConfigProxy,
+                proxyAdmin: chainDeployOutput.opChainProxyAdmin
+            }),
             absolutePrestate: Claim.wrap(bytes32(hex"ABBA"))
         });
 
-        IDisputeGameFactory dgf = IDisputeGameFactory(
-            chainDeployOutput.systemConfigProxy.disputeGameFactory()
-        );
+        IDisputeGameFactory dgf = IDisputeGameFactory(chainDeployOutput.systemConfigProxy.disputeGameFactory());
 
-        vm.mockCall(
-            address(dgf),
-            abi.encodeCall(dgf.gameImpls, GameTypes.CANNON),
-            abi.encode(address(0))
-        );
+        vm.mockCall(address(dgf), abi.encodeCall(dgf.gameImpls, GameTypes.CANNON), abi.encode(address(0)));
 
         address proxyAdminOwner = chainDeployOutput.opChainProxyAdmin.owner();
         vm.etch(address(proxyAdminOwner), vm.getDeployedCode("test/mocks/Callers.sol:DelegateCaller"));
 
         vm.expectRevert(OPPrestateUpdater.FDGNotFound.selector);
         DelegateCaller(proxyAdminOwner).dcForward(
-            address(prestateUpdater),
-            abi.encodeCall(OPPrestateUpdater.updatePrestate, (inputs))
+            address(prestateUpdater), abi.encodeCall(OPPrestateUpdater.updatePrestate, (inputs))
         );
     }
 
