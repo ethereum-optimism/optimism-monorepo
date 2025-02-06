@@ -222,6 +222,20 @@ func TestDeriveBlockForConsolidateStep(t *testing.T) {
 			},
 		},
 		{
+			name: "ReplaceChainB-UnknownChainID",
+			testCase: consolidationTestCase{
+				logBuilderFn: func(includeBlockNumbers map[supervisortypes.ChainIndex]uint64, config *staticConfigSource) map[supervisortypes.ChainIndex][]*gethTypes.Log {
+					init := createInitLog()
+					exec := createExecMessage(includeBlockNumbers[chainA], config)
+					exec.Identifier.ChainID = uint256.Int(eth.ChainIDFromUInt64(0xdeadbeef))
+					return map[supervisortypes.ChainIndex][]*gethTypes.Log{chainA: {init}, chainB: {convertExecutingMessageToLog(t, exec)}}
+				},
+				expectBlockReplacements: func(config *staticConfigSource) []supervisortypes.ChainIndex {
+					return []supervisortypes.ChainIndex{chainB}
+				},
+			},
+		},
+		{
 			name: "ReplaceChainB-InvalidLogIndex",
 			testCase: consolidationTestCase{
 				logBuilderFn: func(includeBlockNumbers map[supervisortypes.ChainIndex]uint64, config *staticConfigSource) map[supervisortypes.ChainIndex][]*gethTypes.Log {
@@ -242,7 +256,7 @@ func TestDeriveBlockForConsolidateStep(t *testing.T) {
 					}
 				},
 				expectBlockReplacements: func(config *staticConfigSource) []supervisortypes.ChainIndex {
-					return []supervisortypes.ChainIndex{1}
+					return []supervisortypes.ChainIndex{chainB}
 				},
 			},
 		},
@@ -256,7 +270,7 @@ func TestDeriveBlockForConsolidateStep(t *testing.T) {
 					return map[supervisortypes.ChainIndex][]*gethTypes.Log{chainA: {init}, chainB: {convertExecutingMessageToLog(t, execMsg)}}
 				},
 				expectBlockReplacements: func(config *staticConfigSource) []supervisortypes.ChainIndex {
-					return []supervisortypes.ChainIndex{1}
+					return []supervisortypes.ChainIndex{chainB}
 				},
 			},
 		},
@@ -270,7 +284,7 @@ func TestDeriveBlockForConsolidateStep(t *testing.T) {
 					return map[supervisortypes.ChainIndex][]*gethTypes.Log{chainA: {init}, chainB: {convertExecutingMessageToLog(t, execMsg)}}
 				},
 				expectBlockReplacements: func(config *staticConfigSource) []supervisortypes.ChainIndex {
-					return []supervisortypes.ChainIndex{1}
+					return []supervisortypes.ChainIndex{chainB}
 				},
 			},
 		},
@@ -284,7 +298,7 @@ func TestDeriveBlockForConsolidateStep(t *testing.T) {
 					return map[supervisortypes.ChainIndex][]*gethTypes.Log{chainA: {log}, chainB: {log}}
 				},
 				expectBlockReplacements: func(config *staticConfigSource) []supervisortypes.ChainIndex {
-					return []supervisortypes.ChainIndex{0, 1}
+					return []supervisortypes.ChainIndex{chainA, chainB}
 				},
 			},
 		},

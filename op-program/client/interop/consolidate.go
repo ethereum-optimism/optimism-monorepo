@@ -19,6 +19,8 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 )
 
+const messageExpiryTimeSeconds = 15552000 // 180 days
+
 func ReceiptsToExecutingMessages(depset depset.ChainIndexFromID, receipts ethtypes.Receipts) ([]*supervisortypes.ExecutingMessage, uint32, error) {
 	var execMsgs []*supervisortypes.ExecutingMessage
 	var logCount uint32
@@ -64,13 +66,14 @@ func RunConsolidation(
 	if err != nil {
 		return eth.Bytes32{}, fmt.Errorf("failed to create consolidate check deps: %w", err)
 	}
-
-	var consolidatedChains []eth.ChainIDAndOutput
-
 	agreedBlockHashes, err := fetchAgreedBlockHashes(l2PreimageOracle, superRoot)
 	if err != nil {
 		return eth.Bytes32{}, err
 	}
+	// invalidChains tracks blocks that need to be replaced with a deposits-only block.
+	// The replacement is done after a first pass on all chains to avoid "contaminating" the caonical block
+	// oracle in a way that alters the result of hazard checks after a reorg.
+	invalidChains := make(map[eth.ChainID]*ethtypes.Block)
 
 	for i, chain := range superRoot.Chains {
 		progress := transitionState.PendingProgress[i]
@@ -81,7 +84,11 @@ func RunConsolidation(
 
 		optimisticBlock, receipts := l2PreimageOracle.ReceiptsByBlockHash(progress.BlockHash, chain.ChainID)
 		execMsgs, _, err := ReceiptsToExecutingMessages(deps.DependencySet(), receipts)
-		if err != nil {
+		switch {
+		case errors.Is(err, supervisortypes.ErrUnknownChain):
+			invalidChains[chain.ChainID] = optimisticBlock
+			continue
+		case err != nil:
 			return eth.Bytes32{}, err
 		}
 
@@ -90,11 +97,17 @@ func RunConsolidation(
 			Number:    optimisticBlock.NumberU64(),
 			Timestamp: optimisticBlock.Time(),
 		}
-		consolidatedOutputRoot := progress.OutputRoot
 		if err := checkHazards(deps, candidate, chain.ChainID, execMsgs); err != nil {
 			if !isInvalidMessageError(err) {
 				return eth.Bytes32{}, err
 			}
+			invalidChains[chain.ChainID] = optimisticBlock
+		}
+	}
+
+	var consolidatedChains []eth.ChainIDAndOutput
+	for i, chain := range superRoot.Chains {
+		if optimisticBlock, ok := invalidChains[chain.ChainID]; ok {
 			chainAgreedPrestate := superRoot.Chains[i]
 			_, outputRoot, err := buildDepositOnlyBlock(
 				logger,
@@ -108,12 +121,16 @@ func RunConsolidation(
 			if err != nil {
 				return eth.Bytes32{}, err
 			}
-			consolidatedOutputRoot = outputRoot
+			consolidatedChains = append(consolidatedChains, eth.ChainIDAndOutput{
+				ChainID: chain.ChainID,
+				Output:  outputRoot,
+			})
+		} else {
+			consolidatedChains = append(consolidatedChains, eth.ChainIDAndOutput{
+				ChainID: chain.ChainID,
+				Output:  transitionState.PendingProgress[i].OutputRoot,
+			})
 		}
-		consolidatedChains = append(consolidatedChains, eth.ChainIDAndOutput{
-			ChainID: chain.ChainID,
-			Output:  consolidatedOutputRoot,
-		})
 	}
 	consolidatedSuper := &eth.SuperV1{
 		Timestamp: superRoot.Timestamp + 1,
@@ -127,7 +144,7 @@ func isInvalidMessageError(err error) bool {
 	return errors.Is(err, supervisortypes.ErrConflict) ||
 		errors.Is(err, cross.ErrExecMsgHasInvalidIndex) ||
 		errors.Is(err, cross.ErrExecMsgUnknownChain) ||
-		errors.Is(err, cross.ErrCycle)
+		errors.Is(err, cross.ErrCycle) || errors.Is(err, supervisortypes.ErrUnknownChain)
 }
 
 type ConsolidateCheckDeps interface {
@@ -142,6 +159,16 @@ func checkHazards(
 	chainID eth.ChainID,
 	execMsgs []*supervisortypes.ExecutingMessage,
 ) error {
+	// TODO(#14234): remove this check once the supervisor is updated handle msg expiry
+	for _, msg := range execMsgs {
+		if msg.Timestamp+messageExpiryTimeSeconds < candidate.Timestamp {
+			return fmt.Errorf(
+				"message timestamp is too old: %d < %d: %w",
+				msg.Timestamp+messageExpiryTimeSeconds, candidate.Timestamp, supervisortypes.ErrConflict,
+			)
+		}
+	}
+
 	hazards, err := cross.CrossUnsafeHazards(deps, chainID, candidate, execMsgs)
 	if err != nil {
 		return err
