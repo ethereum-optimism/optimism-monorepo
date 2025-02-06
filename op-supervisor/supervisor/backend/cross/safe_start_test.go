@@ -151,7 +151,7 @@ func TestCrossSafeHazards(t *testing.T) {
 		candidate := types.BlockSeal{Timestamp: 2}
 		em1 := &types.ExecutingMessage{Chain: types.ChainIndex(0), Timestamp: 2}
 		execMsgs := []*types.ExecutingMessage{em1}
-		// when there is one execMsg, and the timetamp is equal to the candidate,
+		// when there is one execMsg, and the timestamp is equal to the candidate,
 		// and check returns an error,
 		// that error is returned
 		hazards, err := CrossSafeHazards(ssd, chainID, inL1Source, candidate, execMsgs)
