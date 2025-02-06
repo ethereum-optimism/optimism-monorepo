@@ -1,10 +1,15 @@
 package script
 
 import (
+	"fmt"
+	"math/big"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/holiman/uint256"
 	"github.com/stretchr/testify/require"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 const tomlTest = `
@@ -67,4 +72,43 @@ func TestComputeCreate2Address(t *testing.T) {
 	addr, err := c.ComputeCreate2Address_890c283b(salt, codeHash)
 	require.NoError(t, err)
 	require.EqualValues(t, common.HexToAddress("0x2f29AF1b5a7083bf98C4A89976c2f17FF980735f"), addr)
+}
+
+type createCase struct {
+	Deployer common.Address
+	Nonce    *big.Int
+	Expected common.Address
+}
+
+func TestComputeCreateAddress(t *testing.T) {
+	c := &CheatCodesPrecompile{}
+	sender := common.Address(crypto.Keccak256([]byte("example sender"))[12:])
+	for _, testCase := range []createCase{
+		{
+			Deployer: sender,
+			Nonce:    big.NewInt(0),
+			Expected: crypto.CreateAddress(sender, 0),
+		},
+		{
+			Deployer: sender,
+			Nonce:    big.NewInt(123),
+			Expected: crypto.CreateAddress(sender, 123),
+		},
+		{
+			Deployer: sender,
+			Nonce:    new(uint256.Int).Not(uint256.NewInt(0)).ToBig(), // max value
+			Expected: common.Address{},                                // expecting an error
+		},
+	} {
+		t.Run(fmt.Sprintf("create-%s-%s", testCase.Nonce, testCase.Deployer), func(t *testing.T) {
+			addr, err := c.ComputeCreateAddress_74637a7a(testCase.Deployer, testCase.Nonce)
+			if testCase.Expected == (common.Address{}) {
+				require.ErrorContains(t, err, "too large")
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, testCase.Expected, addr)
+			}
+		})
+	}
+
 }
