@@ -12,44 +12,12 @@ struct Identifier {
 /// @title ICrossL2Inbox
 /// @notice Interface for the CrossL2Inbox contract.
 interface ICrossL2Inbox {
-    error ReentrantCall();
-
-    /// @notice Thrown when the caller is not DEPOSITOR_ACCOUNT when calling `setInteropStart()`
-    error NotDepositor();
-
-    /// @notice Thrown when attempting to set interop start when it's already set.
-    error InteropStartAlreadySet();
-
-    /// @notice Thrown when a non-written transient storage slot is attempted to be read from.
-    error NotEntered();
-
     /// @notice Thrown when trying to execute a cross chain message on a deposit transaction.
     error NoExecutingDeposits();
 
     event ExecutingMessage(bytes32 indexed msgHash, Identifier id);
 
     function version() external view returns (string memory);
-
-    /// @notice Returns the interop start timestamp.
-    /// @return interopStart_ interop start timestamp.
-    function interopStart() external view returns (uint256 interopStart_);
-
-    /// @notice Returns the origin address of the Identifier.
-    function origin() external view returns (address);
-
-    /// @notice Returns the block number of the Identifier.
-    function blockNumber() external view returns (uint256);
-
-    /// @notice Returns the log index of the Identifier.
-    function logIndex() external view returns (uint256);
-
-    /// @notice Returns the timestamp of the Identifier.
-    function timestamp() external view returns (uint256);
-
-    /// @notice Returns the chain ID of the Identifier.
-    function chainId() external view returns (uint256);
-
-    function setInteropStart() external;
 
     /// @notice Validates a cross chain message on the destination chain
     ///         and emits an ExecutingMessage event. This function is useful

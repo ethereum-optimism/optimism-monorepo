@@ -7,7 +7,6 @@ import { console2 as console } from "forge-std/console2.sol";
 
 // Scripts
 import { DeployConfig } from "scripts/deploy/DeployConfig.s.sol";
-import { ISystemConfigInterop } from "interfaces/L1/ISystemConfigInterop.sol";
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 
 // Libraries
@@ -21,6 +20,8 @@ import { IOPContractsManager } from "interfaces/L1/IOPContractsManager.sol";
 import { IResourceMetering } from "interfaces/L1/IResourceMetering.sol";
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
+import { ISuperchainConfigInterop } from "interfaces/L1/ISuperchainConfigInterop.sol";
+import { ISharedLockbox } from "interfaces/L1/ISharedLockbox.sol";
 import { IL1CrossDomainMessenger } from "interfaces/L1/IL1CrossDomainMessenger.sol";
 import { IOptimismPortal2 } from "interfaces/L1/IOptimismPortal2.sol";
 import { IL1ERC721Bridge } from "interfaces/L1/IL1ERC721Bridge.sol";
@@ -119,32 +120,6 @@ library ChainAssertions {
             require(config.disputeGameFactory() == address(0), "CHECK-SCFG-410");
             require(config.optimismPortal() == address(0), "CHECK-SCFG-420");
             require(config.optimismMintableERC20Factory() == address(0), "CHECK-SCFG-430");
-        }
-    }
-
-    /// @notice Asserts that the SystemConfigInterop is setup correctly
-    function checkSystemConfigInterop(
-        Types.ContractSet memory _contracts,
-        DeployConfig _cfg,
-        bool _isProxy
-    )
-        internal
-        view
-    {
-        ISystemConfigInterop config = ISystemConfigInterop(_contracts.SystemConfig);
-        console.log(
-            "Running chain assertions on the SystemConfigInterop %s at %s",
-            _isProxy ? "proxy" : "implementation",
-            address(config)
-        );
-
-        checkSystemConfig(_contracts, _cfg, _isProxy);
-        if (_isProxy) {
-            // TODO: this is not being set in the deployment, nor is a config value.
-            // Update this when it has an entry in hardhat.json
-            require(config.dependencyManager() == address(0), "CHECK-SCFGI-10");
-        } else {
-            require(config.dependencyManager() == address(0), "CHECK-SCFGI-20");
         }
     }
 
@@ -443,6 +418,7 @@ library ChainAssertions {
         view
     {
         ISuperchainConfig superchainConfig = ISuperchainConfig(_contracts.SuperchainConfig);
+
         console.log(
             "Running chain assertions on the SuperchainConfig %s at %s",
             _isProxy ? "proxy" : "implementation",
@@ -465,6 +441,36 @@ library ChainAssertions {
             require(superchainConfig.guardian() == address(0), "CHECK-SC-40");
             require(superchainConfig.paused() == false, "CHECK-SC-50");
         }
+    }
+
+    /// @notice Asserts that the SuperchainConfigInterop is setup correctly
+    function checkSuperchainConfigInterop(
+        Types.ContractSet memory _contracts,
+        DeployConfig _cfg,
+        bool _isPaused,
+        bool _isProxy
+    )
+        internal
+        view
+    {
+        ISuperchainConfigInterop superchainConfig = ISuperchainConfigInterop(_contracts.SuperchainConfig);
+        ISharedLockbox sharedLockbox = ISharedLockbox(_contracts.SharedLockbox);
+
+        console.log(
+            "Running chain assertions on the SuperchainConfigInterop %s at %s",
+            _isProxy ? "proxy" : "implementation",
+            address(superchainConfig)
+        );
+
+        if (_isProxy) {
+            require(superchainConfig.clusterManager() == _cfg.finalSystemOwner(), "CHECK-SCI-10");
+            require(address(superchainConfig.sharedLockbox()) == address(sharedLockbox), "CHECK-SCI-20");
+        } else {
+            require(superchainConfig.clusterManager() == address(0), "CHECK-SCI-30");
+            require(address(superchainConfig.sharedLockbox()) == address(0), "CHECK-SCI-40");
+        }
+
+        checkSuperchainConfig(_contracts, _cfg, _isPaused, _isProxy);
     }
 
     /// @notice Asserts that the OPContractsManager is setup correctly
@@ -538,5 +544,28 @@ library ChainAssertions {
             keccak256(fullPermissionedDisputeGameInitcode) == keccak256(vm.getCode("PermissionedDisputeGame")),
             "CHECK-OPCM-200"
         );
+    }
+
+    /// @notice Asserts that the SharedLockbox is setup correctly
+    function checkSharedLockbox(Types.ContractSet memory _contracts, bool _isProxy) internal view {
+        ISharedLockbox sharedLockbox = ISharedLockbox(_contracts.SharedLockbox);
+        ISuperchainConfigInterop superchainConfig = ISuperchainConfigInterop(_contracts.SuperchainConfig);
+
+        console.log(
+            "Running chain assertions on the SharedLockbox %s at %s",
+            _isProxy ? "proxy" : "implementation",
+            address(sharedLockbox)
+        );
+
+        require(address(sharedLockbox) != address(0), "CHECK-SLB-10");
+
+        // Check that the contract is initialized
+        DeployUtils.assertInitializedOZv5({ _contractAddress: address(sharedLockbox), _isProxy: _isProxy });
+
+        if (_isProxy) {
+            require(sharedLockbox.superchainConfig() == superchainConfig, "CHECK-SLB-20");
+        } else {
+            require(address(sharedLockbox.superchainConfig()) == address(0), "CHECK-SLB-30");
+        }
     }
 }

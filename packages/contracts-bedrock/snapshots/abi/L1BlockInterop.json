@@ -79,19 +79,6 @@
   },
   {
     "inputs": [],
-    "name": "dependencySetSize",
-    "outputs": [
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
     "name": "depositsComplete",
     "outputs": [],
     "stateMutability": "nonpayable",
@@ -181,25 +168,6 @@
     "type": "function"
   },
   {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "_chainId",
-        "type": "uint256"
-      }
-    ],
-    "name": "isInDependencySet",
-    "outputs": [
-      {
-        "internalType": "bool",
-        "name": "",
-        "type": "bool"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
     "inputs": [],
     "name": "l1FeeOverhead",
     "outputs": [
@@ -249,24 +217,6 @@
       }
     ],
     "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "enum ConfigType",
-        "name": "_type",
-        "type": "uint8"
-      },
-      {
-        "internalType": "bytes",
-        "name": "_value",
-        "type": "bytes"
-      }
-    ],
-    "name": "setConfig",
-    "outputs": [],
-    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -358,54 +308,8 @@
     "type": "function"
   },
   {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "uint256",
-        "name": "chainId",
-        "type": "uint256"
-      }
-    ],
-    "name": "DependencyAdded",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "uint256",
-        "name": "chainId",
-        "type": "uint256"
-      }
-    ],
-    "name": "DependencyRemoved",
-    "type": "event"
-  },
-  {
-    "inputs": [],
-    "name": "AlreadyDependency",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "CantRemovedDependency",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "DependencySetSizeTooLarge",
-    "type": "error"
-  },
-  {
     "inputs": [],
     "name": "NotCrossL2Inbox",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "NotDependency",
     "type": "error"
   },
   {

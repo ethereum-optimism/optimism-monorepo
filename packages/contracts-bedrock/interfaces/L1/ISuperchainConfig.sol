@@ -3,7 +3,8 @@ pragma solidity ^0.8.0;
 
 interface ISuperchainConfig {
     enum UpdateType {
-        GUARDIAN
+        GUARDIAN,
+        CLUSTER_MANAGER
     }
 
     event ConfigUpdate(UpdateType indexed updateType, bytes data);
@@ -18,7 +19,7 @@ interface ISuperchainConfig {
     function pause(string memory _identifier) external;
     function paused() external view returns (bool paused_);
     function unpause() external;
-    function version() external view returns (string memory);
+    function version() external pure returns (string memory);
 
     function __constructor__() external;
 }

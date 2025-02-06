@@ -27,9 +27,6 @@ interface IL2ToL2CrossDomainMessenger {
     /// @notice Thrown when attempting to relay a message whose destination chain is not the chain relaying it.
     error MessageDestinationNotRelayChain();
 
-    /// @notice Thrown when attempting to relay a message whose target is CrossL2Inbox.
-    error MessageTargetCrossL2Inbox();
-
     /// @notice Thrown when attempting to relay a message whose target is L2ToL2CrossDomainMessenger.
     error MessageTargetL2ToL2CrossDomainMessenger();
 
@@ -41,9 +38,6 @@ interface IL2ToL2CrossDomainMessenger {
 
     /// @notice Thrown when a call to the target contract during message relay fails.
     error TargetCallFailed();
-
-    /// @notice Thrown when attempting to use a chain ID that is not in the dependency set.
-    error InvalidChainId();
 
     /// @notice Emitted whenever a message is sent to a destination
     /// @param destination  Chain ID of the destination chain.

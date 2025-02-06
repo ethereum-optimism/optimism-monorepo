@@ -9,3 +9,6 @@ error TransferFailed();
 
 /// @notice Thrown when attempting to perform an operation and the account is the zero address.
 error ZeroAddress();
+
+/// @notice Thrown when a function is called while the contract is paused.
+error Paused();

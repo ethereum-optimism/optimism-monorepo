@@ -19,6 +19,7 @@ type DeploySuperchainInput struct {
 	Paused                     bool                   `toml:"paused"`
 	RequiredProtocolVersion    params.ProtocolVersion `toml:"requiredProtocolVersion"`
 	RecommendedProtocolVersion params.ProtocolVersion `toml:"recommendedProtocolVersion"`
+	IsInterop                  bool                   `toml:"isInterop"`
 }
 
 func (dsi *DeploySuperchainInput) InputSet() bool {
@@ -31,6 +32,8 @@ type DeploySuperchainOutput struct {
 	SuperchainConfigProxy common.Address
 	ProtocolVersionsImpl  common.Address
 	ProtocolVersionsProxy common.Address
+	SharedLockboxImpl     common.Address
+	SharedLockboxProxy    common.Address
 }
 
 func (output *DeploySuperchainOutput) CheckOutput(input common.Address) error {
@@ -48,5 +51,10 @@ type DeploySuperchainOpts struct {
 }
 
 func DeploySuperchain(h *script.Host, input DeploySuperchainInput) (DeploySuperchainOutput, error) {
-	return RunScriptSingle[DeploySuperchainInput, DeploySuperchainOutput](h, input, "DeploySuperchain.s.sol", "DeploySuperchain")
+	implContract := "DeploySuperchain"
+	if input.IsInterop {
+		implContract = "DeploySuperchainInterop"
+	}
+
+	return RunScriptSingle[DeploySuperchainInput, DeploySuperchainOutput](h, input, "DeploySuperchain.s.sol", implContract)
 }

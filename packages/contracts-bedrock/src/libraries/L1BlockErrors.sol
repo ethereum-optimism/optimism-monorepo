@@ -6,15 +6,3 @@ error NotDepositor();
 
 /// @notice Error when a non-cross L2 Inbox sender tries to call the `isDeposit()` method.
 error NotCrossL2Inbox();
-
-/// @notice Error when a chain ID is not in the interop dependency set.
-error NotDependency();
-
-/// @notice Error when the interop dependency set size is too large.
-error DependencySetSizeTooLarge();
-
-/// @notice Error when a chain ID already in the interop dependency set is attempted to be added.
-error AlreadyDependency();
-
-/// @notice Error when the chain's chain ID is attempted to be removed from the interop dependency set.
-error CantRemovedDependency();

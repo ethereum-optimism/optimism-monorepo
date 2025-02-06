@@ -8,6 +8,7 @@ import { IProxy } from "interfaces/universal/IProxy.sol";
 
 // Target contract
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
+import { SuperchainConfig } from "src/L1/SuperchainConfig.sol";
 
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 
@@ -18,7 +19,7 @@ contract SuperchainConfig_Init_Test is CommonTest {
     }
 
     /// @dev Tests that initialization sets the correct values. These are defined in CommonTest.sol.
-    function test_initialize_unpaused_succeeds() external view {
+    function test_initialize_succeeds() external view {
         assertFalse(superchainConfig.paused());
         assertEq(superchainConfig.guardian(), deploy.cfg().superchainConfigGuardian());
     }

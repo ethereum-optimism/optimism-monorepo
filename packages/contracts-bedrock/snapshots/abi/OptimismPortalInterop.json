@@ -304,6 +304,26 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "migrateLiquidity",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "migrated",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "uint64",
@@ -554,24 +574,6 @@
   {
     "inputs": [
       {
-        "internalType": "enum ConfigType",
-        "name": "_type",
-        "type": "uint8"
-      },
-      {
-        "internalType": "bytes",
-        "name": "_value",
-        "type": "bytes"
-      }
-    ],
-    "name": "setConfig",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
         "internalType": "GameType",
         "name": "_gameType",
         "type": "uint32"
@@ -580,6 +582,19 @@
     "name": "setRespectedGameType",
     "outputs": [],
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "sharedLockbox",
+    "outputs": [
+      {
+        "internalType": "contract ISharedLockbox",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -632,6 +647,19 @@
       }
     ],
     "name": "DisputeGameBlacklisted",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "ETHMigrated",
     "type": "event"
   },
   {
@@ -833,6 +861,11 @@
   {
     "inputs": [],
     "name": "LegacyGame",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "MessageTargetSharedLockbox",
     "type": "error"
   },
   {

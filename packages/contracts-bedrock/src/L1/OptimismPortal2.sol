@@ -6,7 +6,6 @@ import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable
 import { ResourceMetering } from "src/L1/ResourceMetering.sol";
 
 // Libraries
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { SafeCall } from "src/libraries/SafeCall.sol";
 import { Constants } from "src/libraries/Constants.sol";
 import { Types } from "src/libraries/Types.sol";
@@ -34,7 +33,6 @@ import {
 import { GameStatus, GameType, Claim, Timestamp } from "src/dispute/lib/Types.sol";
 
 // Interfaces
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ISemver } from "interfaces/universal/ISemver.sol";
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 import { IResourceMetering } from "interfaces/L1/IResourceMetering.sol";
@@ -48,9 +46,6 @@ import { IDisputeGame } from "interfaces/dispute/IDisputeGame.sol";
 ///         and L2. Messages sent directly to the OptimismPortal have no form of replayability.
 ///         Users are encouraged to use the L1CrossDomainMessenger for a higher-level interface.
 contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
-    /// @notice Allows for interactions with non standard ERC20 tokens.
-    using SafeERC20 for IERC20;
-
     /// @notice Represents a proven withdrawal.
     /// @custom:field disputeGameProxy The address of the dispute game proxy that the withdrawal was proven against.
     /// @custom:field timestamp        Timestamp at which the withdrawal was proven.
@@ -177,9 +172,9 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
     }
 
     /// @notice Semantic version.
-    /// @custom:semver 3.12.0
+    /// @custom:semver 3.13.0-beta.1
     function version() public pure virtual returns (string memory) {
-        return "3.12.0";
+        return "3.13.0-beta.1";
     }
 
     /// @notice Constructs the OptimismPortal contract.
@@ -194,6 +189,7 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
     /// @param _disputeGameFactory Contract of the DisputeGameFactory.
     /// @param _systemConfig Contract of the SystemConfig.
     /// @param _superchainConfig Contract of the SuperchainConfig.
+    /// @param _initialRespectedGameType Initial game type to be respected.
     function initialize(
         IDisputeGameFactory _disputeGameFactory,
         ISystemConfig _systemConfig,
@@ -201,7 +197,24 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
         GameType _initialRespectedGameType
     )
         external
+        virtual
         initializer
+    {
+        _initialize(_disputeGameFactory, _systemConfig, _superchainConfig, _initialRespectedGameType);
+    }
+
+    /// @notice Internal initializer function.
+    /// @param _disputeGameFactory Contract of the DisputeGameFactory.
+    /// @param _systemConfig Contract of the SystemConfig.
+    /// @param _superchainConfig Contract of the SuperchainConfig.
+    /// @param _initialRespectedGameType Initial game type to be respected.
+    function _initialize(
+        IDisputeGameFactory _disputeGameFactory,
+        ISystemConfig _systemConfig,
+        ISuperchainConfig _superchainConfig,
+        GameType _initialRespectedGameType
+    )
+        internal
     {
         disputeGameFactory = _disputeGameFactory;
         systemConfig = _systemConfig;
@@ -266,8 +279,6 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
     }
 
     /// @notice Accepts ETH value without triggering a deposit to L2.
-    ///         This function mainly exists for the sake of the migration between the legacy
-    ///         Optimism system and Bedrock.
     function donateETH() external payable {
         // Intentionally empty.
     }
@@ -281,6 +292,15 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
         assembly ("memory-safe") {
             config_ := config
         }
+    }
+
+    /// @notice Validates a withdrawal before it is proved or finalized.
+    /// @param _tx Withdrawal transaction to validate.
+    function _validateWithdrawal(Types.WithdrawalTransaction memory _tx) internal view virtual {
+        // Prevent users from creating a deposit transaction where this address is the message
+        // sender on L2. Because this is checked here, we do not need to check again in
+        // `finalizeWithdrawalTransaction`.
+        if (_tx.target == address(this)) revert BadTarget();
     }
 
     /// @notice Proves a withdrawal transaction.
@@ -297,10 +317,8 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
         external
         whenNotPaused
     {
-        // Prevent users from creating a deposit transaction where this address is the message
-        // sender on L2. Because this is checked here, we do not need to check again in
-        // `finalizeWithdrawalTransaction`.
-        if (_tx.target == address(this)) revert BadTarget();
+        // Validate the withdrawal before it is proved.
+        _validateWithdrawal(_tx);
 
         // Fetch the dispute game proxy from the `DisputeGameFactory` contract.
         (GameType gameType,, IDisputeGame gameProxy) = disputeGameFactory.gameAtIndex(_disputeGameIndex);
@@ -391,6 +409,9 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
         public
         whenNotPaused
     {
+        // Validate the withdrawal before it is finalized.
+        _validateWithdrawal(_tx);
+
         // Make sure that the l2Sender has not yet been set. The l2Sender is set to a value other
         // than the default value when a withdrawal transaction is being finalized. This check is
         // a defacto reentrancy guard.
@@ -407,6 +428,10 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
 
         // Set the l2Sender so contracts know who triggered this withdrawal on L2.
         l2Sender = _tx.sender;
+
+        // This function unlocks ETH from the SharedLockbox when using the OptimismPortalInterop contract.
+        // If the interop version is not used, this function is a no-ops.
+        _unlockETH(_tx);
 
         // Trigger the call to the target contract. We use a custom low level method
         // SafeCall.callWithMinGas to ensure two key properties
@@ -452,6 +477,10 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
         payable
         metered(_gasLimit)
     {
+        // This function locks ETH in the SharedLockbox when using the OptimismPortalInterop contract.
+        // If the interop version is not used, this function is a no-ops.
+        _lockETH();
+
         // Just to be safe, make sure that people specify address(0) as the target when doing
         // contract creations.
         if (_isCreation && _to != address(0)) revert BadTarget();
@@ -585,4 +614,11 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
     function numProofSubmitters(bytes32 _withdrawalHash) external view returns (uint256) {
         return proofSubmitters[_withdrawalHash].length;
     }
+
+    /// @notice No-op function to be used to lock ETH in the SharedLockbox in the interop contract.
+    function _lockETH() internal virtual { }
+
+    /// @notice No-op function to be used to unlock ETH from the SharedLockbox in the interop contract.
+    /// @param _tx Withdrawal transaction to finalize.
+    function _unlockETH(Types.WithdrawalTransaction memory _tx) internal virtual { }
 }

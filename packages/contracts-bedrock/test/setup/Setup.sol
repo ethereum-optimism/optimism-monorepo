@@ -26,6 +26,7 @@ import { IOptimismPortal2 } from "interfaces/L1/IOptimismPortal2.sol";
 import { IL1CrossDomainMessenger } from "interfaces/L1/IL1CrossDomainMessenger.sol";
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
+import { ISharedLockbox } from "interfaces/L1/ISharedLockbox.sol";
 import { IDataAvailabilityChallenge } from "interfaces/L1/IDataAvailabilityChallenge.sol";
 import { IL1StandardBridge } from "interfaces/L1/IL1StandardBridge.sol";
 import { IProtocolVersions } from "interfaces/L1/IProtocolVersions.sol";
@@ -52,6 +53,7 @@ import { IWETH98 } from "interfaces/universal/IWETH98.sol";
 import { IGovernanceToken } from "interfaces/governance/IGovernanceToken.sol";
 import { ILegacyMessagePasser } from "interfaces/legacy/ILegacyMessagePasser.sol";
 import { ISuperchainTokenBridge } from "interfaces/L2/ISuperchainTokenBridge.sol";
+import { IDependencyManager } from "interfaces/L2/IDependencyManager.sol";
 import { IPermissionedDisputeGame } from "interfaces/dispute/IPermissionedDisputeGame.sol";
 import { IFaultDisputeGame } from "interfaces/dispute/IFaultDisputeGame.sol";
 
@@ -105,6 +107,7 @@ contract Setup {
     IProtocolVersions protocolVersions;
     ISuperchainConfig superchainConfig;
     IDataAvailabilityChallenge dataAvailabilityChallenge;
+    ISharedLockbox sharedLockbox;
     IOPContractsManager opcm;
 
     // L2 contracts
@@ -130,6 +133,7 @@ contract Setup {
     ISuperchainTokenBridge superchainTokenBridge = ISuperchainTokenBridge(Predeploys.SUPERCHAIN_TOKEN_BRIDGE);
     IOptimismSuperchainERC20Factory l2OptimismSuperchainERC20Factory =
         IOptimismSuperchainERC20Factory(Predeploys.OPTIMISM_SUPERCHAIN_ERC20_FACTORY);
+    IDependencyManager dependencyManager = IDependencyManager(Predeploys.DEPENDENCY_MANAGER);
 
     /// @notice Indicates whether a test is running against a forked production network.
     function isForkTest() public view returns (bool) {
@@ -244,6 +248,10 @@ contract Setup {
         delayedWeth = IDelayedWETH(artifacts.mustGetAddress("DelayedWETHProxy"));
         opcm = IOPContractsManager(artifacts.mustGetAddress("OPContractsManager"));
 
+        if (deploy.cfg().useInterop()) {
+            sharedLockbox = ISharedLockbox(artifacts.mustGetAddress("SharedLockboxProxy"));
+        }
+
         if (deploy.cfg().useAltDA()) {
             dataAvailabilityChallenge =
                 IDataAvailabilityChallenge(artifacts.mustGetAddress("DataAvailabilityChallengeProxy"));
@@ -297,6 +305,7 @@ contract Setup {
         labelPredeploy(Predeploys.OPTIMISM_SUPERCHAIN_ERC20_FACTORY);
         labelPredeploy(Predeploys.OPTIMISM_SUPERCHAIN_ERC20_BEACON);
         labelPredeploy(Predeploys.SUPERCHAIN_TOKEN_BRIDGE);
+        labelPredeploy(Predeploys.DEPENDENCY_MANAGER);
 
         // L2 Preinstalls
         labelPreinstall(Preinstalls.MultiCall3);

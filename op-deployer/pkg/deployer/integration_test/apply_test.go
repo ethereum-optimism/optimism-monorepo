@@ -10,10 +10,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/broadcaster"
-	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/opcm"
-	"github.com/ethereum-optimism/optimism/op-deployer/pkg/env"
-
 	altda "github.com/ethereum-optimism/optimism/op-alt-da"
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/inspect"
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
@@ -362,11 +358,11 @@ func TestInteropDeployment(t *testing.T) {
 
 	require.NoError(t, deployer.ApplyPipeline(ctx, opts))
 
-	chainState := st.Chains[0]
-	depManagerSlot := common.HexToHash("0x1708e077affb93e89be2665fb0fb72581be66f84dc00d25fed755ae911905b1c")
-	checkImmutable(t, st.L1StateDump.Data.Accounts, st.ImplementationsDeployment.SystemConfigImplAddress, depManagerSlot)
-	proxyAdminOwnerHash := common.BytesToHash(intent.Chains[0].Roles.SystemConfigOwner.Bytes())
-	checkStorageSlot(t, st.L1StateDump.Data.Accounts, chainState.SystemConfigProxyAddress, depManagerSlot, proxyAdminOwnerHash)
+	accounts := st.L1StateDump.Data.Accounts
+	scProxy := st.SuperchainDeployment.SuperchainConfigProxyAddress
+	// Slot is keccak256("superchainConfig.clusterManager")) - 1, see SuperchainConfigInterop.sol
+	clusterManagerSlot := common.HexToHash("0x86d44d9d5e1f0e141bf3965e515936f3c763eac4326aef6f3e880b4790579348")
+	checkStorageSlot(t, accounts, scProxy, clusterManagerSlot, addrToHash(intent.SuperchainRoles.ProxyAdminOwner))
 }
 
 func TestAltDADeployment(t *testing.T) {
@@ -559,47 +555,6 @@ func TestIntentConfiguration(t *testing.T) {
 			tt.assertions(t, st)
 		})
 	}
-}
-
-func TestManageDependencies(t *testing.T) {
-	t.Parallel()
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	l1ChainID := uint64(999)
-	l1ChainIDBig := new(big.Int).SetUint64(l1ChainID)
-
-	opts, intent, st := setupGenesisChain(t, l1ChainID)
-	intent.UseInterop = true
-	require.NoError(t, deployer.ApplyPipeline(ctx, opts))
-
-	dk, err := devkeys.NewMnemonicDevKeys(devkeys.TestMnemonic)
-	require.NoError(t, err)
-	sysConfigOwner, err := dk.Address(devkeys.SystemConfigOwner.Key(l1ChainIDBig))
-	require.NoError(t, err)
-
-	// Have to recreate the host again since deployer.ApplyPipeline
-	// doesn't expose the host directly.
-
-	loc, _ := testutil.LocalArtifacts(t)
-	afacts, err := artifacts.Download(ctx, loc, artifacts.NoopProgressor())
-	require.NoError(t, err)
-
-	host, err := env.DefaultScriptHost(
-		broadcaster.NoopBroadcaster(),
-		opts.Logger,
-		sysConfigOwner,
-		afacts,
-	)
-	require.NoError(t, err)
-	host.ImportState(st.L1StateDump.Data)
-
-	require.NoError(t, opcm.ManageDependencies(host, opcm.ManageDependenciesInput{
-		ChainId:      big.NewInt(1234),
-		SystemConfig: st.Chains[0].SystemConfigProxyAddress,
-		Remove:       false,
-	}))
 }
 
 func setupGenesisChain(t *testing.T, l1ChainID uint64) (deployer.ApplyPipelineOpts, *state.Intent, *state.State) {
@@ -846,4 +801,10 @@ func checkStorageSlot(t *testing.T, allocs types.GenesisAlloc, address common.Ad
 	}
 	require.True(t, ok, "slot %s not found for account %s", slot, address)
 	require.Equal(t, expected, value, "slot %s for account %s should be %s", slot, address, expected)
+}
+
+func addrToHash(a common.Address) common.Hash {
+	var h common.Hash
+	copy(h[12:], a[:])
+	return h
 }

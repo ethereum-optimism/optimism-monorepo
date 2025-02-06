@@ -255,11 +255,6 @@
   },
   {
     "inputs": [],
-    "name": "InvalidChainId",
-    "type": "error"
-  },
-  {
-    "inputs": [],
     "name": "MessageAlreadyRelayed",
     "type": "error"
   },
@@ -271,11 +266,6 @@
   {
     "inputs": [],
     "name": "MessageDestinationSameChain",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "MessageTargetCrossL2Inbox",
     "type": "error"
   },
   {

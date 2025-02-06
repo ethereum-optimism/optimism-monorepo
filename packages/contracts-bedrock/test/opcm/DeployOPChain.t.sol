@@ -23,6 +23,7 @@ import { IL1ChugSplashProxy } from "interfaces/legacy/IL1ChugSplashProxy.sol";
 import { IResolvedDelegateProxy } from "interfaces/legacy/IResolvedDelegateProxy.sol";
 
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
+import { ISuperchainConfigInterop } from "interfaces/L1/ISuperchainConfigInterop.sol";
 import { IProtocolVersions, ProtocolVersion } from "interfaces/L1/IProtocolVersions.sol";
 import { IOPContractsManager } from "interfaces/L1/IOPContractsManager.sol";
 import { IProxy } from "interfaces/universal/IProxy.sol";
@@ -524,6 +525,17 @@ contract DeployOPChain_Test is DeployOPChain_TestBase {
 }
 
 contract DeployOPChain_Test_Interop is DeployOPChain_Test {
+    function setUp() public override {
+        super.setUp();
+
+        // Mock SuperchainConfig's sharedLockbox call
+        vm.mockCall(
+            address(superchainConfigProxy),
+            abi.encodeCall(ISuperchainConfigInterop.sharedLockbox, ()),
+            abi.encode(address(0))
+        );
+    }
+
     function createDeployImplementationsContract() internal override returns (DeployImplementations) {
         return new DeployImplementationsInterop();
     }

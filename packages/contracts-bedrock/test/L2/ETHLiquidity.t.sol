@@ -100,8 +100,9 @@ contract ETHLiquidity_Test is CommonTest {
         // Assume
         _amount = bound(_amount, 0, type(uint248).max - 1);
 
-        // Arrange
-        // Nothing to arrange.
+        // Get balances before
+        uint256 superchainWethBalanceBefore = superchainWeth.balanceOf(address(ethLiquidity));
+        uint256 ethLiquidityBalanceBefore = address(ethLiquidity).balance;
 
         // Act
         vm.expectEmit(address(ethLiquidity));
@@ -110,9 +111,9 @@ contract ETHLiquidity_Test is CommonTest {
         ethLiquidity.mint(_amount);
 
         // Assert
-        assertEq(address(superchainWeth).balance, _amount);
-        assertEq(address(ethLiquidity).balance, STARTING_LIQUIDITY_BALANCE - _amount);
-        assertEq(superchainWeth.balanceOf(address(ethLiquidity)), 0);
+        assertEq(address(superchainWeth).balance, superchainWethBalanceBefore + _amount);
+        assertEq(address(ethLiquidity).balance, ethLiquidityBalanceBefore - _amount);
+        assertEq(superchainWeth.balanceOf(address(ethLiquidity)), superchainWethBalanceBefore);
     }
 
     /// @notice Tests that the mint function always reverts when called by an unauthorized caller.

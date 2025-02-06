@@ -344,27 +344,29 @@ contract Initializer_Test is CommonTest {
     ///         3. The `initialize()` function of each contract cannot be called again.
     function test_cannotReinitialize_succeeds() public {
         // Collect exclusions.
+        uint256 j = 0;
         string[] memory excludes = new string[](9);
         // TODO: Neither of these contracts are labeled properly in the deployment script. Both are
         //       currently being labeled as their non-interop versions. Remove these exclusions once
         //       the deployment script is fixed.
-        excludes[0] = "src/L1/SystemConfigInterop.sol";
-        excludes[1] = "src/L1/OptimismPortalInterop.sol";
+        excludes[j++] = "src/L1/OptimismPortalInterop.sol";
+        excludes[j++] = "src/L1/SuperchainConfigInterop.sol";
         // Contract is currently not being deployed as part of the standard deployment script.
-        excludes[2] = "src/L2/OptimismSuperchainERC20.sol";
+        excludes[j++] = "src/L2/OptimismSuperchainERC20.sol";
         // Periphery contracts don't get deployed as part of the standard deployment script.
-        excludes[3] = "src/periphery/*";
+        excludes[j++] = "src/periphery/*";
         // TODO: Deployment script is currently "broken" in the sense that it doesn't properly
         //       label the FaultDisputeGame and PermissionedDisputeGame contracts and instead
         //       simply deploys them anonymously. Means that functions like "getInitializedSlot"
         //       don't work properly. Remove these exclusions once the deployment script is fixed.
-        excludes[4] = "src/dispute/FaultDisputeGame.sol";
-        excludes[5] = "src/dispute/PermissionedDisputeGame.sol";
+        excludes[j++] = "src/dispute/FaultDisputeGame.sol";
+        excludes[j++] = "src/dispute/PermissionedDisputeGame.sol";
         // TODO: Eventually remove this exclusion. Same reason as above dispute contracts.
-        excludes[6] = "src/L1/OPContractsManager.sol";
-        excludes[7] = "src/L1/OPContractsManagerInterop.sol";
+        excludes[j++] = "src/L1/OPContractsManager.sol";
         // L2 contract initialization is tested in Predeploys.t.sol
-        excludes[8] = "src/L2/*";
+        excludes[j++] = "src/L2/*";
+        // Exclude SharedLockbox since using OZv5 initializer
+        excludes[j++] = "src/L1/SharedLockbox.sol";
 
         // Get all contract names in the src directory, minus the excluded contracts.
         string[] memory contractNames = ForgeArtifacts.getContractNames("src/*", excludes);

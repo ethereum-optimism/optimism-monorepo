@@ -246,28 +246,15 @@ func TestInteropBlockBuilding(t *testing.T) {
 		chainA := ids[0]
 		chainB := ids[1]
 		// We will initiate on chain A, and execute on chain B
-		s2.DeployEmitterContract(chainA, "Alice")
 
-		// Add chain A as dependency to chain B,
-		// such that we can execute a message on B that was initiated on A.
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		depRec := s2.AddDependency(ctx, chainB, s2.ChainID(chainA))
-		cancel()
-		t.Logf("Dependency set in L1 block %d", depRec.BlockNumber)
+		// WEIRD BEHAVIOR: this doesn't work if we use the Alice account. We get a "nonce too low" error.
+		s2.DeployEmitterContract(chainA, "Bob")
 
 		rollupClA, err := dial.DialRollupClientWithTimeout(context.Background(), time.Second*15, logger, s2.OpNode(chainA).UserRPC().RPC())
 		require.NoError(t, err)
 
-		// Now wait for the dependency to be visible in the L2 (receipt needs to be picked up)
-		require.Eventually(t, func() bool {
-			status, err := rollupClA.SyncStatus(context.Background())
-			require.NoError(t, err)
-			return status.CrossUnsafeL2.L1Origin.Number >= depRec.BlockNumber.Uint64()
-		}, time.Second*30, time.Second, "wait for L1 origin to match dependency L1 block")
-		t.Log("Dependency information has been processed in L2 block")
-
 		// emit log on chain A
-		ctx, cancel = context.WithTimeout(context.Background(), 30*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		emitRec := s2.EmitData(ctx, chainA, "Alice", "hello world")
 		cancel()
 		t.Logf("Emitted a log event in block %d", emitRec.BlockNumber.Uint64())

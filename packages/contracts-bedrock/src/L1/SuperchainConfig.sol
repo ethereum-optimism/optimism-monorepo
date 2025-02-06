@@ -11,14 +11,16 @@ import { Storage } from "src/libraries/Storage.sol";
 import { ISemver } from "interfaces/universal/ISemver.sol";
 
 /// @custom:proxied true
-/// @custom:audit none This contracts is not yet audited.
+/// @custom:audit none This contract is not yet audited.
 /// @title SuperchainConfig
 /// @notice The SuperchainConfig contract is used to manage configuration of global superchain values.
 contract SuperchainConfig is Initializable, ISemver {
     /// @notice Enum representing different types of updates.
     /// @custom:value GUARDIAN            Represents an update to the guardian.
+    /// @custom:value CLUSTER_MANAGER     Represents an update to the cluster manager.
     enum UpdateType {
-        GUARDIAN
+        GUARDIAN,
+        CLUSTER_MANAGER
     }
 
     /// @notice Whether or not the Superchain is paused.
@@ -41,8 +43,10 @@ contract SuperchainConfig is Initializable, ISemver {
     event ConfigUpdate(UpdateType indexed updateType, bytes data);
 
     /// @notice Semantic version.
-    /// @custom:semver 1.2.0
-    string public constant version = "1.2.0";
+    /// @custom:semver 1.3.0-beta.1
+    function version() public pure virtual returns (string memory) {
+        return "1.3.0-beta.1";
+    }
 
     /// @notice Constructs the SuperchainConfig contract.
     constructor() {
@@ -53,6 +57,13 @@ contract SuperchainConfig is Initializable, ISemver {
     /// @param _guardian    Address of the guardian, can pause the OptimismPortal.
     /// @param _paused      Initial paused status.
     function initialize(address _guardian, bool _paused) external initializer {
+        _initialize(_guardian, _paused);
+    }
+
+    /// @notice Internal initializer.
+    /// @param _guardian    Address of the guardian, can pause the OptimismPortal.
+    /// @param _paused      Initial paused status.
+    function _initialize(address _guardian, bool _paused) internal {
         _setGuardian(_guardian);
         if (_paused) {
             _pause("Initializer paused");

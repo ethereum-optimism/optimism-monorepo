@@ -18,7 +18,6 @@ import { IMIPS } from "interfaces/cannon/IMIPS.sol";
 import { IDisputeGameFactory } from "interfaces/dispute/IDisputeGameFactory.sol";
 import { IAnchorStateRegistry } from "interfaces/dispute/IAnchorStateRegistry.sol";
 import { IOPContractsManager } from "interfaces/L1/IOPContractsManager.sol";
-import { IOPContractsManagerInterop } from "interfaces/L1/IOPContractsManagerInterop.sol";
 import { IOptimismPortal2 } from "interfaces/L1/IOptimismPortal2.sol";
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 import { IL1CrossDomainMessenger } from "interfaces/L1/IL1CrossDomainMessenger.sol";
@@ -26,7 +25,6 @@ import { IL1ERC721Bridge } from "interfaces/L1/IL1ERC721Bridge.sol";
 import { IL1StandardBridge } from "interfaces/L1/IL1StandardBridge.sol";
 import { IOptimismMintableERC20Factory } from "interfaces/universal/IOptimismMintableERC20Factory.sol";
 import { IOptimismPortalInterop } from "interfaces/L1/IOptimismPortalInterop.sol";
-import { ISystemConfigInterop } from "interfaces/L1/ISystemConfigInterop.sol";
 import { IProxyAdmin } from "interfaces/universal/IProxyAdmin.sol";
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 import { Solarray } from "scripts/libraries/Solarray.sol";
@@ -835,23 +833,13 @@ contract DeployImplementations is Script {
 // interop as an example, they've made the following changes to L1 contracts:
 //   - `OptimismPortalInterop is OptimismPortal`: A different portal implementation is used, and
 //     it's ABI is the same.
-//   - `SystemConfigInterop is SystemConfig`: A different system config implementation is used, and
-//     it's initializer has a different signature. This signature is different because there is a
-//     new input parameter, the `dependencyManager`.
-//   - Because of the different system config initializer, there is a new input parameter (dependencyManager).
+//   - Because of the different system config constructor, there is a new input parameter (superchainConfig).
 //
 // Similar to how inheritance was used to develop the new portal and system config contracts, we use
 // inheritance to modify up to all of the deployer contracts. For this interop example, what this
 // means is we need:
-//   - An `OPContractsManagerInterop is OPContractsManager` that knows how to encode the calldata for the
-//     new system config initializer.
 //   - A `DeployImplementationsInterop is DeployImplementations` that:
 //     - Deploys OptimismPortalInterop instead of OptimismPortal.
-//     - Deploys SystemConfigInterop instead of SystemConfig.
-//     - Deploys OPContractsManagerInterop instead of OPContractsManager, which contains the updated logic
-//       for encoding the SystemConfig initializer.
-//     - Updates the OPCM release setter logic to use the updated initializer.
-//  - A `DeployOPChainInterop is DeployOPChain` that allows the updated input parameter to be passed.
 //
 // Most of the complexity in the above flow comes from the the new input for the updated SystemConfig
 // initializer. If all function signatures were the same, all we'd have to change is the contract
@@ -859,63 +847,6 @@ contract DeployImplementations is Script {
 // resolve https://github.com/ethereum-optimism/optimism/issues/11783, we just assume this new role
 // is the same as the proxy admin owner.
 contract DeployImplementationsInterop is DeployImplementations {
-    function createOPCMContract(
-        DeployImplementationsInput _dii,
-        DeployImplementationsOutput _dio,
-        IOPContractsManager.Blueprints memory _blueprints,
-        string memory _l1ContractsRelease
-    )
-        internal
-        virtual
-        override
-        returns (IOPContractsManager opcm_)
-    {
-        ISuperchainConfig superchainConfigProxy = _dii.superchainConfigProxy();
-        IProtocolVersions protocolVersionsProxy = _dii.protocolVersionsProxy();
-        IProxyAdmin superchainProxyAdmin = _dii.superchainProxyAdmin();
-        address upgradeController = _dii.upgradeController();
-
-        IOPContractsManager.Implementations memory implementations = IOPContractsManager.Implementations({
-            superchainConfigImpl: address(_dio.superchainConfigImpl()),
-            protocolVersionsImpl: address(_dio.protocolVersionsImpl()),
-            l1ERC721BridgeImpl: address(_dio.l1ERC721BridgeImpl()),
-            optimismPortalImpl: address(_dio.optimismPortalImpl()),
-            systemConfigImpl: address(_dio.systemConfigImpl()),
-            optimismMintableERC20FactoryImpl: address(_dio.optimismMintableERC20FactoryImpl()),
-            l1CrossDomainMessengerImpl: address(_dio.l1CrossDomainMessengerImpl()),
-            l1StandardBridgeImpl: address(_dio.l1StandardBridgeImpl()),
-            disputeGameFactoryImpl: address(_dio.disputeGameFactoryImpl()),
-            anchorStateRegistryImpl: address(_dio.anchorStateRegistryImpl()),
-            delayedWETHImpl: address(_dio.delayedWETHImpl()),
-            mipsImpl: address(_dio.mipsSingleton())
-        });
-
-        vm.broadcast(msg.sender);
-        opcm_ = IOPContractsManager(
-            DeployUtils.createDeterministic({
-                _name: "OPContractsManagerInterop",
-                _args: DeployUtils.encodeConstructor(
-                    abi.encodeCall(
-                        IOPContractsManagerInterop.__constructor__,
-                        (
-                            superchainConfigProxy,
-                            protocolVersionsProxy,
-                            superchainProxyAdmin,
-                            _l1ContractsRelease,
-                            _blueprints,
-                            implementations,
-                            upgradeController
-                        )
-                    )
-                ),
-                _salt: _salt
-            })
-        );
-
-        vm.label(address(opcm_), "OPContractsManager");
-        _dio.set(_dio.opcm.selector, address(opcm_));
-    }
-
     function deployOptimismPortalImpl(
         DeployImplementationsInput _dii,
         DeployImplementationsOutput _dio
@@ -940,18 +871,5 @@ contract DeployImplementationsInterop is DeployImplementations {
 
         vm.label(address(impl), "OptimismPortalImpl");
         _dio.set(_dio.optimismPortalImpl.selector, address(impl));
-    }
-
-    function deploySystemConfigImpl(DeployImplementationsOutput _dio) public override {
-        vm.broadcast(msg.sender);
-        ISystemConfigInterop impl = ISystemConfigInterop(
-            DeployUtils.createDeterministic({
-                _name: "SystemConfigInterop",
-                _args: DeployUtils.encodeConstructor(abi.encodeCall(ISystemConfigInterop.__constructor__, ())),
-                _salt: _salt
-            })
-        );
-        vm.label(address(impl), "SystemConfigImpl");
-        _dio.set(_dio.systemConfigImpl.selector, address(impl));
     }
 }

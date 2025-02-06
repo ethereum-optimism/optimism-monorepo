@@ -11,9 +11,7 @@ import { ForgeArtifacts, Abi, AbiEntry } from "scripts/libraries/ForgeArtifacts.
 // Interfaces
 import { IOPContractsManager } from "interfaces/L1/IOPContractsManager.sol";
 import { IOptimismPortal2 } from "interfaces/L1/IOptimismPortal2.sol";
-import { IOptimismPortalInterop } from "interfaces/L1/IOptimismPortalInterop.sol";
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
-import { ISystemConfigInterop } from "interfaces/L1/ISystemConfigInterop.sol";
 import { IDataAvailabilityChallenge } from "interfaces/L1/IDataAvailabilityChallenge.sol";
 import { IProtocolVersions } from "interfaces/L1/IProtocolVersions.sol";
 
@@ -41,7 +39,9 @@ contract Specification_Test is CommonTest {
         DELAYEDWETHOWNER,
         COUNCILSAFE,
         COUNCILSAFEOWNER,
-        DEPENDENCYMANAGER
+        PORTAL,
+        SUPERCHAINCONFIG,
+        CLUSTERMANAGER
     }
 
     /// @notice Represents the specification of a function.
@@ -257,11 +257,9 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("respectedGameTypeUpdatedAt()") });
         _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("proofSubmitters(bytes32,uint256)") });
         _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("numProofSubmitters(bytes32)") });
-        _addSpec({
-            _name: "OptimismPortalInterop",
-            _sel: IOptimismPortalInterop.setConfig.selector,
-            _auth: Role.SYSTEMCONFIGOWNER
-        });
+        _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("sharedLockbox()") });
+        _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("migrateLiquidity()"), _auth: Role.SUPERCHAINCONFIG });
+        _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("migrated()") });
 
         // OptimismPortal2
         _addSpec({ _name: "OptimismPortal2", _sel: _getSel("depositTransaction(address,uint256,uint64,bool,bytes)") });
@@ -339,6 +337,37 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "SuperchainConfig", _sel: _getSel("unpause()"), _auth: Role.GUARDIAN });
         _addSpec({ _name: "SuperchainConfig", _sel: _getSel("version()") });
 
+        // SuperchainConfigInterop
+        _addSpec({ _name: "SuperchainConfigInterop", _sel: _getSel("GUARDIAN_SLOT()") });
+        _addSpec({ _name: "SuperchainConfigInterop", _sel: _getSel("CLUSTER_MANAGER_SLOT()") });
+        _addSpec({ _name: "SuperchainConfigInterop", _sel: _getSel("PAUSED_SLOT()") });
+        _addSpec({ _name: "SuperchainConfigInterop", _sel: _getSel("sharedLockbox()") });
+        _addSpec({ _name: "SuperchainConfigInterop", _sel: _getSel("guardian()") });
+        _addSpec({ _name: "SuperchainConfigInterop", _sel: _getSel("clusterManager()") });
+        _addSpec({ _name: "SuperchainConfigInterop", _sel: _getSel("initialize(address,bool)") });
+        _addSpec({ _name: "SuperchainConfigInterop", _sel: _getSel("initialize(address,bool,address,address)") });
+        _addSpec({ _name: "SuperchainConfigInterop", _sel: _getSel("pause(string)"), _auth: Role.GUARDIAN });
+        _addSpec({ _name: "SuperchainConfigInterop", _sel: _getSel("paused()") });
+        _addSpec({ _name: "SuperchainConfigInterop", _sel: _getSel("unpause()"), _auth: Role.GUARDIAN });
+        _addSpec({ _name: "SuperchainConfigInterop", _sel: _getSel("version()") });
+        _addSpec({
+            _name: "SuperchainConfigInterop",
+            _sel: _getSel("addDependency(uint256,address)"),
+            _auth: Role.CLUSTERMANAGER
+        });
+        _addSpec({ _name: "SuperchainConfigInterop", _sel: _getSel("isInDependencySet(uint256)") });
+        _addSpec({ _name: "SuperchainConfigInterop", _sel: _getSel("dependencySet()") });
+        _addSpec({ _name: "SuperchainConfigInterop", _sel: _getSel("dependencySetSize()") });
+        _addSpec({ _name: "SuperchainConfigInterop", _sel: _getSel("authorizedPortals(address)") });
+
+        // SharedLockbox
+        _addSpec({ _name: "SharedLockbox", _sel: _getSel("superchainConfig()") });
+        _addSpec({ _name: "SharedLockbox", _sel: _getSel("lockETH()"), _auth: Role.PORTAL });
+        _addSpec({ _name: "SharedLockbox", _sel: _getSel("unlockETH(uint256)"), _auth: Role.PORTAL });
+        _addSpec({ _name: "SharedLockbox", _sel: _getSel("version()") });
+        _addSpec({ _name: "SharedLockbox", _sel: _getSel("paused()") });
+        _addSpec({ _name: "SharedLockbox", _sel: _getSel("initialize(address)") });
+
         // SystemConfig
         _addSpec({ _name: "SystemConfig", _sel: _getSel("UNSAFE_BLOCK_SIGNER_SLOT()") });
         _addSpec({ _name: "SystemConfig", _sel: _getSel("START_BLOCK_SLOT()") });
@@ -390,86 +419,6 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "SystemConfig", _sel: _getSel("blobbasefeeScalar()") });
         _addSpec({ _name: "SystemConfig", _sel: _getSel("maximumGasLimit()") });
         _addSpec({ _name: "SystemConfig", _sel: _getSel("getAddresses()") });
-
-        // SystemConfigInterop
-        _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("UNSAFE_BLOCK_SIGNER_SLOT()") });
-        _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("START_BLOCK_SLOT()") });
-        _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("VERSION()") });
-        _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("batcherHash()") });
-        _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("gasLimit()") });
-        _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("eip1559Denominator()") });
-        _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("eip1559Elasticity()") });
-        _addSpec({ _name: "SystemConfigInterop", _sel: ISystemConfigInterop.initialize.selector });
-        _addSpec({ _name: "SystemConfigInterop", _sel: ISystemConfig.initialize.selector });
-        _addSpec({ _name: "SystemConfigInterop", _sel: ISystemConfigInterop.minimumGasLimit.selector });
-        _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("overhead()") });
-        _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("owner()") });
-        _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("renounceOwnership()"), _auth: Role.SYSTEMCONFIGOWNER });
-        _addSpec({ _name: "SystemConfigInterop", _sel: ISystemConfigInterop.resourceConfig.selector });
-        _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("scalar()") });
-        _addSpec({
-            _name: "SystemConfigInterop",
-            _sel: ISystemConfigInterop.setBatcherHash.selector,
-            _auth: Role.SYSTEMCONFIGOWNER
-        });
-        _addSpec({
-            _name: "SystemConfigInterop",
-            _sel: ISystemConfigInterop.setGasConfig.selector,
-            _auth: Role.SYSTEMCONFIGOWNER
-        });
-        _addSpec({
-            _name: "SystemConfigInterop",
-            _sel: ISystemConfigInterop.setGasLimit.selector,
-            _auth: Role.SYSTEMCONFIGOWNER
-        });
-        _addSpec({
-            _name: "SystemConfigInterop",
-            _sel: ISystemConfigInterop.setEIP1559Params.selector,
-            _auth: Role.SYSTEMCONFIGOWNER
-        });
-        _addSpec({
-            _name: "SystemConfigInterop",
-            _sel: ISystemConfigInterop.setUnsafeBlockSigner.selector,
-            _auth: Role.SYSTEMCONFIGOWNER
-        });
-        _addSpec({
-            _name: "SystemConfigInterop",
-            _sel: _getSel("transferOwnership(address)"),
-            _auth: Role.SYSTEMCONFIGOWNER
-        });
-        _addSpec({ _name: "SystemConfigInterop", _sel: ISystemConfigInterop.unsafeBlockSigner.selector });
-        _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("version()") });
-        _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("l1CrossDomainMessenger()") });
-        _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("l1ERC721Bridge()") });
-        _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("l1StandardBridge()") });
-        _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("optimismPortal()") });
-        _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("optimismMintableERC20Factory()") });
-        _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("batchInbox()") });
-        _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("startBlock()") });
-        _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("L1_CROSS_DOMAIN_MESSENGER_SLOT()") });
-        _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("L1_ERC_721_BRIDGE_SLOT()") });
-        _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("L1_STANDARD_BRIDGE_SLOT()") });
-        _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("OPTIMISM_PORTAL_SLOT()") });
-        _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("OPTIMISM_MINTABLE_ERC20_FACTORY_SLOT()") });
-        _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("BATCH_INBOX_SLOT()") });
-        _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("DISPUTE_GAME_FACTORY_SLOT()") });
-        _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("disputeGameFactory()") });
-        _addSpec({
-            _name: "SystemConfigInterop",
-            _sel: _getSel("setGasConfigEcotone(uint32,uint32)"),
-            _auth: Role.SYSTEMCONFIGOWNER
-        });
-        _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("basefeeScalar()") });
-        _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("blobbasefeeScalar()") });
-        _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("maximumGasLimit()") });
-        _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("addDependency(uint256)"), _auth: Role.DEPENDENCYMANAGER });
-        _addSpec({
-            _name: "SystemConfigInterop",
-            _sel: _getSel("removeDependency(uint256)"),
-            _auth: Role.DEPENDENCYMANAGER
-        });
-        _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("dependencyManager()") });
-        _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("getAddresses()") });
 
         // ProxyAdmin
         _addSpec({ _name: "ProxyAdmin", _sel: _getSel("addressManager()") });
@@ -790,22 +739,6 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "OPContractsManager", _sel: _getSel("setRC(bool)") });
         _addSpec({ _name: "OPContractsManager", _sel: _getSel("upgradeController()") });
 
-        // OPContractsManagerInterop
-        _addSpec({ _name: "OPContractsManagerInterop", _sel: _getSel("version()") });
-        _addSpec({ _name: "OPContractsManagerInterop", _sel: _getSel("superchainConfig()") });
-        _addSpec({ _name: "OPContractsManagerInterop", _sel: _getSel("protocolVersions()") });
-        _addSpec({ _name: "OPContractsManagerInterop", _sel: _getSel("superchainProxyAdmin()") });
-        _addSpec({ _name: "OPContractsManagerInterop", _sel: _getSel("l1ContractsRelease()") });
-        _addSpec({ _name: "OPContractsManagerInterop", _sel: IOPContractsManager.deploy.selector });
-        _addSpec({ _name: "OPContractsManagerInterop", _sel: IOPContractsManager.blueprints.selector });
-        _addSpec({ _name: "OPContractsManagerInterop", _sel: IOPContractsManager.chainIdToBatchInboxAddress.selector });
-        _addSpec({ _name: "OPContractsManagerInterop", _sel: IOPContractsManager.implementations.selector });
-        _addSpec({ _name: "OPContractsManagerInterop", _sel: IOPContractsManager.upgrade.selector });
-        _addSpec({ _name: "OPContractsManagerInterop", _sel: IOPContractsManager.addGameType.selector });
-        _addSpec({ _name: "OPContractsManagerInterop", _sel: _getSel("isRC()") });
-        _addSpec({ _name: "OPContractsManagerInterop", _sel: _getSel("setRC(bool)") });
-        _addSpec({ _name: "OPContractsManagerInterop", _sel: _getSel("upgradeController()") });
-
         // DeputyGuardianModule
         _addSpec({
             _name: "DeputyGuardianModule",
@@ -956,10 +889,10 @@ contract Specification_Test is CommonTest {
 
     /// @notice Ensures that the DeputyGuardian is authorized to take all Guardian actions.
     function test_deputyGuardianAuth_works() public view {
-        // Additional 2 roles for the DeputyPauseModule
+        // Additional 2 roles for the DeputyPauseModule. Plus 2 for the SuperchainConfigInterop (remove when unified).
         // Additional role for `setAnchorState` which is in DGM but no longer role-restricted.
-        assertEq(specsByRole[Role.GUARDIAN].length, 4);
-        assertEq(specsByRole[Role.DEPUTYGUARDIAN].length, specsByRole[Role.GUARDIAN].length + 3);
+        assertEq(specsByRole[Role.GUARDIAN].length, 4 + 2);
+        assertEq(specsByRole[Role.DEPUTYGUARDIAN].length, specsByRole[Role.GUARDIAN].length + 1);
 
         mapping(bytes4 => Spec) storage dgmFuncSpecs = specs["DeputyGuardianModule"];
         mapping(bytes4 => Spec) storage superchainConfigFuncSpecs = specs["SuperchainConfig"];

@@ -35,6 +35,9 @@ type SuperchainDeployment struct {
 
 	SuperchainConfig      common.Address `json:"SuperchainConfig"`
 	SuperchainConfigProxy common.Address `json:"SuperchainConfigProxy"`
+
+	SharedLockbox      common.Address `json:"SharedLockbox"`
+	SharedLockboxProxy common.Address `json:"SharedLockboxProxy"`
 }
 
 type L2OpchainDeployment struct {
