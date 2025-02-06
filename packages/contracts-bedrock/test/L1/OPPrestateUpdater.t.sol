@@ -151,7 +151,7 @@ contract OPPrestateUpdater_Test is Test {
         );
     }
 
-    function test_updatePrestate_succeedsWithValidInput() public {
+    function test_updatePrestate_WithValidInput_succeeds() public {
         OPPrestateUpdater.PrestateUpdateInput[] memory inputs = new OPPrestateUpdater.PrestateUpdateInput[](1);
         inputs[0] = OPPrestateUpdater.PrestateUpdateInput({
             opChain: OPContractsManager.OpChainConfig({
@@ -178,7 +178,7 @@ contract OPPrestateUpdater_Test is Test {
         assertEq(pdg.absolutePrestate().raw(), inputs[0].absolutePrestate.raw(), "pdg prestate mismatch");
     }
 
-    function test_updatePrestate_revertsWhenPDGPrestateIsZero() public {
+    function test_updatePrestate_WhenPDGPrestateIsZero_reverts() public {
         OPPrestateUpdater.PrestateUpdateInput[] memory inputs = new OPPrestateUpdater.PrestateUpdateInput[](1);
         inputs[0] = OPPrestateUpdater.PrestateUpdateInput({
             opChain: OPContractsManager.OpChainConfig({
@@ -198,7 +198,7 @@ contract OPPrestateUpdater_Test is Test {
         );
     }
 
-    function test_updatePrestate_revertsWhenFDGNotFound() public {
+    function test_updatePrestate_WhenFDGNotFound_reverts() public {
         OPPrestateUpdater.PrestateUpdateInput[] memory inputs = new OPPrestateUpdater.PrestateUpdateInput[](1);
         inputs[0] = OPPrestateUpdater.PrestateUpdateInput({
             opChain: OPContractsManager.OpChainConfig({
