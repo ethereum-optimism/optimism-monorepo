@@ -220,7 +220,7 @@
           }
         ],
         "internalType": "struct OPContractsManager.AddGameInput[]",
-        "name": "",
+        "name": "_gameConfigs",
         "type": "tuple[]"
       }
     ],
@@ -429,7 +429,7 @@
           }
         ],
         "internalType": "struct OPContractsManager.DeployInput",
-        "name": "",
+        "name": "_input",
         "type": "tuple"
       }
     ],
@@ -720,7 +720,7 @@
           }
         ],
         "internalType": "struct OPContractsManager.OpChainConfig[]",
-        "name": "",
+        "name": "_opChainConfigs",
         "type": "tuple[]"
       }
     ],
