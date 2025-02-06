@@ -156,10 +156,10 @@ func (s *channelManager) handleChannelInvalidated(c *channel) {
 	for i := range s.channelQueue {
 		if s.channelQueue[i] == c {
 			s.channelQueue = s.channelQueue[:i]
-			s.metr.RecordChannelQueueLength(len(s.channelQueue))
 			break
 		}
 	}
+	s.metr.RecordChannelQueueLength(len(s.channelQueue))
 
 	// We want to start writing to a new channel, so reset currentChannel.
 	s.currentChannel = nil
