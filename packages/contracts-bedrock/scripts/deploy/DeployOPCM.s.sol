@@ -48,18 +48,18 @@ contract DeployOPCMInput is BaseDeployIO {
         // forgefmt: disable-start
         if (_sel == this.superchainConfig.selector) _superchainConfig = ISuperchainConfig(_addr);
         else if (_sel == this.protocolVersions.selector) _protocolVersions = IProtocolVersions(_addr);
+        else if (_sel == this.superchainProxyAdmin.selector) _superchainProxyAdmin = IProxyAdmin(_addr);
+        else if (_sel == this.superchainConfigImpl.selector) _superchainConfigImpl = _addr;
+        else if (_sel == this.protocolVersionsImpl.selector) _protocolVersionsImpl = _addr;
         else if (_sel == this.upgradeController.selector) _upgradeController = _addr;
         else if (_sel == this.addressManagerBlueprint.selector) _addressManagerBlueprint = _addr;
         else if (_sel == this.proxyBlueprint.selector) _proxyBlueprint = _addr;
         else if (_sel == this.proxyAdminBlueprint.selector) _proxyAdminBlueprint = _addr;
-        else if (_sel == this.protocolVersionsImpl.selector) _protocolVersionsImpl = _addr;
         else if (_sel == this.l1ChugSplashProxyBlueprint.selector) _l1ChugSplashProxyBlueprint = _addr;
         else if (_sel == this.resolvedDelegateProxyBlueprint.selector) _resolvedDelegateProxyBlueprint = _addr;
         else if (_sel == this.permissionedDisputeGame1Blueprint.selector) _permissionedDisputeGame1Blueprint = _addr;
         else if (_sel == this.permissionedDisputeGame2Blueprint.selector) _permissionedDisputeGame2Blueprint = _addr;
         else if (_sel == this.l1ERC721BridgeImpl.selector) _l1ERC721BridgeImpl = _addr;
-        else if (_sel == this.superchainProxyAdmin.selector) _superchainProxyAdmin = IProxyAdmin(_addr);
-        else if (_sel == this.superchainConfigImpl.selector) _superchainConfigImpl = _addr;
         else if (_sel == this.optimismPortalImpl.selector) _optimismPortalImpl = _addr;
         else if (_sel == this.systemConfigImpl.selector) _systemConfigImpl = _addr;
         else if (_sel == this.optimismMintableERC20FactoryImpl.selector) _optimismMintableERC20FactoryImpl = _addr;

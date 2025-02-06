@@ -20,6 +20,7 @@ import { IPermissionedDisputeGame } from "interfaces/dispute/IPermissionedDisput
 import { IDelayedWETH } from "interfaces/dispute/IDelayedWETH.sol";
 import { IOPContractsManager } from "interfaces/L1/IOPContractsManager.sol";
 import { IDisputeGameFactory } from "interfaces/dispute/IDisputeGameFactory.sol";
+import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 
 // Contracts
 import { OPContractsManager } from "src/L1/OPContractsManager.sol";
@@ -32,6 +33,9 @@ import { OutputRoot, GameTypes } from "src/dispute/lib/Types.sol";
 contract OPPrestateUpdater_Test is Test {
     IOPContractsManager internal opcm;
     OPPrestateUpdater internal prestateUpdater;
+
+    OPContractsManager.OpChainConfig[] internal opChainConfigs;
+    OPContractsManager.AddGameInput[] internal gameInput;
 
     IOPContractsManager.DeployOutput internal chainDeployOutput;
 
@@ -218,6 +222,76 @@ contract OPPrestateUpdater_Test is Test {
         DelegateCaller(proxyAdminOwner).dcForward(
             address(prestateUpdater), abi.encodeCall(OPPrestateUpdater.updatePrestate, (inputs))
         );
+    }
+
+    function test_deploy_reverts() public {
+        OPContractsManager.DeployInput memory input = OPContractsManager.DeployInput({
+            roles: OPContractsManager.Roles({
+                opChainProxyAdminOwner: address(0),
+                systemConfigOwner: address(0),
+                batcher: address(0),
+                unsafeBlockSigner: address(0),
+                proposer: address(0),
+                challenger: address(0)
+            }),
+            basefeeScalar: 0,
+            blobBasefeeScalar: 0,
+            l2ChainId: 0,
+            startingAnchorRoot: bytes(abi.encode(0)),
+            saltMixer: "",
+            gasLimit: 0,
+            disputeGameType: GameType.wrap(0),
+            disputeAbsolutePrestate: Claim.wrap(0),
+            disputeMaxGameDepth: 0,
+            disputeSplitDepth: 0,
+            disputeClockExtension: Duration.wrap(0),
+            disputeMaxClockDuration: Duration.wrap(0)
+        });
+
+        vm.expectRevert(OPPrestateUpdater.NotImplemented.selector);
+        prestateUpdater.deploy(input);
+    }
+
+    function test_upgrade_reverts() public {
+        opChainConfigs.push(
+            OPContractsManager.OpChainConfig({
+                systemConfigProxy: ISystemConfig(address(0)),
+                proxyAdmin: IProxyAdmin(address(0)),
+                absolutePrestate: Claim.wrap(0)
+            })
+        );
+
+        vm.expectRevert(OPPrestateUpdater.NotImplemented.selector);
+        prestateUpdater.upgrade(opChainConfigs);
+    }
+
+    function test_addGameType_reverts() public {
+        gameInput.push(
+            OPContractsManager.AddGameInput({
+                saltMixer: "hello",
+                systemConfig: ISystemConfig(address(0)),
+                proxyAdmin: IProxyAdmin(address(0)),
+                delayedWETH: IDelayedWETH(payable(address(0))),
+                disputeGameType: GameType.wrap(2000),
+                disputeAbsolutePrestate: Claim.wrap(bytes32(hex"deadbeef1234")),
+                disputeMaxGameDepth: 73,
+                disputeSplitDepth: 30,
+                disputeClockExtension: Duration.wrap(10800),
+                disputeMaxClockDuration: Duration.wrap(302400),
+                initialBond: 1 ether,
+                vm: IBigStepper(address(opcm.implementations().mipsImpl)),
+                permissioned: true
+            })
+        );
+
+        vm.expectRevert(OPPrestateUpdater.NotImplemented.selector);
+        prestateUpdater.addGameType(gameInput);
+    }
+
+    function test_l1ContractsRelease_works() public view {
+        string memory result = "none";
+
+        assertEq(result, prestateUpdater.l1ContractsRelease());
     }
 
     function addGameType(IOPContractsManager.AddGameInput memory input)
