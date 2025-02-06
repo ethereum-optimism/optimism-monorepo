@@ -712,7 +712,9 @@ contract OPContractsManager_AddGameType_Test is Test {
 
         // Expect the GameTypeAdded event to be emitted.
         vm.expectEmit(true, true, false, false, address(this));
-        emit GameTypeAdded(l2ChainId, input.disputeGameType, IDisputeGame(payable(address(0))), IDelayedWETH(payable(address(0))));
+        emit GameTypeAdded(
+            l2ChainId, input.disputeGameType, IDisputeGame(payable(address(0))), IDelayedWETH(payable(address(0)))
+        );
         (bool success, bytes memory rawGameOut) =
             address(opcm).delegatecall(abi.encodeCall(IOPContractsManager.addGameType, (inputs)));
         assertTrue(success, "addGameType failed");
