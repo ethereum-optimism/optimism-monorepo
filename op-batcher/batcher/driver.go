@@ -122,7 +122,7 @@ type BatchSubmitter struct {
 	queueCancel context.CancelFunc
 	daGroup     *errgroup.Group
 
-	blocksLoaded chan struct{}
+	initialBlocksLoaded chan struct{}
 
 	prevCurrentL1 eth.L1BlockRef // cached CurrentL1 from the last syncStatus
 }
@@ -189,6 +189,8 @@ func (l *BatchSubmitter) StartBatchSubmitting() error {
 	if l.Config.MaxConcurrentDARequests > 0 {
 		l.daGroup.SetLimit(int(l.Config.MaxConcurrentDARequests))
 	}
+
+	l.initialBlocksLoaded = make(chan struct{})
 
 	l.wg.Add(3)
 	go l.processReceiptsLoop(receiptsLoopCtx, receiptsCh)                                     // receives from receiptsCh
@@ -412,11 +414,6 @@ func (l *BatchSubmitter) promptDAThrottlingCheck() {
 	}
 }
 
-// promptWriteLoop signals the write loop to start processing the loaded blocks.
-func (l *BatchSubmitter) promptWriteLoop() {
-	l.blocksLoaded <- struct{}{}
-}
-
 // setTxPoolState locks the mutex, sets the parameters to the supplied ones, and release the mutex.
 func (l *BatchSubmitter) setTxPoolState(txPoolState TxPoolState, txPoolBlockedBlob bool) {
 	l.txpoolMutex.Lock()
@@ -455,19 +452,22 @@ func (l *BatchSubmitter) syncAndPrune(syncStatus *eth.SyncStatus) *inclusiveBloc
 }
 
 // writeLoop:
-// -  waits for a singal that blocks have been loaded
+// -  waits for a signal that blocks have been loaded
 // -  drives the creation of channels and frames
 // -  sends transactions to the DA layer
 func (l *BatchSubmitter) writeLoop(ctx context.Context, receiptsCh chan txmgr.TxReceipt[txRef], receiptsLoopCancel, throttlingLoopCancel context.CancelFunc) {
-	l.blocksLoaded = make(chan struct{})
+	<-l.initialBlocksLoaded
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-l.blocksLoaded:
-			l.publishStateToL1(l.txQueue, receiptsCh, l.daGroup)
+		default:
+			l.Log.Info("WRITING BATCHES")
+			l.publishStateToL1(l.txQueue, receiptsCh, l.daGroup) // TODO this should take the context really
+			time.Sleep(l.Config.PollInterval)                    // when we published everything, wait so we get a chance to pull more blocks
 		}
 	}
+
 }
 
 // readLoop
@@ -475,7 +475,7 @@ func (l *BatchSubmitter) writeLoop(ctx context.Context, receiptsCh chan txmgr.Tx
 // -  prunes the channel manager state (i.e. safe blocks)
 // -  loads unsafe blocks from the sequencer
 func (l *BatchSubmitter) readLoop(ctx context.Context, receiptsCh chan txmgr.TxReceipt[txRef], receiptsLoopCancel, throttlingLoopCancel context.CancelFunc) {
-
+	once := sync.Once{}
 	l.txpoolMutex.Lock()
 	l.txpoolState = TxpoolGood
 	l.txpoolMutex.Unlock()
@@ -489,6 +489,7 @@ func (l *BatchSubmitter) readLoop(ctx context.Context, receiptsCh chan txmgr.TxR
 	for {
 		select {
 		case <-ticker.C:
+			l.Log.Info("LOADING BLOCKS")
 
 			if !l.checkTxpool(l.txQueue, receiptsCh) {
 				continue
@@ -510,7 +511,10 @@ func (l *BatchSubmitter) readLoop(ctx context.Context, receiptsCh chan txmgr.TxR
 					continue
 				} else {
 					l.promptDAThrottlingCheck() // we have increased the pending data. Signal the throttling loop to check if it should throttle.
-					l.promptWriteLoop()         // we have loaded blocks, signal the write loop to start processing them into channels and submitting.
+					once.Do(func() {
+						l.Log.Info("UNBLOCKING WRITE LOOP")
+						close(l.initialBlocksLoaded)
+					})
 				}
 			}
 
