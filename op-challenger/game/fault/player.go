@@ -29,6 +29,8 @@ type GameInfo interface {
 }
 
 type SyncValidator interface {
+	// ValidateNodeSynced checks that the local node is sufficiently up to date to play the game.
+	// It returns types.ErrNotInSync if the node is too far behind.
 	ValidateNodeSynced(ctx context.Context, gameL1Head eth.BlockID) error
 }
 
@@ -179,7 +181,7 @@ func (g *GamePlayer) ProgressGame(ctx context.Context) gameTypes.GameStatus {
 		g.logger.Trace("Skipping completed game")
 		return g.status
 	}
-	if err := g.syncValidator.ValidateNodeSynced(ctx, g.gameL1Head); errors.Is(err, ErrNotInSync) {
+	if err := g.syncValidator.ValidateNodeSynced(ctx, g.gameL1Head); errors.Is(err, types.ErrNotInSync) {
 		g.logger.Warn("Local node not sufficiently up to date", "err", err)
 		return g.status
 	} else if err != nil {
