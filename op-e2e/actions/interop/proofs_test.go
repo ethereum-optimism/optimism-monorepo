@@ -36,6 +36,11 @@ func TestInteropFaultProofs(gt *testing.T) {
 		opts.SetChains(system.Actors.ChainB)
 	})
 
+	// Add a second block
+	system.AddL2Block(system.Actors.ChainA)
+	system.AddL2Block(system.Actors.ChainB)
+	system.SubmitBatchData()
+
 	actors := system.Actors
 
 	endTimestamp := actors.ChainA.RollupCfg.Genesis.L2Time + actors.ChainA.RollupCfg.BlockTime
@@ -118,10 +123,18 @@ func TestInteropFaultProofs(gt *testing.T) {
 			expectValid:        true,
 		},
 		{
-			name:               "AlreadyAtClaimedTimestamp",
+			name:               "AlreadyAtProposalTimestamp",
 			agreedClaim:        end.Marshal(),
 			disputedClaim:      end.Marshal(),
 			disputedTraceIndex: 5000,
+			expectValid:        true,
+		},
+		{
+			name:               "ProposalTimestampBeyondDisputedBlock",
+			agreedClaim:        paddingStep(1023),
+			disputedClaim:      end.Marshal(),
+			proposalTimestamp:  endTimestamp + 100,
+			disputedTraceIndex: 1023,
 			expectValid:        true,
 		},
 
@@ -180,12 +193,16 @@ func TestInteropFaultProofs(gt *testing.T) {
 			if l1Head == (common.Hash{}) {
 				l1Head = actors.L1Miner.L1Chain().CurrentBlock().Hash()
 			}
+			proposalTimestamp := test.proposalTimestamp
+			if proposalTimestamp == 0 {
+				proposalTimestamp = endTimestamp
+			}
 			fpHelpers.RunFaultProofProgram(
 				t,
 				logger,
 				actors.L1Miner,
 				checkResult,
-				WithInteropEnabled(actors, test.agreedClaim, crypto.Keccak256Hash(test.disputedClaim), endTimestamp),
+				WithInteropEnabled(actors, test.agreedClaim, crypto.Keccak256Hash(test.disputedClaim), proposalTimestamp),
 				fpHelpers.WithL1Head(l1Head),
 			)
 		})
@@ -432,12 +449,16 @@ func TestInteropFaultProofsInvalidBlock(gt *testing.T) {
 			if l1Head == (common.Hash{}) {
 				l1Head = actors.L1Miner.L1Chain().CurrentBlock().Hash()
 			}
+			proposalTimestamp := test.proposalTimestamp
+			if proposalTimestamp == 0 {
+				proposalTimestamp = endTimestamp
+			}
 			fpHelpers.RunFaultProofProgram(
 				t,
 				logger,
 				actors.L1Miner,
 				checkResult,
-				WithInteropEnabled(actors, test.agreedClaim, crypto.Keccak256Hash(test.disputedClaim), endTimestamp),
+				WithInteropEnabled(actors, test.agreedClaim, crypto.Keccak256Hash(test.disputedClaim), proposalTimestamp),
 				fpHelpers.WithL1Head(l1Head),
 			)
 		})
@@ -506,6 +527,7 @@ type transitionTest struct {
 	disputedClaim      []byte
 	disputedTraceIndex int64
 	l1Head             common.Hash // Defaults to current L1 head if not set
+	proposalTimestamp  uint64      // Defaults to latest L2 block timestamp if 0
 	expectValid        bool
 	skipProgram        bool
 	skipChallenger     bool
