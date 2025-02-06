@@ -59,6 +59,7 @@ type DerivationStorage interface {
 	// mapping from source<>derived
 	DerivedToFirstSource(derived eth.BlockID) (source types.BlockSeal, err error)
 	SourceToLastDerived(source eth.BlockID) (derived types.BlockSeal, err error)
+	SourceNumToSource(sourceNum uint64) (source types.BlockSeal, err error)
 
 	// traversal
 	Next(pair types.DerivedIDPair) (next types.DerivedBlockSealPair, err error)

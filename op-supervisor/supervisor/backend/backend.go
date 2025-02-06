@@ -522,6 +522,10 @@ func (su *SupervisorBackend) FinalizedL1() eth.BlockRef {
 	return su.chainDBs.FinalizedL1()
 }
 
+func (su *SupervisorBackend) LastCommonCompleteL1() (types.BlockSeal, error) {
+	return su.chainDBs.LastCommonL1(true)
+}
+
 func (su *SupervisorBackend) CrossDerivedToSource(ctx context.Context, chainID eth.ChainID, derived eth.BlockID) (source eth.BlockRef, err error) {
 	v, err := su.chainDBs.CrossDerivedToSourceRef(chainID, derived)
 	if err != nil {

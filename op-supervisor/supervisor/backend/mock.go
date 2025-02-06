@@ -83,6 +83,10 @@ func (m *MockBackend) SyncStatus() (eth.SupervisorSyncStatus, error) {
 	return eth.SupervisorSyncStatus{}, nil
 }
 
+func (m *MockBackend) LastCommonCompleteL1() (types.BlockSeal, error) {
+	return types.BlockSeal{}, nil
+}
+
 func (m *MockBackend) Close() error {
 	return nil
 }

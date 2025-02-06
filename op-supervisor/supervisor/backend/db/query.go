@@ -30,10 +30,12 @@ func (db *ChainsDB) LatestBlockNum(chain eth.ChainID) (num uint64, ok bool) {
 }
 
 // LastCommonL1 returns the latest common L1 block between all chains in the database.
-// it only considers block numbers, not hash. That's because the L1 source is the same for all chains
-// this data can be used to determine the starting point for L1 processing
-func (db *ChainsDB) LastCommonL1() (types.BlockSeal, error) {
+// It checks that all chains have the same L1 block at the same height, erroring if they do not.
+// If completeOnly is true, the consistency checks and returned common block will be set back by 1.
+// This is because the L1 blocks in the database may not be completely processed, but their parents will be.
+func (db *ChainsDB) LastCommonL1(completeOnly bool) (types.BlockSeal, error) {
 	commonL1 := types.BlockSeal{}
+	// Step 1: find the latest common block height
 	for _, chain := range db.depSet.Chains() {
 		ldb, ok := db.localDBs.Get(chain)
 		if !ok {
@@ -43,12 +45,38 @@ func (db *ChainsDB) LastCommonL1() (types.BlockSeal, error) {
 		if err != nil {
 			return types.BlockSeal{}, fmt.Errorf("failed to determine Last Common L1: %w", err)
 		}
-		// if the common block isn't yet set,
-		// or if the new common block is older than the current common block
-		// set the common block
 		if commonL1 == (types.BlockSeal{}) ||
 			last.Source.Number < commonL1.Number {
 			commonL1 = last.Source
+		}
+	}
+	// Step 2: offset to the parent block if completeOnly is true
+	if completeOnly {
+		// we only need one chain to offset to the parent block
+		ldb, ok := db.localDBs.Get(db.depSet.Chains()[0])
+		if !ok {
+			return types.BlockSeal{}, types.ErrUnknownChain
+		}
+		parent, err := ldb.SourceNumToSource(commonL1.Number - 1)
+		if err != nil {
+			return types.BlockSeal{}, fmt.Errorf("failed to determine Last Common L1: %w", err)
+		}
+		commonL1 = parent
+	}
+	// Step 3: check for consistency across all chains for this block
+	for _, chain := range db.depSet.Chains() {
+		ldb, ok := db.localDBs.Get(chain)
+		if !ok {
+			return types.BlockSeal{}, types.ErrUnknownChain
+		}
+		sourceAtNum, err := ldb.SourceNumToSource(commonL1.Number)
+		if err != nil {
+			return types.BlockSeal{}, fmt.Errorf("failed to determine Last Common L1: %w", err)
+		}
+		if sourceAtNum != commonL1 {
+			{
+				return types.BlockSeal{}, fmt.Errorf("chain %s has a different L1 block at number %d: %v", chain, commonL1.Number, sourceAtNum)
+			}
 		}
 	}
 	return commonL1, nil

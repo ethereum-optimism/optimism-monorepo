@@ -26,6 +26,7 @@ type QueryBackend interface {
 	SuperRootAtTimestamp(ctx context.Context, timestamp hexutil.Uint64) (eth.SuperRootResponse, error)
 	SyncStatus() (eth.SupervisorSyncStatus, error)
 	AllSafeDerivedAt(ctx context.Context, derivedFrom eth.BlockID) (derived map[eth.ChainID]eth.BlockID, err error)
+	LastCommonCompleteL1() (types.BlockSeal, error)
 }
 
 type Backend interface {
@@ -89,6 +90,10 @@ func (q *QueryFrontend) AllSafeDerivedAt(ctx context.Context, derivedFrom eth.Bl
 
 func (q *QueryFrontend) SyncStatus() (eth.SupervisorSyncStatus, error) {
 	return q.Supervisor.SyncStatus()
+}
+
+func (q *QueryFrontend) LastCommonCompleteL1() (types.BlockSeal, error) {
+	return q.Supervisor.LastCommonCompleteL1()
 }
 
 type AdminFrontend struct {

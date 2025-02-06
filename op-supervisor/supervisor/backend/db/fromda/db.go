@@ -286,6 +286,20 @@ func (db *DB) Next(pair types.DerivedIDPair) (types.DerivedBlockSealPair, error)
 	return next.sealOrErr()
 }
 
+// SourceNumToSource returns the source block for the given source number.
+// It can be used to check if multiple chains have the same source block at a given height.
+func (db *DB) SourceNumToSource(sourceNum uint64) (types.BlockSeal, error) {
+	db.rwLock.RLock()
+	defer db.rwLock.RUnlock()
+	_, link, err := db.find(false, func(link LinkEntry) int {
+		return cmp.Compare(link.source.Number, sourceNum)
+	})
+	if err != nil {
+		return types.BlockSeal{}, err
+	}
+	return link.source, nil
+}
+
 func (db *DB) derivedNumToFirstSource(derivedNum uint64) (entrydb.EntryIdx, LinkEntry, error) {
 	// Forward: prioritize the first entry.
 	return db.find(false, func(link LinkEntry) int {
