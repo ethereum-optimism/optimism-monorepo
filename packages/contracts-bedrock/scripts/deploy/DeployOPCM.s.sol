@@ -271,7 +271,6 @@ contract DeployOPCM is Script {
         public
         returns (IOPContractsManager opcm_)
     {
-        vm.broadcast(msg.sender);
         opcm_ = IOPContractsManager(
             DeployUtils.createDeterministic({
                 _name: "OPContractsManager",
