@@ -252,4 +252,12 @@ func TestCommonL1(t *testing.T) {
 		require.Error(t, err)
 		require.Equal(t, types.BlockSeal{}, last)
 	})
+	t.Run("parent to genesis", func(t *testing.T) {
+		m1.lastFn = lastN(99)
+		m2.lastFn = lastN(0)
+		m3.lastFn = lastN(2)
+		last, err := chainDB.LastCommonL1(true)
+		require.Error(t, err)
+		require.Equal(t, types.BlockSeal{}, last)
+	})
 }

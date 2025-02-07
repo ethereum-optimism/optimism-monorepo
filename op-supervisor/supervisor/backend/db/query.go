@@ -52,6 +52,11 @@ func (db *ChainsDB) LastCommonL1(completeOnly bool) (types.BlockSeal, error) {
 	}
 	// Step 2: offset to the parent block if completeOnly is true
 	if completeOnly {
+		if commonL1.Number == 0 {
+			// ErrFuture is used because we don't have enough data to determine the common *completed* L1 block yet,
+			// but will be able to once a second block is added.
+			return types.BlockSeal{}, fmt.Errorf("genesis block is known but may not be complete: %w", types.ErrFuture)
+		}
 		// we only need one chain to offset to the parent block
 		ldb, ok := db.localDBs.Get(db.depSet.Chains()[0])
 		if !ok {
