@@ -1,6 +1,7 @@
 package backend
 
 import (
+	"github.com/ethereum-optimism/optimism/op-node/rollup/event"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/sources/caching"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/db/logs"
@@ -15,6 +16,8 @@ type Metrics interface {
 
 	RecordDBEntryCount(chainID eth.ChainID, kind string, count int64)
 	RecordDBSearchEntriesRead(chainID eth.ChainID, count int64)
+
+	event.Metrics
 }
 
 // chainMetrics is an adapter between the metrics API expected by clients that assume there's only a single chain
