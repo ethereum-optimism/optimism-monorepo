@@ -264,7 +264,24 @@ func (db *DB) addLink(derivedFrom eth.BlockRef, derived eth.BlockRef, invalidate
 			lastDerived, lastSource,
 			types.ErrOutOfOrder)
 	} else {
-		// adding block that is derived from something too old
+		if lastDerived.Hash == derived.Hash {
+			// we might see L1 blocks repeat,
+			// if the deriver has reset to the latest local-safe block,
+			// since we don't reset it to any particular source block.
+			// So check if it's canonical, and if it is, we can gracefully accept it, to allow forwards progress.
+			_, got, err := db.lookup(derivedFrom.Number, derived.Number)
+			if err != nil {
+				return fmt.Errorf("failed to check if block %s with old source %s was derived from canonical source chain: %w",
+					derived, derivedFrom, err)
+			}
+			if got.source.Hash != derivedFrom.Hash {
+				return fmt.Errorf("cannot add block %s that matches latest derived since it is derived from non-canonical source %s, expected %s: %w",
+					derived, derivedFrom, got.source, types.ErrConflict)
+			}
+			return fmt.Errorf("received latest block %s, derived from known old source %s, latest source is %s: %w",
+				derived, derivedFrom, lastSource, types.ErrIneffective)
+		}
+		// Adding a newer block that is derived from an older source, that cannot be right
 		return fmt.Errorf("cannot add block %s as derived from %s, deriving already at %s: %w",
 			derived, derivedFrom, lastSource, types.ErrOutOfOrder)
 	}

@@ -1,6 +1,7 @@
 package db
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -79,7 +80,11 @@ func (db *ChainsDB) UpdateLocalSafe(chain eth.ChainID, derivedFrom eth.BlockRef,
 	}
 	logger.Debug("Updating local safe DB")
 	if err := localDB.AddDerived(derivedFrom, lastDerived); err != nil {
-		db.logger.Warn("Failed to update local safe", "err", err)
+		if errors.Is(err, types.ErrIneffective) {
+			logger.Info("Node is syncing known source blocks on known latest local-safe block", "err", err)
+			return
+		}
+		logger.Warn("Failed to update local safe", "err", err)
 		db.emitter.Emit(superevents.LocalSafeOutOfSyncEvent{
 			ChainID: chain,
 			L1Ref:   derivedFrom,
@@ -87,7 +92,7 @@ func (db *ChainsDB) UpdateLocalSafe(chain eth.ChainID, derivedFrom eth.BlockRef,
 		})
 		return
 	}
-	db.logger.Info("Updated local safe DB")
+	logger.Info("Updated local safe DB")
 	db.emitter.Emit(superevents.LocalSafeUpdateEvent{
 		ChainID: chain,
 		NewLocalSafe: types.DerivedBlockSealPair{

@@ -13,6 +13,10 @@ var (
 	ErrSkipped = errors.New("skipped data")
 	// ErrFuture happens when data is just not yet available
 	ErrFuture = errors.New("future data")
+	// ErrIneffective happens when data is accepted as compatible, but did not change anything.
+	// This happens when a node is deriving an L2 block we already know of being derived from the given source,
+	// but without path to skip forward to newer source blocks without doing the known derivation work first.
+	ErrIneffective = errors.New("ineffective data")
 	// ErrConflict happens when we know for sure that there is different canonical data
 	ErrConflict = errors.New("conflicting data")
 	// ErrAwaitReplacementBlock happens when we know for sure that a replacement block is needed before progress can be made.
