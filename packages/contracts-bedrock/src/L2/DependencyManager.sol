@@ -50,7 +50,7 @@ contract DependencyManager is ISemver {
 
         if (_dependencySet.length() == type(uint8).max) revert DependencySetSizeTooLarge();
 
-        if (_chainId == block.chainid || !_dependencySet.add(_chainId)) revert AlreadyDependency();
+        if (!_dependencySet.add(_chainId)) revert AlreadyDependency();
 
         // Initiate a withdrawal tx to update the dependency set on L1.
         IL2ToL1MessagePasser(payable(Predeploys.L2_TO_L1_MESSAGE_PASSER)).initiateWithdrawal(
