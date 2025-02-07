@@ -287,7 +287,10 @@ func (m *ManagedMode) Reset(ctx context.Context, unsafe, safe, finalized eth.Blo
 		return result, nil
 	}
 
-	unsafeRef, err := verify(unsafe, "unsafe")
+	// unsafeRef is always unused, as it is either
+	// - invalid (does not match, and therefore cannot be used for reset)
+	// - valid, in which case we will use the full unsafe chain for reset
+	_, err := verify(unsafe, "unsafe")
 	if err != nil {
 		return err
 	}
@@ -301,7 +304,7 @@ func (m *ManagedMode) Reset(ctx context.Context, unsafe, safe, finalized eth.Blo
 	}
 
 	m.emitter.Emit(rollup.ForceResetEvent{
-		Unsafe:    unsafeRef,
+		Unsafe:    eth.L2BlockRef{},
 		Safe:      safeRef,
 		Finalized: finalizedRef,
 	})
