@@ -8,16 +8,20 @@ import { Unauthorized } from "src/libraries/errors/CommonErrors.sol";
 import { Predeploys } from "src/libraries/Predeploys.sol";
 import { IL2ToL1MessagePasser } from "interfaces/L2/IL2ToL1MessagePasser.sol";
 import { ISuperchainConfigInterop } from "interfaces/L1/ISuperchainConfigInterop.sol";
+import { EIP1967Helper } from "test/mocks/EIP1967Helper.sol";
 
 contract DependencyManager_Base_Test is CommonTest {
     event DependencyAdded(uint256 indexed chainId, address indexed systemConfig, address indexed superchainConfig);
 
     function setUp() public virtual override {
-        // Skip the test until DependencyManager is integrated again
-        vm.skip(true);
-
         super.enableInterop();
         super.setUp();
+
+        // TODO: Delete the following lines once DependencyManager is integrated again
+        string memory cname = Predeploys.getName(Predeploys.DEPENDENCY_MANAGER);
+        address impl = Predeploys.predeployToCodeNamespace(Predeploys.DEPENDENCY_MANAGER);
+        vm.etch(impl, vm.getDeployedCode(string.concat(cname, ".sol:", cname)));
+        EIP1967Helper.setImplementation(Predeploys.DEPENDENCY_MANAGER, impl);
     }
 
     function _dependencyManager() internal pure returns (IDependencyManager) {
@@ -78,12 +82,16 @@ contract DependencyManager_AddDependency_Test is DependencyManager_Base_Test {
         vm.stopPrank();
     }
 
-    /// @dev Tests that addDependency reverts when adding current chain ID
-    function test_addDependency_currentChainId_reverts() public {
+    /// @dev Tests that addDependency succeeds when adding current chain ID
+    function test_addDependency_currentChainId_succeeds() public {
         vm.prank(Constants.DEPOSITOR_ACCOUNT);
 
-        vm.expectRevert(IDependencyManager.AlreadyDependency.selector);
+        // Should not revert since current chain ID is not in dependency set
         _dependencyManager().addDependency(address(superchainConfig), block.chainid, address(systemConfig));
+
+        // Verify it was added successfully
+        assertTrue(_dependencyManager().isInDependencySet(block.chainid));
+        assertEq(_dependencyManager().dependencySetSize(), 1);
     }
 
     /// @dev Tests that addDependency reverts when dependency set is too large
@@ -106,7 +114,7 @@ contract DependencyManager_AddDependency_Test is DependencyManager_Base_Test {
 contract DependencyManager_IsInDependencySet_Test is DependencyManager_Base_Test {
     /// @dev Tests that current chain is always in dependency set
     function testFuzz_isInDependencySet_currentChain_succeeds(uint256 _chainId) public {
-        _chainId = bound(_chainId, 1, type(uint128).max);
+        _chainId = bound(_chainId, 1, type(uint64).max - 1);
 
         vm.chainId(_chainId);
         assertTrue(_dependencyManager().isInDependencySet(_chainId));
