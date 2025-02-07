@@ -80,7 +80,6 @@ contract DeployMIPS is Script {
         IMIPS singleton;
         uint256 mipsVersion = _mi.mipsVersion();
         IPreimageOracle preimageOracle = IPreimageOracle(_mi.preimageOracle());
-        vm.broadcast(msg.sender);
         singleton = IMIPS(
             DeployUtils.createDeterministic({
                 _name: mipsVersion == 1 ? "MIPS" : "MIPS64",
