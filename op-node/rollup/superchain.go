@@ -24,6 +24,11 @@ func LoadOPStackRollupConfig(chainID uint64) (*Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to retrieve chain %d config: %w", chainID, err)
 	}
+	chOpConfig := &params.OptimismConfig{
+		EIP1559Elasticity:        chConfig.Optimism.EIP1559Elasticity,
+		EIP1559Denominator:       chConfig.Optimism.EIP1559Denominator,
+		EIP1559DenominatorCanyon: chConfig.Optimism.EIP1559DenominatorCanyon,
+	}
 
 	superConfig, err := superchain.GetSuperchain(chain.Network)
 	if err != nil {
@@ -88,6 +93,7 @@ func LoadOPStackRollupConfig(chainID uint64) (*Config, error) {
 		DepositContractAddress: *addrs.OptimismPortalProxy,
 		L1SystemConfigAddress:  *addrs.SystemConfigProxy,
 		AltDAConfig:            altDA,
+		ChainOpConfig:          chOpConfig,
 	}
 
 	cfg.ProtocolVersionsAddress = superConfig.ProtocolVersionsAddr
