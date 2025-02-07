@@ -144,6 +144,8 @@ func (db *ChainsDB) AttachEmitter(em event.Emitter) {
 func (db *ChainsDB) OnEvent(ev event.Event) bool {
 	switch x := ev.(type) {
 	case superevents.AnchorEvent:
+		db.logger.Info("Received chain anchor information",
+			"chain", x.ChainID, "derived", x.Anchor.Derived, "source", x.Anchor.Source)
 		db.maybeInitEventsDB(x.ChainID, x.Anchor)
 		db.maybeInitSafeDB(x.ChainID, x.Anchor)
 	case superevents.LocalDerivedEvent:

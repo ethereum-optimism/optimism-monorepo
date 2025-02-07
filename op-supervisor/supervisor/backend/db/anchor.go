@@ -10,32 +10,34 @@ import (
 // maybeInitSafeDB initializes the chain database if it is not already initialized
 // it checks if the Local Safe database is empty, and loads it with the Anchor Point if so
 func (db *ChainsDB) maybeInitSafeDB(id eth.ChainID, anchor types.DerivedBlockRefPair) {
+	logger := db.logger.New("chain", id, "derived", anchor.Derived, "source", anchor.Source)
 	_, err := db.LocalSafe(id)
 	if errors.Is(err, types.ErrFuture) {
-		db.logger.Info("initializing chain database", "chain", id, "anchor", anchor)
+		logger.Info("initializing chain database")
 		if err := db.UpdateCrossSafe(id, anchor.Source, anchor.Derived); err != nil {
-			db.logger.Warn("failed to initialize cross safe", "chain", id, "error", err)
+			logger.Warn("failed to initialize cross safe", "err", err)
 		}
 		db.UpdateLocalSafe(id, anchor.Source, anchor.Derived)
 	} else if err != nil {
-		db.logger.Warn("failed to check if chain database is initialized", "chain", id, "error", err)
+		logger.Warn("failed to check if chain database is initialized", "err", err)
 	} else {
-		db.logger.Debug("chain database already initialized", "chain", id)
+		logger.Debug("chain database already initialized")
 	}
 }
 
 func (db *ChainsDB) maybeInitEventsDB(id eth.ChainID, anchor types.DerivedBlockRefPair) {
+	logger := db.logger.New("chain", id, "derived", anchor.Derived, "source", anchor.Source)
 	_, _, _, err := db.OpenBlock(id, 0)
 	if errors.Is(err, types.ErrFuture) {
-		db.logger.Debug("initializing events database", "chain", id)
+		logger.Debug("initializing events database")
 		err := db.SealBlock(id, anchor.Derived)
 		if err != nil {
-			db.logger.Warn("failed to seal initial block", "chain", id, "error", err)
+			logger.Warn("failed to seal initial block", "err", err)
 		}
-		db.logger.Debug("initialized events database", "chain", id)
+		logger.Info("Initialized events database")
 	} else if err != nil {
-		db.logger.Warn("failed to check if logDB is initialized", "chain", id, "error", err)
+		logger.Warn("Failed to check if logDB is initialized", "err", err)
 	} else {
-		db.logger.Debug("events database already initialized", "chain", id)
+		logger.Debug("Events database already initialized")
 	}
 }
