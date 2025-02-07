@@ -645,6 +645,7 @@ jobs:
           name: Check frozen files
           command: just check-frozen-code
           working_directory: packages/contracts-bedrock
+        if: "!contains(github.event.pull_request.labels.*.name, 'S-exempt-frozen-files')"
 
   contracts-bedrock-tests:
     circleci_ip_ranges: true
