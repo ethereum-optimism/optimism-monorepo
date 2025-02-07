@@ -337,7 +337,7 @@ func TestIsthmusNetworkUpgradeTransactions(gt *testing.T) {
 	require.NotEmpty(t, txn.Data(), "upgrade tx must provide input data")
 
 	// EIP-2935 contract is deployed
-	expectedBlockHashAddress := crypto.CreateAddress(derive.BlockHashDeployerAddress, 0)
+	expectedBlockHashAddress := crypto.CreateAddress(predeploys.EIP2935ContractDeployer, 0)
 	require.Equal(t, predeploys.EIP2935ContractAddr, expectedBlockHashAddress)
 	code := verifyCodeHashMatches(t, ethCl, predeploys.EIP2935ContractAddr, predeploys.EIP2935ContractCodeHash)
 	require.Equal(t, predeploys.EIP2935ContractCode, code)
