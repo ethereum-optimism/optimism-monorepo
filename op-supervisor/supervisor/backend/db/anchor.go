@@ -12,7 +12,7 @@ import (
 func (db *ChainsDB) maybeInitSafeDB(id eth.ChainID, anchor types.DerivedBlockRefPair) {
 	_, err := db.LocalSafe(id)
 	if errors.Is(err, types.ErrFuture) {
-		db.logger.Debug("initializing chain database", "chain", id)
+		db.logger.Info("initializing chain database", "chain", id, "anchor", anchor)
 		if err := db.UpdateCrossSafe(id, anchor.Source, anchor.Derived); err != nil {
 			db.logger.Warn("failed to initialize cross safe", "chain", id, "error", err)
 		}
