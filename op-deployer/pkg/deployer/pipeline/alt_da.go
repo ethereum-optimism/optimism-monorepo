@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/big"
 
+	altda "github.com/ethereum-optimism/optimism/op-alt-da"
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/opcm"
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/state"
 	"github.com/ethereum/go-ethereum/common"
@@ -48,7 +49,7 @@ func DeployAltDA(env *Env, intent *state.Intent, st *state.State, chainID common
 }
 
 func shouldDeployAltDA(chainIntent *state.ChainIntent, chainState *state.ChainState) bool {
-	if !chainIntent.DangerousAltDAConfig.UseAltDA {
+	if !(chainIntent.DangerousAltDAConfig.UseAltDA && chainIntent.DangerousAltDAConfig.DACommitmentType == altda.KeccakCommitmentString) {
 		return false
 	}
 
