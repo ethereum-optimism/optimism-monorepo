@@ -166,11 +166,6 @@ func (c *Intent) validateStandardValues() error {
 }
 
 func getStandardSuperchainRoles(l1ChainId uint64) (*SuperchainRoles, error) {
-	superCfg, err := standard.SuperchainFor(l1ChainId)
-	if err != nil {
-		return nil, fmt.Errorf("error getting superchain config: %w", err)
-	}
-
 	proxyAdminOwner, err := standard.L1ProxyAdminOwner(l1ChainId)
 	if err != nil {
 		return nil, fmt.Errorf("error getting L1ProxyAdminOwner: %w", err)
@@ -179,10 +174,14 @@ func getStandardSuperchainRoles(l1ChainId uint64) (*SuperchainRoles, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error getting guardian address: %w", err)
 	}
+	protocolVersionsOwner, err := standard.ProtocolVersionsOwner(l1ChainId)
+	if err != nil {
+		return nil, fmt.Errorf("error getting protocol versions owner: %w", err)
+	}
 
 	superchainRoles := &SuperchainRoles{
 		ProxyAdminOwner:       proxyAdminOwner,
-		ProtocolVersionsOwner: superCfg.ProtocolVersionsAddr,
+		ProtocolVersionsOwner: protocolVersionsOwner,
 		Guardian:              guardian,
 	}
 

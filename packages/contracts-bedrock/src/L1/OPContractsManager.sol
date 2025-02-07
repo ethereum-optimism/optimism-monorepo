@@ -118,6 +118,7 @@ contract OPContractsManager is ISemver {
     struct OpChainConfig {
         ISystemConfig systemConfigProxy;
         IProxyAdmin proxyAdmin;
+        Claim absolutePrestate;
     }
 
     struct AddGameInput {
@@ -143,9 +144,9 @@ contract OPContractsManager is ISemver {
 
     // -------- Constants and Variables --------
 
-    /// @custom:semver 1.0.2
+    /// @custom:semver 1.2.0
     function version() public pure virtual returns (string memory) {
-        return "1.0.2";
+        return "1.2.0";
     }
 
     /// @notice Address of the SuperchainConfig contract shared by all chains.
@@ -235,6 +236,9 @@ contract OPContractsManager is ISemver {
     /// @notice Thrown when the SuperchainProxyAdmin does not match the SuperchainConfig's admin.
     error SuperchainProxyAdminMismatch();
 
+    /// @notice Thrown when a prestate is not set for a game.
+    error PrestateNotSet();
+
     // -------- Methods --------
 
     constructor(
@@ -266,8 +270,6 @@ contract OPContractsManager is ISemver {
 
         // -------- Deploy Chain Singletons --------
 
-        // The ProxyAdmin is the owner of all proxies for the chain. We temporarily set the owner to
-        // this contract, and then transfer ownership to the specified owner at the end of deployment.
         // The AddressManager is used to store the implementation for the L1CrossDomainMessenger
         // due to it's usage of the legacy ResolvedDelegateProxy.
         output.addressManager = IAddressManager(
@@ -275,12 +277,17 @@ contract OPContractsManager is ISemver {
                 blueprint.addressManager, computeSalt(l2ChainId, saltMixer, "AddressManager"), abi.encode()
             )
         );
+        // The ProxyAdmin is the owner of all proxies for the chain. We temporarily set the owner to
+        // this contract, and then transfer ownership to the specified owner at the end of deployment.
         output.opChainProxyAdmin = IProxyAdmin(
             Blueprint.deployFrom(
                 blueprint.proxyAdmin, computeSalt(l2ChainId, saltMixer, "ProxyAdmin"), abi.encode(address(this))
             )
         );
+        // Set the AddressManager on the ProxyAdmin.
         output.opChainProxyAdmin.setAddressManager(output.addressManager);
+        // Transfer ownership of the AddressManager to the ProxyAdmin.
+        transferOwnership(address(output.addressManager), address(output.opChainProxyAdmin));
 
         // -------- Deploy Proxy Contracts --------
 
@@ -322,8 +329,6 @@ contract OPContractsManager is ISemver {
             address(output.l1CrossDomainMessengerProxy), IProxyAdmin.ProxyType.RESOLVED
         );
         output.opChainProxyAdmin.setImplementationName(address(output.l1CrossDomainMessengerProxy), contractName);
-        // Now that all proxies are deployed, we can transfer ownership of the AddressManager to the ProxyAdmin.
-        transferOwnership(address(output.addressManager), address(output.opChainProxyAdmin));
 
         // Eventually we will switch from DelayedWETHPermissionedGameProxy to DelayedWETHPermissionlessGameProxy.
         output.delayedWETHPermissionedGameProxy = IDelayedWETH(
@@ -368,9 +373,6 @@ contract OPContractsManager is ISemver {
             output.opChainProxyAdmin, address(output.optimismPortalProxy), implementation.optimismPortalImpl, data
         );
 
-        // First we upgrade the implementation so it's version can be retrieved, then we initialize
-        // it afterwards. See the comments in encodeSystemConfigInitializer to learn more.
-        upgradeTo(output.opChainProxyAdmin, payable(address(output.systemConfigProxy)), implementation.systemConfigImpl);
         data = encodeSystemConfigInitializer(_input, output);
         upgradeToAndCall(
             output.opChainProxyAdmin, address(output.systemConfigProxy), implementation.systemConfigImpl, data
@@ -920,12 +922,7 @@ contract OPContractsManager is ISemver {
         virtual
         returns (IResourceMetering.ResourceConfig memory resourceConfig_, ISystemConfig.Addresses memory opChainAddrs_)
     {
-        // We use assembly to easily convert from IResourceMetering.ResourceConfig to ResourceMetering.ResourceConfig.
-        // This is required because we have not yet fully migrated the codebase to be interface-based.
-        IResourceMetering.ResourceConfig memory resourceConfig = Constants.DEFAULT_RESOURCE_CONFIG();
-        assembly ("memory-safe") {
-            resourceConfig_ := resourceConfig
-        }
+        resourceConfig_ = Constants.DEFAULT_RESOURCE_CONFIG();
 
         opChainAddrs_ = ISystemConfig.Addresses({
             l1CrossDomainMessenger: address(_output.l1CrossDomainMessengerProxy),
@@ -1110,6 +1107,10 @@ contract OPContractsManager is ISemver {
         // Modify the params with the new anchorStateRegistry and vm values.
         params.anchorStateRegistry = IAnchorStateRegistry(address(_newAnchorStateRegistryProxy));
         params.vm = IBigStepper(_implementations.mipsImpl);
+        if (Claim.unwrap(_opChainConfig.absolutePrestate) == bytes32(0)) {
+            revert PrestateNotSet();
+        }
+        params.absolutePrestate = _opChainConfig.absolutePrestate;
 
         IDisputeGame newGame;
         if (GameType.unwrap(_gameType) == GameType.unwrap(GameTypes.PERMISSIONED_CANNON)) {

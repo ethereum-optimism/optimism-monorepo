@@ -14,59 +14,59 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type mockDerivedFromStorage struct {
-	latestFn func() (pair types.DerivedBlockSealPair, err error)
+type mockDerivationStorage struct {
+	lastFn func() (pair types.DerivedBlockSealPair, err error)
 }
 
-func (m *mockDerivedFromStorage) First() (pair types.DerivedBlockSealPair, err error) {
+func (m *mockDerivationStorage) First() (pair types.DerivedBlockSealPair, err error) {
 	return types.DerivedBlockSealPair{}, nil
 }
-func (m *mockDerivedFromStorage) Latest() (pair types.DerivedBlockSealPair, err error) {
-	if m.latestFn != nil {
-		return m.latestFn()
+func (m *mockDerivationStorage) Last() (pair types.DerivedBlockSealPair, err error) {
+	if m.lastFn != nil {
+		return m.lastFn()
 	}
 	return types.DerivedBlockSealPair{}, nil
 }
-func (m *mockDerivedFromStorage) Invalidated() (pair types.DerivedBlockSealPair, err error) {
+func (m *mockDerivationStorage) Invalidated() (pair types.DerivedBlockSealPair, err error) {
 	return types.DerivedBlockSealPair{}, nil
 }
-func (m *mockDerivedFromStorage) AddDerived(derivedFrom eth.BlockRef, derived eth.BlockRef) error {
+func (m *mockDerivationStorage) AddDerived(derivedFrom eth.BlockRef, derived eth.BlockRef) error {
 	return nil
 }
-func (m *mockDerivedFromStorage) ReplaceInvalidatedBlock(replacementDerived eth.BlockRef, invalidated common.Hash) (types.DerivedBlockSealPair, error) {
+func (m *mockDerivationStorage) ReplaceInvalidatedBlock(replacementDerived eth.BlockRef, invalidated common.Hash) (types.DerivedBlockSealPair, error) {
 	return types.DerivedBlockSealPair{}, nil
 }
-func (m *mockDerivedFromStorage) RewindAndInvalidate(invalidated types.DerivedBlockRefPair) error {
+func (m *mockDerivationStorage) RewindAndInvalidate(invalidated types.DerivedBlockRefPair) error {
 	return nil
 }
-func (m *mockDerivedFromStorage) LastDerivedAt(derivedFrom eth.BlockID) (derived types.BlockSeal, err error) {
+func (m *mockDerivationStorage) SourceToLastDerived(source eth.BlockID) (derived types.BlockSeal, err error) {
 	return types.BlockSeal{}, nil
 }
-func (m *mockDerivedFromStorage) IsDerived(derived eth.BlockID) error {
+func (m *mockDerivationStorage) ContainsDerived(derived eth.BlockID) error {
 	return nil
 }
-func (m *mockDerivedFromStorage) DerivedFrom(derived eth.BlockID) (derivedFrom types.BlockSeal, err error) {
+func (m *mockDerivationStorage) DerivedToFirstSource(derived eth.BlockID) (source types.BlockSeal, err error) {
 	return types.BlockSeal{}, nil
 }
-func (m *mockDerivedFromStorage) FirstAfter(derivedFrom, derived eth.BlockID) (next types.DerivedBlockSealPair, err error) {
+func (m *mockDerivationStorage) Next(pair types.DerivedIDPair) (next types.DerivedBlockSealPair, err error) {
 	return types.DerivedBlockSealPair{}, nil
 }
-func (m *mockDerivedFromStorage) NextDerivedFrom(derivedFrom eth.BlockID) (nextDerivedFrom types.BlockSeal, err error) {
+func (m *mockDerivationStorage) NextSource(source eth.BlockID) (nextSource types.BlockSeal, err error) {
 	return types.BlockSeal{}, nil
 }
-func (m *mockDerivedFromStorage) NextDerived(derived eth.BlockID) (next types.DerivedBlockSealPair, err error) {
+func (m *mockDerivationStorage) NextDerived(derived eth.BlockID) (next types.DerivedBlockSealPair, err error) {
 	return types.DerivedBlockSealPair{}, nil
 }
-func (m *mockDerivedFromStorage) PreviousDerivedFrom(derivedFrom eth.BlockID) (prevDerivedFrom types.BlockSeal, err error) {
+func (m *mockDerivationStorage) PreviousSource(source eth.BlockID) (prevSource types.BlockSeal, err error) {
 	return types.BlockSeal{}, nil
 }
-func (m *mockDerivedFromStorage) PreviousDerived(derived eth.BlockID) (prevDerived types.BlockSeal, err error) {
+func (m *mockDerivationStorage) PreviousDerived(derived eth.BlockID) (prevDerived types.BlockSeal, err error) {
 	return types.BlockSeal{}, nil
 }
-func (m *mockDerivedFromStorage) RewindToScope(scope eth.BlockID) error {
+func (m *mockDerivationStorage) RewindToScope(scope eth.BlockID) error {
 	return nil
 }
-func (m *mockDerivedFromStorage) RewindToFirstDerived(derived eth.BlockID) error {
+func (m *mockDerivationStorage) RewindToFirstDerived(derived eth.BlockID) error {
 	return nil
 }
 
@@ -94,14 +94,14 @@ func sampleDepSet(t *testing.T) depset.DependencySet {
 }
 
 func TestCommonL1UnknownChain(t *testing.T) {
-	m1 := &mockDerivedFromStorage{}
-	m2 := &mockDerivedFromStorage{}
+	m1 := &mockDerivationStorage{}
+	m2 := &mockDerivationStorage{}
 	logger := testlog.Logger(t, log.LevelDebug)
 	chainDB := NewChainsDB(logger, sampleDepSet(t), metrics.NoopMetrics)
 
 	// add a mock local derived-from storage to drive the test
-	chainDB.AddLocalDerivedFromDB(eth.ChainIDFromUInt64(900), m1)
-	chainDB.AddLocalDerivedFromDB(eth.ChainIDFromUInt64(901), m2)
+	chainDB.AddLocalDerivationDB(eth.ChainIDFromUInt64(900), m1)
+	chainDB.AddLocalDerivationDB(eth.ChainIDFromUInt64(901), m2)
 	// don't attach a mock for chain 902
 
 	_, err := chainDB.LastCommonL1()
@@ -109,58 +109,58 @@ func TestCommonL1UnknownChain(t *testing.T) {
 }
 
 func TestCommonL1(t *testing.T) {
-	m1 := &mockDerivedFromStorage{}
-	m2 := &mockDerivedFromStorage{}
-	m3 := &mockDerivedFromStorage{}
+	m1 := &mockDerivationStorage{}
+	m2 := &mockDerivationStorage{}
+	m3 := &mockDerivationStorage{}
 	logger := testlog.Logger(t, log.LevelDebug)
 	chainDB := NewChainsDB(logger, sampleDepSet(t), metrics.NoopMetrics)
 
 	// add a mock local derived-from storage to drive the test
-	chainDB.AddLocalDerivedFromDB(eth.ChainIDFromUInt64(900), m1)
-	chainDB.AddLocalDerivedFromDB(eth.ChainIDFromUInt64(901), m2)
-	chainDB.AddLocalDerivedFromDB(eth.ChainIDFromUInt64(902), m3)
+	chainDB.AddLocalDerivationDB(eth.ChainIDFromUInt64(900), m1)
+	chainDB.AddLocalDerivationDB(eth.ChainIDFromUInt64(901), m2)
+	chainDB.AddLocalDerivationDB(eth.ChainIDFromUInt64(902), m3)
 
 	// returnN is a helper function which creates a Latest Function for the test
 	returnN := func(n uint64) func() (pair types.DerivedBlockSealPair, err error) {
 		return func() (pair types.DerivedBlockSealPair, err error) {
 			return types.DerivedBlockSealPair{
-				DerivedFrom: types.BlockSeal{
+				Source: types.BlockSeal{
 					Number: n,
 				},
 			}, nil
 		}
 	}
 	t.Run("pattern 1", func(t *testing.T) {
-		m1.latestFn = returnN(1)
-		m2.latestFn = returnN(2)
-		m3.latestFn = returnN(3)
+		m1.lastFn = returnN(1)
+		m2.lastFn = returnN(2)
+		m3.lastFn = returnN(3)
 
 		latest, err := chainDB.LastCommonL1()
 		require.NoError(t, err)
 		require.Equal(t, uint64(1), latest.Number)
 	})
 	t.Run("pattern 2", func(t *testing.T) {
-		m1.latestFn = returnN(3)
-		m2.latestFn = returnN(2)
-		m3.latestFn = returnN(1)
+		m1.lastFn = returnN(3)
+		m2.lastFn = returnN(2)
+		m3.lastFn = returnN(1)
 
 		latest, err := chainDB.LastCommonL1()
 		require.NoError(t, err)
 		require.Equal(t, uint64(1), latest.Number)
 	})
 	t.Run("pattern 3", func(t *testing.T) {
-		m1.latestFn = returnN(99)
-		m2.latestFn = returnN(1)
-		m3.latestFn = returnN(98)
+		m1.lastFn = returnN(99)
+		m2.lastFn = returnN(1)
+		m3.lastFn = returnN(98)
 
 		latest, err := chainDB.LastCommonL1()
 		require.NoError(t, err)
 		require.Equal(t, uint64(1), latest.Number)
 	})
 	t.Run("error", func(t *testing.T) {
-		m1.latestFn = returnN(99)
-		m2.latestFn = returnN(1)
-		m3.latestFn = func() (pair types.DerivedBlockSealPair, err error) {
+		m1.lastFn = returnN(99)
+		m2.lastFn = returnN(1)
+		m3.lastFn = func() (pair types.DerivedBlockSealPair, err error) {
 			return types.DerivedBlockSealPair{}, fmt.Errorf("error")
 		}
 		latest, err := chainDB.LastCommonL1()

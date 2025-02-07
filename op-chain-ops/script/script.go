@@ -297,7 +297,7 @@ func NewHost(
 
 // AllowCheatcodes allows the given address to utilize the cheatcodes and logging precompiles
 func (h *Host) AllowCheatcodes(addr common.Address) {
-	h.log.Debug("Allowing cheatcodes", "address", addr, "label", h.labels[addr])
+	h.log.Trace("Allowing cheatcodes", "address", addr, "label", h.labels[addr])
 	h.allowedCheatcodes[addr] = struct{}{}
 }
 

@@ -44,45 +44,94 @@ changed_contracts=$(jq -r '
     changes[]
 ' "$temp_dir/local_semver_lock.json" "$temp_dir/upstream_semver_lock.json")
 
-FROZEN_FILES=(
+# List of files that are allowed to be modified.
+# In order to prevent a file from being modified, comment it out. Do not delete it.
+# All files in semver-lock.json should be in this list.
+ALLOWED_FILES=(
   "src/L1/DataAvailabilityChallenge.sol"
-  "src/L1/L1CrossDomainMessenger.sol"
-  "src/L1/L1ERC721Bridge.sol"
-  "src/L1/L1StandardBridge.sol"
-  "src/L1/OptimismPortal2.sol"
-  "src/L1/ProtocolVersions.sol"
-  "src/L1/SuperchainConfig.sol"
-  "src/L1/SystemConfig.sol"
-  "src/dispute/AnchorStateRegistry.sol"
-  "src/dispute/DelayedWETH.sol"
-  "src/dispute/DisputeGameFactory.sol"
-  "src/dispute/FaultDisputeGame.sol"
-  "src/dispute/PermissionedDisputeGame.sol"
+  # "src/L1/L1CrossDomainMessenger.sol"
+  # "src/L1/L1ERC721Bridge.sol"
+  # "src/L1/L1StandardBridge.sol"
+  # "src/L1/OPContractsManager.sol"
+  # "src/L1/OPContractsManagerInterop.sol"
+  # "src/L1/OptimismPortal2.sol"
+  # "src/L1/OptimismPortalInterop.sol"
+  # "src/L1/ProtocolVersions.sol"
+  # "src/L1/SuperchainConfig.sol"
+  # "src/L1/SystemConfig.sol"
+  # "src/L1/SystemConfigInterop.sol"
+  "src/L2/BaseFeeVault.sol"
+  "src/L2/CrossL2Inbox.sol"
+  "src/L2/ETHLiquidity.sol"
+  "src/L2/GasPriceOracle.sol"
+  "src/L2/L1Block.sol"
+  "src/L2/L1BlockInterop.sol"
+  "src/L2/L1FeeVault.sol"
+  "src/L2/L2CrossDomainMessenger.sol"
+  "src/L2/L2ERC721Bridge.sol"
+  "src/L2/L2StandardBridge.sol"
+  "src/L2/L2StandardBridgeInterop.sol"
+  "src/L2/L2ToL1MessagePasser.sol"
+  "src/L2/L2ToL2CrossDomainMessenger.sol"
+  "src/L2/OptimismMintableERC721.sol"
+  "src/L2/OptimismMintableERC721Factory.sol"
+  "src/L2/OptimismSuperchainERC20.sol"
+  "src/L2/OptimismSuperchainERC20Beacon.sol"
+  "src/L2/OptimismSuperchainERC20Factory.sol"
+  "src/L2/SequencerFeeVault.sol"
+  "src/L2/SuperchainERC20.sol"
+  "src/L2/SuperchainTokenBridge.sol"
+  "src/L2/SuperchainWETH.sol"
+  "src/L2/WETH.sol"
   "src/cannon/MIPS.sol"
   "src/cannon/MIPS2.sol"
-# TODO(#14116): Add MIPS64 back when development is finished
-#  "src/cannon/MIPS64.sol"
+  # TODO(#14116): Disallow MIPS64 back when development is finished
+  "src/cannon/MIPS64.sol"
   "src/cannon/PreimageOracle.sol"
+  # "src/dispute/AnchorStateRegistry.sol"
+  # "src/dispute/DelayedWETH.sol"
+  # "src/dispute/DisputeGameFactory.sol"
+  # "src/dispute/FaultDisputeGame.sol"
+  # "src/dispute/PermissionedDisputeGame.sol"
+  "src/legacy/DeployerWhitelist.sol"
+  "src/legacy/L1BlockNumber.sol"
+  "src/legacy/LegacyMessagePasser.sol"
+  "src/safe/DeputyGuardianModule.sol"
+  "src/safe/DeputyPauseModule.sol"
+  "src/safe/LivenessGuard.sol"
+  "src/safe/LivenessModule.sol"
+  "src/universal/OptimismMintableERC20.sol"
+  "src/universal/OptimismMintableERC20Factory.sol"
+  "src/universal/StorageSetter.sol"
+  "src/vendor/asterisc/RISCV.sol"
+  "src/vendor/eas/EAS.sol"
+  "src/vendor/eas/SchemaRegistry.sol"
 )
 
 MATCHED_FILES=()
-# Check each changed contract against protected patterns
+# Check each changed contract against allowed patterns
 for contract in $changed_contracts; do
-    for frozen_file in "${FROZEN_FILES[@]}"; do
-        if [[ "$contract" == "$frozen_file" ]]; then
-            MATCHED_FILES+=("$contract")
+    is_allowed=false
+    for allowed_file in "${ALLOWED_FILES[@]}"; do
+        if [[ "$contract" == "$allowed_file" ]]; then
+            is_allowed=true
+            break
         fi
     done
+    if [[ "$is_allowed" == "false" ]]; then
+        MATCHED_FILES+=("$contract")
+    fi
 done
 
-
 if [ ${#MATCHED_FILES[@]} -gt 0 ]; then
-    echo "❌ Error: The following files should not be modified:"
+    echo "❌ Error: Changes detected in files that are not allowed to be modified."
+    echo "The following files were modified but are not in the allowed list:"
     printf '  - %s\n' "${MATCHED_FILES[@]}"
-    echo "In order to make changes to these contracts, they must be removed from the FROZEN_FILES array in check-frozen-files.sh"
+    echo "Only the following files can be modified:"
+    printf '  - %s\n' "${ALLOWED_FILES[@]}"
     echo "The code freeze is expected to be lifted no later than 2025-02-20."
     exit 1
 fi
 
-echo "✅ No changes detected in frozen files"
+echo "✅ All changes are in allowed files"
 exit 0

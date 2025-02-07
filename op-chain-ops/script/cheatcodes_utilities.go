@@ -244,6 +244,13 @@ func (c *CheatCodesPrecompile) ComputeCreate2Address_890c283b(salt, codeHash [32
 	return common.BytesToAddress(finalHash[12:]), nil
 }
 
+func (c *CheatCodesPrecompile) ComputeCreateAddress_74637a7a(deployer common.Address, nonce *big.Int) (common.Address, error) {
+	if !nonce.IsUint64() {
+		return common.Address{}, fmt.Errorf("nonce %s too large to fit in regular nonce type", nonce)
+	}
+	return crypto.CreateAddress(deployer, nonce.Uint64()), nil
+}
+
 // unsupported
 //func (c *CheatCodesPrecompile) CreateWallet() {}
 

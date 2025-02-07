@@ -112,6 +112,7 @@ interface IOPContractsManager {
     struct OpChainConfig {
         ISystemConfig systemConfigProxy;
         IProxyAdmin proxyAdmin;
+        Claim absolutePrestate;
     }
 
     struct AddGameInput {
@@ -208,6 +209,8 @@ interface IOPContractsManager {
     error SuperchainConfigMismatch(ISystemConfig systemConfig);
 
     error SuperchainProxyAdminMismatch();
+
+    error PrestateNotSet();
 
     // -------- Methods --------
 

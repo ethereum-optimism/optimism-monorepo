@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/ethereum-optimism/optimism/op-e2e/actions/helpers"
+	"github.com/ethereum-optimism/optimism/op-e2e/actions/interop/dsl"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/derive"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/event"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
@@ -13,7 +14,7 @@ import (
 func TestReset(gt *testing.T) {
 	t := helpers.NewDefaultTesting(gt)
 
-	is := SetupInterop(t)
+	is := dsl.SetupInterop(t)
 	actors := is.CreateActors()
 
 	// get both sequencers set up
@@ -131,7 +132,7 @@ func TestReset(gt *testing.T) {
 	}
 
 	// Reset the supervisor to a much earlier block
-	err := actors.Supervisor.backend.Rewind(actors.ChainA.ChainID, blocksAdded[3])
+	err := actors.Supervisor.Rewind(actors.ChainA.ChainID, blocksAdded[3])
 	require.NoError(t, err)
 	actors.Supervisor.ProcessFull(t)
 	actors.ChainA.Sequencer.ActL2PipelineFull(t)

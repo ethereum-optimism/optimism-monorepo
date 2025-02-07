@@ -121,7 +121,7 @@ func (ev LocalDerivedEvent) String() string {
 
 type LocalDerivedOriginUpdateEvent struct {
 	ChainID eth.ChainID
-	Derived types.DerivedBlockRefPair
+	Origin  eth.BlockRef
 }
 
 func (ev LocalDerivedOriginUpdateEvent) String() string {

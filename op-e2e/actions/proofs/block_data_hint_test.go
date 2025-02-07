@@ -32,7 +32,7 @@ func Test_OPProgramAction_BlockDataHint(gt *testing.T) {
 
 	// Build a block on L2 with 1 tx.
 	env.Alice.L2.ActResetTxOpts(t)
-	env.Alice.L2.ActSetTxToAddr(&env.Dp.Addresses.Bob)
+	env.Alice.L2.ActSetTxToAddr(&env.Dp.Addresses.Bob)(t)
 	env.Alice.L2.ActMakeTx(t)
 
 	env.Sequencer.ActL2StartBlock(t)

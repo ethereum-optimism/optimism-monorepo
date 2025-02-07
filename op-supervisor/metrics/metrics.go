@@ -32,7 +32,7 @@ type Metrics struct {
 	factory  opmetrics.Factory
 
 	opmetrics.RPCMetrics
-	opmetrics.RefMetrics
+	RefMetrics opmetrics.RefMetricsWithChainID
 
 	CacheSizeVec *prometheus.GaugeVec
 	CacheGetVec  *prometheus.CounterVec
@@ -65,6 +65,7 @@ func NewMetrics(procName string) *Metrics {
 		factory:  factory,
 
 		RPCMetrics: opmetrics.MakeRPCMetrics(ns, factory),
+		RefMetrics: opmetrics.MakeRefMetricsWithChainID(ns, factory),
 
 		info: *factory.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: ns,
@@ -140,16 +141,15 @@ func (m *Metrics) RecordInfo(version string) {
 
 // RecordUp sets the up metric to 1.
 func (m *Metrics) RecordUp() {
-	prometheus.MustRegister()
 	m.up.Set(1)
 }
 
 func (m *Metrics) RecordCrossUnsafeRef(chainID eth.ChainID, ref eth.BlockRef) {
-	m.RefMetrics.RecordRef("l2", "cross_unsafe", ref.Number, ref.Time, ref.Hash, chainIDLabel(chainID))
+	m.RefMetrics.RecordRef("l2", "cross_unsafe", ref.Number, ref.Time, ref.Hash, chainID)
 }
 
 func (m *Metrics) RecordCrossSafeRef(chainID eth.ChainID, ref eth.BlockRef) {
-	m.RefMetrics.RecordRef("l2", "cross_safe", ref.Number, ref.Time, ref.Hash, chainIDLabel(chainID))
+	m.RefMetrics.RecordRef("l2", "cross_safe", ref.Number, ref.Time, ref.Hash, chainID)
 }
 
 func (m *Metrics) CacheAdd(chainID eth.ChainID, label string, cacheSize int, evicted bool) {

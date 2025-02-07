@@ -136,7 +136,7 @@ func TestBackendLifetime(t *testing.T) {
 	t.Log("stopped!")
 }
 
-func TestBackendMetrics(t *testing.T) {
+func TestBackendCallsMetrics(t *testing.T) {
 	logger := testlog.Logger(t, log.LvlInfo)
 	mockMetrics := &MockMetrics{}
 	dataDir := t.TempDir()

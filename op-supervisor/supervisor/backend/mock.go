@@ -71,7 +71,7 @@ func (m *MockBackend) FinalizedL1() eth.BlockRef {
 	return eth.BlockRef{}
 }
 
-func (m *MockBackend) CrossDerivedFrom(ctx context.Context, chainID eth.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error) {
+func (m *MockBackend) CrossDerivedToSource(ctx context.Context, chainID eth.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error) {
 	return eth.BlockRef{}, nil
 }
 
