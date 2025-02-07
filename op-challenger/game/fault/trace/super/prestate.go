@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/ethereum-optimism/optimism/op-service/eth"
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 )
@@ -32,7 +33,9 @@ func (s *SuperRootPrestateProvider) AbsolutePreStateCommitment(ctx context.Conte
 
 func (s *SuperRootPrestateProvider) AbsolutePreState(ctx context.Context) (eth.Super, error) {
 	response, err := s.provider.SuperRootAtTimestamp(ctx, hexutil.Uint64(s.timestamp))
-	if err != nil {
+	if isNotFound(err) {
+		return nil, ethereum.NotFound
+	} else if err != nil {
 		return nil, err
 	}
 	return responseToSuper(response), nil
