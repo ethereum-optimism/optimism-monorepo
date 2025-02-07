@@ -128,6 +128,8 @@ type Metrics struct {
 	SequencerSealingDurationSeconds prometheus.Histogram
 	SequencerSealingTotal           prometheus.Counter
 
+	SequencerBuildDurationSeconds prometheus.Gauge
+
 	UnsafePayloadsBufferLen     prometheus.Gauge
 	UnsafePayloadsBufferMemSize prometheus.Gauge
 
@@ -412,6 +414,11 @@ func NewMetrics(procName string) *Metrics {
 			Name:      "sequencer_sealing_total",
 			Help:      "Number of sequencer block sealing jobs",
 		}),
+		SequencerBuildDurationSeconds: factory.NewGauge(prometheus.GaugeOpts{
+			Namespace: ns,
+			Name:      "sequencer_build_seconds",
+			Help:      "Total duration of sequencer block build",
+		}),
 
 		ProtocolVersionDelta: factory.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: ns,
@@ -604,6 +611,11 @@ func (m *Metrics) RecordSequencerSealingTime(duration time.Duration) {
 	m.SequencerSealingDurationSeconds.Observe(float64(duration) / float64(time.Second))
 }
 
+// RecordSequencerBuildTime tracks the amount of time the sequencer took to build the block.
+func (m *Metrics) RecordSequencerBuildTime(duration time.Duration) {
+	m.SequencerBuildDurationSeconds.Add(float64(duration) / float64(time.Second))
+}
+
 // StartServer starts the metrics server on the given hostname and port.
 func (m *Metrics) StartServer(hostname string, port int) (*ophttp.HTTPServer, error) {
 	addr := net.JoinHostPort(hostname, strconv.Itoa(port))
@@ -779,6 +791,9 @@ func (n *noopMetricer) RecordSequencerBuildingDiffTime(duration time.Duration) {
 }
 
 func (n *noopMetricer) RecordSequencerSealingTime(duration time.Duration) {
+}
+
+func (n *noopMetricer) RecordSequencerBuildTime(duration time.Duration) {
 }
 
 func (n *noopMetricer) Document() []metrics.DocumentedMetric {

@@ -108,6 +108,7 @@ func (eq *EngDeriver) onBuildSeal(ev BuildSealEvent) {
 	buildTime := now.Sub(ev.BuildStarted)
 	eq.metrics.RecordSequencerSealingTime(sealTime)
 	eq.metrics.RecordSequencerBuildingDiffTime(buildTime - time.Duration(eq.cfg.BlockTime)*time.Second)
+	eq.metrics.RecordSequencerBuildTime(buildTime)
 
 	txnCount := len(envelope.ExecutionPayload.Transactions)
 	depositCount, _ := lastDeposit(envelope.ExecutionPayload.Transactions)
