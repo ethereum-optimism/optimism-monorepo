@@ -10,10 +10,10 @@ import (
 )
 
 func run(ctx *cli.Context) error {
-	devnetFile := ctx.String("devnet")
+	devnetURL := ctx.String("devnet")
 	chainName := ctx.String("chain")
 
-	devnetEnv, err := env.LoadDevnetEnv(devnetFile)
+	devnetEnv, err := env.LoadDevnetFromURL(devnetURL)
 	if err != nil {
 		return err
 	}
@@ -64,8 +64,8 @@ func main() {
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:     "devnet",
-				Usage:    "Path to devnet JSON file",
-				EnvVars:  []string{env.EnvFileVar},
+				Usage:    "URL to devnet JSON file",
+				EnvVars:  []string{env.EnvURLVar},
 				Required: true,
 			},
 			&cli.StringFlag{
