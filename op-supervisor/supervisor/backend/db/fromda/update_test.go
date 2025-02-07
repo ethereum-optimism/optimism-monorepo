@@ -1,12 +1,12 @@
 package fromda
 
 import (
-	"github.com/ethereum/go-ethereum/crypto"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 )
