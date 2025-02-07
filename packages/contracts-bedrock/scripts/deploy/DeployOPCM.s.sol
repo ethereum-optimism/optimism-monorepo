@@ -271,7 +271,7 @@ contract DeployOPCM is Script {
         public
         returns (IOPContractsManager opcm_)
     {
-        vm.broadcast(msg.sender);
+        vm.startBroadcast(msg.sender);
         opcm_ = IOPContractsManager(
             DeployUtils.createDeterministic({
                 _name: "OPContractsManager",
@@ -292,6 +292,7 @@ contract DeployOPCM is Script {
                 _salt: DeployUtils.DEFAULT_SALT
             })
         );
+        vm.stopBroadcast();
         vm.label(address(opcm_), "OPContractsManager");
     }
 
