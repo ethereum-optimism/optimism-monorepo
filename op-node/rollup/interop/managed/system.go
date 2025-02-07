@@ -257,7 +257,7 @@ const (
 
 func (m *ManagedMode) Reset(ctx context.Context, unsafe, safe, finalized eth.BlockID) error {
 	logger := m.log.New("unsafe", unsafe, "safe", safe, "finalized", finalized)
-	logger.Debug("Received reset request", "unsafe", unsafe, "safe", safe, "finalized", finalized)
+	logger.Info("Received reset request", "unsafe", unsafe, "safe", safe, "finalized", finalized)
 
 	verify := func(ref eth.BlockID, name string) (eth.L2BlockRef, error) {
 		result, err := m.l2.L2BlockRefByNumber(ctx, ref.Number)

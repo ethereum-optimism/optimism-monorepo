@@ -1,6 +1,7 @@
 package db
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -79,6 +80,10 @@ func (db *ChainsDB) UpdateLocalSafe(chain eth.ChainID, derivedFrom eth.BlockRef,
 	}
 	logger.Debug("Updating local safe DB")
 	if err := localDB.AddDerived(derivedFrom, lastDerived); err != nil {
+		if errors.Is(err, types.ErrIneffective) {
+			db.logger.Info("Node is syncing known source blocks on known latest local-safe block", "err", err)
+			return
+		}
 		db.logger.Warn("Failed to update local safe", "err", err)
 		db.emitter.Emit(superevents.LocalSafeOutOfSyncEvent{
 			ChainID: chain,
