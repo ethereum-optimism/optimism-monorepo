@@ -1,12 +1,14 @@
 package metrics
 
 import (
+	"github.com/ethereum-optimism/optimism/op-node/rollup/event"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	opmetrics "github.com/ethereum-optimism/optimism/op-service/metrics"
 )
 
 type noopMetrics struct {
 	opmetrics.NoopRPCMetrics
+	event.NoopMetrics
 }
 
 var NoopMetrics Metricer = new(noopMetrics)
