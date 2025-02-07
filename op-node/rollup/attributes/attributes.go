@@ -9,7 +9,6 @@ import (
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/params"
 
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/derive"
@@ -23,9 +22,8 @@ type L2 interface {
 }
 
 type AttributesHandler struct {
-	log   log.Logger
-	cfg   *rollup.Config
-	opCfg *params.OptimismConfig
+	log log.Logger
+	cfg *rollup.Config
 
 	// when the rollup node shuts down, stop any in-flight sub-processes of the attributes-handler
 	ctx context.Context
@@ -40,11 +38,10 @@ type AttributesHandler struct {
 	sentAttributes bool
 }
 
-func NewAttributesHandler(log log.Logger, cfg *rollup.Config, opCfg *params.OptimismConfig, ctx context.Context, l2 L2) *AttributesHandler {
+func NewAttributesHandler(log log.Logger, cfg *rollup.Config, ctx context.Context, l2 L2) *AttributesHandler {
 	return &AttributesHandler{
 		log:        log,
 		cfg:        cfg,
-		opCfg:      opCfg,
 		ctx:        ctx,
 		l2:         l2,
 		attributes: nil,
@@ -181,7 +178,7 @@ func (eq *AttributesHandler) consolidateNextSafeAttributes(attributes *derive.At
 		eq.emitter.Emit(rollup.EngineTemporaryErrorEvent{Err: fmt.Errorf("failed to get existing unsafe payload to compare against derived attributes from L1: %w", err)})
 		return
 	}
-	if err := AttributesMatchBlock(eq.cfg, eq.opCfg, attributes.Attributes, onto.Hash, envelope, eq.log); err != nil {
+	if err := AttributesMatchBlock(eq.cfg, attributes.Attributes, onto.Hash, envelope, eq.log); err != nil {
 		eq.log.Warn("L2 reorg: existing unsafe block does not match derived attributes from L1",
 			"err", err, "unsafe", envelope.ExecutionPayload.ID(), "pending_safe", onto)
 

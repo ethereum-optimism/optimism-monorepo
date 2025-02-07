@@ -438,16 +438,15 @@ func (n *OpNode) initL2(ctx context.Context, cfg *Config) error {
 		n.safeDB = safedb.Disabled
 	}
 
-	opConfig := cfg.Rollup.ChainOpConfig
-	if opConfig == nil {
+	if cfg.Rollup.ChainOpConfig == nil {
 		chainCfg, err := loadOrFetchChainConfig(ctx, cfg.Rollup.L2ChainID, rpcClient)
 		if err != nil {
 			return fmt.Errorf("failed to load or fetch chain config for id %v: %w", cfg.Rollup.L2ChainID, err)
 		}
-		opConfig = chainCfg.Optimism
+		cfg.Rollup.ChainOpConfig = chainCfg.Optimism
 	}
 
-	n.l2Driver = driver.NewDriver(n.eventSys, n.eventDrain, &cfg.Driver, &cfg.Rollup, opConfig, n.l2Source, n.l1Source,
+	n.l2Driver = driver.NewDriver(n.eventSys, n.eventDrain, &cfg.Driver, &cfg.Rollup, n.l2Source, n.l1Source,
 		n.beacon, n, n, n.log, n.metrics, cfg.ConfigPersistence, n.safeDB, &cfg.Sync, sequencerConductor, altDA, managedMode)
 	return nil
 }

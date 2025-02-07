@@ -14,7 +14,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/log"
 	gnode "github.com/ethereum/go-ethereum/node"
-	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rpc"
 
 	"github.com/ethereum-optimism/optimism/op-node/node"
@@ -107,8 +106,8 @@ type safeDB interface {
 }
 
 func NewL2Verifier(t Testing, log log.Logger, l1 derive.L1Fetcher,
-	blobsSrc derive.L1BlobsFetcher, altDASrc driver.AltDAIface, eng L2API,
-	cfg *rollup.Config, opCfg *params.OptimismConfig, syncCfg *sync.Config, safeHeadListener safeDB,
+	blobsSrc derive.L1BlobsFetcher, altDASrc driver.AltDAIface,
+	eng L2API, cfg *rollup.Config, syncCfg *sync.Config, safeHeadListener safeDB,
 ) *L2Verifier {
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
@@ -158,7 +157,7 @@ func NewL2Verifier(t Testing, log log.Logger, l1 derive.L1Fetcher,
 	sys.Register("finalizer", finalizer, opts)
 
 	sys.Register("attributes-handler",
-		attributes.NewAttributesHandler(log, cfg, opCfg, ctx, eng), opts)
+		attributes.NewAttributesHandler(log, cfg, ctx, eng), opts)
 
 	managedMode := interopSys != nil
 	pipeline := derive.NewDerivationPipeline(log, cfg, l1, blobsSrc, altDASrc, eng, metrics, managedMode)

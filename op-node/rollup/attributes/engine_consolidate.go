@@ -27,7 +27,7 @@ var (
 
 // AttributesMatchBlock checks if the L2 attributes pre-inputs match the output
 // nil if it is a match. If err is not nil, the error contains the reason for the mismatch
-func AttributesMatchBlock(rollupCfg *rollup.Config, opCfg *params.OptimismConfig, attrs *eth.PayloadAttributes, parentHash common.Hash, envelope *eth.ExecutionPayloadEnvelope, l log.Logger) error {
+func AttributesMatchBlock(rollupCfg *rollup.Config, attrs *eth.PayloadAttributes, parentHash common.Hash, envelope *eth.ExecutionPayloadEnvelope, l log.Logger) error {
 	block := envelope.ExecutionPayload
 
 	if parentHash != block.ParentHash {

@@ -303,7 +303,7 @@ func TestAttributesMatch(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
-			err := AttributesMatchBlock(test.rollupCfg, defaultOpConfig,
+			err := AttributesMatchBlock(test.rollupCfg,
 				test.args.attrs, test.args.parentHash, test.args.envelope,
 				testlog.Logger(t, log.LevelInfo),
 			)

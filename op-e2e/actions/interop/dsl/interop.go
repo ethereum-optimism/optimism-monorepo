@@ -216,7 +216,6 @@ func createL2Services(
 
 	seq := helpers.NewL2Sequencer(t, logger.New("role", "sequencer"), l1F,
 		l1Miner.BlobStore(), altda.Disabled, seqCl, output.RollupCfg,
-		output.Genesis.Config.Optimism,
 		0)
 
 	batcherKey, err := keys.Secret(devkeys.ChainOperatorKey{
