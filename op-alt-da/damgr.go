@@ -421,6 +421,7 @@ func (d *DA) fetchChallengeLogs(ctx context.Context, l1 L1Fetcher, block eth.Blo
 		}
 		for _, log := range rec.Logs {
 			if log.Address == d.cfg.DAChallengeContractAddress && len(log.Topics) > 0 && log.Topics[0] == ChallengeStatusEventABIHash {
+				d.log.Info("found challenge event", "block", block.Number, "log", log.Index)
 				logs = append(logs, log)
 			}
 		}

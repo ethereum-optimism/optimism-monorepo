@@ -40,8 +40,10 @@ func (s *AltDADataSource) Next(ctx context.Context) (eth.Data, error) {
 	// there is not commitment in the current origin.
 	if err := s.fetcher.AdvanceL1Origin(ctx, s.l1, s.id.ID()); err != nil {
 		if errors.Is(err, altda.ErrReorgRequired) {
+			s.log.Warn("reorg required, resetting altDA L1 origin", "origin", s.id)
 			return nil, NewResetError(errors.New("new expired challenge"))
 		}
+		s.log.Warn("failed to advance altDA L1 origin", "err", err)
 		return nil, NewTemporaryError(fmt.Errorf("failed to advance altDA L1 origin: %w", err))
 	}
 
@@ -58,6 +60,7 @@ func (s *AltDADataSource) Next(ctx context.Context) (eth.Data, error) {
 		// If the tx data type is not altDA, we forward it downstream to let the next
 		// steps validate and potentially parse it as L1 DA inputs.
 		if data[0] != params.DerivationVersion1 {
+			s.log.Info("forwarding downstream non altDA data", "version_byte", data[0])
 			return data, nil
 		}
 
@@ -79,7 +82,7 @@ func (s *AltDADataSource) Next(ctx context.Context) (eth.Data, error) {
 		return nil, NewResetError(err)
 	} else if errors.Is(err, altda.ErrExpiredChallenge) {
 		// this commitment was challenged and the challenge expired.
-		s.log.Warn("challenge expired, skipping batch", "comm", s.comm)
+		s.log.Warn("challenge expired, skipping batch", "comm", s.comm, "err", err)
 		s.comm = nil
 		// skip the input
 		return s.Next(ctx)
