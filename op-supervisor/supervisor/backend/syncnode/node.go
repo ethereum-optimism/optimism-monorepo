@@ -268,7 +268,7 @@ func (m *ManagedNode) onFinalizedL2(seal types.BlockSeal) {
 	id := seal.ID()
 	err := m.Node.UpdateFinalized(ctx, id)
 	if err != nil {
-		m.log.Warn("Node failed finality updating", "err", err)
+		m.log.Warn("Node failed finality updating", "update", seal, "err", err)
 		return
 	}
 }

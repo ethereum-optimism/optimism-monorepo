@@ -87,6 +87,10 @@ func (m *mockSyncControl) UpdateFinalized(ctx context.Context, id eth.BlockID) e
 	return nil
 }
 
+func (m *mockSyncControl) String() string {
+	return "mock"
+}
+
 var _ SyncControl = (*mockSyncControl)(nil)
 
 type mockBackend struct {
