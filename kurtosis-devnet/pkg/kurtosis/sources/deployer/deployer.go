@@ -9,7 +9,9 @@ import (
 	"math/big"
 	"strings"
 
+	"github.com/ethereum-optimism/optimism/devnet-sdk/types"
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/sources/artifact"
+	"github.com/ethereum/go-ethereum/common"
 )
 
 const (
@@ -21,7 +23,7 @@ const (
 )
 
 // DeploymentAddresses maps contract names to their addresses
-type DeploymentAddresses map[string]string
+type DeploymentAddresses map[string]types.Address
 
 // DeploymentStateAddresses maps chain IDs to their contract addresses
 type DeploymentStateAddresses map[string]DeploymentAddresses
@@ -45,9 +47,9 @@ type StateFile struct {
 
 // Wallet represents a wallet with optional private key and name
 type Wallet struct {
-	Address    string `json:"address"`
-	PrivateKey string `json:"private_key"`
-	Name       string `json:"name"`
+	Address    types.Address `json:"address"`
+	PrivateKey string        `json:"private_key"`
+	Name       string        `json:"name"`
 }
 
 // WalletList holds a list of wallets
@@ -135,30 +137,36 @@ func parseWalletsFile(r io.Reader) (map[string]WalletList, error) {
 	for id, chain := range rawData {
 		// Create a map to store wallets by name
 		walletMap := make(map[string]Wallet)
+		hasAddress := make(map[string]bool)
 
-		// Process each key-value pair
+		// First pass: collect addresses
 		for key, value := range chain {
 			if strings.HasSuffix(key, "Address") {
 				name := strings.TrimSuffix(key, "Address")
 				wallet := walletMap[name]
-				wallet.Address = value
+				wallet.Address = common.HexToAddress(value)
 				wallet.Name = name
 				walletMap[name] = wallet
-			} else if strings.HasSuffix(key, "PrivateKey") {
-				name := strings.TrimSuffix(key, "PrivateKey")
-				wallet := walletMap[name]
-				wallet.PrivateKey = value
-				wallet.Name = name
-				walletMap[name] = wallet
+				hasAddress[name] = true
 			}
 		}
 
-		// Convert map to list
-		wl := make(WalletList, 0, len(walletMap))
+		// Second pass: collect private keys only for wallets with addresses
+		for key, value := range chain {
+			if strings.HasSuffix(key, "PrivateKey") {
+				name := strings.TrimSuffix(key, "PrivateKey")
+				if hasAddress[name] {
+					wallet := walletMap[name]
+					wallet.PrivateKey = value
+					walletMap[name] = wallet
+				}
+			}
+		}
 
-		for _, wallet := range walletMap {
-			// Only include wallets that have at least an address
-			if wallet.Address != "" {
+		// Convert map to list, only including wallets with addresses
+		wl := make(WalletList, 0, len(walletMap))
+		for name, wallet := range walletMap {
+			if hasAddress[name] {
 				wl = append(wl, &wallet)
 			}
 		}
@@ -201,7 +209,7 @@ func parseStateFile(r io.Reader) (*DeployerState, error) {
 		addresses := make(DeploymentAddresses)
 		for key, value := range deployment {
 			if strings.HasSuffix(key, addrSuffix) {
-				addresses[strings.TrimSuffix(key, addrSuffix)] = value.(string)
+				addresses[strings.TrimSuffix(key, addrSuffix)] = common.HexToAddress(value.(string))
 			}
 		}
 		return addresses

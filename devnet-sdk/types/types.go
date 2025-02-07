@@ -2,9 +2,11 @@ package types
 
 import (
 	"context"
+
+	"github.com/ethereum/go-ethereum/common"
 )
 
-type Address string
+type Address = common.Address
 
 type ChainID uint64
 
