@@ -581,3 +581,28 @@ contract SemgrepTest__sol_style_enforce_require_msg {
         require(cond);
     }
 }
+
+library DeployUtils {
+    function createDeterministic(string memory _name, bytes memory _args, bytes32 _salt) internal {
+    }
+}
+
+contract SemgrepTest__sol_safety_broadast_before_create_deterministic {
+    function test() {
+        // ruleid: sol-safety-broadcast-before-create-deterministic
+        vm.broadcast();
+        DeployUtils.createDeterministic({
+            _name: "FooContract",
+            _args: abi.encode(address(0)),
+            _salt: bytes32(0)
+        });
+
+        // ruleid: sol-safety-broadcast-before-create-deterministic
+        vm.broadcast(msg.sender);
+        DeployUtils.createDeterministic({
+            _name: "FooContract",
+            _args: abi.encode(address(0)),
+            _salt: bytes32(0)
+        });
+    }
+}

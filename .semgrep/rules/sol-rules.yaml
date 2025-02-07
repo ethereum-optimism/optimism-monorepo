@@ -231,3 +231,13 @@ rules:
       exclude:
         - packages/contracts-bedrock/src/L1/SystemConfig.sol
         - packages/contracts-bedrock/src/L1/SystemConfigInterop.sol
+
+  - id: sol-safety-broadcast-before-create-deterministic
+    languages: [solidity]
+    severity: ERROR
+    message: vm.broadcast() should not be used before DeployUtils.createDeterministic since it can unexpectedly broadcast incorrect calls
+    patterns:
+      - pattern: |
+          vm.broadcast(...);
+          ...
+          DeployUtils.createDeterministic(...)
