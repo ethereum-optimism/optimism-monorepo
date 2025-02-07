@@ -637,6 +637,7 @@ func (m *Metrics) ReportProtocolVersions(local, engine, recommended, required pa
 
 type noopMetricer struct {
 	metrics.NoopRPCMetrics
+	event.NoopMetrics
 }
 
 var NoopMetrics Metricer = new(noopMetricer)
@@ -663,15 +664,6 @@ func (n *noopMetricer) RecordPublishingError() {
 }
 
 func (n *noopMetricer) RecordDerivationError() {
-}
-
-func (n *noopMetricer) RecordEmittedEvent(eventName string, emitter string) {
-}
-
-func (n *noopMetricer) RecordProcessedEvent(eventName string, deriver string, duration time.Duration) {
-}
-
-func (n *noopMetricer) RecordEventsRateLimited() {
 }
 
 func (n *noopMetricer) RecordReceivedUnsafePayload(payload *eth.ExecutionPayloadEnvelope) {
