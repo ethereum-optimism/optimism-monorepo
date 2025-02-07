@@ -21,6 +21,43 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestInteropFaultProofs_TraceExtensionActivation(gt *testing.T) {
+	t := helpers.NewDefaultTesting(gt)
+	system := dsl.NewInteropDSL(t)
+
+	system.AddL2Block(system.Actors.ChainA)
+	system.AddL2Block(system.Actors.ChainB)
+
+	// Submit batch data for each chain in separate L1 blocks so tests can have one chain safe and one unsafe
+	system.SubmitBatchData()
+
+	endTimestamp := system.Actors.ChainA.Sequencer.L2Safe().Time
+
+	agreedClaim := system.Outputs.SuperRoot(endTimestamp).Marshal()
+	disputedClaim := system.Outputs.TransitionState(endTimestamp, 1,
+		system.Outputs.OptimisticBlockAtTimestamp(system.Actors.ChainA, endTimestamp+1)).Marshal()
+	disputedTraceIndex := int64(1024)
+	valid := &transitionTest{
+		name:               "ShouldNotActivate",
+		agreedClaim:        agreedClaim,
+		disputedClaim:      disputedClaim,
+		disputedTraceIndex: disputedTraceIndex,
+		// Trace extension does not activate because we have not reached the proposal timestamp yet
+		proposalTimestamp: endTimestamp + 1,
+		expectValid:       true,
+	}
+	invalid := &transitionTest{
+		name:               "ShouldActivate",
+		agreedClaim:        agreedClaim,
+		disputedClaim:      disputedClaim,
+		disputedTraceIndex: disputedTraceIndex,
+		// Trace extension should have activated because we have gone past the proposal timestamp yet, but did not
+		proposalTimestamp: endTimestamp,
+		expectValid:       false,
+	}
+	runFppAndChallengerTests(gt, system, []*transitionTest{valid, invalid})
+}
+
 func TestInteropFaultProofs(gt *testing.T) {
 	t := helpers.NewDefaultTesting(gt)
 	system := dsl.NewInteropDSL(t)
@@ -248,16 +285,7 @@ func TestInteropFaultProofs(gt *testing.T) {
 		},
 	}
 
-	for _, test := range tests {
-		test := test
-		gt.Run(fmt.Sprintf("%s-fpp", test.name), func(gt *testing.T) {
-			runOpProgramTest(gt, test, actors)
-		})
-
-		gt.Run(fmt.Sprintf("%s-challenger", test.name), func(gt *testing.T) {
-			runChallengerTest(gt, test, actors)
-		})
-	}
+	runFppAndChallengerTests(gt, system, tests)
 }
 
 func TestInteropFaultProofsInvalidBlock(gt *testing.T) {
@@ -445,19 +473,23 @@ func TestInteropFaultProofsInvalidBlock(gt *testing.T) {
 		},
 	}
 
+	runFppAndChallengerTests(gt, system, tests)
+}
+
+func runFppAndChallengerTests(gt *testing.T, system *dsl.InteropDSL, tests []*transitionTest) {
 	for _, test := range tests {
 		test := test
 		gt.Run(fmt.Sprintf("%s-fpp", test.name), func(gt *testing.T) {
-			runOpProgramTest(gt, test, actors)
+			runFppTest(gt, test, system.Actors)
 		})
 
 		gt.Run(fmt.Sprintf("%s-challenger", test.name), func(gt *testing.T) {
-			runChallengerTest(gt, test, actors)
+			runChallengerTest(gt, test, system.Actors)
 		})
 	}
 }
 
-func runOpProgramTest(gt *testing.T, test *transitionTest, actors *dsl.InteropActors) {
+func runFppTest(gt *testing.T, test *transitionTest, actors *dsl.InteropActors) {
 	t := helpers.NewDefaultTesting(gt)
 	if test.skipProgram {
 		t.Skip("Not yet implemented")
