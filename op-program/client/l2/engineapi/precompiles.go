@@ -104,7 +104,7 @@ func CreatePrecompileOverrides(precompileOracle PrecompileOracle) vm.PrecompileO
 			}
 		case blsG2MSMPrecompileAddress:
 			return &blsOperationOracleWithSizeLimit{
-				sizeLimit: params.Bls12381G1MulMaxInputSizeIsthmus,
+				sizeLimit: params.Bls12381G2MulMaxInputSizeIsthmus,
 				blsOperationOracle: blsOperationOracle{
 					Orig:              orig,
 					Oracle:            precompileOracle,
