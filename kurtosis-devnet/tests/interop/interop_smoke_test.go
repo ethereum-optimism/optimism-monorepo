@@ -43,7 +43,7 @@ func smokeTestScenario(chainIdx uint64, userSentinel interface{}) systest.System
 		require.NoError(t, err)
 		logger.InfoContext(ctx, "final balance retrieved", "balance", balance)
 
-		require.Equal(t, balance, initialBalance.Add(funds))
+		require.Equal(t, initialBalance.Add(funds), balance)
 	}
 }
 

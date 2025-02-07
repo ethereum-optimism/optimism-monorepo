@@ -30,6 +30,7 @@ type Wallet interface {
 	Address() Address
 	SendETH(to Address, amount Balance) WriteInvocation[any]
 	Balance() Balance
+	Nonce() uint64
 }
 
 type Key = string
