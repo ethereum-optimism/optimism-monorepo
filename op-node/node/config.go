@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/params"
 
 	altda "github.com/ethereum-optimism/optimism/op-alt-da"
 	"github.com/ethereum-optimism/optimism/op-node/flags"
@@ -31,11 +30,6 @@ type Config struct {
 	Driver driver.Config
 
 	Rollup rollup.Config
-
-	// Optional OptimismConfig from the full chain config. Used in tests for injection.
-	// If not set, it will be loaded from the embedded superchain config.
-	// If that doesn't work, it is tried to fetch it from the execution engine via RPC debug_chainConfig.
-	ChainOpConfig *params.OptimismConfig
 
 	// P2PSigner will be used for signing off on published content
 	// if the node is sequencing and if the p2p stack is enabled

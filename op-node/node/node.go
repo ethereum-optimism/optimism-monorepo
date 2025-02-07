@@ -438,7 +438,7 @@ func (n *OpNode) initL2(ctx context.Context, cfg *Config) error {
 		n.safeDB = safedb.Disabled
 	}
 
-	opConfig := n.cfg.ChainOpConfig
+	opConfig := cfg.Rollup.ChainOpConfig
 	if opConfig == nil {
 		chainCfg, err := loadOrFetchChainConfig(ctx, cfg.Rollup.L2ChainID, rpcClient)
 		if err != nil {

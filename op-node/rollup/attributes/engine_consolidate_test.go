@@ -188,8 +188,8 @@ func TestAttributesMatch(t *testing.T) {
 	pastTime := uint64(0)
 	futureTime := uint64(100)
 
-	rollupCfgPreCanyon := &rollup.Config{CanyonTime: &futureTime}
-	rollupCfgPreIsthmus := &rollup.Config{CanyonTime: &pastTime, IsthmusTime: &futureTime}
+	rollupCfgPreCanyon := &rollup.Config{CanyonTime: &futureTime, ChainOpConfig: defaultOpConfig}
+	rollupCfgPreIsthmus := &rollup.Config{CanyonTime: &pastTime, IsthmusTime: &futureTime, ChainOpConfig: defaultOpConfig}
 
 	tests := []struct {
 		args      matchArgs
@@ -324,9 +324,9 @@ func TestWithdrawalsMatch(t *testing.T) {
 
 	emptyWithdrawals := make(types.Withdrawals, 0)
 
-	rollupCfgPreCanyonChecks := &rollup.Config{CanyonTime: &canyonTimeInFuture}
-	rollupCfgPreIsthmusChecks := &rollup.Config{CanyonTime: &canyonTimeInPast, IsthmusTime: &isthmusTimeInFuture}
-	rollupCfgPostIsthmusChecks := &rollup.Config{CanyonTime: &canyonTimeInPast, IsthmusTime: &isthmusTimeInPast}
+	rollupCfgPreCanyonChecks := &rollup.Config{CanyonTime: &canyonTimeInFuture, ChainOpConfig: defaultOpConfig}
+	rollupCfgPreIsthmusChecks := &rollup.Config{CanyonTime: &canyonTimeInPast, IsthmusTime: &isthmusTimeInFuture, ChainOpConfig: defaultOpConfig}
+	rollupCfgPostIsthmusChecks := &rollup.Config{CanyonTime: &canyonTimeInPast, IsthmusTime: &isthmusTimeInPast, ChainOpConfig: defaultOpConfig}
 
 	tests := []struct {
 		cfg   *rollup.Config

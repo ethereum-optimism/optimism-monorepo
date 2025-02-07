@@ -75,7 +75,7 @@ func AttributesMatchBlock(rollupCfg *rollup.Config, opCfg *params.OptimismConfig
 	if attrs.SuggestedFeeRecipient != block.FeeRecipient {
 		return fmt.Errorf("fee recipient data does not match, expected %s but got %s", block.FeeRecipient, attrs.SuggestedFeeRecipient)
 	}
-	if err := checkEIP1559ParamsMatch(opCfg, attrs.EIP1559Params, block.ExtraData); err != nil {
+	if err := checkEIP1559ParamsMatch(rollupCfg.ChainOpConfig, attrs.EIP1559Params, block.ExtraData); err != nil {
 		return err
 	}
 
