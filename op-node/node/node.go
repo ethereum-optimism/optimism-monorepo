@@ -438,26 +438,18 @@ func (n *OpNode) initL2(ctx context.Context, cfg *Config) error {
 		n.safeDB = safedb.Disabled
 	}
 
-	chainCfg, err := loadOrFetchChainConfig(ctx, cfg.Rollup.L2ChainID, rpcClient)
-	var opConfig *params.OptimismConfig
-	if err != nil {
-		// return fmt.Errorf("failed to load or fetch chain config for id %v: %w", cfg.Rollup.L2ChainID, err)
-		opConfig = &params.OptimismConfig{
-			EIP1559Elasticity:        6,
-			EIP1559Denominator:       50,
-			EIP1559DenominatorCanyon: ptr(uint64(250)),
+	opConfig := n.cfg.ChainOpConfig
+	if opConfig == nil {
+		chainCfg, err := loadOrFetchChainConfig(ctx, cfg.Rollup.L2ChainID, rpcClient)
+		if err != nil {
+			return fmt.Errorf("failed to load or fetch chain config for id %v: %w", cfg.Rollup.L2ChainID, err)
 		}
-	} else {
 		opConfig = chainCfg.Optimism
 	}
 
 	n.l2Driver = driver.NewDriver(n.eventSys, n.eventDrain, &cfg.Driver, &cfg.Rollup, opConfig, n.l2Source, n.l1Source,
 		n.beacon, n, n, n.log, n.metrics, cfg.ConfigPersistence, n.safeDB, &cfg.Sync, sequencerConductor, altDA, managedMode)
 	return nil
-}
-
-func ptr[T any](t T) *T {
-	return &t
 }
 
 func loadOrFetchChainConfig(ctx context.Context, id *big.Int, cl client.RPC) (*params.ChainConfig, error) {
@@ -470,7 +462,7 @@ func loadOrFetchChainConfig(ctx context.Context, id *big.Int, cl client.RPC) (*p
 	}
 	// if not already recognized, then fetch the chain config manually
 	var config params.ChainConfig
-	if err := cl.CallContext(ctx, &config, "eth_chainConfig"); err != nil {
+	if err := cl.CallContext(ctx, &config, "debug_chainConfig"); err != nil {
 		return nil, fmt.Errorf("fetching: %w", err)
 	}
 	return &config, nil
