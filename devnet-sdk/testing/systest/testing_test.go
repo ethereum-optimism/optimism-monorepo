@@ -2,6 +2,7 @@ package systest
 
 import (
 	"context"
+	"math/big"
 	"os"
 	"testing"
 
@@ -42,7 +43,7 @@ func (m *mockTB) Setenv(key, value string) {}
 type mockChain struct{}
 
 func (m *mockChain) RPCURL() string                                  { return "http://localhost:8545" }
-func (m *mockChain) ID() types.ChainID                               { return types.ChainID(1) }
+func (m *mockChain) ID() types.ChainID                               { return types.ChainID(big.NewInt(1)) }
 func (m *mockChain) ContractsRegistry() interfaces.ContractsRegistry { return nil }
 func (m *mockChain) Wallet(ctx context.Context, constraints ...constraints.WalletConstraint) (types.Wallet, error) {
 	return nil, nil
