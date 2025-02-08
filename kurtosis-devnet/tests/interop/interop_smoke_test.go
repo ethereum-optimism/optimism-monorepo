@@ -72,7 +72,7 @@ func TestSmokeTestFailure(t *testing.T) {
 		bal:  types.NewBalance(big.NewInt(1000000)),
 	}
 	mockChain := &mockFailingChain{
-		id:     types.ChainID(1234),
+		id:     types.ChainID(big.NewInt(1234)),
 		wallet: mockWallet,
 		reg:    &mockRegistry{},
 	}
