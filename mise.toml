@@ -35,6 +35,7 @@ anvil = "nightly-5d16800a64e5357fbb2493e4cae061756d145981"
 # Other dependencies
 codecov-uploader = "0.8.0"
 goreleaser-pro = "2.3.2-pro"
+kurtosis = "1.4.4"
 
 # Fake dependencies
 # Put things here if you need to track versions of tools or projects that can't
@@ -51,6 +52,7 @@ anvil = "ubi:foundry-rs/foundry[exe=anvil]"
 just = "ubi:casey/just"
 codecov-uploader = "ubi:codecov/uploader"
 goreleaser-pro = "ubi:goreleaser/goreleaser-pro[exe=goreleaser]"
+kurtosis = "ubi:kurtosis-tech/kurtosis-cli-release-artifacts[exe=kurtosis]"
 
 [settings]
 experimental = true
