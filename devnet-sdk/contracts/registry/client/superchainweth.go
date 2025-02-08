@@ -6,7 +6,6 @@ import (
 	"github.com/ethereum-optimism/optimism/devnet-sdk/contracts/bindings"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/interfaces"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/types"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
@@ -31,7 +30,7 @@ type superchainWETHBalanceOfImpl struct {
 }
 
 func (i *superchainWETHBalanceOfImpl) Call(ctx context.Context) (types.Balance, error) {
-	balance, err := i.contract.binding.BalanceOf(nil, common.HexToAddress(string(i.addr)))
+	balance, err := i.contract.binding.BalanceOf(nil, i.addr)
 	if err != nil {
 		return types.Balance{}, err
 	}

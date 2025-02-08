@@ -10,6 +10,7 @@ import (
 	"github.com/ethereum-optimism/optimism/devnet-sdk/descriptors"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/shell/env"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/types"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -37,7 +38,7 @@ func TestNewSystemFromEnv(t *testing.T) {
 			}},
 			Wallets: descriptors.WalletMap{
 				"default": descriptors.Wallet{
-					Address:    "0x123",
+					Address:    common.HexToAddress("0x123"),
 					PrivateKey: "0xabc",
 				},
 			},
@@ -59,7 +60,7 @@ func TestNewSystemFromEnv(t *testing.T) {
 			}},
 			Wallets: descriptors.WalletMap{
 				"default": descriptors.Wallet{
-					Address:    "0x123",
+					Address:    common.HexToAddress("0x123"),
 					PrivateKey: "0xabc",
 				},
 			},
@@ -101,7 +102,7 @@ func TestSystemFromDevnet(t *testing.T) {
 	}
 
 	testWallet := descriptors.Wallet{
-		Address:    "0x123",
+		Address:    common.HexToAddress("0x123"),
 		PrivateKey: "0xabc",
 	}
 
@@ -238,22 +239,22 @@ func TestWallet(t *testing.T) {
 		{
 			name:        "valid wallet",
 			privateKey:  "0xabc",
-			address:     "0x123",
-			wantAddr:    "0x123",
+			address:     common.HexToAddress("0x123"),
+			wantAddr:    common.HexToAddress("0x123"),
 			wantPrivKey: "abc",
 		},
 		{
 			name:        "empty wallet",
 			privateKey:  "",
-			address:     "",
-			wantAddr:    "",
+			address:     common.HexToAddress("0x123"),
+			wantAddr:    common.HexToAddress("0x123"),
 			wantPrivKey: "",
 		},
 		{
 			name:        "only address",
 			privateKey:  "",
-			address:     "0x456",
-			wantAddr:    "0x456",
+			address:     common.HexToAddress("0x456"),
+			wantAddr:    common.HexToAddress("0x456"),
 			wantPrivKey: "",
 		},
 	}
@@ -269,7 +270,7 @@ func TestWallet(t *testing.T) {
 
 func TestChainUser(t *testing.T) {
 	chain := newChain("1", "http://localhost:8545", nil)
-	testWallet := newWallet("0xabc", "0x123", chain)
+	testWallet := newWallet("0xabc", common.HexToAddress("0x123"), chain)
 	chain.users = map[string]types.Wallet{
 		"l2Faucet": testWallet,
 	}

@@ -1,5 +1,7 @@
 package descriptors
 
+import "github.com/ethereum-optimism/optimism/devnet-sdk/types"
+
 type PortInfo struct {
 	Host        string `json:"host"`
 	Port        int    `json:"port,omitempty"`
@@ -24,7 +26,7 @@ type Node struct {
 }
 
 // AddressMap is a map of address names to their corresponding addresses
-type AddressMap map[string]string
+type AddressMap map[string]types.Address
 
 // Chain represents a chain (L1 or L2) in a devnet.
 type Chain struct {
@@ -39,8 +41,8 @@ type Chain struct {
 
 // Wallet represents a wallet with an address and optional private key.
 type Wallet struct {
-	Address    string `json:"address"`
-	PrivateKey string `json:"private_key,omitempty"`
+	Address    types.Address `json:"address"`
+	PrivateKey string        `json:"private_key,omitempty"`
 }
 
 // WalletMap is a map of wallet names to wallets.
