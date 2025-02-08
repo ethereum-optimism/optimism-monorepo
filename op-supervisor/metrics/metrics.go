@@ -1,10 +1,10 @@
 package metrics
 
 import (
+	"github.com/ethereum-optimism/optimism/op-node/rollup/event"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
-	"github.com/prometheus/client_golang/prometheus"
-
 	opmetrics "github.com/ethereum-optimism/optimism/op-service/metrics"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 const Namespace = "op_supervisor"
@@ -24,12 +24,16 @@ type Metricer interface {
 	RecordDBSearchEntriesRead(chainID eth.ChainID, count int64)
 
 	Document() []opmetrics.DocumentedMetric
+
+	event.Metrics
 }
 
 type Metrics struct {
 	ns       string
 	registry *prometheus.Registry
 	factory  opmetrics.Factory
+
+	*event.EventMetricsTracker
 
 	opmetrics.RPCMetrics
 	RefMetrics opmetrics.RefMetricsWithChainID
@@ -46,6 +50,7 @@ type Metrics struct {
 }
 
 var _ Metricer = (*Metrics)(nil)
+var _ event.Metrics = (*Metrics)(nil)
 
 // implements the Registry getter, for metrics HTTP server to hook into
 var _ opmetrics.RegistryMetricer = (*Metrics)(nil)
@@ -64,8 +69,9 @@ func NewMetrics(procName string) *Metrics {
 		registry: registry,
 		factory:  factory,
 
-		RPCMetrics: opmetrics.MakeRPCMetrics(ns, factory),
-		RefMetrics: opmetrics.MakeRefMetricsWithChainID(ns, factory),
+		EventMetricsTracker: event.NewMetricsTracker(ns, factory),
+		RPCMetrics:          opmetrics.MakeRPCMetrics(ns, factory),
+		RefMetrics:          opmetrics.MakeRefMetricsWithChainID(ns, factory),
 
 		info: *factory.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: ns,

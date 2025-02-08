@@ -257,7 +257,7 @@ const (
 
 func (m *ManagedMode) Reset(ctx context.Context, unsafe, safe, finalized eth.BlockID) error {
 	logger := m.log.New("unsafe", unsafe, "safe", safe, "finalized", finalized)
-	logger.Debug("Received reset request", "unsafe", unsafe, "safe", safe, "finalized", finalized)
+	logger.Info("Received reset request", "unsafe", unsafe, "safe", safe, "finalized", finalized)
 
 	verify := func(ref eth.BlockID, name string) (eth.L2BlockRef, error) {
 		result, err := m.l2.L2BlockRefByNumber(ctx, ref.Number)
@@ -287,7 +287,10 @@ func (m *ManagedMode) Reset(ctx context.Context, unsafe, safe, finalized eth.Blo
 		return result, nil
 	}
 
-	unsafeRef, err := verify(unsafe, "unsafe")
+	// unsafeRef is always unused, as it is either
+	// - invalid (does not match, and therefore cannot be used for reset)
+	// - valid, in which case we will use the full unsafe chain for reset
+	_, err := verify(unsafe, "unsafe")
 	if err != nil {
 		return err
 	}
@@ -301,7 +304,7 @@ func (m *ManagedMode) Reset(ctx context.Context, unsafe, safe, finalized eth.Blo
 	}
 
 	m.emitter.Emit(rollup.ForceResetEvent{
-		Unsafe:    unsafeRef,
+		Unsafe:    eth.L2BlockRef{},
 		Safe:      safeRef,
 		Finalized: finalizedRef,
 	})

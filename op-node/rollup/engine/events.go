@@ -572,7 +572,10 @@ type ResetEngineControl interface {
 
 // ForceEngineReset is not to be used. The op-program needs it for now, until event processing is adopted there.
 func ForceEngineReset(ec ResetEngineControl, x rollup.ForceResetEvent) {
-	ec.SetUnsafeHead(x.Unsafe)
+	// if the unsafe head is not provided, do not override the existing unsafe head
+	if x.Unsafe != (eth.L2BlockRef{}) {
+		ec.SetUnsafeHead(x.Unsafe)
+	}
 	ec.SetLocalSafeHead(x.Safe)
 	ec.SetPendingSafeL2Head(x.Safe)
 	ec.SetFinalizedHead(x.Finalized)
