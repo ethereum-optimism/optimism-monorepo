@@ -10,6 +10,7 @@ import (
 	"github.com/ethereum-optimism/optimism/devnet-sdk/system"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/testing/systest"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/types"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
 )
 
@@ -64,7 +65,7 @@ func TestInteropSystemNoop(t *testing.T) {
 
 func TestSmokeTestFailure(t *testing.T) {
 	// Create mock failing system
-	mockAddr := types.Address("0x1234567890123456789012345678901234567890")
+	mockAddr := common.HexToAddress("0x1234567890123456789012345678901234567890")
 	mockWallet := &mockFailingWallet{
 		addr: mockAddr,
 		key:  "mock-key",

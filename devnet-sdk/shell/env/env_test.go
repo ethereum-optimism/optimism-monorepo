@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/ethereum-optimism/optimism/devnet-sdk/descriptors"
+	"github.com/ethereum-optimism/optimism/devnet-sdk/types"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -29,7 +31,7 @@ func TestLoadDevnetEnv(t *testing.T) {
 			}],
 			"jwt": "0x1234567890abcdef",
 			"addresses": {
-				"deployer": "0x123"
+				"deployer": "0x1234567890123456789012345678901234567890"
 			}
 		},
 		"l2": [{
@@ -48,7 +50,7 @@ func TestLoadDevnetEnv(t *testing.T) {
 			}],
 			"jwt": "0xdeadbeef",
 			"addresses": {
-				"deployer": "0x456"
+				"deployer": "0x2345678901234567890123456789012345678901"
 			}
 		}]
 	}`
@@ -174,8 +176,8 @@ func TestChainConfig(t *testing.T) {
 				},
 			},
 			JWT: "0x1234",
-			Addresses: map[string]string{
-				"deployer": "0x123",
+			Addresses: map[string]types.Address{
+				"deployer": common.HexToAddress("0x1234567890123456789012345678901234567890"),
 			},
 		},
 		devnetFile: "test.json",
@@ -192,7 +194,7 @@ func TestChainConfig(t *testing.T) {
 		assert.Equal(t, "test.json", filepath.Base(env.EnvVars[EnvFileVar]))
 		assert.Equal(t, "test", env.EnvVars[ChainNameVar])
 		assert.Contains(t, env.Motd, "deployer")
-		assert.Contains(t, env.Motd, "0x123")
+		assert.Contains(t, env.Motd, "0x1234567890123456789012345678901234567890")
 	})
 
 	// Test chain with no nodes
