@@ -1067,7 +1067,6 @@ jobs:
           no_output_timeout: <<parameters.no_output_timeout>>
           command: |
             mkdir -p ./tmp/test-results && mkdir -p ./tmp/testlogs
-
             cd op-e2e && make pre-test && cd ..
 
             packages=(
@@ -1086,6 +1085,7 @@ jobs:
             export SEPOLIA_RPC_URL="https://ci-sepolia-l1-archive.optimism.io"
             export MAINNET_RPC_URL="https://ci-mainnet-l1-archive.optimism.io"
             export PARALLEL=$(nproc)
+            export OP_TESTLOG_FILE_LOGGER_OUTDIR=$(realpath ./tmp/testlogs)
 
             <<parameters.environment_overrides>>
 
@@ -1101,8 +1101,12 @@ jobs:
           files: ./coverage.out
       - store_test_results:
           path: ./tmp/test-results
+      - run:
+          name: Compress test logs
+          command: tar -czf testlogs.tar.gz -C ./tmp testlogs
+          when: always
       - store_artifacts:
-          path: ./tmp/testlogs
+          path: testlogs.tar.gz
           when: always
       - when:
           condition: "<<parameters.notify>>"
