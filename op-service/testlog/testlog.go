@@ -105,6 +105,7 @@ func fileHandler(t Testing, outdir string, level slog.Level) slog.Handler {
 
 		rootHdlr := log.NewTerminalHandlerWithLevel(bufio.NewWriter(f), level, false)
 		oplog.SetGlobalLogHandler(rootHdlr)
+		t.Logf("redirecting root logger to %s", f.Name())
 	})
 
 	testName := fmt.Sprintf(
@@ -131,7 +132,7 @@ func fileHandler(t Testing, outdir string, level slog.Level) slog.Handler {
 		delete(flHandlers, testName)
 		flMtx.Unlock()
 	})
-	t.Logf("logging to %s", logPath)
+	t.Logf("writing test log to %s", logPath)
 	h := log.NewTerminalHandlerWithLevel(dw, level, false)
 	flHandlers[testName] = h
 	return h
