@@ -35,16 +35,34 @@ func (b Balance) Mul(f float64) Balance {
 
 // GreaterThan returns true if this balance is greater than other
 func (b Balance) GreaterThan(other Balance) bool {
+	if b.Int == nil {
+		return false
+	}
+	if other.Int == nil {
+		return true
+	}
 	return b.Int.Cmp(other.Int) > 0
 }
 
 // LessThan returns true if this balance is less than other
 func (b Balance) LessThan(other Balance) bool {
+	if b.Int == nil {
+		return other.Int != nil
+	}
+	if other.Int == nil {
+		return false
+	}
 	return b.Int.Cmp(other.Int) < 0
 }
 
 // Equal returns true if this balance equals other
 func (b Balance) Equal(other Balance) bool {
+	if b.Int == nil {
+		return other.Int == nil
+	}
+	if other.Int == nil {
+		return false
+	}
 	return b.Int.Cmp(other.Int) == 0
 }
 
@@ -59,7 +77,7 @@ func (b Balance) LogValue() slog.Value {
 
 	// 1 ETH = 1e18 Wei
 	if eth.Cmp(new(big.Float).SetFloat64(0.001)) >= 0 {
-		str := eth.Text('g', 3)
+		str := eth.Text('f', 0)
 		return slog.StringValue(fmt.Sprintf("%s ETH", str))
 	}
 
