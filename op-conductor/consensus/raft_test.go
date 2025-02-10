@@ -27,16 +27,18 @@ func TestCommitAndRead(t *testing.T) {
 		t.Fatal(err)
 	}
 	raftConsensusConfig := &RaftConsensusConfig{
-		ServerID:          "SequencerA",
-		ListenPort:        0,
-		ListenAddr:        "127.0.0.1", // local test, don't bind to external interface
-		AdvertisedAddr:    "",          // use local address that the server binds to
-		StorageDir:        storageDir,
-		Bootstrap:         true,
-		RollupCfg:         rollupCfg,
-		SnapshotInterval:  120 * time.Second,
-		SnapshotThreshold: 10240,
-		TrailingLogs:      8192,
+		ServerID:           "SequencerA",
+		ListenPort:         0,
+		ListenAddr:         "127.0.0.1", // local test, don't bind to external interface
+		AdvertisedAddr:     "",          // use local address that the server binds to
+		StorageDir:         storageDir,
+		Bootstrap:          true,
+		RollupCfg:          rollupCfg,
+		SnapshotInterval:   120 * time.Second,
+		SnapshotThreshold:  10240,
+		TrailingLogs:       8192,
+		HeartbeatTimeout:   1000 * time.Millisecond,
+		LeaderLeaseTimeout: 500 * time.Millisecond,
 	}
 
 	cons, err := NewRaftConsensus(log, raftConsensusConfig)
