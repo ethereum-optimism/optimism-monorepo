@@ -37,25 +37,45 @@ func TestInteropFaultProofs_TraceExtensionActivation(gt *testing.T) {
 	disputedClaim := system.Outputs.TransitionState(endTimestamp, 1,
 		system.Outputs.OptimisticBlockAtTimestamp(system.Actors.ChainA, endTimestamp+1)).Marshal()
 	disputedTraceIndex := int64(1024)
-	valid := &transitionTest{
-		name:               "ShouldNotActivate",
-		agreedClaim:        agreedClaim,
-		disputedClaim:      disputedClaim,
-		disputedTraceIndex: disputedTraceIndex,
-		// Trace extension does not activate because we have not reached the proposal timestamp yet
-		proposalTimestamp: endTimestamp + 1,
-		expectValid:       true,
+	tests := []*transitionTest{
+		{
+			name:               "CorrectlyDidNotActivate",
+			agreedClaim:        agreedClaim,
+			disputedClaim:      disputedClaim,
+			disputedTraceIndex: disputedTraceIndex,
+			// Trace extension does not activate because we have not reached the proposal timestamp yet
+			proposalTimestamp: endTimestamp + 1,
+			expectValid:       true,
+		},
+		{
+			name:               "IncorrectlyDidNotActivate",
+			agreedClaim:        agreedClaim,
+			disputedClaim:      disputedClaim,
+			disputedTraceIndex: disputedTraceIndex,
+			// Trace extension should have activated because we have gone past the proposal timestamp yet, but did not
+			proposalTimestamp: endTimestamp,
+			expectValid:       false,
+		},
+		{
+			name:               "CorrectlyActivated",
+			agreedClaim:        agreedClaim,
+			disputedClaim:      agreedClaim,
+			disputedTraceIndex: disputedTraceIndex,
+			// Trace extension does not activate because we have not reached the proposal timestamp yet
+			proposalTimestamp: endTimestamp,
+			expectValid:       true,
+		},
+		{
+			name:               "IncorrectlyActivated",
+			agreedClaim:        agreedClaim,
+			disputedClaim:      agreedClaim,
+			disputedTraceIndex: disputedTraceIndex,
+			// Trace extension does not activate because we have not reached the proposal timestamp yet
+			proposalTimestamp: endTimestamp + 1,
+			expectValid:       false,
+		},
 	}
-	invalid := &transitionTest{
-		name:               "ShouldActivate",
-		agreedClaim:        agreedClaim,
-		disputedClaim:      disputedClaim,
-		disputedTraceIndex: disputedTraceIndex,
-		// Trace extension should have activated because we have gone past the proposal timestamp yet, but did not
-		proposalTimestamp: endTimestamp,
-		expectValid:       false,
-	}
-	runFppAndChallengerTests(gt, system, []*transitionTest{valid, invalid})
+	runFppAndChallengerTests(gt, system, tests)
 }
 
 func TestInteropFaultProofs(gt *testing.T) {
@@ -99,13 +119,6 @@ func TestInteropFaultProofs(gt *testing.T) {
 
 	tests := []*transitionTest{
 		{
-			name:               "ClaimNoChange",
-			agreedClaim:        start.Marshal(),
-			disputedClaim:      start.Marshal(),
-			disputedTraceIndex: 0,
-			expectValid:        false,
-		},
-		{
 			name:               "ClaimDirectToNextTimestamp",
 			agreedClaim:        start.Marshal(),
 			disputedClaim:      end.Marshal(),
@@ -120,11 +133,25 @@ func TestInteropFaultProofs(gt *testing.T) {
 			expectValid:        true,
 		},
 		{
+			name:               "FirstChainOptimisticBlock-InvalidNoChange",
+			agreedClaim:        start.Marshal(),
+			disputedClaim:      start.Marshal(),
+			disputedTraceIndex: 0,
+			expectValid:        false,
+		},
+		{
 			name:               "SecondChainOptimisticBlock",
 			agreedClaim:        step1Expected,
 			disputedClaim:      step2Expected,
 			disputedTraceIndex: 1,
 			expectValid:        true,
+		},
+		{
+			name:               "SecondChainOptimisticBlock-InvalidNoChange",
+			agreedClaim:        step1Expected,
+			disputedClaim:      step1Expected,
+			disputedTraceIndex: 1,
+			expectValid:        false,
 		},
 		{
 			name:               "FirstPaddingStep",
@@ -134,11 +161,25 @@ func TestInteropFaultProofs(gt *testing.T) {
 			expectValid:        true,
 		},
 		{
+			name:               "FirstPaddingStep-InvalidNoChange",
+			agreedClaim:        step2Expected,
+			disputedClaim:      step2Expected,
+			disputedTraceIndex: 2,
+			expectValid:        false,
+		},
+		{
 			name:               "SecondPaddingStep",
 			agreedClaim:        paddingStep(3),
 			disputedClaim:      paddingStep(4),
 			disputedTraceIndex: 3,
 			expectValid:        true,
+		},
+		{
+			name:               "SecondPaddingStep-InvalidNoChange",
+			agreedClaim:        paddingStep(3),
+			disputedClaim:      paddingStep(3),
+			disputedTraceIndex: 3,
+			expectValid:        false,
 		},
 		{
 			name:               "LastPaddingStep",
@@ -155,19 +196,11 @@ func TestInteropFaultProofs(gt *testing.T) {
 			expectValid:        true,
 		},
 		{
-			name:               "AlreadyAtProposalTimestamp",
-			agreedClaim:        end.Marshal(),
-			disputedClaim:      end.Marshal(),
-			disputedTraceIndex: 5000,
-			expectValid:        true,
-		},
-		{
-			name:               "ProposalTimestampBeyondDisputedBlock",
+			name:               "Consolidate-AllValid-InvalidNoChange",
 			agreedClaim:        paddingStep(1023),
-			disputedClaim:      end.Marshal(),
-			proposalTimestamp:  endTimestamp + 100,
+			disputedClaim:      paddingStep(1023),
 			disputedTraceIndex: 1023,
-			expectValid:        true,
+			expectValid:        false,
 		},
 		{
 			// The proposed block timestamp is after the unsafe head block timestamp.
