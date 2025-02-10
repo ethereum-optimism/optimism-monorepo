@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum-optimism/optimism/op-node/rollup/event"
@@ -157,7 +158,7 @@ func (r *Rewinder) rewindL1ChainIfReorged(chainID eth.ChainID, newTip eth.BlockI
 
 	// Get the canonical L1 block at our local head's height
 	canonicalL1, err := r.l1Node.L1BlockRefByNumber(context.Background(), localSafeL1.Number)
-	if err != nil {
+	if err != nil && !errors.Is(err, ethereum.NotFound) {
 		return fmt.Errorf("failed to get canonical L1 block at height %d: %w", localSafeL1.Number, err)
 	}
 
@@ -189,9 +190,14 @@ func (r *Rewinder) rewindL1ChainIfReorged(chainID eth.ChainID, newTip eth.BlockI
 	currentL1 := localSafeL1.ID()
 	for currentL1.Number >= finalizedL1.Number {
 		// Get the canonical L1 block at this height from the node
+		// If it's not found we'll continue through the loop and try the previous block
 		remoteL1, err := r.l1Node.L1BlockRefByNumber(context.Background(), currentL1.Number)
 		if err != nil {
-			return fmt.Errorf("failed to get L1 block at height %d: %w", currentL1.Number, err)
+			if errors.Is(err, ethereum.NotFound) {
+				r.log.Debug("no L1 block at height", "chain", chainID, "height", currentL1.Number)
+			} else {
+				return fmt.Errorf("failed to get L1 block at height %d: %w", currentL1.Number, err)
+			}
 		}
 
 		// If hashes match, we found the common ancestor

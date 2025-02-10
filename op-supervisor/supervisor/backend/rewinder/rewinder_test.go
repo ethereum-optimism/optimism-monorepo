@@ -237,6 +237,61 @@ func TestRewindL1SingleBlockL2Impact(t *testing.T) {
 	s.assertHeads(l2Block4.ID(), l2Block3.ID(), l2Block3.ID(), "should have l2Block3 as latest sealed block")
 }
 
+// TestL1RewindDeepL2Impact tests L1 rewinds affecting multiple L2 blocks.
+func TestL1RewindDeepL2Impact(t *testing.T) {
+	s := newTestChain(t)
+	defer s.close()
+
+	numBlocks := 120
+	var l1Blocks []eth.BlockRef
+	var l2Blocks []eth.L2BlockRef
+	builder := newChainBuilder(s.l1Node)
+
+	// Generate numBlocks L1 blocks and corresponding L2 blocks
+	var l1Block eth.BlockRef
+	var l2Block eth.L2BlockRef
+	for i := range numBlocks {
+		// Create L1 block
+		if i == 0 {
+			l1Block = builder.createL1Block(eth.BlockRef{})
+		} else {
+			l1Block = builder.createL1Block(l1Blocks[i-1])
+		}
+		l1Blocks = append(l1Blocks, l1Block)
+
+		// Create corresponding L2 block derived from this L1 block
+		if i == 0 {
+			l2Block = builder.createL2Block(eth.L2BlockRef{}, l1Block.ID(), 0)
+		} else {
+			l2Block = builder.createL2Block(l2Blocks[i-1], l1Block.ID(), 0)
+		}
+		l2Blocks = append(l2Blocks, l2Block)
+	}
+	s.sealBlocks(l2Blocks...)
+	for i := range numBlocks {
+		s.makeBlockSafe(l2Blocks[i], l1Blocks[i], true)
+	}
+
+	// Verify initial safeHead is the last L2 block (derived from L1 block at height numBlocks-1)
+	safeHead := l2Blocks[numBlocks-1].ID()
+	s.assertAllHeads(safeHead, "all heads should be on the last block")
+
+	// Simulate a deep L1 reorg by replacing L1 block at height 20 with a new block
+	// This will invalidate blocks derived from L1 block at height >= 20 (i.e., 100 blocks rewound)
+	newL1Block20B := builder.createL1Block(l1Blocks[19]) // Create conflicting block after block 19
+	err := s.l1Node.reorg(newL1Block20B)
+	require.NoError(t, err)
+	s.emitter.Emit(superevents.RewindL1Event{
+		IncomingBlock: newL1Block20B.ID(),
+	})
+	s.processEvents()
+
+	// Expected new head is the L2 block derived from the last canonical L1 block, which is at height 19
+	unsafeHead := l2Blocks[119].ID()
+	safeHead = l2Blocks[19].ID()
+	s.assertHeads(unsafeHead, safeHead, safeHead, "should have reverted safe heads")
+}
+
 // TestRewindL1GenesisOnlyL2 tests rewinder behavior with only a genesis block.
 func TestRewindL1GenesisOnlyL2(t *testing.T) {
 	s := newTestChain(t)
@@ -329,61 +384,6 @@ func TestRewindL2LocalDerivedEvent(t *testing.T) {
 
 	// After sealing and making block2B safe, all heads should be at block2B
 	s.assertAllHeads(block2B.ID(), "all heads should be on block2B")
-}
-
-// TestL1RewindDeepImpact tests deep L1 rewinds affecting multiple L2 blocks.
-func TestL1RewindDeepImpact(t *testing.T) {
-	s := newTestChain(t)
-	defer s.close()
-
-	numBlocks := 120
-	var l1Blocks []eth.BlockRef
-	var l2Blocks []eth.L2BlockRef
-	builder := newChainBuilder(s.l1Node)
-
-	// Generate numBlocks L1 blocks and corresponding L2 blocks
-	var l1Block eth.BlockRef
-	var l2Block eth.L2BlockRef
-	for i := range numBlocks {
-		// Create L1 block
-		if i == 0 {
-			l1Block = builder.createL1Block(eth.BlockRef{})
-		} else {
-			l1Block = builder.createL1Block(l1Blocks[i-1])
-		}
-		l1Blocks = append(l1Blocks, l1Block)
-
-		// Create corresponding L2 block derived from this L1 block
-		if i == 0 {
-			l2Block = builder.createL2Block(eth.L2BlockRef{}, l1Block.ID(), 0)
-		} else {
-			l2Block = builder.createL2Block(l2Blocks[i-1], l1Block.ID(), 0)
-		}
-		l2Blocks = append(l2Blocks, l2Block)
-	}
-	s.sealBlocks(l2Blocks...)
-	for i := range numBlocks {
-		s.makeBlockSafe(l2Blocks[i], l1Blocks[i], true)
-	}
-
-	// Verify initial safeHead is the last L2 block (derived from L1 block at height numBlocks-1)
-	safeHead := l2Blocks[numBlocks-1].ID()
-	s.assertAllHeads(safeHead, "all heads should be on the last block")
-
-	// Simulate a deep L1 reorg by replacing L1 block at height 20 with a new block
-	// This will invalidate blocks derived from L1 block at height >= 20 (i.e., 100 blocks rewound)
-	newL1Block20B := builder.createL1Block(l1Blocks[19]) // Create conflicting block after block 19
-	err := s.l1Node.reorg(newL1Block20B)
-	require.NoError(t, err)
-	s.emitter.Emit(superevents.RewindL1Event{
-		IncomingBlock: newL1Block20B.ID(),
-	})
-	s.processEvents()
-
-	// Expected new head is the L2 block derived from the last canonical L1 block, which is at height 19
-	unsafeHead := l2Blocks[119].ID()
-	safeHead = l2Blocks[19].ID()
-	s.assertHeads(unsafeHead, safeHead, safeHead, "should have reverted safe heads")
 }
 
 // TestRewindL2LocalDerivationUnsafeMismatch tests handling of mismatched unsafe blocks.
