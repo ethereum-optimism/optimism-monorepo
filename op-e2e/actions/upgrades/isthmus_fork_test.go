@@ -3,10 +3,12 @@ package upgrades
 import (
 	"bytes"
 	"context"
+	"log/slog"
 	"math/big"
 	"testing"
 	"time"
 
+	altda "github.com/ethereum-optimism/optimism/op-alt-da"
 	batcherFlags "github.com/ethereum-optimism/optimism/op-batcher/flags"
 	"github.com/ethereum-optimism/optimism/op-e2e/actions/helpers"
 	actionsHelpers "github.com/ethereum-optimism/optimism/op-e2e/actions/helpers"
@@ -507,4 +509,162 @@ func TestSetCodeTxTypeIsthmus(gt *testing.T) {
 	require.Equal(t, sequencer.L2Unsafe(), sequencer.L2Safe())
 	require.Equal(t, verifier.L2Unsafe(), verifier.L2Safe())
 	require.Equal(t, sequencer.L2Safe(), verifier.L2Safe())
+}
+
+func TestSetCodeTxTypePreIsthmus(gt *testing.T) {
+	// Ensure that batches that include SetCodeTxs are dropped if before Isthmus
+	// Sets up a network with Isthmus starting at block 1
+	// Send SetCodeTx at block 3
+	// Verifier pipeline uses Isthmus starting at block 5
+	// Ensure verifier drops the batch with a SetCodeTx too early
+
+	t := actionsHelpers.NewDefaultTesting(gt)
+	p := &e2eutils.TestParams{
+		MaxSequencerDrift:   20,
+		SequencerWindowSize: 24,
+		ChannelTimeout:      20,
+		L1BlockTime:         12,
+		AllocType:           config.AllocTypeStandard,
+	}
+	dp := e2eutils.MakeDeployParams(t, p)
+	dp.DeployConfig.ActivateForkAtOffset(rollup.Isthmus, 2)
+	minTs := hexutil.Uint64(0)
+	upgradesHelpers.ApplyDeltaTimeOffset(dp, &minTs)
+
+	var (
+		aa = common.HexToAddress("0x000000000000000000000000000000000000aaaa")
+		bb = common.HexToAddress("0x000000000000000000000000000000000000bbbb")
+	)
+
+	// Create 2 contracts, (1) writes 42 to slot 42, (2) calls (1)
+	store42Program := program.New().Sstore(0x42, 0x42)
+	callBobProgram := program.New().Call(nil, dp.Addresses.Bob, 1, 0, 0, 0, 0)
+
+	alloc := actionsHelpers.DefaultAlloc
+	alloc.L2Alloc = make(map[common.Address]types.Account)
+	alloc.L2Alloc[aa] = types.Account{
+		Code: store42Program.Bytes(),
+	}
+	alloc.L2Alloc[bb] = types.Account{
+		Code: callBobProgram.Bytes(),
+	}
+
+	sd := e2eutils.Setup(t, dp, alloc)
+	log, captureLogger := testlog.CaptureLogger(t, log.LevelDebug)
+	miner, seqEngine, sequencer := actionsHelpers.SetupSequencerTest(t, sd, log)
+
+	l1F := miner.L1Client(t, sd.RollupCfg)
+	blobSrc := miner.BlobStore()
+	syncCfg := &sync.Config{}
+	cfg := actionsHelpers.DefaultVerifierCfg()
+	jwtPath := e2eutils.WriteDefaultJWT(t)
+	verifierEngine := actionsHelpers.NewL2Engine(t, log.New("role", "verifier-engine"), sd.L2Cfg, jwtPath, actionsHelpers.EngineWithP2P())
+	engCl := verifierEngine.EngineClient(t, sd.RollupCfg)
+
+	newIsthmusTime := uint64(sd.RollupCfg.Genesis.L2Time + 10)
+	newRollupCfg := *sd.RollupCfg
+	newRollupCfg.IsthmusTime = &newIsthmusTime
+	verifier := actionsHelpers.NewL2Verifier(t, log.New("role", "verifier"), l1F, blobSrc, altda.Disabled, engCl, sd.RollupCfg, syncCfg, cfg.SafeHeadListener, &newRollupCfg)
+
+	rollupSeqCl := sequencer.RollupClient()
+	cl := seqEngine.EthClient()
+
+	batcher := actionsHelpers.NewL2Batcher(log, sd.RollupCfg, &actionsHelpers.BatcherCfg{
+		MinL1TxSize:          0,
+		MaxL1TxSize:          128_000,
+		BatcherKey:           dp.Secrets.Batcher,
+		DataAvailabilityType: batcherFlags.CalldataType,
+		ForceSubmitSpanBatch: true,
+	}, rollupSeqCl, miner.EthClient(), seqEngine.EthClient(), seqEngine.EngineClient(t, sd.RollupCfg))
+
+	sequencer.ActL2PipelineFull(t)
+	verifier.ActL2PipelineFull(t)
+
+	miner.ActEmptyBlock(t)
+
+	sequencer.ActL2StartBlock(t) // 1
+	sequencer.ActL2EndBlock(t)
+
+	sequencer.ActL2StartBlock(t) // 2
+	sequencer.ActL2EndBlock(t)
+
+	sequencer.ActL2StartBlock(t) // 3 (bad)
+
+	auth1, err := types.SignSetCode(dp.Secrets.Alice, types.SetCodeAuthorization{
+		ChainID: *uint256.NewInt(dp.DeployConfig.L2ChainID),
+		Address: bb,
+		Nonce:   1,
+	})
+	require.NoError(gt, err, "failed to sign auth1")
+	auth2, err := types.SignSetCode(dp.Secrets.Bob, types.SetCodeAuthorization{
+		Address: aa,
+		Nonce:   0,
+	})
+	require.NoError(gt, err, "failed to sign auth2")
+
+	txdata := &types.SetCodeTx{
+		ChainID:   uint256.NewInt(dp.DeployConfig.L2ChainID),
+		Nonce:     0,
+		To:        dp.Addresses.Alice,
+		Gas:       500000,
+		GasFeeCap: uint256.NewInt(5000000000),
+		GasTipCap: uint256.NewInt(2),
+		AuthList:  []types.SetCodeAuthorization{auth1, auth2},
+	}
+	signer := types.NewPragueSigner(new(big.Int).SetUint64(dp.DeployConfig.L2ChainID))
+	tx := types.MustSignNewTx(dp.Secrets.Alice, signer, txdata)
+
+	err = cl.SendTransaction(t.Ctx(), tx)
+	require.NoError(gt, err, "failed to send set code tx")
+
+	require.NoError(t, seqEngine.EngineApi.IncludeTx(tx, dp.Addresses.Alice), "failed to include set code tx")
+
+	sequencer.ActL2EndBlock(t)
+
+	// Verify delegation designations were deployed.
+	bobCode, err := cl.PendingCodeAt(t.Ctx(), dp.Addresses.Bob)
+	require.NoError(gt, err, "failed to get bob code")
+	want := types.AddressToDelegation(auth2.Address)
+	if !bytes.Equal(bobCode, want) {
+		t.Fatalf("addr1 code incorrect: got %s, want %s", common.Bytes2Hex(bobCode), common.Bytes2Hex(want))
+	}
+	aliceCode, err := cl.PendingCodeAt(t.Ctx(), dp.Addresses.Alice)
+	require.NoError(gt, err, "failed to get alice code")
+	want = types.AddressToDelegation(auth1.Address)
+	if !bytes.Equal(aliceCode, want) {
+		t.Fatalf("addr2 code incorrect: got %s, want %s", common.Bytes2Hex(aliceCode), common.Bytes2Hex(want))
+	}
+
+	// Verify delegation executed the correct code.
+	fortyTwo := common.BytesToHash([]byte{0x42})
+	actual, err := cl.PendingStorageAt(t.Ctx(), dp.Addresses.Bob, fortyTwo)
+	require.NoError(gt, err, "failed to get addr1 storage")
+
+	if !bytes.Equal(actual, fortyTwo[:]) {
+		t.Fatalf("addr2 storage wrong: expected %d, got %d", fortyTwo, actual)
+	}
+
+	// batch submit to L1. batcher should submit span batches.
+	batcher.ActSubmitAll(t)
+	miner.ActL1StartBlock(12)(t)
+	miner.ActL1IncludeTx(dp.Addresses.Batcher)(t)
+	miner.ActL1EndBlock(t)
+
+	sequencer.ActL1HeadSignal(t)
+	sequencer.ActL2PipelineFull(t)
+
+	verifier.ActL1HeadSignal(t)
+	verifier.ActL2PipelineFull(t)
+
+	levelFilter := testlog.NewLevelFilter(slog.LevelWarn)
+	msgFilter := testlog.NewMessageFilter("sequencers may not embed any SetCode transactions before Isthmus")
+	msg := captureLogger.FindLog(levelFilter, msgFilter)
+	require.NotNil(t, msg)
+
+	// ensure sequencer has the latest block finalized
+	require.Equal(t, sequencer.L2Unsafe(), sequencer.L2Safe())
+
+	// ensure verifier dropped the last singular batch
+	require.Equal(t, uint64(2), verifier.SyncStatus().SafeL2.Number)
+	require.Equal(t, uint64(2), verifier.SyncStatus().UnsafeL2.Number)
 }

@@ -821,7 +821,7 @@ func TestELSyncTransitionsToCLSyncAfterNodeRestart(gt *testing.T) {
 	PrepareELSyncedNode(t, miner, sequencer, seqEng, verifier, verEng, seqEngCl, batcher, dp)
 
 	// Create a new verifier which is essentially a new op-node with the sync mode of ELSync and default geth engine kind.
-	verifier = actionsHelpers.NewL2Verifier(t, captureLog, miner.L1Client(t, sd.RollupCfg), miner.BlobStore(), altda.Disabled, verifier.Eng, sd.RollupCfg, &sync.Config{SyncMode: sync.ELSync}, actionsHelpers.DefaultVerifierCfg().SafeHeadListener)
+	verifier = actionsHelpers.NewL2Verifier(t, captureLog, miner.L1Client(t, sd.RollupCfg), miner.BlobStore(), altda.Disabled, verifier.Eng, sd.RollupCfg, &sync.Config{SyncMode: sync.ELSync}, actionsHelpers.DefaultVerifierCfg().SafeHeadListener, nil)
 
 	// Build another 10 L1 blocks on the sequencer
 	for i := 0; i < 10; i++ {
@@ -863,7 +863,7 @@ func TestForcedELSyncCLAfterNodeRestart(gt *testing.T) {
 	PrepareELSyncedNode(t, miner, sequencer, seqEng, verifier, verEng, seqEngCl, batcher, dp)
 
 	// Create a new verifier which is essentially a new op-node with the sync mode of ELSync and erigon engine kind.
-	verifier2 := actionsHelpers.NewL2Verifier(t, captureLog, miner.L1Client(t, sd.RollupCfg), miner.BlobStore(), altda.Disabled, verifier.Eng, sd.RollupCfg, &sync.Config{SyncMode: sync.ELSync, SupportsPostFinalizationELSync: true}, actionsHelpers.DefaultVerifierCfg().SafeHeadListener)
+	verifier2 := actionsHelpers.NewL2Verifier(t, captureLog, miner.L1Client(t, sd.RollupCfg), miner.BlobStore(), altda.Disabled, verifier.Eng, sd.RollupCfg, &sync.Config{SyncMode: sync.ELSync, SupportsPostFinalizationELSync: true}, actionsHelpers.DefaultVerifierCfg().SafeHeadListener, nil)
 
 	// Build another 10 L1 blocks on the sequencer
 	for i := 0; i < 10; i++ {
