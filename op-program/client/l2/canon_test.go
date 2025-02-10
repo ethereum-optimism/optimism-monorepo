@@ -119,4 +119,19 @@ func TestCanonicalBlockNumberOracle_SetCanonical(t *testing.T) {
 		}
 		require.Equal(t, blocks[1].Hash(), canon.GetHeaderByNumber(1).Hash())
 	})
+	t.Run("set canonical with cache reset up to genesis", func(t *testing.T) {
+		chainCfg, blocks, oracle := setupOracle(t, blockCount, headBlockNumber, true)
+		head := blocks[headBlockNumber].Header()
+
+		blockByHash := func(hash common.Hash) *types.Block {
+			return oracle.BlockByHash(hash, eth.ChainIDFromBig(chainCfg.ChainID))
+		}
+		canon := NewCanonicalBlockHeaderOracle(head, blockByHash)
+		// the cache is empty (save for the head) so this should reset the cache up to genesis
+		canon.SetCanonical(blocks[2].Header())
+		require.Nil(t, canon.GetHeaderByNumber(3))
+		require.Equal(t, blocks[2].Hash(), canon.CurrentHeader().Hash())
+		require.Equal(t, blocks[1].Hash(), canon.GetHeaderByNumber(1).Hash())
+		require.Equal(t, blocks[0].Hash(), canon.GetHeaderByNumber(0).Hash())
+	})
 }

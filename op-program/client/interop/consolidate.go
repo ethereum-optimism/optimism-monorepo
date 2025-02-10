@@ -14,6 +14,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/processors"
 	supervisortypes "github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/rawdb"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/log"
 )
@@ -59,7 +60,7 @@ func RunConsolidation(
 	superRoot *eth.SuperV1,
 	tasks taskExecutor,
 ) (eth.Bytes32, error) {
-	deps, err := newConsolidateCheckDeps(transitionState, superRoot.Chains, l2PreimageOracle)
+	deps, err := newConsolidateCheckDeps(bootInfo, transitionState, superRoot.Chains, l2PreimageOracle)
 	if err != nil {
 		return eth.Bytes32{}, fmt.Errorf("failed to create consolidate check deps: %w", err)
 	}
@@ -157,10 +158,10 @@ func checkHazards(
 type consolidateCheckDeps struct {
 	oracle      l2.Oracle
 	depset      depset.DependencySet
-	canonBlocks map[eth.ChainID]*l2.CanonicalBlockHeaderOracle
+	canonBlocks map[eth.ChainID]*l2.FastCanonicalBlockHeaderOracle
 }
 
-func newConsolidateCheckDeps(transitionState *types.TransitionState, chains []eth.ChainIDAndOutput, oracle l2.Oracle) (*consolidateCheckDeps, error) {
+func newConsolidateCheckDeps(bootInfo *boot.BootInfoInterop, transitionState *types.TransitionState, chains []eth.ChainIDAndOutput, oracle l2.Oracle) (*consolidateCheckDeps, error) {
 	// TODO: handle case where dep set changes in a given timestamp
 	// TODO: Also replace dep set stubs with the actual dependency set in the RollupConfig.
 	deps := make(map[eth.ChainID]*depset.StaticConfigDependency)
@@ -172,7 +173,7 @@ func newConsolidateCheckDeps(transitionState *types.TransitionState, chains []et
 		}
 	}
 
-	canonBlocks := make(map[eth.ChainID]*l2.CanonicalBlockHeaderOracle)
+	canonBlocks := make(map[eth.ChainID]*l2.FastCanonicalBlockHeaderOracle)
 	for i, chain := range chains {
 		progress := transitionState.PendingProgress[i]
 		// This is the optimistic head. It's OK if it's replaced by a deposits-only block.
@@ -182,7 +183,12 @@ func newConsolidateCheckDeps(transitionState *types.TransitionState, chains []et
 		blockByHash := func(hash common.Hash) *ethtypes.Block {
 			return oracle.BlockByHash(hash, chain.ChainID)
 		}
-		canonBlocks[chain.ChainID] = l2.NewCanonicalBlockHeaderOracle(head.Header(), blockByHash)
+		l2ChainConfig, err := bootInfo.Configs.ChainConfig(chain.ChainID)
+		if err != nil {
+			return nil, fmt.Errorf("no chain config available for chain ID %v: %w", chain.ChainID, err)
+		}
+		fallback := l2.NewCanonicalBlockHeaderOracle(head.Header(), blockByHash)
+		canonBlocks[chain.ChainID] = l2.NewFastCanonicalBlockHeaderOracle(head.Header(), blockByHash, l2ChainConfig, oracle, rawdb.NewMemoryDatabase(), fallback)
 	}
 
 	depset, err := depset.NewStaticConfigDependencySet(deps)
