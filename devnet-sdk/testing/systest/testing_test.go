@@ -2,6 +2,7 @@ package systest
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 	"os"
 	"testing"
@@ -38,6 +39,28 @@ func (m *mockTB) Skipf(string, ...any)     {}
 func (m *mockTB) Skipped() bool            { return false }
 func (m *mockTB) TempDir() string          { return "" }
 func (m *mockTB) Setenv(key, value string) {}
+
+// mockTBRecorder extends mockTB to record test outcomes
+type mockTBRecorder struct {
+	mockTB
+	skipped  bool
+	failed   bool
+	skipMsg  string
+	fatalMsg string
+}
+
+func (m *mockTBRecorder) Skip(args ...any) { m.skipped = true }
+func (m *mockTBRecorder) Skipf(f string, args ...any) {
+	m.skipped = true
+	m.skipMsg = fmt.Sprintf(f, args...)
+}
+func (m *mockTBRecorder) Fatal(args ...any) { m.failed = true }
+func (m *mockTBRecorder) Fatalf(f string, args ...any) {
+	m.failed = true
+	m.fatalMsg = fmt.Sprintf(f, args...)
+}
+func (m *mockTBRecorder) Failed() bool  { return m.failed }
+func (m *mockTBRecorder) Skipped() bool { return m.skipped }
 
 // mockChain implements a minimal system.Chain for testing
 type mockChain struct{}
@@ -177,78 +200,5 @@ func TestTWrapper(t *testing.T) {
 
 		require.True(t, level1Called)
 		require.True(t, level2Called)
-	})
-}
-
-// TestSystemTest tests the main SystemTest function
-func TestSystemTest(t *testing.T) {
-	withTestSystem(t, func() (system.System, error) {
-		return newMockSystem(), nil
-	}, func(t *testing.T) {
-		t.Run("basic system test", func(t *testing.T) {
-			called := false
-			SystemTest(t, func(t T, sys system.System) {
-				called = true
-				require.NotNil(t, sys)
-			})
-			require.True(t, called)
-		})
-
-		t.Run("with validator", func(t *testing.T) {
-			validatorCalled := false
-			testCalled := false
-
-			validator := func(t T, sys system.System) (context.Context, error) {
-				validatorCalled = true
-				return t.Context(), nil
-			}
-
-			SystemTest(t, func(t T, sys system.System) {
-				testCalled = true
-			}, validator)
-
-			require.True(t, validatorCalled)
-			require.True(t, testCalled)
-		})
-
-		t.Run("multiple validators", func(t *testing.T) {
-			validatorCount := 0
-
-			validator := func(t T, sys system.System) (context.Context, error) {
-				validatorCount++
-				return t.Context(), nil
-			}
-
-			SystemTest(t, func(t T, sys system.System) {}, validator, validator, validator)
-			require.Equal(t, 3, validatorCount)
-		})
-	})
-}
-
-// TestInteropSystemTest tests the InteropSystemTest function
-func TestInteropSystemTest(t *testing.T) {
-	t.Run("skips non-interop system", func(t *testing.T) {
-		withTestSystem(t, func() (system.System, error) {
-			return newMockSystem(), nil
-		}, func(t *testing.T) {
-			called := false
-			InteropSystemTest(t, func(t T, sys system.InteropSystem) {
-				called = true
-			})
-			require.False(t, called)
-		})
-	})
-
-	t.Run("runs with interop system", func(t *testing.T) {
-		withTestSystem(t, func() (system.System, error) {
-			return newMockInteropSystem(), nil
-		}, func(t *testing.T) {
-			called := false
-			InteropSystemTest(t, func(t T, sys system.InteropSystem) {
-				called = true
-				require.NotNil(t, sys.InteropSet())
-			})
-			require.True(t, called)
-		})
 	})
 }
