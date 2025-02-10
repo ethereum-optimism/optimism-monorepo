@@ -154,6 +154,8 @@ var optionalFlags = []cli.Flag{
 	RaftSnapshotInterval,
 	RaftSnapshotThreshold,
 	RaftTrailingLogs,
+	RaftHeartbeatTimeout,
+	RaftLeaderLeaseTimeout,
 }
 
 func init() {
