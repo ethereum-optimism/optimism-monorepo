@@ -26,7 +26,7 @@ func TestMemory64TrieMerkleProof(t *testing.T) {
 		}
 	})
 	t.Run("NewTrieMemory tree", func(t *testing.T) {
-		m := NewMemory()
+		m := NewTrieMemory()
 		m.SetWord(0x10000, 0xaabbccdd)
 		m.SetWord(0x80008, 42)
 		m.SetWord(0x13370000, 123)
@@ -286,7 +286,11 @@ func TestMemory64TrieMerkleRoot(t *testing.T) {
 
 func TestMemory64TrieReadWrite(t *testing.T) {
 	t.Run("large random", func(t *testing.T) {
+<<<<<<< HEAD
 		m := NewMemory()
+=======
+		m := NewTrieMemory()
+>>>>>>> 844e433dc (migrate tests for mpt)
 		data := make([]byte, 20_000)
 		_, err := rand.Read(data[:])
 		require.NoError(t, err)
@@ -310,7 +314,11 @@ func TestMemory64TrieReadWrite(t *testing.T) {
 	})
 
 	t.Run("read-write", func(t *testing.T) {
+<<<<<<< HEAD
 		m := NewMemory()
+=======
+		m := NewTrieMemory()
+>>>>>>> 844e433dc (migrate tests for mpt)
 		m.SetWord(16, 0xAABBCCDD_EEFF1122)
 		require.Equal(t, Word(0xAABBCCDD_EEFF1122), m.GetWord(16))
 		m.SetWord(16, 0xAABB1CDD_EEFF1122)
@@ -320,7 +328,11 @@ func TestMemory64TrieReadWrite(t *testing.T) {
 	})
 
 	t.Run("unaligned read", func(t *testing.T) {
+<<<<<<< HEAD
 		m := NewMemory()
+=======
+		m := NewTrieMemory()
+>>>>>>> 844e433dc (migrate tests for mpt)
 		m.SetWord(16, Word(0xAABBCCDD_EEFF1122))
 		m.SetWord(24, 0x11223344_55667788)
 		for i := Word(17); i < 24; i++ {
@@ -334,7 +346,11 @@ func TestMemory64TrieReadWrite(t *testing.T) {
 	})
 
 	t.Run("unaligned write", func(t *testing.T) {
+<<<<<<< HEAD
 		m := NewMemory()
+=======
+		m := NewTrieMemory()
+>>>>>>> 844e433dc (migrate tests for mpt)
 		m.SetWord(16, 0xAABBCCDD_EEFF1122)
 		require.Panics(t, func() {
 			m.SetWord(17, 0x11223344)
@@ -366,7 +382,11 @@ func TestMemory64TrieJSON(t *testing.T) {
 	m.SetWord(8, 0xAABBCCDD_EEFF1122)
 	dat, err := json.Marshal(m)
 	require.NoError(t, err)
+<<<<<<< HEAD
 	res := NewMemory()
+=======
+	res := NewTrieMemory()
+>>>>>>> 844e433dc (migrate tests for mpt)
 	require.NoError(t, json.Unmarshal(dat, &res))
 	require.Equal(t, Word(0xAABBCCDD_EEFF1122), res.GetWord(8))
 }
