@@ -1847,7 +1847,7 @@ workflows:
   scheduled-docker-publish:
     when:
       or:
-        - equal: [build_hourly, <<pipeline.schedule.name>>]
+        - equal: [build_daily, <<pipeline.schedule.name>>]
         # Trigger on manual triggers if explicitly requested
         - equal: [true, << pipeline.parameters.docker_publish_dispatch >>]
     jobs:
