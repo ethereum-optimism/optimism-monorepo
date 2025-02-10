@@ -97,7 +97,6 @@ func (s *SuperTraceProvider) GetPreimageBytes(ctx context.Context, pos types.Pos
 	prevRoot, err := s.rootProvider.SuperRootAtTimestamp(ctx, hexutil.Uint64(timestamp))
 	if isNotFound(err) {
 		// No block at this timestamp so it must be invalid
-		fmt.Printf("error: %v\n", err)
 		return InvalidTransition, nil
 	} else if err != nil {
 		return nil, fmt.Errorf("failed to retrieve previous super root at timestamp %v: %w", timestamp, err)
