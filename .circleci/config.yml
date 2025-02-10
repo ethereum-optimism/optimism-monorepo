@@ -650,7 +650,7 @@ jobs:
 
             # If the PR has the "S-exempt-frozen-files" label, do not run this check
             if echo $LABELS | jq -e 'any(.[]; .name == "S-exempt-frozen-files")' > /dev/null; then
-              echo "PR is exempt from frozen files check"
+              echo "Skipping frozen files check, PR has exempt label"
               exit 0
             fi
       - run:
