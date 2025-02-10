@@ -54,7 +54,7 @@ orbs:
   slack: circleci/slack@4.10.1
   shellcheck: circleci/shellcheck@3.2.0
   codecov: codecov/codecov@5.0.3
-  utils: ethereum-optimism/circleci-utils@1.0.7
+  utils: ethereum-optimism/circleci-utils@1.0.8
 
 commands:
   gcp-oidc-authenticate:
