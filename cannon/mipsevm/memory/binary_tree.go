@@ -4,7 +4,7 @@ import (
 	"math/bits"
 )
 
-// / BinaryTreeIndex is a representation of the state of the memory in a binary merkle tree.
+// BinaryTreeIndex is a representation of the state of the memory in a binary merkle tree.
 type BinaryTreeIndex struct {
 	// generalized index -> merkle root or nil if invalidated
 	nodes map[uint64]*[32]byte
@@ -14,10 +14,10 @@ type BinaryTreeIndex struct {
 
 func NewBinaryTreeMemory() *Memory {
 	pages := make(map[Word]*CachedPage)
-	table := NewBinaryTreeIndex()
-	table.setPageBacking(pages)
+	index := NewBinaryTreeIndex()
+	index.setPageBacking(pages)
 	return &Memory{
-		merkleIndex:  table,
+		merkleIndex:  index,
 		pageTable:    pages,
 		lastPageKeys: [2]Word{^Word(0), ^Word(0)}, // default to invalid keys, to not match any pages
 	}
