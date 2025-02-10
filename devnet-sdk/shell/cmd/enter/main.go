@@ -23,20 +23,19 @@ func run(ctx *cli.Context) error {
 		return err
 	}
 
-	chainEnv, err := chain.GetEnv()
+	chainEnv, err := chain.GetEnv(
+		env.WithCastIntegration(true),
+	)
 	if err != nil {
 		return err
 	}
 
-	if motd := chainEnv.Motd; motd != "" {
+	if motd := chainEnv.GetMotd(); motd != "" {
 		fmt.Println(motd)
 	}
 
 	// Get current environment and append chain-specific vars
-	env := os.Environ()
-	for key, value := range chainEnv.EnvVars {
-		env = append(env, fmt.Sprintf("%s=%s", key, value))
-	}
+	env := chainEnv.ApplyToEnv(os.Environ())
 
 	// Get current shell
 	shell := os.Getenv("SHELL")

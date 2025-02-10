@@ -27,7 +27,7 @@ func run(ctx *cli.Context) error {
 		return err
 	}
 
-	fmt.Println(chainEnv.Motd)
+	fmt.Println(chainEnv.GetMotd())
 	return nil
 }
 

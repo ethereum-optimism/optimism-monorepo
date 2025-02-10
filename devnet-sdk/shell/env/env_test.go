@@ -186,15 +186,17 @@ func TestChainConfig(t *testing.T) {
 
 	// Test getting environment variables
 	t.Run("get environment variables", func(t *testing.T) {
-		env, err := chain.GetEnv()
+		env, err := chain.GetEnv(
+			WithCastIntegration(true),
+		)
 		require.NoError(t, err)
 
-		assert.Equal(t, "http://localhost:8545", env.EnvVars["ETH_RPC_URL"])
-		assert.Equal(t, "1234", env.EnvVars["ETH_RPC_JWT_SECRET"])
-		assert.Equal(t, "test.json", filepath.Base(env.EnvVars[EnvFileVar]))
-		assert.Equal(t, "test", env.EnvVars[ChainNameVar])
-		assert.Contains(t, env.Motd, "deployer")
-		assert.Contains(t, env.Motd, "0x1234567890123456789012345678901234567890")
+		assert.Equal(t, "http://localhost:8545", env.envVars["ETH_RPC_URL"])
+		assert.Equal(t, "1234", env.envVars["ETH_RPC_JWT_SECRET"])
+		assert.Equal(t, "test.json", filepath.Base(env.envVars[EnvFileVar]))
+		assert.Equal(t, "test", env.envVars[ChainNameVar])
+		assert.Contains(t, env.motd, "deployer")
+		assert.Contains(t, env.motd, "0x1234567890123456789012345678901234567890")
 	})
 
 	// Test chain with no nodes
@@ -205,7 +207,9 @@ func TestChainConfig(t *testing.T) {
 				Nodes: []descriptors.Node{},
 			},
 		}
-		_, err := noNodesChain.GetEnv()
+		_, err := noNodesChain.GetEnv(
+			WithCastIntegration(true),
+		)
 		assert.Error(t, err)
 	})
 
@@ -221,7 +225,9 @@ func TestChainConfig(t *testing.T) {
 				},
 			},
 		}
-		_, err := missingServiceChain.GetEnv()
+		_, err := missingServiceChain.GetEnv(
+			WithCastIntegration(true),
+		)
 		assert.Error(t, err)
 	})
 
@@ -241,7 +247,9 @@ func TestChainConfig(t *testing.T) {
 				},
 			},
 		}
-		_, err := missingEndpointChain.GetEnv()
+		_, err := missingEndpointChain.GetEnv(
+			WithCastIntegration(true),
+		)
 		assert.Error(t, err)
 	})
 }
