@@ -97,6 +97,15 @@ contract FaultDisputeGame_Init is DisputeGameFactory_Init {
         disputeGameFactory.setImplementation(GAME_TYPE, gameImpl);
         uint256 bondAmount = disputeGameFactory.initBonds(GAME_TYPE);
         // Create a new game.
+        if (isForkTest()) {
+            // Mock the call anchorStateRegistry.getAnchorRoot() to return block number, 0
+            (Hash root,) = anchorStateRegistry.getAnchorRoot();
+            vm.mockCall(
+                address(anchorStateRegistry),
+                abi.encodeCall(IAnchorStateRegistry.getAnchorRoot, ()),
+                abi.encode(root, 0)
+            );
+        }
         gameProxy = IFaultDisputeGame(
             payable(address(disputeGameFactory.create{ value: bondAmount }(GAME_TYPE, rootClaim, extraData)))
         );
