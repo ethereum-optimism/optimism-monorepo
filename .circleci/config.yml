@@ -649,7 +649,7 @@ jobs:
             LABELS=$(curl -s "https://api.github.com/repos/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}/pulls/${PR_NUMBER}" | jq -r .labels)
 
             # If the PR has the "S-exempt-frozen-files" label, do not run this check
-            if echo $LABELS | jq -e 'any(.[]; .name == "S-exempt-frozen-files")'; then
+            if echo $LABELS | jq -e 'any(.[]; .name == "S-exempt-frozen-files")' > /dev/null; then
               echo "PR is exempt from frozen files check"
               exit 0
             fi
