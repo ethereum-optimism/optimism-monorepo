@@ -3,6 +3,7 @@ package upgrades
 import (
 	"bytes"
 	"context"
+	"log/slog"
 	"math/big"
 	"testing"
 	"time"
@@ -549,7 +550,7 @@ func TestSetCodeTxTypePreIsthmus(gt *testing.T) {
 	}
 
 	sd := e2eutils.Setup(t, dp, alloc)
-	log := testlog.Logger(t, log.LevelDebug)
+	log, captureLogger := testlog.CaptureLogger(t, log.LevelDebug)
 	miner, seqEngine, sequencer := actionsHelpers.SetupSequencerTest(t, sd, log)
 
 	l1F := miner.L1Client(t, sd.RollupCfg)
@@ -654,6 +655,11 @@ func TestSetCodeTxTypePreIsthmus(gt *testing.T) {
 
 	verifier.ActL1HeadSignal(t)
 	verifier.ActL2PipelineFull(t)
+
+	levelFilter := testlog.NewLevelFilter(slog.LevelWarn)
+	msgFilter := testlog.NewMessageFilter("sequencers may not embed any SetCode transactions before Isthmus")
+	msg := captureLogger.FindLog(levelFilter, msgFilter)
+	require.NotNil(t, msg)
 
 	// ensure sequencer has the latest block finalized
 	require.Equal(t, sequencer.L2Unsafe(), sequencer.L2Safe())
