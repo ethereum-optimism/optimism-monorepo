@@ -154,5 +154,6 @@ func createVerifier(t actionsHelpers.Testing, env *helpers.L2FaultProofEnv) (*ac
 		env.Sd.RollupCfg,
 		&sync.Config{},
 		safedb.Disabled,
+		nil,
 	), engine
 }
