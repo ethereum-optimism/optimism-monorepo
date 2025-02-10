@@ -7,5 +7,5 @@ you don't need to read this.
 - [Scripting Engine](./engine.md): Describes the scripting engine that OP Deployer uses to interact
   with the EVM.
 
-![Architecture diagram showing the relationship between OP Deployer components](../../assets/full-architecture.png)
+![Architecture diagram showing the relationship between OP Deployer components](../assets/full-architecture.png)
 *Full architecture diagram ([source](https://www.figma.com/board/bbp16y6ZwIkxzOoKhDu9kk/op-deployer-architecture?node-id=0-1&p=f&t=1Eg9JBP0RuVmdtsM-0))*
