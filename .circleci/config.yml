@@ -670,8 +670,6 @@ jobs:
       - checkout-with-mise
       - attach_workspace: { at: "." }
       - install-contracts-dependencies
-      - check-changed:
-          patterns: contracts-bedrock
       - run:
           name: Check if target branch is develop
           command: |
