@@ -16,22 +16,26 @@ dep-status:
 ########################################################
 
 # Core forge build command.
-forge-build:
-  forge build
+forge-build *ARGS:
+  forge build {{ARGS}}
 
 # Developer build command (faster).
-forge-build-dev:
-  FOUNDRY_PROFILE=lite forge build
+forge-build-dev *ARGS:
+  FOUNDRY_PROFILE=lite forge build {{ARGS}}
 
 # Builds source contracts only.
 build-source:
   forge build --skip "/**/test/**" --skip "/**/scripts/**"
 
 # Builds the contracts.
-build: lint-fix-no-fail forge-build interfaces-check-no-build
+build *ARGS: lint-fix-no-fail
+  just forge-build {{ARGS}}
+  just interfaces-check-no-build
 
 # Builds the contracts (developer mode).
-build-dev: lint-fix-no-fail forge-build-dev interfaces-check-no-build
+build-dev *ARGS: lint-fix-no-fail
+  just forge-build-dev {{ARGS}}
+  just interfaces-check-no-build
 
 # Builds the go-ffi tool for contract tests.
 build-go-ffi-default:
