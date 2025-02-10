@@ -1,8 +1,6 @@
 package dsl
 
 import (
-	"fmt"
-
 	"github.com/ethereum-optimism/optimism/op-e2e/actions/helpers"
 	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/interop/contracts/bindings/emit"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
@@ -39,9 +37,7 @@ func (c *EmitterContract) EmitMessage(user *DSLUser, message string) Transaction
 	return func(chain *Chain) (*types.Transaction, common.Address) {
 		opts, from := user.TransactOpts(chain)
 		address, ok := c.addressByChain[chain.ChainID]
-		if !ok {
-			c.t.Fatal(fmt.Errorf("not deployed on chain %d", chain.ChainID))
-		}
+		require.Truef(c.t, ok, "not deployed on chain %d", chain.ChainID)
 		bindings, err := emit.NewEmitTransactor(address, chain.SequencerEngine.EthClient())
 		require.NoError(c.t, err)
 		tx, err := bindings.EmitData(opts, []byte(message))
