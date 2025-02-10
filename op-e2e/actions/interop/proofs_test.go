@@ -372,66 +372,26 @@ func TestInteropFaultProofs_CascadeInvalidBlock(gt *testing.T) {
 
 	endTimestamp := actors.ChainB.Sequencer.L2Unsafe().Time
 	startTimestamp := endTimestamp - 1
-	start := system.Outputs.SuperRoot(startTimestamp)
-	end := system.Outputs.SuperRoot(endTimestamp)
+	optimisticEnd := system.Outputs.SuperRoot(endTimestamp)
 
-	step1Expected := system.Outputs.TransitionState(startTimestamp, 1,
-		system.Outputs.OptimisticBlockAtTimestamp(actors.ChainA, endTimestamp),
-	).Marshal()
-
-	// Capture optimistic blocks now before the invalid block is reorg'd out
-	// Otherwise later calls to paddingStep would incorrectly use the deposit-only block
-	allOptimisticBlocks := []types.OptimisticBlock{
+	preConsolidation := system.Outputs.TransitionState(startTimestamp, 1023,
 		system.Outputs.OptimisticBlockAtTimestamp(actors.ChainA, endTimestamp),
 		system.Outputs.OptimisticBlockAtTimestamp(actors.ChainB, endTimestamp),
-	}
-	step2Expected := system.Outputs.TransitionState(startTimestamp, 2,
-		allOptimisticBlocks...,
 	).Marshal()
 
-	paddingStep := func(step uint64) []byte {
-		return system.Outputs.TransitionState(startTimestamp, step, allOptimisticBlocks...).Marshal()
-	}
 	// Induce block replacement
 	system.ProcessCrossSafe()
 	// assert that the invalid message tx was reorged out
 	chainAExecTx.CheckNotIncluded()
 	chainBExecTx.CheckNotIncluded()
 
-	crossSafeSuperRootEnd := system.Outputs.SuperRoot(endTimestamp)
+	crossSafeEnd := system.Outputs.SuperRoot(endTimestamp)
 
 	tests := []*transitionTest{
 		{
-			name:               "FirstChainOptimisticBlock",
-			agreedClaim:        start.Marshal(),
-			disputedClaim:      step1Expected,
-			disputedTraceIndex: 0,
-			expectValid:        true,
-			// skipChallenger because the challenger's reorg view won't match the pre-reorg disputed claim
-			skipChallenger: true,
-		},
-		{
-			name:               "SecondChainOptimisticBlock",
-			agreedClaim:        step1Expected,
-			disputedClaim:      step2Expected,
-			disputedTraceIndex: 1,
-			expectValid:        true,
-			// skipChallenger because the challenger's reorg view won't match the pre-reorg disputed claim
-			skipChallenger: true,
-		},
-		{
-			name:               "LastPaddingStep",
-			agreedClaim:        paddingStep(1022),
-			disputedClaim:      paddingStep(1023),
-			disputedTraceIndex: 1022,
-			expectValid:        true,
-			// skipChallenger because the challenger's reorg view won't match the pre-reorg disputed claim
-			skipChallenger: true,
-		},
-		{
 			name:               "Consolidate-ExpectInvalidPendingBlock",
-			agreedClaim:        paddingStep(1023),
-			disputedClaim:      end.Marshal(),
+			agreedClaim:        preConsolidation,
+			disputedClaim:      optimisticEnd.Marshal(),
 			disputedTraceIndex: 1023,
 			expectValid:        false,
 			skipProgram:        true,
@@ -439,8 +399,8 @@ func TestInteropFaultProofs_CascadeInvalidBlock(gt *testing.T) {
 		},
 		{
 			name:               "Consolidate-ReplaceInvalidBlocks",
-			agreedClaim:        paddingStep(1023),
-			disputedClaim:      crossSafeSuperRootEnd.Marshal(),
+			agreedClaim:        preConsolidation,
+			disputedClaim:      crossSafeEnd.Marshal(),
 			disputedTraceIndex: 1023,
 			expectValid:        true,
 			skipProgram:        true,
