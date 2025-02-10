@@ -402,7 +402,7 @@ func TestSetCodeTxTypeIsthmus(gt *testing.T) {
 	store42Program := program.New().Sstore(0x42, 0x42)
 	callBobProgram := program.New().Call(nil, dp.Addresses.Bob, 1, 0, 0, 0, 0)
 
-	alloc := actionsHelpers.DefaultAlloc
+	alloc := *actionsHelpers.DefaultAlloc
 	alloc.L2Alloc = make(map[common.Address]types.Account)
 	alloc.L2Alloc[aa] = types.Account{
 		Code: store42Program.Bytes(),
@@ -411,7 +411,7 @@ func TestSetCodeTxTypeIsthmus(gt *testing.T) {
 		Code: callBobProgram.Bytes(),
 	}
 
-	sd := e2eutils.Setup(t, dp, alloc)
+	sd := e2eutils.Setup(t, dp, &alloc)
 	log := testlog.Logger(t, log.LevelError)
 	miner, seqEngine, sequencer := actionsHelpers.SetupSequencerTest(t, sd, log)
 	_, verifier := actionsHelpers.SetupVerifier(t, sd, log, miner.L1Client(t, sd.RollupCfg), miner.BlobStore(), &sync.Config{})
