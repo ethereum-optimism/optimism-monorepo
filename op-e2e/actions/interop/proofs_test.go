@@ -346,22 +346,20 @@ func TestInteropFaultProofs_CascadeInvalidBlock(gt *testing.T) {
 	system.SubmitBatchData()
 
 	// Create a message with a conflicting payload on chain B, that also emits an initiating message
-	fakeMessage := []byte("this message was never emitted")
-	inboxContract := dsl.NewInboxContract(t)
 	system.AddL2Block(actors.ChainB, func(opts *dsl.AddL2BlockOpts) {
 		opts.TransactionCreators = []dsl.TransactionCreator{
-			inboxContract.Execute(alice, chainAInitTx.Identifier(), fakeMessage),
+			system.InboxContract.Execute(alice, chainAInitTx.Identifier(), []byte("this message was never emitted")),
 			emitterContract.EmitMessage(alice, "chainB message"),
 		}
 		opts.BlockIsNotCrossSafe = true
 	})
-	chainBExecTx := inboxContract.LastTransaction()
+	chainBExecTx := system.InboxContract.LastTransaction()
 	chainBExecTx.CheckIncluded()
 
 	// Create a message with a valid message on chain A, pointing to
 	chainBInitTx := emitterContract.LastEmittedMessage()
 	system.AddL2Block(actors.ChainA, func(opts *dsl.AddL2BlockOpts) {
-		opts.TransactionCreators = []dsl.TransactionCreator{inboxContract.Execute(alice, chainBInitTx.Identifier(), []byte("chainB message"))}
+		opts.TransactionCreators = []dsl.TransactionCreator{system.InboxContract.Execute(alice, chainBInitTx.Identifier(), []byte("chainB message"))}
 		opts.BlockIsNotCrossSafe = true
 	})
 
@@ -369,7 +367,7 @@ func TestInteropFaultProofs_CascadeInvalidBlock(gt *testing.T) {
 		opts.SkipCrossSafeUpdate = true
 	})
 
-	chainAExecTx := inboxContract.LastTransaction()
+	chainAExecTx := system.InboxContract.LastTransaction()
 	chainAExecTx.CheckIncluded()
 
 	endTimestamp := actors.ChainB.Sequencer.L2Unsafe().Time
@@ -475,9 +473,8 @@ func TestInteropFaultProofsInvalidBlock(gt *testing.T) {
 
 	// Create a message with a conflicting payload
 	fakeMessage := []byte("this message was never emitted")
-	inboxContract := dsl.NewInboxContract(t)
 	system.AddL2Block(actors.ChainB, func(opts *dsl.AddL2BlockOpts) {
-		opts.TransactionCreators = []dsl.TransactionCreator{inboxContract.Execute(alice, emitTx.Identifier(), fakeMessage)}
+		opts.TransactionCreators = []dsl.TransactionCreator{system.InboxContract.Execute(alice, emitTx.Identifier(), fakeMessage)}
 		opts.BlockIsNotCrossSafe = true
 	})
 	system.AddL2Block(actors.ChainA)
@@ -486,7 +483,7 @@ func TestInteropFaultProofsInvalidBlock(gt *testing.T) {
 		opts.SkipCrossSafeUpdate = true
 	})
 
-	execTx := inboxContract.LastTransaction()
+	execTx := system.InboxContract.LastTransaction()
 	execTx.CheckIncluded()
 
 	// safe head is still behind until we verify cross-safe

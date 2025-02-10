@@ -54,6 +54,8 @@ type InteropDSL struct {
 	Outputs *Outputs
 	setup   *InteropSetup
 
+	InboxContract *InboxContract
+
 	// allChains contains all chains in the interop set.
 	// Currently this is always two chains, but as the setup code becomes more flexible it could be more
 	// and likely this array would be replaced by something in InteropActors
@@ -90,6 +92,8 @@ func NewInteropDSL(t helpers.Testing) *InteropDSL {
 			superRootSource: superRootSource,
 		},
 		setup: setup,
+
+		InboxContract: NewInboxContract(t),
 
 		allChains: allChains,
 	}
