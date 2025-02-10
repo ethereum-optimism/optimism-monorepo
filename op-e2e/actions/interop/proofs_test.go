@@ -321,6 +321,137 @@ func TestInteropFaultProofs(gt *testing.T) {
 	runFppAndChallengerTests(gt, system, tests)
 }
 
+func TestInteropFaultProofs_CascadeInvalidBlock(gt *testing.T) {
+	t := helpers.NewDefaultTesting(gt)
+
+	system := dsl.NewInteropDSL(t)
+
+	actors := system.Actors
+	alice := system.CreateUser()
+	emitterContract := dsl.NewEmitterContract(t)
+	// Deploy emitter contract to both chains
+	system.AddL2Block(actors.ChainA, dsl.WithL2BlockTransactions(
+		emitterContract.Deploy(alice),
+	))
+	system.AddL2Block(actors.ChainB, dsl.WithL2BlockTransactions(
+		emitterContract.Deploy(alice),
+	))
+
+	// Initiating messages on chain A
+	system.AddL2Block(actors.ChainA, dsl.WithL2BlockTransactions(
+		emitterContract.EmitMessage(alice, "chainA message"),
+	))
+	chainAInitTx := emitterContract.LastEmittedMessage()
+	system.AddL2Block(actors.ChainB)
+	system.SubmitBatchData()
+
+	// Create a message with a conflicting payload on chain B, that also emits an initiating message
+	fakeMessage := []byte("this message was never emitted")
+	inboxContract := dsl.NewInboxContract(t)
+	system.AddL2Block(actors.ChainB, func(opts *dsl.AddL2BlockOpts) {
+		opts.TransactionCreators = []dsl.TransactionCreator{
+			inboxContract.Execute(alice, chainAInitTx.Identifier(), fakeMessage),
+			emitterContract.EmitMessage(alice, "chainB message"),
+		}
+		opts.BlockIsNotCrossSafe = true
+	})
+	chainBExecTx := inboxContract.LastTransaction()
+	chainBExecTx.CheckIncluded()
+
+	// Create a message with a valid message on chain A, pointing to
+	chainBInitTx := emitterContract.LastEmittedMessage()
+	system.AddL2Block(actors.ChainA, func(opts *dsl.AddL2BlockOpts) {
+		opts.TransactionCreators = []dsl.TransactionCreator{inboxContract.Execute(alice, chainBInitTx.Identifier(), []byte("chainB message"))}
+		opts.BlockIsNotCrossSafe = true
+	})
+
+	system.SubmitBatchData(func(opts *dsl.SubmitBatchDataOpts) {
+		opts.SkipCrossSafeUpdate = true
+	})
+
+	chainAExecTx := inboxContract.LastTransaction()
+	chainAExecTx.CheckIncluded()
+
+	endTimestamp := actors.ChainB.Sequencer.L2Unsafe().Time
+	startTimestamp := endTimestamp - 1
+	start := system.Outputs.SuperRoot(startTimestamp)
+	end := system.Outputs.SuperRoot(endTimestamp)
+
+	step1Expected := system.Outputs.TransitionState(startTimestamp, 1,
+		system.Outputs.OptimisticBlockAtTimestamp(actors.ChainA, endTimestamp),
+	).Marshal()
+
+	// Capture optimistic blocks now before the invalid block is reorg'd out
+	// Otherwise later calls to paddingStep would incorrectly use the deposit-only block
+	allOptimisticBlocks := []types.OptimisticBlock{
+		system.Outputs.OptimisticBlockAtTimestamp(actors.ChainA, endTimestamp),
+		system.Outputs.OptimisticBlockAtTimestamp(actors.ChainB, endTimestamp),
+	}
+	step2Expected := system.Outputs.TransitionState(startTimestamp, 2,
+		allOptimisticBlocks...,
+	).Marshal()
+
+	paddingStep := func(step uint64) []byte {
+		return system.Outputs.TransitionState(startTimestamp, step, allOptimisticBlocks...).Marshal()
+	}
+	// Induce block replacement
+	system.ProcessCrossSafe()
+	// assert that the invalid message tx was reorged out
+	chainAExecTx.CheckNotIncluded()
+	chainBExecTx.CheckNotIncluded()
+
+	crossSafeSuperRootEnd := system.Outputs.SuperRoot(endTimestamp)
+
+	tests := []*transitionTest{
+		{
+			name:               "FirstChainOptimisticBlock",
+			agreedClaim:        start.Marshal(),
+			disputedClaim:      step1Expected,
+			disputedTraceIndex: 0,
+			expectValid:        true,
+			// skipChallenger because the challenger's reorg view won't match the pre-reorg disputed claim
+			skipChallenger: true,
+		},
+		{
+			name:               "SecondChainOptimisticBlock",
+			agreedClaim:        step1Expected,
+			disputedClaim:      step2Expected,
+			disputedTraceIndex: 1,
+			expectValid:        true,
+			// skipChallenger because the challenger's reorg view won't match the pre-reorg disputed claim
+			skipChallenger: true,
+		},
+		{
+			name:               "LastPaddingStep",
+			agreedClaim:        paddingStep(1022),
+			disputedClaim:      paddingStep(1023),
+			disputedTraceIndex: 1022,
+			expectValid:        true,
+			// skipChallenger because the challenger's reorg view won't match the pre-reorg disputed claim
+			skipChallenger: true,
+		},
+		{
+			name:               "Consolidate-ExpectInvalidPendingBlock",
+			agreedClaim:        paddingStep(1023),
+			disputedClaim:      end.Marshal(),
+			disputedTraceIndex: 1023,
+			expectValid:        false,
+			skipProgram:        true,
+			skipChallenger:     true,
+		},
+		{
+			name:               "Consolidate-ReplaceInvalidBlocks",
+			agreedClaim:        paddingStep(1023),
+			disputedClaim:      crossSafeSuperRootEnd.Marshal(),
+			disputedTraceIndex: 1023,
+			expectValid:        true,
+			skipProgram:        true,
+			skipChallenger:     true,
+		},
+	}
+	runFppAndChallengerTests(gt, system, tests)
+}
+
 func TestInteropFaultProofsInvalidBlock(gt *testing.T) {
 	t := helpers.NewDefaultTesting(gt)
 
@@ -351,11 +482,6 @@ func TestInteropFaultProofsInvalidBlock(gt *testing.T) {
 	})
 	system.AddL2Block(actors.ChainA)
 
-	// TODO: I wonder if it would be better to have `opts.ExpectInvalid` that specifies the invalid tx
-	// then the DSL can assert that it becomes local safe and is then reorged out automatically
-	// We could still grab the superroot and output roots for the invalid block while it is unsafe
-	// Other tests may still want to have SkipCrossUnsafeUpdate but generally nicer to be more declarative and
-	// high level to avoid leaking the details of when supervisor will trigger the reorg if possible.
 	system.SubmitBatchData(func(opts *dsl.SubmitBatchDataOpts) {
 		opts.SkipCrossSafeUpdate = true
 	})
@@ -460,14 +586,6 @@ func TestInteropFaultProofsInvalidBlock(gt *testing.T) {
 			expectValid:        true,
 			skipProgram:        true,
 			skipChallenger:     true,
-		},
-		{
-			name: "Consolidate-ReplaceBlockInvalidatedByFirstInvalidatedBlock",
-			// Will need to generate an invalid block before this can be enabled
-			// Check that if a block B depends on a log in block A, and block A is found to have an invalid message
-			// that block B is also replaced with a deposit only block because A no longer contains the log it needs
-			skipProgram:    true,
-			skipChallenger: true,
 		},
 		{
 			name:               "AlreadyAtClaimedTimestamp",
