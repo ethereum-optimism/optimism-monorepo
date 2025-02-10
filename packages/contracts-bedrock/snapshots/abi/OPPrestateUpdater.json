@@ -849,11 +849,6 @@
   },
   {
     "inputs": [],
-    "name": "FDGNotFound",
-    "type": "error"
-  },
-  {
-    "inputs": [],
     "name": "IdentityPrecompileCallFailed",
     "type": "error"
   },

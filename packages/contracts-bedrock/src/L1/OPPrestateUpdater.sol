@@ -30,9 +30,6 @@ contract OPPrestateUpdater is OPContractsManager {
     /// @notice Thrown when the prestate of a permissioned disputed game is 0.
     error PDGPrestateRequired();
 
-    /// @notice Thrown when the address off a fault dispute game is 0.
-    error FDGNotFound();
-
     // @return Version string
     /// @custom:semver 1.0.0
     function version() public pure override returns (string memory) {
@@ -92,29 +89,25 @@ contract OPPrestateUpdater is OPContractsManager {
     function updatePrestate(PrestateUpdateInput[] memory _prestateUpdateInputs) external {
         // Loop through each chain and prestate hash
         for (uint256 i = 0; i < _prestateUpdateInputs.length; i++) {
-            IFaultDisputeGame permissionlessDisputeGame = IFaultDisputeGame(
-                address(
-                    getGameImplementation(
-                        IDisputeGameFactory(_prestateUpdateInputs[i].systemConfigProxy.disputeGameFactory()),
-                        GameTypes.CANNON
-                    )
-                )
-            );
+            if (Claim.unwrap(_prestateUpdateInputs[i].absolutePrestate) == bytes32(0)) {
+                revert PDGPrestateRequired();
+            }
 
-            bool hasFDG = !(address(permissionlessDisputeGame) == address(0));
+            IDisputeGameFactory dgf =
+                IDisputeGameFactory(_prestateUpdateInputs[i].systemConfigProxy.disputeGameFactory());
+
+            IFaultDisputeGame fdg = IFaultDisputeGame(address(getGameImplementation(dgf, GameTypes.CANNON)));
+
+            IPermissionedDisputeGame pdg =
+                IPermissionedDisputeGame(address(getGameImplementation(dgf, GameTypes.PERMISSIONED_CANNON)));
+
+            bool hasFDG = address(fdg) != address(0);
 
             AddGameInput[] memory inputs = new AddGameInput[](hasFDG ? 2 : 1);
             AddGameInput memory pdgInput;
             AddGameInput memory fdgInput;
 
-            if (Claim.unwrap(_prestateUpdateInputs[i].absolutePrestate) == bytes32(0)) {
-                revert PDGPrestateRequired();
-            }
             // Get the current game implementation to copy parameters from
-            IDisputeGameFactory dgf =
-                IDisputeGameFactory(_prestateUpdateInputs[i].opChain.systemConfigProxy.disputeGameFactory());
-            IPermissionedDisputeGame pdg =
-                IPermissionedDisputeGame(address(getGameImplementation(dgf, GameTypes.PERMISSIONED_CANNON)));
             uint256 initBond = dgf.initBonds(GameTypes.PERMISSIONED_CANNON);
 
             // Get the existing game parameters
@@ -143,8 +136,6 @@ contract OPPrestateUpdater is OPContractsManager {
             // If fault dispute prestate is provided, create a new game with the same parameters but updated prestate
             if (hasFDG) {
                 // Get the current game implementation to copy parameters from
-                IFaultDisputeGame fdg = IFaultDisputeGame(address(getGameImplementation(dgf, GameTypes.CANNON)));
-                if (address(fdg) == address(0)) revert FDGNotFound();
                 initBond = dgf.initBonds(GameTypes.CANNON);
                 // Get the existing game parameters
                 IFaultDisputeGame.GameConstructorParams memory fdgParams =

@@ -205,29 +205,6 @@ contract OPPrestateUpdater_Test is Test {
         );
     }
 
-    function test_updatePrestate_whenFDGNotFound_reverts() public {
-        OPPrestateUpdater.PrestateUpdateInput[] memory inputs = new OPPrestateUpdater.PrestateUpdateInput[](1);
-        inputs[0] = OPPrestateUpdater.PrestateUpdateInput({
-            opChain: OPContractsManager.OpChainConfig({
-                systemConfigProxy: chainDeployOutput.systemConfigProxy,
-                proxyAdmin: chainDeployOutput.opChainProxyAdmin
-            }),
-            absolutePrestate: Claim.wrap(bytes32(hex"ABBA"))
-        });
-
-        IDisputeGameFactory dgf = IDisputeGameFactory(chainDeployOutput.systemConfigProxy.disputeGameFactory());
-
-        vm.mockCall(address(dgf), abi.encodeCall(dgf.gameImpls, GameTypes.CANNON), abi.encode(address(0)));
-
-        address proxyAdminOwner = chainDeployOutput.opChainProxyAdmin.owner();
-        vm.etch(address(proxyAdminOwner), vm.getDeployedCode("test/mocks/Callers.sol:DelegateCaller"));
-
-        vm.expectRevert(OPPrestateUpdater.FDGNotFound.selector);
-        DelegateCaller(proxyAdminOwner).dcForward(
-            address(prestateUpdater), abi.encodeCall(OPPrestateUpdater.updatePrestate, (inputs))
-        );
-    }
-
     function test_deploy_notImplemented_reverts() public {
         OPContractsManager.DeployInput memory input = OPContractsManager.DeployInput({
             roles: OPContractsManager.Roles({
