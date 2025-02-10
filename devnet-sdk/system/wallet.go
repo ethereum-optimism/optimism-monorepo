@@ -3,6 +3,7 @@ package system
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"strings"
 
 	"github.com/ethereum-optimism/optimism/devnet-sdk/types"
@@ -52,12 +53,12 @@ func (w *wallet) SendETH(to types.Address, amount types.Balance) types.WriteInvo
 func (w *wallet) Balance() types.Balance {
 	client, err := w.chain.getClient()
 	if err != nil {
-		return types.Balance{}
+		return types.NewBalance(new(big.Int))
 	}
 
 	balance, err := client.BalanceAt(context.Background(), w.address, nil)
 	if err != nil {
-		return types.Balance{}
+		return types.NewBalance(new(big.Int))
 	}
 
 	return types.NewBalance(balance)
