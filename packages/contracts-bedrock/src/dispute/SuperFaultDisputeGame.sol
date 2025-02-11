@@ -69,6 +69,9 @@ import { IDisputeGame } from "interfaces/dispute/IDisputeGame.sol";
 /// @title SuperFaultDisputeGame
 /// @notice An implementation of the `IFaultDisputeGame` interface for interop.
 contract SuperFaultDisputeGame is Clone, ISemver {
+    /// @dev Error to prevent initialization a dispute game with an actually valid, invalid state
+    error SuperFaultDisputeGameInvalidRootClaim();
+
     ////////////////////////////////////////////////////////////////
     //                         Structs                            //
     ////////////////////////////////////////////////////////////////
@@ -187,13 +190,6 @@ contract SuperFaultDisputeGame is Clone, ISemver {
     /// @notice Flag for the `initialize` function to prevent re-initialization.
     bool internal initialized;
 
-    /// @notice Flag for whether or not the L2 block number claim has been invalidated via `challengeRootL2Block`.
-    bool public l2BlockNumberChallenged;
-
-    /// @notice The challenger of the L2 block number claim. Should always be `address(0)` if `l2BlockNumberChallenged`
-    ///         is `false`. Should be the address of the challenger if `l2BlockNumberChallenged` is `true`.
-    address public l2BlockNumberChallenger;
-
     /// @notice An append-only array of all claims made during the dispute game.
     ClaimData[] public claimData;
 
@@ -301,6 +297,9 @@ contract SuperFaultDisputeGame is Clone, ISemver {
 
         // Should only happen if this is a new game type that hasn't been set up yet.
         if (root.raw() == bytes32(0)) revert AnchorRootNotFound();
+
+        // Prevent initializing right away with an invalid claim state that is used as convention
+        if (rootClaim().raw() == keccak256("invalid")) revert SuperFaultDisputeGameInvalidRootClaim();
 
         // Set the starting output root.
         startingOutputRoot = OutputRoot({ l2BlockNumber: rootBlockNumber, root: root });
@@ -482,10 +481,6 @@ contract SuperFaultDisputeGame is Clone, ISemver {
             revert CannotDefendRootClaim();
         }
 
-        // INVARIANT: No moves against the root claim can be made after it has been challenged with
-        //            `challengeRootL2Block`.`
-        if (l2BlockNumberChallenged && _challengeIndex == 0) revert L2BlockNumberChallenged();
-
         // INVARIANT: A move can never surpass the `MAX_GAME_DEPTH`. The only option to counter a
         //            claim at this depth is to perform a single instruction step on-chain via
         //            the `step` function to prove that the state transition produces an unexpected
@@ -611,17 +606,7 @@ contract SuperFaultDisputeGame is Clone, ISemver {
             // Load the disputed proposal's output root
             oracle.loadLocalData(_ident, uuid.raw(), disputed.raw(), 32, _partOffset);
         } else if (_ident == LocalPreimageKey.DISPUTED_L2_BLOCK_NUMBER) {
-            // Load the disputed proposal's L2 block number as a big-endian uint64 in the
-            // high order 8 bytes of the word.
-
-            // We add the index at depth + 1 to the starting block number to get the disputed L2
-            // block number.
-            uint256 l2Number = startingOutputRoot.l2BlockNumber + disputedPos.traceIndex(SPLIT_DEPTH) + 1;
-
-            // Choose the minimum between the `l2BlockNumber` claim and the bisected-to L2 block number.
-            l2Number = l2Number < l2BlockNumber() ? l2Number : l2BlockNumber();
-
-            oracle.loadLocalData(_ident, uuid.raw(), bytes32(l2Number << 0xC0), 8, _partOffset);
+            oracle.loadLocalData(_ident, uuid.raw(), bytes32(l2BlockNumber() << 0xC0), 8, _partOffset);
         } else if (_ident == LocalPreimageKey.CHAIN_ID) {
             // Load the chain ID as a big-endian uint64 in the high order 8 bytes of the word.
             oracle.loadLocalData(_ident, uuid.raw(), bytes32(L2_CHAIN_ID << 0xC0), 8, _partOffset);
@@ -655,54 +640,6 @@ contract SuperFaultDisputeGame is Clone, ISemver {
     /// @notice Starting output root and block number of the game.
     function startingRootHash() external view returns (Hash startingRootHash_) {
         startingRootHash_ = startingOutputRoot.root;
-    }
-
-    /// @notice Challenges the root L2 block number by providing the preimage of the output root and the L2 block header
-    ///         and showing that the committed L2 block number is incorrect relative to the claimed L2 block number.
-    /// @param _outputRootProof The output root proof.
-    /// @param _headerRLP The RLP-encoded L2 block header.
-    function challengeRootL2Block(
-        Types.OutputRootProof calldata _outputRootProof,
-        bytes calldata _headerRLP
-    )
-        external
-    {
-        // INVARIANT: Moves cannot be made unless the game is currently in progress.
-        if (status != GameStatus.IN_PROGRESS) revert GameNotInProgress();
-
-        // The root L2 block claim can only be challenged once.
-        if (l2BlockNumberChallenged) revert L2BlockNumberChallenged();
-
-        // Verify the output root preimage.
-        if (Hashing.hashOutputRootProof(_outputRootProof) != rootClaim().raw()) revert InvalidOutputRootProof();
-
-        // Verify the block hash preimage.
-        if (keccak256(_headerRLP) != _outputRootProof.latestBlockhash) revert InvalidHeaderRLP();
-
-        // Decode the header RLP to find the number of the block. In the consensus encoding, the timestamp
-        // is the 9th element in the list that represents the block header.
-        RLPReader.RLPItem[] memory headerContents = RLPReader.readList(RLPReader.toRLPItem(_headerRLP));
-        bytes memory rawBlockNumber = RLPReader.readBytes(headerContents[HEADER_BLOCK_NUMBER_INDEX]);
-
-        // Sanity check the block number string length.
-        if (rawBlockNumber.length > 32) revert InvalidHeaderRLP();
-
-        // Convert the raw, left-aligned block number to a uint256 by aligning it as a big-endian
-        // number in the low-order bytes of a 32-byte word.
-        //
-        // SAFETY: The length of `rawBlockNumber` is checked above to ensure it is at most 32 bytes.
-        uint256 blockNumber;
-        assembly {
-            blockNumber := shr(shl(0x03, sub(0x20, mload(rawBlockNumber))), mload(add(rawBlockNumber, 0x20)))
-        }
-
-        // Ensure the block number does not match the block number claimed in the dispute game.
-        if (blockNumber == l2BlockNumber()) revert BlockNumberMatches();
-
-        // Issue a special counter to the root claim. This counter will always win the root claim subgame, and receive
-        // the bond from the root claimant.
-        l2BlockNumberChallenger = msg.sender;
-        l2BlockNumberChallenged = true;
     }
 
     ////////////////////////////////////////////////////////////////
@@ -824,21 +761,13 @@ contract SuperFaultDisputeGame is Clone, ISemver {
             resolvedSubgames[_claimIndex] = true;
 
             // Distribute the bond to the appropriate party.
-            if (_claimIndex == 0 && l2BlockNumberChallenged) {
-                // Special case: If the root claim has been challenged with the `challengeRootL2Block` function,
-                // the bond is always paid out to the issuer of that challenge.
-                address challenger = l2BlockNumberChallenger;
-                _distributeBond(challenger, subgameRootClaim);
-                subgameRootClaim.counteredBy = challenger;
-            } else {
-                // If the parent was not successfully countered, pay out the parent's bond to the claimant.
-                // If the parent was successfully countered, pay out the parent's bond to the challenger.
-                _distributeBond(countered == address(0) ? subgameRootClaim.claimant : countered, subgameRootClaim);
+            // If the parent was not successfully countered, pay out the parent's bond to the claimant.
+            // If the parent was successfully countered, pay out the parent's bond to the challenger.
+            _distributeBond(countered == address(0) ? subgameRootClaim.claimant : countered, subgameRootClaim);
 
-                // Once a subgame is resolved, we percolate the result up the DAG so subsequent calls to
-                // resolveClaim will not need to traverse this subgame.
-                subgameRootClaim.counteredBy = countered;
-            }
+            // Once a subgame is resolved, we percolate the result up the DAG so subsequent calls to
+            // resolveClaim will not need to traverse this subgame.
+            subgameRootClaim.counteredBy = countered;
         }
     }
 
