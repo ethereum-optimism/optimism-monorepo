@@ -195,12 +195,12 @@ func TestEngineQueue_Finalize(t *testing.T) {
 		fi.AttachEmitter(emitter)
 
 		// now say C1 was included in D and became the new safe head
-		fi.OnEvent(engine.SafeDerivedEvent{Safe: refC1, DerivedFrom: refD})
+		fi.OnEvent(engine.SafeDerivedEvent{Safe: refC1, Source: refD})
 		fi.OnEvent(derive.DeriverIdleEvent{Origin: refD})
 		emitter.AssertExpectations(t)
 
 		// now say D0 was included in E and became the new safe head
-		fi.OnEvent(engine.SafeDerivedEvent{Safe: refD0, DerivedFrom: refE})
+		fi.OnEvent(engine.SafeDerivedEvent{Safe: refD0, Source: refE})
 		fi.OnEvent(derive.DeriverIdleEvent{Origin: refE})
 		emitter.AssertExpectations(t)
 
@@ -230,12 +230,12 @@ func TestEngineQueue_Finalize(t *testing.T) {
 		fi.AttachEmitter(emitter)
 
 		// now say C1 was included in D and became the new safe head
-		fi.OnEvent(engine.SafeDerivedEvent{Safe: refC1, DerivedFrom: refD})
+		fi.OnEvent(engine.SafeDerivedEvent{Safe: refC1, Source: refD})
 		fi.OnEvent(derive.DeriverIdleEvent{Origin: refD})
 		emitter.AssertExpectations(t)
 
 		// now say D0 was included in E and became the new safe head
-		fi.OnEvent(engine.SafeDerivedEvent{Safe: refD0, DerivedFrom: refE})
+		fi.OnEvent(engine.SafeDerivedEvent{Safe: refD0, Source: refE})
 		fi.OnEvent(derive.DeriverIdleEvent{Origin: refE})
 		emitter.AssertExpectations(t)
 
@@ -269,11 +269,11 @@ func TestEngineQueue_Finalize(t *testing.T) {
 		fi := NewFinalizer(context.Background(), logger, &rollup.Config{}, l1F)
 		fi.AttachEmitter(emitter)
 
-		fi.OnEvent(engine.SafeDerivedEvent{Safe: refC1, DerivedFrom: refD})
+		fi.OnEvent(engine.SafeDerivedEvent{Safe: refC1, Source: refD})
 		fi.OnEvent(derive.DeriverIdleEvent{Origin: refD})
 		emitter.AssertExpectations(t)
 
-		fi.OnEvent(engine.SafeDerivedEvent{Safe: refD0, DerivedFrom: refE})
+		fi.OnEvent(engine.SafeDerivedEvent{Safe: refD0, Source: refE})
 		fi.OnEvent(derive.DeriverIdleEvent{Origin: refE})
 		emitter.AssertExpectations(t)
 
@@ -312,11 +312,11 @@ func TestEngineQueue_Finalize(t *testing.T) {
 		fi.OnEvent(derive.DeriverIdleEvent{Origin: refG})
 		emitter.AssertExpectations(t)
 
-		fi.OnEvent(engine.SafeDerivedEvent{Safe: refD1, DerivedFrom: refH})
-		fi.OnEvent(engine.SafeDerivedEvent{Safe: refE0, DerivedFrom: refH})
-		fi.OnEvent(engine.SafeDerivedEvent{Safe: refE1, DerivedFrom: refH})
-		fi.OnEvent(engine.SafeDerivedEvent{Safe: refF0, DerivedFrom: refH})
-		fi.OnEvent(engine.SafeDerivedEvent{Safe: refF1, DerivedFrom: refH})
+		fi.OnEvent(engine.SafeDerivedEvent{Safe: refD1, Source: refH})
+		fi.OnEvent(engine.SafeDerivedEvent{Safe: refE0, Source: refH})
+		fi.OnEvent(engine.SafeDerivedEvent{Safe: refE1, Source: refH})
+		fi.OnEvent(engine.SafeDerivedEvent{Safe: refF0, Source: refH})
+		fi.OnEvent(engine.SafeDerivedEvent{Safe: refF1, Source: refH})
 		emitter.AssertExpectations(t) // above updates add data, but no attempt is made until idle or L1 signal
 
 		// We recently finalized already, and there is no new L1 finality data
@@ -356,12 +356,12 @@ func TestEngineQueue_Finalize(t *testing.T) {
 		fi.AttachEmitter(emitter)
 
 		// now say B1 was included in C and became the new safe head
-		fi.OnEvent(engine.SafeDerivedEvent{Safe: refB1, DerivedFrom: refC})
+		fi.OnEvent(engine.SafeDerivedEvent{Safe: refB1, Source: refC})
 		fi.OnEvent(derive.DeriverIdleEvent{Origin: refC})
 		emitter.AssertExpectations(t)
 
 		// now say C0 was included in E and became the new safe head
-		fi.OnEvent(engine.SafeDerivedEvent{Safe: refC0, DerivedFrom: refE})
+		fi.OnEvent(engine.SafeDerivedEvent{Safe: refC0, Source: refE})
 		fi.OnEvent(derive.DeriverIdleEvent{Origin: refE})
 		emitter.AssertExpectations(t)
 
@@ -393,7 +393,7 @@ func TestEngineQueue_Finalize(t *testing.T) {
 		fi.AttachEmitter(emitter)
 
 		// now say B1 was included in C and became the new safe head
-		fi.OnEvent(engine.SafeDerivedEvent{Safe: refB1, DerivedFrom: refC})
+		fi.OnEvent(engine.SafeDerivedEvent{Safe: refB1, Source: refC})
 		fi.OnEvent(derive.DeriverIdleEvent{Origin: refC})
 		emitter.AssertExpectations(t)
 
@@ -420,8 +420,8 @@ func TestEngineQueue_Finalize(t *testing.T) {
 			ParentHash: refC.Hash,
 			Time:       refC.Time + l1Time,
 		}
-		fi.OnEvent(engine.SafeDerivedEvent{Safe: refC0Alt, DerivedFrom: refDAlt})
-		fi.OnEvent(engine.SafeDerivedEvent{Safe: refC1Alt, DerivedFrom: refDAlt})
+		fi.OnEvent(engine.SafeDerivedEvent{Safe: refC0Alt, Source: refDAlt})
+		fi.OnEvent(engine.SafeDerivedEvent{Safe: refC1Alt, Source: refDAlt})
 
 		// We get an early finality signal for F, of the chain that did not include refC0Alt and refC1Alt,
 		// as L1 block F does not build on DAlt.
@@ -457,7 +457,7 @@ func TestEngineQueue_Finalize(t *testing.T) {
 		emitter.AssertExpectations(t) // no new finality
 
 		// Include C0 in E
-		fi.OnEvent(engine.SafeDerivedEvent{Safe: refC0, DerivedFrom: refE})
+		fi.OnEvent(engine.SafeDerivedEvent{Safe: refC0, Source: refE})
 		fi.OnEvent(derive.DeriverIdleEvent{Origin: refE})
 		// Due to the "finalityDelay" we don't repeat finality checks shortly after one another,
 		// and don't expect a finality attempt.
@@ -489,8 +489,8 @@ func TestEngineQueue_Finalize(t *testing.T) {
 		fi.AttachEmitter(emitter)
 
 		// now say C0 and C1 were included in D and became the new safe head
-		fi.OnEvent(engine.SafeDerivedEvent{Safe: refC0, DerivedFrom: refD})
-		fi.OnEvent(engine.SafeDerivedEvent{Safe: refC1, DerivedFrom: refD})
+		fi.OnEvent(engine.SafeDerivedEvent{Safe: refC0, Source: refD})
+		fi.OnEvent(engine.SafeDerivedEvent{Safe: refC1, Source: refD})
 		fi.OnEvent(derive.DeriverIdleEvent{Origin: refD})
 		emitter.AssertExpectations(t)
 

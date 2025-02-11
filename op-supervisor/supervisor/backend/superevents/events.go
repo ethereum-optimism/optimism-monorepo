@@ -119,6 +119,15 @@ func (ev LocalDerivedEvent) String() string {
 	return "local-derived"
 }
 
+type LocalDerivedOriginUpdateEvent struct {
+	ChainID eth.ChainID
+	Origin  eth.BlockRef
+}
+
+func (ev LocalDerivedOriginUpdateEvent) String() string {
+	return "local-derived-origin-update"
+}
+
 type AnchorEvent struct {
 	ChainID eth.ChainID
 	Anchor  types.DerivedBlockRefPair
@@ -137,6 +146,14 @@ func (ev InvalidateLocalSafeEvent) String() string {
 	return "invalidate-local-safe"
 }
 
+type RewindL1Event struct {
+	IncomingBlock eth.BlockID
+}
+
+func (ev RewindL1Event) String() string {
+	return "rewind-l1"
+}
+
 type ReplaceBlockEvent struct {
 	ChainID     eth.ChainID
 	Replacement types.BlockReplacement
@@ -144,4 +161,12 @@ type ReplaceBlockEvent struct {
 
 func (ev ReplaceBlockEvent) String() string {
 	return "replace-block-event"
+}
+
+type ChainRewoundEvent struct {
+	ChainID eth.ChainID
+}
+
+func (ev ChainRewoundEvent) String() string {
+	return "chain-rewound"
 }

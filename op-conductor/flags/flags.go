@@ -69,6 +69,18 @@ var (
 		EnvVars: opservice.PrefixEnvVar(EnvVarPrefix, "RAFT_TRAILING_LOGS"),
 		Value:   10240,
 	}
+	RaftHeartbeatTimeout = &cli.DurationFlag{
+		Name:    "raft.heartbeat-timeout",
+		Usage:   "Heartbeat interval timeout",
+		EnvVars: opservice.PrefixEnvVar(EnvVarPrefix, "RAFT_HEARTBEAT_TIMEOUT"),
+		Value:   1000 * time.Millisecond,
+	}
+	RaftLeaderLeaseTimeout = &cli.DurationFlag{
+		Name:    "raft.lease-timeout",
+		Usage:   "Leader lease timeout",
+		EnvVars: opservice.PrefixEnvVar(EnvVarPrefix, "RAFT_LEASE_TIMEOUT"),
+		Value:   500 * time.Millisecond,
+	}
 	NodeRPC = &cli.StringFlag{
 		Name:    "node.rpc",
 		Usage:   "HTTP provider URL for op-node",
@@ -142,6 +154,8 @@ var optionalFlags = []cli.Flag{
 	RaftSnapshotInterval,
 	RaftSnapshotThreshold,
 	RaftTrailingLogs,
+	RaftHeartbeatTimeout,
+	RaftLeaderLeaseTimeout,
 }
 
 func init() {

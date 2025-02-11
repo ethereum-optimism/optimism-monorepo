@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
 )
 
@@ -46,17 +47,17 @@ func TestParseStateFile(t *testing.T) {
 		{
 			chainID: "2151908",
 			expected: DeploymentAddresses{
-				"L1CrossDomainMessenger": "0x123",
-				"L1StandardBridge":       "0x456",
-				"L2OutputOracle":         "0x789",
+				"L1CrossDomainMessenger": common.HexToAddress("0x123"),
+				"L1StandardBridge":       common.HexToAddress("0x456"),
+				"L2OutputOracle":         common.HexToAddress("0x789"),
 			},
 		},
 		{
 			chainID: "2151909",
 			expected: DeploymentAddresses{
-				"L1CrossDomainMessenger": "0xabc",
-				"L1StandardBridge":       "0xdef",
-				"L2OutputOracle":         "0xghi",
+				"L1CrossDomainMessenger": common.HexToAddress("0xabc"),
+				"L1StandardBridge":       common.HexToAddress("0xdef"),
+				"L2OutputOracle":         common.HexToAddress("0xghi"),
 			},
 		},
 	}
@@ -73,10 +74,10 @@ func TestParseStateFile(t *testing.T) {
 
 	// Test superchain and implementations addresses
 	expectedAddresses := DeploymentAddresses{
-		"SuperchainConfig":            "0x111",
-		"ProtocolVersions":            "0x222",
-		"L1CrossDomainMessengerProxy": "0x333",
-		"L1StandardBridgeProxy":       "0x444",
+		"SuperchainConfig":            common.HexToAddress("0x111"),
+		"ProtocolVersions":            common.HexToAddress("0x222"),
+		"L1CrossDomainMessengerProxy": common.HexToAddress("0x333"),
+		"L1StandardBridgeProxy":       common.HexToAddress("0x444"),
 	}
 
 	for key, expected := range expectedAddresses {
@@ -158,12 +159,12 @@ func TestParseWalletsFile(t *testing.T) {
 				"chain1": {
 					{
 						Name:       "proposer",
-						Address:    "0xDFfA3C478Be83a91286c04721d2e5DF9A133b93F",
+						Address:    common.HexToAddress("0xDFfA3C478Be83a91286c04721d2e5DF9A133b93F"),
 						PrivateKey: "0xe1ec816e9ad0372e458c474a06e1e6d9e7f7985cbf642a5e5fa44be639789531",
 					},
 					{
 						Name:       "batcher",
-						Address:    "0x6bd90c2a1AE00384AD9F4BcD76310F54A9CcdA11",
+						Address:    common.HexToAddress("0x6bd90c2a1AE00384AD9F4BcD76310F54A9CcdA11"),
 						PrivateKey: "0x557313b816b8fb354340883edf86627b3de680a9f3e15aa1f522cbe6f9c7b967",
 					},
 				},
@@ -181,7 +182,7 @@ func TestParseWalletsFile(t *testing.T) {
 				"chain1": {
 					{
 						Name:    "proposer",
-						Address: "0xDFfA3C478Be83a91286c04721d2e5DF9A133b93F",
+						Address: common.HexToAddress("0xDFfA3C478Be83a91286c04721d2e5DF9A133b93F"),
 					},
 				},
 			},

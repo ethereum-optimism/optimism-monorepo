@@ -324,6 +324,9 @@ func BlockAsPayload(bl *types.Block, config *params.ChainConfig) (*ExecutionPayl
 		}
 		opaqueTxs[i] = otx
 	}
+	if baseFee == nil {
+		return nil, fmt.Errorf("base fee was nil")
+	}
 
 	payload := &ExecutionPayload{
 		ParentHash:    bl.ParentHash(),
@@ -638,9 +641,11 @@ const (
 
 	NewPayloadV2 EngineAPIMethod = "engine_newPayloadV2"
 	NewPayloadV3 EngineAPIMethod = "engine_newPayloadV3"
+	NewPayloadV4 EngineAPIMethod = "engine_newPayloadV4"
 
 	GetPayloadV2 EngineAPIMethod = "engine_getPayloadV2"
 	GetPayloadV3 EngineAPIMethod = "engine_getPayloadV3"
+	GetPayloadV4 EngineAPIMethod = "engine_getPayloadV4"
 )
 
 // StorageKey is a marshaling utility for hex-encoded storage keys, which can have leading 0s and are

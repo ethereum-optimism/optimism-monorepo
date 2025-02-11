@@ -13,9 +13,9 @@ import (
 const defaultGasLimit = 30_000_000
 
 type CalldataDump struct {
-	To    *common.Address
-	Data  hexutil.Bytes
-	Value *hexutil.Big
+	To    *common.Address `json:"to"`
+	Data  hexutil.Bytes   `json:"data"`
+	Value *hexutil.Big    `json:"value"`
 }
 
 type CalldataBroadcaster struct {

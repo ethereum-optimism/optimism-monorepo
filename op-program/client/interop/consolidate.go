@@ -132,13 +132,7 @@ func isInvalidMessageError(err error) bool {
 type ConsolidateCheckDeps interface {
 	cross.UnsafeFrontierCheckDeps
 	cross.CycleCheckDeps
-	Check(
-		chain eth.ChainID,
-		blockNum uint64,
-		timestamp uint64,
-		logIdx uint32,
-		logHash common.Hash,
-	) (includedIn supervisortypes.BlockSeal, err error)
+	Contains(chain eth.ChainID, query supervisortypes.ContainsQuery) (includedIn supervisortypes.BlockSeal, err error)
 }
 
 func checkHazards(
@@ -203,15 +197,9 @@ func newConsolidateCheckDeps(transitionState *types.TransitionState, chains []et
 	}, nil
 }
 
-func (d *consolidateCheckDeps) Check(
-	chain eth.ChainID,
-	blockNum uint64,
-	timestamp uint64,
-	logIdx uint32,
-	logHash common.Hash,
-) (includedIn supervisortypes.BlockSeal, err error) {
+func (d *consolidateCheckDeps) Contains(chain eth.ChainID, query supervisortypes.ContainsQuery) (includedIn supervisortypes.BlockSeal, err error) {
 	// We can assume the oracle has the block the executing message is in
-	block, err := d.BlockByNumber(d.oracle, blockNum, chain)
+	block, err := d.BlockByNumber(d.oracle, query.BlockNum, chain)
 	if err != nil {
 		return supervisortypes.BlockSeal{}, err
 	}

@@ -230,7 +230,7 @@ func asTxCandidate(bcast script.Broadcast, blockGasLimit uint64) txmgr.TxCandida
 // is clamped to the block gas limit since Geth will reject transactions that exceed it before letting them
 // into the mempool.
 func padGasLimit(data []byte, gasUsed uint64, creation bool, blockGasLimit uint64) uint64 {
-	intrinsicGas, err := core.IntrinsicGas(data, nil, creation, true, true, false)
+	intrinsicGas, err := core.IntrinsicGas(data, nil, nil, creation, true, true, false)
 	// This method never errors - we should look into it if it does.
 	if err != nil {
 		panic(err)

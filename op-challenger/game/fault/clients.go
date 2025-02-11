@@ -74,13 +74,13 @@ func (c *clientProvider) RollupClient() (RollupClient, error) {
 	return rollupClient, nil
 }
 
-func (c *clientProvider) SuperRootProvider() (super.RootProvider, error) {
+func (c *clientProvider) SuperchainClients() (super.RootProvider, *super.SyncValidator, error) {
 	cl, err := client.NewRPC(context.Background(), c.logger, c.cfg.SupervisorRPC)
 	if err != nil {
-		return nil, fmt.Errorf("failed to dial supervisor: %w", err)
+		return nil, nil, fmt.Errorf("failed to dial supervisor: %w", err)
 	}
 	supervisorClient := sources.NewSupervisorClient(cl)
 	c.rootProvider = supervisorClient
 	c.toClose = append(c.toClose, supervisorClient.Close)
-	return supervisorClient, nil
+	return supervisorClient, super.NewSyncValidator(supervisorClient), nil
 }

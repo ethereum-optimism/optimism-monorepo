@@ -50,6 +50,13 @@ type Config struct {
 	// RaftTrailingLogs is the number of logs to keep after a snapshot.
 	RaftTrailingLogs uint64
 
+	// RaftHeartbeatTimeout is the interval timeout between leader and followers.
+	RaftHeartbeatTimeout time.Duration
+
+	// RaftLeaderLeaseTimeout is the timeout for leader lease.
+	// If the leader reaches this timeout without contacts to followers, it resigns.
+	RaftLeaderLeaseTimeout time.Duration
+
 	// NodeRPC is the HTTP provider URL for op-node.
 	NodeRPC string
 
@@ -129,15 +136,17 @@ func NewConfig(ctx *cli.Context, log log.Logger) (*Config, error) {
 		// The consensus server will advertise the address it binds to if this is empty/unspecified.
 		ConsensusAdvertisedAddr: ctx.String(flags.AdvertisedFullAddr.Name),
 
-		RaftBootstrap:         ctx.Bool(flags.RaftBootstrap.Name),
-		RaftServerID:          ctx.String(flags.RaftServerID.Name),
-		RaftStorageDir:        ctx.String(flags.RaftStorageDir.Name),
-		RaftSnapshotInterval:  ctx.Duration(flags.RaftSnapshotInterval.Name),
-		RaftSnapshotThreshold: ctx.Uint64(flags.RaftSnapshotThreshold.Name),
-		RaftTrailingLogs:      ctx.Uint64(flags.RaftTrailingLogs.Name),
-		NodeRPC:               ctx.String(flags.NodeRPC.Name),
-		ExecutionRPC:          ctx.String(flags.ExecutionRPC.Name),
-		Paused:                ctx.Bool(flags.Paused.Name),
+		RaftBootstrap:          ctx.Bool(flags.RaftBootstrap.Name),
+		RaftServerID:           ctx.String(flags.RaftServerID.Name),
+		RaftStorageDir:         ctx.String(flags.RaftStorageDir.Name),
+		RaftSnapshotInterval:   ctx.Duration(flags.RaftSnapshotInterval.Name),
+		RaftSnapshotThreshold:  ctx.Uint64(flags.RaftSnapshotThreshold.Name),
+		RaftTrailingLogs:       ctx.Uint64(flags.RaftTrailingLogs.Name),
+		RaftHeartbeatTimeout:   ctx.Duration(flags.RaftHeartbeatTimeout.Name),
+		RaftLeaderLeaseTimeout: ctx.Duration(flags.RaftLeaderLeaseTimeout.Name),
+		NodeRPC:                ctx.String(flags.NodeRPC.Name),
+		ExecutionRPC:           ctx.String(flags.ExecutionRPC.Name),
+		Paused:                 ctx.Bool(flags.Paused.Name),
 		HealthCheck: HealthCheckConfig{
 			Interval:       ctx.Uint64(flags.HealthCheckInterval.Name),
 			UnsafeInterval: ctx.Uint64(flags.HealthCheckUnsafeInterval.Name),

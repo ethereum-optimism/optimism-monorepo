@@ -75,10 +75,14 @@ func (snc *SyncNodesController) AttachNodeController(chainID eth.ChainID, ctrl S
 		return &locks.RWMap[*ManagedNode, struct{}]{}
 	})
 	controllersForChain, _ := snc.controllers.Get(chainID)
-	node := NewManagedNode(snc.logger, chainID, ctrl, snc.backend, noSubscribe)
 
 	nodeID := snc.id.Add(1)
 	name := fmt.Sprintf("syncnode-%s-%d", chainID, nodeID)
+	logger := snc.logger.New("syncnode", name, "endpoint", ctrl.String())
+
+	logger.Info("Attaching node", "chain", chainID, "passive", noSubscribe)
+
+	node := NewManagedNode(logger, chainID, ctrl, snc.backend, noSubscribe)
 	snc.eventSys.Register(name, node, event.DefaultRegisterOpts())
 
 	controllersForChain.Set(node, struct{}{})

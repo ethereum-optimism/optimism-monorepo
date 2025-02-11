@@ -201,6 +201,7 @@ func (t *interopTaskExecutor) RunDerivation(
 		l1Oracle,
 		l2Oracle,
 		memorydb.New(),
+		tasks.DerivationOptions{StoreBlockData: true},
 	)
 }
 

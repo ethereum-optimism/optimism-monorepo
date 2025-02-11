@@ -38,6 +38,7 @@ type BlockProcessor struct {
 	transactions types.Transactions
 	gasPool      *core.GasPool
 	dataProvider BlockDataProvider
+	evm          *vm.EVM
 }
 
 func NewBlockProcessorFromPayloadAttributes(provider BlockDataProvider, parent common.Hash, attrs *eth.PayloadAttributes) (*BlockProcessor, error) {
@@ -91,9 +92,10 @@ func NewBlockProcessorFromHeader(provider BlockDataProvider, h *types.Header) (*
 		if vmConfig := provider.GetVMConfig(); vmConfig != nil && vmConfig.PrecompileOverrides != nil {
 			precompileOverrides = vmConfig.PrecompileOverrides
 		}
-		vmenv := vm.NewEVM(context, vm.TxContext{}, statedb, provider.Config(), vm.Config{PrecompileOverrides: precompileOverrides})
+		vmenv := vm.NewEVM(context, statedb, provider.Config(), vm.Config{PrecompileOverrides: precompileOverrides})
 		return vmenv
 	}
+	vmenv := mkEVM()
 	if h.ParentBeaconRoot != nil {
 		if provider.Config().IsCancun(header.Number, header.Time) {
 			// Blob tx not supported on optimism chains but fields must be set when Cancun is active.
@@ -101,17 +103,18 @@ func NewBlockProcessorFromHeader(provider BlockDataProvider, h *types.Header) (*
 			header.BlobGasUsed = &zero
 			header.ExcessBlobGas = &zero
 		}
-		vmenv := mkEVM()
-		core.ProcessBeaconBlockRoot(*header.ParentBeaconRoot, vmenv, statedb)
+		core.ProcessBeaconBlockRoot(*header.ParentBeaconRoot, vmenv)
 	}
 	if provider.Config().IsPrague(header.Number, header.Time) {
-		vmenv := mkEVM()
-		core.ProcessParentBlockHash(header.ParentHash, vmenv, statedb)
+		core.ProcessParentBlockHash(header.ParentHash, vmenv)
 	}
 	if provider.Config().IsIsthmus(header.Time) {
 		// set the header withdrawals root for Isthmus blocks
 		mpHash := statedb.GetStorageRoot(predeploys.L2ToL1MessagePasserAddr)
 		header.WithdrawalsHash = &mpHash
+
+		// set the header requests root to empty hash for Isthmus blocks
+		header.RequestsHash = &types.EmptyRequestsHash
 	}
 
 	return &BlockProcessor{
@@ -119,6 +122,7 @@ func NewBlockProcessorFromHeader(provider BlockDataProvider, h *types.Header) (*
 		state:        statedb,
 		gasPool:      gasPool,
 		dataProvider: provider,
+		evm:          vmenv,
 	}, nil
 }
 
@@ -135,8 +139,7 @@ func (b *BlockProcessor) CheckTxWithinGasLimit(tx *types.Transaction) error {
 func (b *BlockProcessor) AddTx(tx *types.Transaction) error {
 	txIndex := len(b.transactions)
 	b.state.SetTxContext(tx.Hash(), txIndex)
-	receipt, err := core.ApplyTransaction(b.dataProvider.Config(), b.dataProvider, &b.header.Coinbase,
-		b.gasPool, b.state, b.header, tx, &b.header.GasUsed, *b.dataProvider.GetVMConfig())
+	receipt, err := core.ApplyTransaction(b.evm, b.gasPool, b.state, b.header, tx, &b.header.GasUsed)
 	if err != nil {
 		return fmt.Errorf("failed to apply transaction to L2 block (tx %d): %w", txIndex, err)
 	}
@@ -145,16 +148,21 @@ func (b *BlockProcessor) AddTx(tx *types.Transaction) error {
 	return nil
 }
 
-func (b *BlockProcessor) Assemble() (*types.Block, error) {
+func (b *BlockProcessor) Assemble() (*types.Block, types.Receipts, error) {
 	body := types.Body{
 		Transactions: b.transactions,
 	}
 
-	return b.dataProvider.Engine().FinalizeAndAssemble(b.dataProvider, b.header, b.state, &body, b.receipts)
+	block, err := b.dataProvider.Engine().FinalizeAndAssemble(b.dataProvider, b.header, b.state, &body, b.receipts)
+	if err != nil {
+		return nil, nil, err
+	}
+	return block, b.receipts, nil
 }
 
 func (b *BlockProcessor) Commit() error {
-	root, err := b.state.Commit(b.header.Number.Uint64(), b.dataProvider.Config().IsEIP158(b.header.Number))
+	isCancun := b.dataProvider.Config().IsCancun(b.header.Number, b.header.Time)
+	root, err := b.state.Commit(b.header.Number.Uint64(), b.dataProvider.Config().IsEIP158(b.header.Number), isCancun)
 	if err != nil {
 		return fmt.Errorf("state write error: %w", err)
 	}

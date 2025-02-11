@@ -5,9 +5,10 @@ import (
 	"log/slog"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
-	"github.com/stretchr/testify/require"
 )
 
 type mockL1Source struct {
@@ -41,14 +42,14 @@ func TestL1Accessor(t *testing.T) {
 		}, nil
 	}
 	accessor := NewL1Accessor(context.Background(), log, source)
-	accessor.tipHeight = 10
+	accessor.tip = eth.BlockID{Number: 10}
 
 	// Test L1BlockRefByNumber
 	ref, err := accessor.L1BlockRefByNumber(context.Background(), 5)
 	require.NoError(t, err)
 	require.Equal(t, uint64(5), ref.Number)
 
-	// Test L1BlockRefByNumber with number in excess of tipHeight
+	// Test L1BlockRefByNumber with number in excess of tip height
 	ref, err = accessor.L1BlockRefByNumber(context.Background(), 9)
 	require.Error(t, err)
 

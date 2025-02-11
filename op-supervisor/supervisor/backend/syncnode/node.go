@@ -25,6 +25,7 @@ import (
 type backend interface {
 	LocalSafe(ctx context.Context, chainID eth.ChainID) (pair types.DerivedIDPair, err error)
 	LocalUnsafe(ctx context.Context, chainID eth.ChainID) (eth.BlockID, error)
+	CrossSafe(ctx context.Context, chainID eth.ChainID) (pair types.DerivedIDPair, err error)
 	SafeDerivedAt(ctx context.Context, chainID eth.ChainID, derivedFrom eth.BlockID) (derived eth.BlockID, err error)
 	Finalized(ctx context.Context, chainID eth.ChainID) (eth.BlockID, error)
 	L1BlockRefByNumber(ctx context.Context, number uint64) (eth.L1BlockRef, error)
@@ -109,7 +110,11 @@ func (m *ManagedNode) OnEvent(ev event.Event) bool {
 			return false
 		}
 		m.resetSignal(x.Err, x.L1Ref)
-	// TODO: watch for reorg events from DB. Send a reset signal to op-node if needed
+	case superevents.ChainRewoundEvent:
+		if x.ChainID != m.chainID {
+			return false
+		}
+		m.sendReset()
 	default:
 		return false
 	}
@@ -216,6 +221,9 @@ func (m *ManagedNode) onNodeEvent(ev *types.ManagedEvent) {
 	if ev.ReplaceBlock != nil {
 		m.onReplaceBlock(*ev.ReplaceBlock)
 	}
+	if ev.DerivationOriginUpdate != nil {
+		m.onDerivationOriginUpdate(*ev.DerivationOriginUpdate)
+	}
 }
 
 func (m *ManagedNode) onResetEvent(errStr string) {
@@ -242,11 +250,11 @@ func (m *ManagedNode) onCrossUnsafeUpdate(seal types.BlockSeal) {
 }
 
 func (m *ManagedNode) onCrossSafeUpdate(pair types.DerivedBlockSealPair) {
-	m.log.Debug("updating cross safe", "derived", pair.Derived, "derivedFrom", pair.DerivedFrom)
+	m.log.Debug("updating cross safe", "derived", pair.Derived, "derivedFrom", pair.Source)
 	ctx, cancel := context.WithTimeout(m.ctx, nodeTimeout)
 	defer cancel()
 	pairIDs := pair.IDs()
-	err := m.Node.UpdateCrossSafe(ctx, pairIDs.Derived, pairIDs.DerivedFrom)
+	err := m.Node.UpdateCrossSafe(ctx, pairIDs.Derived, pairIDs.Source)
 	if err != nil {
 		m.log.Warn("Node failed cross-safe updating", "err", err)
 		return
@@ -260,7 +268,7 @@ func (m *ManagedNode) onFinalizedL2(seal types.BlockSeal) {
 	id := seal.ID()
 	err := m.Node.UpdateFinalized(ctx, id)
 	if err != nil {
-		m.log.Warn("Node failed finality updating", "err", err)
+		m.log.Warn("Node failed finality updating", "update", seal, "err", err)
 		return
 	}
 }
@@ -275,21 +283,19 @@ func (m *ManagedNode) onUnsafeBlock(unsafeRef eth.BlockRef) {
 
 func (m *ManagedNode) onDerivationUpdate(pair types.DerivedBlockRefPair) {
 	m.log.Info("Node derived new block", "derived", pair.Derived,
-		"derivedParent", pair.Derived.ParentID(), "derivedFrom", pair.DerivedFrom)
+		"derivedParent", pair.Derived.ParentID(), "derivedFrom", pair.Source)
 	m.emitter.Emit(superevents.LocalDerivedEvent{
 		ChainID: m.chainID,
 		Derived: pair,
 	})
-	// TODO: keep synchronous local-safe DB update feedback?
-	// We'll still need more async ways of doing this for reorg handling.
+}
 
-	// ctx, cancel := context.WithTimeout(m.ctx, internalTimeout)
-	// defer cancel()
-	// if err := m.backend.UpdateLocalSafe(ctx, m.chainID, pair.DerivedFrom, pair.Derived); err != nil {
-	//	m.log.Warn("Backend failed to process local-safe update",
-	//		"derived", pair.Derived, "derivedFrom", pair.DerivedFrom, "err", err)
-	//	m.resetSignal(err, pair.DerivedFrom)
-	// }
+func (m *ManagedNode) onDerivationOriginUpdate(origin eth.BlockRef) {
+	m.log.Info("Node derived new origin", "origin", origin)
+	m.emitter.Emit(superevents.LocalDerivedOriginUpdateEvent{
+		ChainID: m.chainID,
+		Origin:  origin,
+	})
 }
 
 func (m *ManagedNode) resetSignal(errSignal error, l1Ref eth.BlockRef) {
@@ -339,6 +345,36 @@ func (m *ManagedNode) resetSignal(errSignal error, l1Ref eth.BlockRef) {
 		if err != nil {
 			m.log.Warn("Node failed to reset", "err", err)
 		}
+	}
+}
+
+func (m *ManagedNode) sendReset() {
+	ctx, cancel := context.WithTimeout(m.ctx, internalTimeout)
+	defer cancel()
+
+	u, err := m.backend.LocalUnsafe(ctx, m.chainID)
+	if err != nil {
+		m.log.Warn("Failed to retrieve local-unsafe", "err", err)
+		return
+	}
+	s, err := m.backend.CrossSafe(ctx, m.chainID)
+	if err != nil {
+		m.log.Warn("Failed to retrieve cross-safe", "err", err)
+		return
+	}
+	f, err := m.backend.Finalized(ctx, m.chainID)
+	if err != nil {
+		if errors.Is(err, types.ErrFuture) {
+			f = eth.BlockID{Number: 0}
+		} else {
+			m.log.Warn("Failed to retrieve finalized", "err", err)
+			return
+		}
+	}
+
+	if err := m.Node.Reset(ctx, u, s.Derived, f); err != nil {
+		m.log.Warn("Node failed to reset", "err", err)
+		return
 	}
 }
 
@@ -402,17 +438,17 @@ func (m *ManagedNode) resolveConflict(ctx context.Context, l1Ref eth.BlockRef, u
 }
 
 func (m *ManagedNode) onExhaustL1Event(completed types.DerivedBlockRefPair) {
-	m.log.Info("Node completed syncing", "l2", completed.Derived, "l1", completed.DerivedFrom)
+	m.log.Info("Node completed syncing", "l2", completed.Derived, "l1", completed.Source)
 
 	internalCtx, cancel := context.WithTimeout(m.ctx, internalTimeout)
 	defer cancel()
-	nextL1, err := m.backend.L1BlockRefByNumber(internalCtx, completed.DerivedFrom.Number+1)
+	nextL1, err := m.backend.L1BlockRefByNumber(internalCtx, completed.Source.Number+1)
 	if err != nil {
 		if errors.Is(err, ethereum.NotFound) {
-			m.log.Debug("Next L1 block is not yet available", "l1Block", completed.DerivedFrom, "err", err)
+			m.log.Debug("Next L1 block is not yet available", "l1Block", completed.Source, "err", err)
 			return
 		}
-		m.log.Error("Failed to retrieve next L1 block for node", "l1Block", completed.DerivedFrom, "err", err)
+		m.log.Error("Failed to retrieve next L1 block for node", "l1Block", completed.Source, "err", err)
 		return
 	}
 
@@ -431,14 +467,14 @@ func (m *ManagedNode) onExhaustL1Event(completed types.DerivedBlockRefPair) {
 // and needs to be replaced with a deposit only block.
 func (m *ManagedNode) onInvalidateLocalSafe(invalidated types.DerivedBlockRefPair) {
 	m.log.Warn("Instructing node to replace invalidated local-safe block",
-		"invalidated", invalidated.Derived, "scope", invalidated.DerivedFrom)
+		"invalidated", invalidated.Derived, "scope", invalidated.Source)
 
 	ctx, cancel := context.WithTimeout(m.ctx, nodeTimeout)
 	defer cancel()
 	// Send instruction to the node to invalidate the block, and build a replacement block.
 	if err := m.Node.InvalidateBlock(ctx, types.BlockSealFromRef(invalidated.Derived)); err != nil {
 		m.log.Warn("Node is unable to invalidate block",
-			"invalidated", invalidated.Derived, "scope", invalidated.DerivedFrom, "err", err)
+			"invalidated", invalidated.Derived, "scope", invalidated.Source, "err", err)
 	}
 }
 

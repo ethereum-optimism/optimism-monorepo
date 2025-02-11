@@ -299,9 +299,9 @@ func TestAttributesHandler(t *testing.T) {
 				l2.ExpectPayloadByNumber(refA1.Number, payloadA1, nil)
 
 				emitter.ExpectOnce(engine.PromotePendingSafeEvent{
-					Ref:         refA1,
-					Concluding:  concluding,
-					DerivedFrom: refB,
+					Ref:        refA1,
+					Concluding: concluding,
+					Source:     refB,
 				})
 				ah.OnEvent(engine.PendingSafeUpdateEvent{
 					PendingSafe: refA0,

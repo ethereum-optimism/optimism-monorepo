@@ -182,8 +182,13 @@ var (
 	L1CacheSize = &cli.UintFlag{
 		Name: "l1.cache-size",
 		Usage: "Cache size for blocks, receipts and transactions. " +
-			"It's optional and a sane default of 3/2 the sequencing window size is used if this field is set to 0.",
+			"If this flag is set to 0, 2/3 of the sequencing window size is used (usually 2400). " +
+			"The default value of 900 (~3h of L1 blocks) is good for (high-throughput) networks that see frequent safe head increments. " +
+			"On (low-throughput) networks with infrequent safe head increments, it is recommended to set this value to 0, " +
+			"or a value that well covers the typical span between safe head increments. " +
+			"Note that higher values will cause significantly increased memory usage.",
 		EnvVars:  prefixEnvVars("L1_CACHE_SIZE"),
+		Value:    900, // ~3h of L1 blocks
 		Category: L1RPCCategory,
 	}
 	L1HTTPPollInterval = &cli.DurationFlag{
@@ -202,6 +207,13 @@ var (
 			out := engine.Geth
 			return &out
 		}(),
+		Category: RollupCategory,
+	}
+	L2EngineRpcTimeout = &cli.DurationFlag{
+		Name:     "l2.engine-rpc-timeout",
+		Usage:    "L2 engine client rpc timeout",
+		EnvVars:  prefixEnvVars("L2_ENGINE_RPC_TIMEOUT"),
+		Value:    time.Second * 10,
 		Category: RollupCategory,
 	}
 	VerifierL1Confs = &cli.Uint64Flag{
@@ -454,6 +466,7 @@ var optionalFlags = []cli.Flag{
 	ConductorRpcTimeoutFlag,
 	SafeDBPath,
 	L2EngineKind,
+	L2EngineRpcTimeout,
 	InteropSupervisor,
 	InteropRPCAddr,
 	InteropRPCPort,

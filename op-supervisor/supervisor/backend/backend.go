@@ -23,6 +23,8 @@ import (
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/l1access"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/processors"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/rewinder"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/status"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/superevents"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/syncnode"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/frontend"
@@ -57,6 +59,9 @@ type SupervisorBackend struct {
 	// syncNodesController controls the derivation or reset of the sync nodes
 	syncNodesController *syncnode.SyncNodesController
 
+	// statusTracker tracks the sync status of the supervisor
+	statusTracker *status.StatusTracker
+
 	// synchronousProcessors disables background-workers,
 	// requiring manual triggers for the backend to process l2 data.
 	synchronousProcessors bool
@@ -66,6 +71,9 @@ type SupervisorBackend struct {
 	chainMetrics locks.RWMap[eth.ChainID, *chainMetrics]
 
 	emitter event.Emitter
+
+	// Rewinder for handling reorgs
+	rewinder *rewinder.Rewinder
 }
 
 var _ event.AttachEmitter = (*SupervisorBackend)(nil)
@@ -100,11 +108,12 @@ func NewSupervisorBackend(ctx context.Context, logger log.Logger,
 	}
 
 	eventSys := event.NewSystem(logger, eventExec)
+	eventSys.AddTracer(event.NewMetricsTracer(m))
 
 	sysCtx, sysCancel := context.WithCancel(ctx)
 
 	// create initial per-chain resources
-	chainsDBs := db.NewChainsDB(logger, depSet)
+	chainsDBs := db.NewChainsDB(logger, depSet, m)
 	eventSys.Register("chainsDBs", chainsDBs, event.DefaultRegisterOpts())
 
 	l1Accessor := l1access.NewL1Accessor(sysCtx, logger, nil)
@@ -123,12 +132,19 @@ func NewSupervisorBackend(ctx context.Context, logger log.Logger,
 		eventSys:              eventSys,
 		sysCancel:             sysCancel,
 		sysContext:            sysCtx,
+
+		rewinder: rewinder.New(logger, chainsDBs, l1Accessor),
 	}
 	eventSys.Register("backend", super, event.DefaultRegisterOpts())
+	eventSys.Register("rewinder", super.rewinder, event.DefaultRegisterOpts())
 
 	// create node controller
 	super.syncNodesController = syncnode.NewSyncNodesController(logger, depSet, eventSys, super)
 	eventSys.Register("sync-controller", super.syncNodesController, event.DefaultRegisterOpts())
+
+	// create status tracker
+	super.statusTracker = status.NewStatusTracker()
+	eventSys.Register("status", super.statusTracker, event.DefaultRegisterOpts())
 
 	// Initialize the resources of the supervisor backend.
 	// Stop the supervisor if any of the resources fails to be initialized.
@@ -240,17 +256,17 @@ func (su *SupervisorBackend) openChainDBs(chainID eth.ChainID) error {
 	}
 	su.chainDBs.AddLogDB(chainID, logDB)
 
-	localDB, err := db.OpenLocalDerivedFromDB(su.logger, chainID, su.dataDir, cm)
+	localDB, err := db.OpenLocalDerivationDB(su.logger, chainID, su.dataDir, cm)
 	if err != nil {
 		return fmt.Errorf("failed to open local derived-from DB of chain %s: %w", chainID, err)
 	}
-	su.chainDBs.AddLocalDerivedFromDB(chainID, localDB)
+	su.chainDBs.AddLocalDerivationDB(chainID, localDB)
 
-	crossDB, err := db.OpenCrossDerivedFromDB(su.logger, chainID, su.dataDir, cm)
+	crossDB, err := db.OpenCrossDerivationDB(su.logger, chainID, su.dataDir, cm)
 	if err != nil {
 		return fmt.Errorf("failed to open cross derived-from DB of chain %s: %w", chainID, err)
 	}
-	su.chainDBs.AddCrossDerivedFromDB(chainID, crossDB)
+	su.chainDBs.AddCrossDerivationDB(chainID, crossDB)
 
 	su.chainDBs.AddCrossUnsafeTracker(chainID)
 
@@ -387,7 +403,13 @@ func (su *SupervisorBackend) CheckMessage(identifier types.Identifier, payloadHa
 	chainID := identifier.ChainID
 	blockNum := identifier.BlockNumber
 	logIdx := identifier.LogIndex
-	_, err := su.chainDBs.Check(chainID, blockNum, identifier.Timestamp, logIdx, logHash)
+	_, err := su.chainDBs.Contains(chainID,
+		types.ContainsQuery{
+			BlockNum:  blockNum,
+			Timestamp: identifier.Timestamp,
+			LogIdx:    logIdx,
+			LogHash:   logHash,
+		})
 	if errors.Is(err, types.ErrFuture) {
 		su.logger.Debug("Future message", "identifier", identifier, "payloadHash", payloadHash, "err", err)
 		return types.LocalUnsafe, nil
@@ -435,8 +457,8 @@ func (su *SupervisorBackend) CrossSafe(ctx context.Context, chainID eth.ChainID)
 		return types.DerivedIDPair{}, err
 	}
 	return types.DerivedIDPair{
-		DerivedFrom: p.DerivedFrom.ID(),
-		Derived:     p.Derived.ID(),
+		Source:  p.Source.ID(),
+		Derived: p.Derived.ID(),
 	}, nil
 }
 
@@ -446,8 +468,8 @@ func (su *SupervisorBackend) LocalSafe(ctx context.Context, chainID eth.ChainID)
 		return types.DerivedIDPair{}, err
 	}
 	return types.DerivedIDPair{
-		DerivedFrom: p.DerivedFrom.ID(),
-		Derived:     p.Derived.ID(),
+		Source:  p.Source.ID(),
+		Derived: p.Derived.ID(),
 	}, nil
 }
 
@@ -501,8 +523,8 @@ func (su *SupervisorBackend) FinalizedL1() eth.BlockRef {
 	return su.chainDBs.FinalizedL1()
 }
 
-func (su *SupervisorBackend) CrossDerivedFrom(ctx context.Context, chainID eth.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error) {
-	v, err := su.chainDBs.CrossDerivedFromBlockRef(chainID, derived)
+func (su *SupervisorBackend) CrossDerivedToSource(ctx context.Context, chainID eth.ChainID, derived eth.BlockID) (source eth.BlockRef, err error) {
+	v, err := su.chainDBs.CrossDerivedToSourceRef(chainID, derived)
 	if err != nil {
 		return eth.BlockRef{}, err
 	}
@@ -521,7 +543,7 @@ func (su *SupervisorBackend) SuperRootAtTimestamp(ctx context.Context, timestamp
 	chainInfos := make([]eth.ChainRootInfo, len(chains))
 	superRootChains := make([]eth.ChainIDAndOutput, len(chains))
 
-	var crossSafeDerivedFrom eth.BlockID
+	var crossSafeSource eth.BlockID
 
 	for i, chainID := range chains {
 		src, ok := su.syncSources.Get(chainID)
@@ -549,12 +571,12 @@ func (su *SupervisorBackend) SuperRootAtTimestamp(ctx context.Context, timestamp
 		if err != nil {
 			return eth.SuperRootResponse{}, err
 		}
-		derivedFrom, err := su.chainDBs.CrossDerivedFrom(chainID, ref.ID())
+		derivedFrom, err := su.chainDBs.CrossDerivedToSource(chainID, ref.ID())
 		if err != nil {
 			return eth.SuperRootResponse{}, err
 		}
-		if crossSafeDerivedFrom.Number == 0 || crossSafeDerivedFrom.Number < derivedFrom.Number {
-			crossSafeDerivedFrom = derivedFrom.ID()
+		if crossSafeSource.Number == 0 || crossSafeSource.Number < derivedFrom.Number {
+			crossSafeSource = derivedFrom.ID()
 		}
 	}
 	superRoot := eth.SuperRoot(&eth.SuperV1{
@@ -562,11 +584,15 @@ func (su *SupervisorBackend) SuperRootAtTimestamp(ctx context.Context, timestamp
 		Chains:    superRootChains,
 	})
 	return eth.SuperRootResponse{
-		CrossSafeDerivedFrom: crossSafeDerivedFrom,
+		CrossSafeDerivedFrom: crossSafeSource,
 		Timestamp:            uint64(timestamp),
 		SuperRoot:            superRoot,
 		Chains:               chainInfos,
 	}, nil
+}
+
+func (su *SupervisorBackend) SyncStatus() (eth.SupervisorSyncStatus, error) {
+	return su.statusTracker.SyncStatus(), nil
 }
 
 // PullLatestL1 makes the supervisor aware of the latest L1 block. Exposed for testing purposes.

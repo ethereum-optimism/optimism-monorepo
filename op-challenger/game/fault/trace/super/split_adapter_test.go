@@ -113,7 +113,7 @@ func setupSplitAdapterTest(t *testing.T, depth types.Depth, prestateTimestamp ui
 	creator := &capturingCreator{}
 	rootProvider := &stubRootProvider{}
 	prestateProvider := NewSuperRootPrestateProvider(rootProvider, prestateTimestamp)
-	traceProvider := NewSuperTraceProvider(testlog.Logger(t, log.LvlInfo), prestateProvider, rootProvider, eth.BlockID{}, depth, prestateTimestamp, poststateTimestamp)
+	traceProvider := NewSuperTraceProvider(testlog.Logger(t, log.LvlInfo), nil, prestateProvider, rootProvider, eth.BlockID{}, depth, prestateTimestamp, poststateTimestamp)
 	adapter := SuperRootSplitAdapter(traceProvider, creator.Create)
 	return creator, rootProvider, adapter
 }

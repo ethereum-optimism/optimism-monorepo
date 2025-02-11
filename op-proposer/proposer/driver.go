@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/big"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/ethereum-optimism/optimism/op-proposer/bindings"
@@ -77,8 +78,7 @@ type L2OutputSubmitter struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
-	mutex   sync.Mutex
-	running bool
+	running atomic.Bool
 
 	l2ooContract L2OOContract
 	l2ooABI      *abi.ABI
@@ -163,13 +163,9 @@ func newDGFSubmitter(ctx context.Context, cancel context.CancelFunc, setup Drive
 func (l *L2OutputSubmitter) StartL2OutputSubmitting() error {
 	l.Log.Info("Starting Proposer")
 
-	l.mutex.Lock()
-	defer l.mutex.Unlock()
-
-	if l.running {
+	if !l.running.CompareAndSwap(false, true) {
 		return errors.New("proposer is already running")
 	}
-	l.running = true
 
 	if l.Cfg.WaitNodeSync {
 		err := l.waitNodeSync()
@@ -196,13 +192,9 @@ func (l *L2OutputSubmitter) StopL2OutputSubmittingIfRunning() error {
 func (l *L2OutputSubmitter) StopL2OutputSubmitting() error {
 	l.Log.Info("Stopping Proposer")
 
-	l.mutex.Lock()
-	defer l.mutex.Unlock()
-
-	if !l.running {
+	if !l.running.CompareAndSwap(true, false) {
 		return ErrProposerNotRunning
 	}
-	l.running = false
 
 	l.cancel()
 	close(l.done)

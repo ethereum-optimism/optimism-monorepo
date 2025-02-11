@@ -19,6 +19,9 @@ contract L2StandardBridgeInterop_Test is CommonTest {
 
     /// @notice Test setup.
     function setUp() public virtual override {
+        // Skip the test until L2StandardBridgeInterop is integrated again
+        vm.skip(true);
+
         super.enableInterop();
         super.setUp();
     }

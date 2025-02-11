@@ -264,3 +264,75 @@ func TestQueue_Send(t *testing.T) {
 		})
 	}
 }
+
+// mockBackendWithConfirmationDelay is a mock backend that delays the confirmation of transactions
+type mockBackendWithConfirmationDelay struct {
+	mockBackend
+	cachedTxs map[common.Hash]*types.Transaction
+}
+
+// newMockBackendWithConfirmationDelay creates a new mock backend with a confirmation delay. It accepts
+// a waitGroup which will be decremented when a transaction is sent.
+func newMockBackendWithConfirmationDelay(g *gasPricer, wg *sync.WaitGroup) *mockBackendWithConfirmationDelay {
+	b := &mockBackendWithConfirmationDelay{}
+	b.cachedTxs = make(map[common.Hash]*types.Transaction)
+	b.minedTxs = make(map[common.Hash]minedTxInfo)
+	b.g = g
+
+	sendTx := func(ctx context.Context, tx *types.Transaction) error {
+		_, exists := b.cachedTxs[tx.Hash()]
+		if !exists {
+			b.cachedTxs[tx.Hash()] = tx
+			wg.Done()
+		}
+		return nil
+	}
+	b.setTxSender(sendTx)
+
+	return b
+}
+
+// MineAll mines all transactions in the cache.
+func (b *mockBackendWithConfirmationDelay) MineAll() {
+	for hash, tx := range b.cachedTxs {
+		b.mine(&hash, tx.GasFeeCap(), nil)
+	}
+}
+
+// Simple test that we can call q.Send() up to the maxPending limit without blocking.
+func TestQueue_Send_MaxPendingMetrics(t *testing.T) {
+	maxPending := 5
+
+	// boilerplate setup
+	wg := sync.WaitGroup{}
+	backend := newMockBackendWithConfirmationDelay(newGasPricer(3), &wg)
+	metrics := metrics.FakeTxMetrics{}
+	conf := configWithNumConfs(1)
+	conf.Backend = backend
+	conf.NetworkTimeout = 1 * time.Second
+	conf.ChainID = big.NewInt(1)
+	mgr, err := NewSimpleTxManagerFromConfig("TEST", testlog.Logger(t, log.LevelDebug), &metrics, conf)
+	require.NoError(t, err)
+
+	// Construct queue with maxPending limit, mocks and fakes
+	q := NewQueue[int](context.Background(), mgr, uint64(maxPending))
+
+	// Send maxPending transactions
+	for nonce := 0; nonce < maxPending; nonce++ {
+		wg.Add(1) // Allows us to wait for this transaction to be cached by the backend
+		q.Send(nonce, TxCandidate{}, make(chan TxReceipt[int], 1))
+	}
+
+	// Check that all of the transactions are pending
+	require.EqualValues(t, maxPending, metrics.PendingTxs())
+
+	// Wait for the backend to cache all of the transactions
+	wg.Wait()
+
+	// Mine the transactions (should cause the pending transactions to drop to 0)
+	backend.MineAll()
+	require.Eventually(t, func() bool {
+		t.Log("Pending txs", metrics.PendingTxs())
+		return metrics.PendingTxs() == 0
+	}, 5*time.Second, 1*time.Second, "PendingTxs metric should drop to 0 after all transactions are mined")
+}

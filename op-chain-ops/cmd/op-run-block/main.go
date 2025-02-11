@@ -150,7 +150,6 @@ func mainAction(c *cli.Context) error {
 		DisableStack:     false,
 		DisableStorage:   false,
 		EnableReturnData: false,
-		Debug:            false,
 		Limit:            0,
 		Overrides:        nil,
 	}, outW)
@@ -323,12 +322,12 @@ func Process(logger log.Logger, config *params.ChainConfig,
 		signer       = types.MakeSigner(config, header.Number, header.Time)
 	)
 	blockContext = core.NewEVMBlockContext(header, chainCtx, nil, config, statedb)
-	vmenv := vm.NewEVM(blockContext, vm.TxContext{}, statedb, config, cfg)
+	vmenv := vm.NewEVM(blockContext, statedb, config, cfg)
 	if beaconRoot := block.ParentBeaconRoot; beaconRoot != nil {
-		core.ProcessBeaconBlockRoot(*beaconRoot, vmenv, statedb)
+		core.ProcessBeaconBlockRoot(*beaconRoot, vmenv)
 	}
 	if config.IsPrague(blockNumber, uint64(block.Time)) {
-		core.ProcessParentBlockHash(block.ParentHash, vmenv, statedb)
+		core.ProcessParentBlockHash(block.ParentHash, vmenv)
 	}
 	logger.Info("Prepared EVM state")
 	_, _ = fmt.Fprintf(outW, "# Prepared state\n")
@@ -343,7 +342,7 @@ func Process(logger log.Logger, config *params.ChainConfig,
 		}
 		statedb.SetTxContext(tx.Hash(), i)
 
-		receipt, err := core.ApplyTransactionWithEVM(msg, config, gp, statedb, blockNumber, blockHash, tx, usedGas, vmenv)
+		receipt, err := core.ApplyTransactionWithEVM(msg, gp, statedb, blockNumber, blockHash, tx, usedGas, vmenv)
 		if err != nil {
 			return nil, fmt.Errorf("could not apply tx %d [%v]: %w", i, tx.Hash().Hex(), err)
 		}

@@ -252,7 +252,8 @@ library MIPS64Instructions {
 
                 // sll
                 if (_fun == 0x00) {
-                    return signExtend((_rt & U32_MASK) << ((_insn >> 6) & 0x1F), 32);
+                    uint32 shiftAmt = (_insn >> 6) & 0x1F;
+                    return signExtend((_rt << shiftAmt) & U32_MASK, 32);
                 }
                 // srl
                 else if (_fun == 0x02) {
@@ -265,7 +266,8 @@ library MIPS64Instructions {
                 }
                 // sllv
                 else if (_fun == 0x04) {
-                    return signExtend((_rt & U32_MASK) << (_rs & 0x1F), 32);
+                    uint64 shiftAmt = _rs & 0x1F;
+                    return signExtend((_rt << shiftAmt) & U32_MASK, 32);
                 }
                 // srlv
                 else if (_fun == 0x6) {
@@ -592,7 +594,7 @@ library MIPS64Instructions {
     /// @notice Extends the value leftwards with its most significant bit (sign extension).
     function signExtend(uint64 _dat, uint64 _idx) internal pure returns (uint64 out_) {
         unchecked {
-            bool isSigned = (_dat >> (_idx - 1)) != 0;
+            bool isSigned = (_dat >> (_idx - 1)) & 1 != 0;
             uint256 signed = ((1 << (arch.WORD_SIZE - _idx)) - 1) << _idx;
             uint256 mask = (1 << _idx) - 1;
             return uint64(_dat & mask | (isSigned ? signed : 0));

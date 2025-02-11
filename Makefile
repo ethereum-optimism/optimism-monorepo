@@ -28,10 +28,6 @@ lint-go-fix: ## Lints Go code with specific linters and fixes reported issues
 	golangci-lint run -E goimports,sqlclosecheck,bodyclose,asciicheck,misspell,errorlint --timeout 5m -e "errors.As" -e "errors.Is" ./... --fix
 .PHONY: lint-go-fix
 
-ci-builder: ## Builds the CI builder Docker image
-	docker build -t ci-builder -f ops/docker/ci-builder/Dockerfile .
-.PHONY: ci-builder
-
 golang-docker: ## Builds Docker images for Go components using buildx
 	# We don't use a buildx builder here, and just load directly into regular docker, for convenience.
 	GIT_COMMIT=$$(git rev-parse HEAD) \

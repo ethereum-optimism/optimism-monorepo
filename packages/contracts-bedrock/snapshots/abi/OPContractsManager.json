@@ -132,7 +132,7 @@
           },
           {
             "internalType": "address",
-            "name": "mips64Impl",
+            "name": "mipsImpl",
             "type": "address"
           }
         ],
@@ -579,7 +579,7 @@
           },
           {
             "internalType": "address",
-            "name": "mips64Impl",
+            "name": "mipsImpl",
             "type": "address"
           }
         ],

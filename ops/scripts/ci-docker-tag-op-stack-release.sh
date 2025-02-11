@@ -6,7 +6,7 @@ DOCKER_REPO=$1
 GIT_TAG=$2
 GIT_SHA=$3
 
-IMAGE_NAME=$(echo "$GIT_TAG" | grep -Eow '^(ci-builder(-rust)?|da-server|proofs-tools|holocene-deployer|cannon|ufm-[a-z0-9\-]*|op-[a-z0-9\-]*)' || true)
+IMAGE_NAME=$(echo "$GIT_TAG" | grep -Eow '^(da-server|proofs-tools|holocene-deployer|cannon|ufm-[a-z0-9\-]*|op-[a-z0-9\-]*)' || true)
 if [ -z "$IMAGE_NAME" ]; then
   echo "image name could not be parsed from git tag '$GIT_TAG'"
   exit 1

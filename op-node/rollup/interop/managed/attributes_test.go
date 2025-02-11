@@ -45,6 +45,7 @@ func TestAttributesToReplaceInvalidBlock(t *testing.T) {
 	denominator := uint64(100)
 	elasticity := uint64(42)
 	extraData := eip1559.EncodeHoloceneExtraData(denominator, elasticity)
+	withdrawalsRoot := testutils.RandomHash(rng)
 
 	beaconRoot := testutils.RandomHash(rng)
 	invalidatedBlock := &eth.ExecutionPayloadEnvelope{
@@ -67,9 +68,10 @@ func TestAttributesToReplaceInvalidBlock(t *testing.T) {
 				opaqueDepositTx,
 				opaqueUserTx,
 			},
-			Withdrawals:   &types.Withdrawals{},
-			BlobGasUsed:   new(eth.Uint64Quantity),
-			ExcessBlobGas: new(eth.Uint64Quantity),
+			Withdrawals:     &types.Withdrawals{},
+			BlobGasUsed:     new(eth.Uint64Quantity),
+			ExcessBlobGas:   new(eth.Uint64Quantity),
+			WithdrawalsRoot: &withdrawalsRoot,
 		},
 	}
 	attrs := AttributesToReplaceInvalidBlock(invalidatedBlock)
@@ -90,8 +92,7 @@ func TestAttributesToReplaceInvalidBlock(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, invalidatedBlock.ExecutionPayload.BlockHash, result.BlockHash)
 	require.Equal(t, invalidatedBlock.ExecutionPayload.StateRoot, result.StateRoot)
-	// Once withdrawals-root feature lands and it is part of the execution-payload type, assert here
-	//require.Equal(t, nil, result.MessagePasserStorageRoot)
+	require.Equal(t, withdrawalsRoot[:], result.MessagePasserStorageRoot[:])
 }
 
 // TestInvalidatedBlockTx tests we can encode/decode the system tx that represents the invalidated block

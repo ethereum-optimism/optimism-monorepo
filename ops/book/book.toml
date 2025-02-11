@@ -1,0 +1,11 @@
+[book]
+authors = ["Optimism Contributors"]
+language = "en"
+multilingual = false
+src = "src"
+title = "Optimism Monorepo Ops"
+
+[output.html]
+site-url = "/monorepo-ops/"
+git-repository-url = "https://github.com/ethereum-optimism/optimism/tree/develop/ops/book"
+edit-url-template = "https://github.com/ethereum-optimism/optimism/tree/develop/ops/book/{path}"

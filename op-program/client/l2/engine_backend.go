@@ -34,7 +34,9 @@ type OracleBackedL2Chain struct {
 
 	// Inserted blocks
 	blocks map[common.Hash]*types.Block
-	db     ethdb.KeyValueStore
+	// Receipts of inserted blocks
+	receiptsByBlockHash map[common.Hash]types.Receipts
+	db                  ethdb.KeyValueStore
 }
 
 // Must implement CachingEngineBackend, not just EngineBackend to ensure that blocks are stored when they are created
@@ -76,11 +78,12 @@ func NewOracleBackedL2ChainFromHead(
 		engine:   beacon.New(nil),
 
 		// Treat the agreed starting head as finalized - nothing before it can be disputed
-		safe:       head.Header(),
-		finalized:  head.Header(),
-		oracleHead: head.Header(),
-		blocks:     make(map[common.Hash]*types.Block),
-		db:         NewOracleBackedDB(db, oracle, chainID),
+		safe:                head.Header(),
+		finalized:           head.Header(),
+		oracleHead:          head.Header(),
+		blocks:              make(map[common.Hash]*types.Block),
+		receiptsByBlockHash: make(map[common.Hash]types.Receipts),
+		db:                  NewOracleBackedDB(db, oracle, chainID),
 		vmCfg: vm.Config{
 			PrecompileOverrides: engineapi.CreatePrecompileOverrides(precompileOracle),
 		},
@@ -164,6 +167,15 @@ func (o *OracleBackedL2Chain) GetCanonicalHash(n uint64) common.Hash {
 	return header.Hash()
 }
 
+func (o *OracleBackedL2Chain) GetReceiptsByBlockHash(hash common.Hash) types.Receipts {
+	receipts, ok := o.receiptsByBlockHash[hash]
+	if ok {
+		return receipts
+	}
+	_, receipts = o.oracle.ReceiptsByBlockHash(hash, eth.ChainIDFromBig(o.chainCfg.ChainID))
+	return receipts
+}
+
 func (o *OracleBackedL2Chain) GetVMConfig() *vm.Config {
 	return &o.vmCfg
 }
@@ -207,7 +219,7 @@ func (o *OracleBackedL2Chain) InsertBlockWithoutSetHead(block *types.Block, make
 }
 
 func (o *OracleBackedL2Chain) AssembleAndInsertBlockWithoutSetHead(processor *engineapi.BlockProcessor) (*types.Block, error) {
-	block, err := processor.Assemble()
+	block, receipts, err := processor.Assemble()
 	if err != nil {
 		return nil, fmt.Errorf("invalid block: %w", err)
 	}
@@ -216,6 +228,7 @@ func (o *OracleBackedL2Chain) AssembleAndInsertBlockWithoutSetHead(processor *en
 		return nil, fmt.Errorf("commit block: %w", err)
 	}
 	o.blocks[block.Hash()] = block
+	o.receiptsByBlockHash[block.Hash()] = receipts
 	return block, nil
 }
 

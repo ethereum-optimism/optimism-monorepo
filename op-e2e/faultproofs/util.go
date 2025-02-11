@@ -44,6 +44,22 @@ func WithBlobBatches() faultDisputeConfigOpts {
 	}
 }
 
+func WithLatestFork() faultDisputeConfigOpts {
+	return func(fdc *faultDisputeConfig) {
+		fdc.cfgModifiers = append(fdc.cfgModifiers, func(cfg *e2esys.SystemConfig) {
+			genesisActivation := hexutil.Uint64(0)
+			cfg.DeployConfig.L1CancunTimeOffset = &genesisActivation
+			cfg.DeployConfig.L1PragueTimeOffset = &genesisActivation
+			cfg.DeployConfig.L2GenesisDeltaTimeOffset = &genesisActivation
+			cfg.DeployConfig.L2GenesisEcotoneTimeOffset = &genesisActivation
+			cfg.DeployConfig.L2GenesisFjordTimeOffset = &genesisActivation
+			cfg.DeployConfig.L2GenesisGraniteTimeOffset = &genesisActivation
+			cfg.DeployConfig.L2GenesisHoloceneTimeOffset = &genesisActivation
+			cfg.DeployConfig.L2GenesisIsthmusTimeOffset = &genesisActivation
+		})
+	}
+}
+
 func WithEcotone() faultDisputeConfigOpts {
 	return func(fdc *faultDisputeConfig) {
 		fdc.cfgModifiers = append(fdc.cfgModifiers, func(cfg *e2esys.SystemConfig) {

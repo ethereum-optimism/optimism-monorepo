@@ -47,6 +47,10 @@ type L2EndpointConfig struct {
 	// JWT secrets for L2 Engine API authentication during HTTP or initial Websocket communication.
 	// Any value for an IPC connection.
 	L2EngineJWTSecret [32]byte
+
+	// L2EngineCallTimeout is the default timeout duration for L2 calls.
+	// Defines the maximum time a call to the L2 engine is allowed to take before timing out.
+	L2EngineCallTimeout time.Duration
 }
 
 var _ L2EndpointSetup = (*L2EndpointConfig)(nil)
@@ -67,6 +71,7 @@ func (cfg *L2EndpointConfig) Setup(ctx context.Context, log log.Logger, rollupCf
 	opts := []client.RPCOption{
 		client.WithGethRPCOptions(auth),
 		client.WithDialAttempts(10),
+		client.WithCallTimeout(cfg.L2EngineCallTimeout),
 	}
 	l2Node, err := client.NewRPC(ctx, log, cfg.L2EngineAddr, opts...)
 	if err != nil {

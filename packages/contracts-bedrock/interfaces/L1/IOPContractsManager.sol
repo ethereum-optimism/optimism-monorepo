@@ -105,7 +105,7 @@ interface IOPContractsManager {
         address disputeGameFactoryImpl;
         address anchorStateRegistryImpl;
         address delayedWETHImpl;
-        address mips64Impl;
+        address mipsImpl;
     }
 
     /// @notice The input required to identify a chain for upgrading.

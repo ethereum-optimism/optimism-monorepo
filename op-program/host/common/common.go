@@ -28,25 +28,38 @@ type programCfg struct {
 	prefetcher     PrefetcherCreator
 	skipValidation bool
 	db             l2.KeyValueStore
+	storeBlockData bool
 }
 
 type ProgramOpt func(c *programCfg)
 
+// WithPrefetcher configures the prefetcher used by the preimage server.
 func WithPrefetcher(creator PrefetcherCreator) ProgramOpt {
 	return func(c *programCfg) {
 		c.prefetcher = creator
 	}
 }
 
+// WithSkipValidation controls whether the program will skip validation of the derived block.
 func WithSkipValidation(skip bool) ProgramOpt {
 	return func(c *programCfg) {
 		c.skipValidation = skip
 	}
 }
 
+// WithDB sets the backing state database used by the program.
+// If not set, the program will use an in-memory database.
 func WithDB(db l2.KeyValueStore) ProgramOpt {
 	return func(c *programCfg) {
 		c.db = db
+	}
+}
+
+// WithStoreBlockData controls whether block data, including intermediate trie nodes from transactions and receipts
+// of the derived block should be stored in the database.
+func WithStoreBlockData(store bool) ProgramOpt {
+	return func(c *programCfg) {
+		c.storeBlockData = store
 	}
 }
 
@@ -127,6 +140,7 @@ func FaultProofProgram(ctx context.Context, logger log.Logger, cfg *config.Confi
 		}
 		clientCfg.InteropEnabled = cfg.InteropEnabled
 		clientCfg.DB = programConfig.db
+		clientCfg.StoreBlockData = programConfig.storeBlockData
 		return cl.RunProgram(logger, pClientRW, hClientRW, clientCfg)
 	}
 }

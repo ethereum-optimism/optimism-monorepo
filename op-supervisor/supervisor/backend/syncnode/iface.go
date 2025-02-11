@@ -2,6 +2,7 @@ package syncnode
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
@@ -45,6 +46,8 @@ type SyncControl interface {
 	Reset(ctx context.Context, unsafe, safe, finalized eth.BlockID) error
 	ProvideL1(ctx context.Context, nextL1 eth.BlockRef) error
 	AnchorPoint(ctx context.Context) (types.DerivedBlockRefPair, error)
+
+	fmt.Stringer
 }
 
 type SyncNode interface {

@@ -41,17 +41,25 @@ func MustNewLocatorFromTag(tag string) *Locator {
 	return loc
 }
 
-func MustNewLocatorFromURL(u string) *Locator {
+func NewLocatorFromURL(u string) (*Locator, error) {
 	if strings.HasPrefix(u, "tag://") {
-		return MustNewLocatorFromTag(strings.TrimPrefix(u, "tag://"))
+		return NewLocatorFromTag(strings.TrimPrefix(u, "tag://"))
 	}
 	parsedURL, err := url.Parse(u)
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("failed to parse URL: %w", err)
 	}
 	return &Locator{
 		URL: parsedURL,
+	}, nil
+}
+
+func MustNewLocatorFromURL(u string) *Locator {
+	loc, err := NewLocatorFromURL(u)
+	if err != nil {
+		panic(err)
 	}
+	return loc
 }
 
 func MustNewFileLocator(path string) *Locator {

@@ -12,7 +12,6 @@ import (
 
 	libp2p "github.com/libp2p/go-libp2p"
 	mplex "github.com/libp2p/go-libp2p-mplex"
-	lconf "github.com/libp2p/go-libp2p/config"
 	"github.com/libp2p/go-libp2p/core/connmgr"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/metrics"
@@ -215,11 +214,6 @@ func (conf *Config) Host(log log.Logger, reporter metrics.Reporter, metrics Host
 		tcp.WithConnectionTimeout(time.Minute*60)) // break unused connections
 	// TODO: technically we can also run the node on websocket and QUIC transports. Maybe in the future?
 
-	var nat lconf.NATManagerC // disabled if nil
-	if conf.NAT {
-		nat = basichost.NewNATManager
-	}
-
 	opts := []libp2p.Option{
 		libp2p.Identity(conf.Priv),
 		// Explicitly set the user-agent, so we can differentiate from other Go libp2p users.
@@ -233,15 +227,18 @@ func (conf *Config) Host(log log.Logger, reporter metrics.Reporter, metrics Host
 		libp2p.ConnectionGater(connGtr),
 		libp2p.ConnectionManager(connMngr),
 		//libp2p.ResourceManager(nil), // TODO use resource manager interface to manage resources per peer better.
-		libp2p.NATManager(nat),
 		libp2p.Peerstore(ps),
 		libp2p.BandwidthReporter(reporter), // may be nil if disabled
 		libp2p.MultiaddrResolver(madns.DefaultResolver),
 		// Ping is a small built-in libp2p protocol that helps us check/debug latency between peers.
 		libp2p.Ping(true),
+	}
+	if conf.NAT {
 		// Help peers with their NAT reachability status, but throttle to avoid too much work.
-		libp2p.EnableNATService(),
-		libp2p.AutoNATServiceRateLimit(10, 5, time.Second*60),
+		opts = append(opts,
+			libp2p.NATManager(basichost.NewNATManager),
+			libp2p.EnableNATService(),
+			libp2p.AutoNATServiceRateLimit(10, 5, time.Second*60))
 	}
 	opts = append(opts, conf.HostMux...)
 	if conf.NoTransportSecurity {

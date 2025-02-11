@@ -19,6 +19,9 @@ const (
 
 	// Return address register
 	RegRA = 31
+
+	// Masks
+	U32Mask = 0xFFffFFff
 )
 
 func GetInstructionDetails(pc Word, memory *memory.Memory) (insn, opcode, fun uint32) {
@@ -205,19 +208,21 @@ func ExecuteMipsInstruction(insn uint32, opcode uint32, fun uint32, rs, rt, mem 
 
 		switch fun {
 		case 0x00: // sll
-			return SignExtend((rt&0xFFFFFFFF)<<((insn>>6)&0x1F), 32)
+			shiftAmt := (insn >> 6) & 0x1F
+			return SignExtend((rt<<shiftAmt)&U32Mask, 32)
 		case 0x02: // srl
-			return SignExtend((rt&0xFFFFFFFF)>>((insn>>6)&0x1F), 32)
+			return SignExtend((rt&U32Mask)>>((insn>>6)&0x1F), 32)
 		case 0x03: // sra
 			shamt := Word((insn >> 6) & 0x1F)
-			return SignExtend((rt&0xFFFFFFFF)>>shamt, 32-shamt)
+			return SignExtend((rt&U32Mask)>>shamt, 32-shamt)
 		case 0x04: // sllv
-			return SignExtend((rt&0xFFFFFFFF)<<(rs&0x1F), 32)
+			shiftAmt := rs & 0x1F
+			return SignExtend((rt<<shiftAmt)&U32Mask, 32)
 		case 0x06: // srlv
-			return SignExtend((rt&0xFFFFFFFF)>>(rs&0x1F), 32)
+			return SignExtend((rt&U32Mask)>>(rs&0x1F), 32)
 		case 0x07: // srav
 			shamt := Word(rs & 0x1F)
-			return SignExtend((rt&0xFFFFFFFF)>>shamt, 32-shamt)
+			return SignExtend((rt&U32Mask)>>shamt, 32-shamt)
 		// functs in range [0x8, 0x1b] for 32-bit and [0x8, 0x1f] for 64-bit are handled specially by other functions
 		case 0x08: // jr
 			return rs
@@ -355,14 +360,14 @@ func ExecuteMipsInstruction(insn uint32, opcode uint32, fun uint32, rs, rt, mem 
 		case 0x22: // lwl
 			if arch.IsMips32 {
 				val := mem << ((rs & 3) * 8)
-				mask := Word(uint32(0xFFFFFFFF) << ((rs & 3) * 8))
-				return SignExtend(((rt & ^mask)|val)&0xFFFFFFFF, 32)
+				mask := Word(uint32(U32Mask) << ((rs & 3) * 8))
+				return SignExtend(((rt & ^mask)|val)&U32Mask, 32)
 			} else {
 				// similar to the above mips32 implementation but loads are constrained to the nearest 4-byte memory word
 				w := uint32(SelectSubWord(rs, mem, 4, false))
 				val := w << ((rs & 3) * 8)
-				mask := Word(uint32(0xFFFFFFFF) << ((rs & 3) * 8))
-				return SignExtend(((rt & ^mask)|Word(val))&0xFFFFFFFF, 32)
+				mask := Word(uint32(U32Mask) << ((rs & 3) * 8))
+				return SignExtend(((rt & ^mask)|Word(val))&U32Mask, 32)
 			}
 		case 0x23: // lw
 			return SelectSubWord(rs, mem, 4, true)
@@ -373,13 +378,13 @@ func ExecuteMipsInstruction(insn uint32, opcode uint32, fun uint32, rs, rt, mem 
 		case 0x26: //  lwr
 			if arch.IsMips32 {
 				val := mem >> (24 - (rs&3)*8)
-				mask := Word(uint32(0xFFFFFFFF) >> (24 - (rs&3)*8))
-				return SignExtend(((rt & ^mask)|val)&0xFFFFFFFF, 32)
+				mask := Word(uint32(U32Mask) >> (24 - (rs&3)*8))
+				return SignExtend(((rt & ^mask)|val)&U32Mask, 32)
 			} else {
 				// similar to the above mips32 implementation but constrained to the nearest 4-byte memory word
 				w := uint32(SelectSubWord(rs, mem, 4, false))
 				val := w >> (24 - (rs&3)*8)
-				mask := uint32(0xFFFFFFFF) >> (24 - (rs&3)*8)
+				mask := uint32(U32Mask) >> (24 - (rs&3)*8)
 				lwrResult := (uint32(rt) & ^mask) | val
 				if rs&3 == 3 { // loaded bit 31
 					return SignExtend(Word(lwrResult), 32)
@@ -396,12 +401,12 @@ func ExecuteMipsInstruction(insn uint32, opcode uint32, fun uint32, rs, rt, mem 
 		case 0x2a: //  swl
 			if arch.IsMips32 {
 				val := rt >> ((rs & 3) * 8)
-				mask := uint32(0xFFFFFFFF) >> ((rs & 3) * 8)
+				mask := uint32(U32Mask) >> ((rs & 3) * 8)
 				return (mem & Word(^mask)) | val
 			} else {
 				sr := (rs & 3) << 3
-				val := ((rt & 0xFFFFFFFF) >> sr) << (32 - ((rs & 0x4) << 3))
-				mask := (uint64(0xFFFFFFFF) >> sr) << (32 - ((rs & 0x4) << 3))
+				val := ((rt & U32Mask) >> sr) << (32 - ((rs & 0x4) << 3))
+				mask := (uint64(U32Mask) >> sr) << (32 - ((rs & 0x4) << 3))
 				return (mem & Word(^mask)) | val
 			}
 		case 0x2b: //  sw
@@ -409,13 +414,13 @@ func ExecuteMipsInstruction(insn uint32, opcode uint32, fun uint32, rs, rt, mem 
 		case 0x2e: //  swr
 			if arch.IsMips32 {
 				val := rt << (24 - (rs&3)*8)
-				mask := uint32(0xFFFFFFFF) << (24 - (rs&3)*8)
+				mask := uint32(U32Mask) << (24 - (rs&3)*8)
 				return (mem & Word(^mask)) | val
 			} else {
 				// similar to the above mips32 implementation but constrained to the nearest 4-byte memory word
 				w := uint32(SelectSubWord(rs, mem, 4, false))
 				val := rt << (24 - (rs&3)*8)
-				mask := uint32(0xFFFFFFFF) << (24 - (rs&3)*8)
+				mask := uint32(U32Mask) << (24 - (rs&3)*8)
 				swrResult := (w & ^mask) | uint32(val)
 				return UpdateSubWord(rs, mem, 4, Word(swrResult))
 			}
@@ -435,7 +440,7 @@ func ExecuteMipsInstruction(insn uint32, opcode uint32, fun uint32, rs, rt, mem 
 			return val | (rt & mask)
 		case 0x27: // lwu
 			assertMips64(insn)
-			return (mem >> (32 - ((rs & 0x4) << 3))) & 0xFFFFFFFF
+			return (mem >> (32 - ((rs & 0x4) << 3))) & U32Mask
 		case 0x2C: // sdl
 			assertMips64(insn)
 			sr := (rs & 0x7) << 3
@@ -462,7 +467,7 @@ func ExecuteMipsInstruction(insn uint32, opcode uint32, fun uint32, rs, rt, mem 
 }
 
 func SignExtend(dat Word, idx Word) Word {
-	isSigned := (dat >> (idx - 1)) != 0
+	isSigned := (dat>>(idx-1))&1 != 0
 	signed := ((Word(1) << (arch.WordSize - idx)) - 1) << idx
 	mask := (Word(1) << idx) - 1
 	if isSigned {

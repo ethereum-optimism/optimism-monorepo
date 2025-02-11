@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/types"
 	interopTypes "github.com/ethereum-optimism/optimism/op-program/client/interop/types"
@@ -32,11 +33,13 @@ type PreimagePrestateProvider interface {
 }
 type RootProvider interface {
 	SuperRootAtTimestamp(ctx context.Context, timestamp hexutil.Uint64) (eth.SuperRootResponse, error)
+	AllSafeDerivedAt(ctx context.Context, derivedFrom eth.BlockID) (map[eth.ChainID]eth.BlockID, error)
 }
 
 type SuperTraceProvider struct {
 	PreimagePrestateProvider
 	logger             log.Logger
+	rollupCfgs         *RollupConfigs
 	rootProvider       RootProvider
 	prestateTimestamp  uint64
 	poststateTimestamp uint64
@@ -44,10 +47,11 @@ type SuperTraceProvider struct {
 	gameDepth          types.Depth
 }
 
-func NewSuperTraceProvider(logger log.Logger, prestateProvider PreimagePrestateProvider, rootProvider RootProvider, l1Head eth.BlockID, gameDepth types.Depth, prestateTimestamp, poststateTimestamp uint64) *SuperTraceProvider {
+func NewSuperTraceProvider(logger log.Logger, rollupCfgs *RollupConfigs, prestateProvider PreimagePrestateProvider, rootProvider RootProvider, l1Head eth.BlockID, gameDepth types.Depth, prestateTimestamp, poststateTimestamp uint64) *SuperTraceProvider {
 	return &SuperTraceProvider{
-		PreimagePrestateProvider: prestateProvider,
 		logger:                   logger,
+		rollupCfgs:               rollupCfgs,
+		PreimagePrestateProvider: prestateProvider,
 		rootProvider:             rootProvider,
 		prestateTimestamp:        prestateTimestamp,
 		poststateTimestamp:       poststateTimestamp,
@@ -64,6 +68,11 @@ func (s *SuperTraceProvider) Get(ctx context.Context, pos types.Position) (commo
 	return crypto.Keccak256Hash(preimage), nil
 }
 
+func isNotFound(err error) bool {
+	// The RPC server wil convert the returned error to a string so we can't match on an error type here
+	return err != nil && strings.Contains(err.Error(), "not found")
+}
+
 func (s *SuperTraceProvider) GetPreimageBytes(ctx context.Context, pos types.Position) ([]byte, error) {
 	// Find the timestamp and step at position
 	timestamp, step, err := s.ComputeStep(pos)
@@ -73,20 +82,46 @@ func (s *SuperTraceProvider) GetPreimageBytes(ctx context.Context, pos types.Pos
 	s.logger.Info("Getting claim", "pos", pos.ToGIndex(), "timestamp", timestamp, "step", step)
 	if step == 0 {
 		root, err := s.rootProvider.SuperRootAtTimestamp(ctx, hexutil.Uint64(timestamp))
-		if err != nil {
+		if isNotFound(err) {
+			// No block at this timestamp so it must be invalid
+			return InvalidTransition, nil
+		} else if err != nil {
 			return nil, fmt.Errorf("failed to retrieve super root at timestamp %v: %w", timestamp, err)
+		}
+		if root.CrossSafeDerivedFrom.Number > s.l1Head.Number {
+			return InvalidTransition, nil
 		}
 		return responseToSuper(root).Marshal(), nil
 	}
 	// Fetch the super root at the next timestamp since we are part way through the transition to it
 	prevRoot, err := s.rootProvider.SuperRootAtTimestamp(ctx, hexutil.Uint64(timestamp))
-	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve super root at timestamp %v: %w", timestamp, err)
+	if isNotFound(err) {
+		// No block at this timestamp so it must be invalid
+		return InvalidTransition, nil
+	} else if err != nil {
+		return nil, fmt.Errorf("failed to retrieve previous super root at timestamp %v: %w", timestamp, err)
+	}
+	if prevRoot.CrossSafeDerivedFrom.Number > s.l1Head.Number {
+		// The previous root was not safe at the game L1 head so we must have already transitioned to the invalid hash
+		// prior to this step and it then repeats forever.
+		return InvalidTransition, nil
 	}
 	nextTimestamp := timestamp + 1
 	nextRoot, err := s.rootProvider.SuperRootAtTimestamp(ctx, hexutil.Uint64(nextTimestamp))
-	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve super root at timestamp %v: %w", nextTimestamp, err)
+	if isNotFound(err) {
+		// No block at this timestamp so it must be invalid
+		return InvalidTransition, nil
+	} else if err != nil {
+		return nil, fmt.Errorf("failed to retrieve next super root at timestamp %v: %w", nextTimestamp, err)
+	}
+
+	var safeHeads map[eth.ChainID]eth.BlockID
+	// If the next root is not cross safe, fetch the individual chain safe heads at L1Head to find which chains were unsafe
+	if nextRoot.CrossSafeDerivedFrom.Number > s.l1Head.Number {
+		safeHeads, err = s.rootProvider.AllSafeDerivedAt(ctx, s.l1Head)
+		if err != nil {
+			return nil, fmt.Errorf("failed to retrieve safe derived blocks at L1 head %v: %w", s.l1Head, err)
+		}
 	}
 	superV1 := responseToSuper(prevRoot)
 	expectedState := interopTypes.TransitionState{
@@ -95,7 +130,24 @@ func (s *SuperTraceProvider) GetPreimageBytes(ctx context.Context, pos types.Pos
 		Step:            step,
 	}
 	for i := uint64(0); i < min(step, uint64(len(nextRoot.Chains))); i++ {
-		rawOutput, err := eth.UnmarshalOutput(nextRoot.Chains[i].Pending)
+		chainInfo := nextRoot.Chains[i]
+		if len(safeHeads) > 0 {
+			// Need to check if this chain's safe head included the block we need
+			rollupCfg, ok := s.rollupCfgs.Get(chainInfo.ChainID)
+			if !ok {
+				return nil, fmt.Errorf("rollup config unavailable for chain %d: %w", chainInfo.ChainID, err)
+			}
+			requiredBlockNum, err := rollupCfg.TargetBlockNumber(nextTimestamp)
+			if err != nil {
+				return nil, fmt.Errorf("no target block number for chain %v at %v: %w", chainInfo.ChainID, nextTimestamp, err)
+			}
+			if safeHead, ok := safeHeads[chainInfo.ChainID]; !ok {
+				return nil, fmt.Errorf("no safe head known for chain %v at %v: %w", chainInfo.ChainID, nextTimestamp, err)
+			} else if safeHead.Number < requiredBlockNum {
+				return InvalidTransition, nil
+			}
+		}
+		rawOutput, err := eth.UnmarshalOutput(chainInfo.Pending)
 		if err != nil {
 			return nil, fmt.Errorf("failed to unmarshal pending output %v at timestamp %v: %w", i, nextTimestamp, err)
 		}

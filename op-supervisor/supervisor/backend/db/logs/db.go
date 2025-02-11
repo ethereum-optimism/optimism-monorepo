@@ -282,13 +282,20 @@ func (db *DB) Get(blockNum uint64, logIdx uint32) (common.Hash, error) {
 // This can be used to check the validity of cross-chain interop events.
 // The block-seal of the blockNum block, that the log was included in, is returned.
 // This seal may be fully zeroed, without error, if the block isn't fully known yet.
-func (db *DB) Contains(blockNum uint64, logIdx uint32, logHash common.Hash) (types.BlockSeal, error) {
+func (db *DB) Contains(query types.ContainsQuery) (types.BlockSeal, error) {
+	blockNum, logIdx, logHash, timestamp := query.BlockNum, query.LogIdx, query.LogHash, query.Timestamp
 	db.rwLock.RLock()
 	defer db.rwLock.RUnlock()
 	db.log.Trace("Checking for log", "blockNum", blockNum, "logIdx", logIdx, "hash", logHash)
 
 	// Hot-path: check if we have the block
 	if db.lastEntryContext.hasCompleteBlock() && db.lastEntryContext.blockNum < blockNum {
+		// it is possible that while the included Block Number is beyond the end of the database,
+		// the included timestamp is within the database. In this case we know the request is not just a ErrFuture,
+		// but a ErrConflict, as we know the request will not be included in the future.
+		if db.lastEntryContext.timestamp > timestamp {
+			return types.BlockSeal{}, types.ErrConflict
+		}
 		return types.BlockSeal{}, types.ErrFuture
 	}
 
@@ -318,16 +325,22 @@ func (db *DB) Contains(blockNum uint64, logIdx uint32, logHash common.Hash) (typ
 	if err == nil {
 		panic("expected iterator to stop with error")
 	}
+	// ErrStop indicates we've found the block, and the iterator is positioned at it.
 	if errors.Is(err, types.ErrStop) {
 		h, n, ok := iter.SealedBlock()
 		if !ok {
 			return types.BlockSeal{}, fmt.Errorf("iterator stopped but no sealed block found")
 		}
-		timestamp, _ := iter.SealedTimestamp()
+		t, _ := iter.SealedTimestamp()
+		// check the timestamp invariant on the result
+		if t != timestamp {
+			return types.BlockSeal{}, fmt.Errorf("timestamp mismatch: expected %d, got %d %w", timestamp, t, types.ErrConflict)
+		}
+		// construct a block seal with the found data now that we know it's correct
 		return types.BlockSeal{
 			Hash:      h,
 			Number:    n,
-			Timestamp: timestamp,
+			Timestamp: t,
 		}, nil
 	}
 	return types.BlockSeal{}, err

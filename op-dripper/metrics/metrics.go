@@ -99,7 +99,6 @@ func (m *Metrics) RecordInfo(version string) {
 }
 
 func (m *Metrics) RecordUp() {
-	prometheus.MustRegister()
 	m.up.Set(1)
 }
 

@@ -44,6 +44,7 @@ func TestDynamicEthChannelConfig_ChannelConfig(t *testing.T) {
 		baseFee      int64
 		blobBaseFee  int64
 		wantCalldata bool
+		isL1Pectra   bool
 	}{
 		{
 			name:        "much-cheaper-blobs",
@@ -71,6 +72,36 @@ func TestDynamicEthChannelConfig_ChannelConfig(t *testing.T) {
 			blobBaseFee:  1e9,
 			wantCalldata: true,
 		},
+		{
+			name:        "much-cheaper-blobs-l1-pectra",
+			tipCap:      1e3,
+			baseFee:     1e6,
+			blobBaseFee: 1,
+			isL1Pectra:  true,
+		},
+		{
+			name:        "close-cheaper-blobs-l1-pectra",
+			tipCap:      1e3,
+			baseFee:     1e6,
+			blobBaseFee: 398e5, // this value just under the equilibrium point for 3 blobs
+			isL1Pectra:  true,
+		},
+		{
+			name:         "close-cheaper-calldata-l1-pectra",
+			tipCap:       1e3,
+			baseFee:      1e6,
+			blobBaseFee:  399e5, // this value just over the equilibrium point for 3 blobs
+			wantCalldata: true,
+			isL1Pectra:   true,
+		},
+		{
+			name:         "much-cheaper-calldata-l1-pectra",
+			tipCap:       1e3,
+			baseFee:      1e6,
+			blobBaseFee:  1e9,
+			wantCalldata: true,
+			isL1Pectra:   true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -81,7 +112,7 @@ func TestDynamicEthChannelConfig_ChannelConfig(t *testing.T) {
 				blobBaseFee: tt.blobBaseFee,
 			}
 			dec := NewDynamicEthChannelConfig(lgr, 1*time.Second, gp, blobCfg, calldataCfg)
-			cc := dec.ChannelConfig()
+			cc := dec.ChannelConfig(tt.isL1Pectra)
 			if tt.wantCalldata {
 				require.Equal(t, cc, calldataCfg)
 				require.NotNil(t, ch.FindLog(testlog.NewMessageContainsFilter("calldata")))
@@ -103,24 +134,42 @@ func TestDynamicEthChannelConfig_ChannelConfig(t *testing.T) {
 			err:         errors.New("gp-error"),
 		}
 		dec := NewDynamicEthChannelConfig(lgr, 1*time.Second, gp, blobCfg, calldataCfg)
-		require.Equal(t, dec.ChannelConfig(), blobCfg)
+		require.Equal(t, dec.ChannelConfig(false), blobCfg)
 		require.NotNil(t, ch.FindLog(
 			testlog.NewLevelFilter(slog.LevelWarn),
 			testlog.NewMessageContainsFilter("returning last config"),
 		))
 
 		gp.err = nil
-		require.Equal(t, dec.ChannelConfig(), calldataCfg)
+		require.Equal(t, dec.ChannelConfig(false), calldataCfg)
 		require.NotNil(t, ch.FindLog(
 			testlog.NewLevelFilter(slog.LevelInfo),
 			testlog.NewMessageContainsFilter("calldata"),
 		))
 
 		gp.err = errors.New("gp-error-2")
-		require.Equal(t, dec.ChannelConfig(), calldataCfg)
+		require.Equal(t, dec.ChannelConfig(false), calldataCfg)
 		require.NotNil(t, ch.FindLog(
 			testlog.NewLevelFilter(slog.LevelWarn),
 			testlog.NewMessageContainsFilter("returning last config"),
 		))
 	})
+}
+
+func TestComputeSingleCalldataTxCost(t *testing.T) {
+	// 30KB of data
+	got := computeSingleCalldataTxCost(120_000, big.NewInt(1), big.NewInt(1), false)
+	require.Equal(t, big.NewInt(1_002_000), got) // (21_000 + 4*120_000) * (1+1)
+
+	got = computeSingleCalldataTxCost(120_000, big.NewInt(1), big.NewInt(1), true)
+	require.Equal(t, big.NewInt(2_442_000), got) // (21_000 + 10*120_000) * (1+1)
+}
+
+func TestComputeSingleBlobTxCost(t *testing.T) {
+	// This tx submits 655KB of data (21x the calldata example above)
+	// Setting blobBaseFee to 16x (baseFee + tipCap) gives a cost which is ~21x higher
+	// than the calldata example, showing the rough equilibrium point
+	// of the two DA markets.
+	got := computeSingleBlobTxCost(5, big.NewInt(1), big.NewInt(1), big.NewInt(32))
+	require.Equal(t, big.NewInt(21_013_520), got) // 21_000 * (1+1) + 131_072*5*32
 }

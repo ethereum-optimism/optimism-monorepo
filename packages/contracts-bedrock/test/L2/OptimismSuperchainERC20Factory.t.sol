@@ -22,6 +22,9 @@ contract OptimismSuperchainERC20FactoryTest is CommonTest {
 
     /// @notice Sets up the test suite.
     function setUp() public override {
+        // Skip the test until OptimismSuperchainERC20Factory is integrated again
+        vm.skip(true);
+
         super.enableInterop();
         super.setUp();
     }

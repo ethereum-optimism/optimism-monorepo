@@ -196,6 +196,7 @@ func RegolithSystemConfig(t *testing.T, regolithTimeOffset *hexutil.Uint64, opts
 	cfg.DeployConfig.L2GenesisFjordTimeOffset = nil
 	cfg.DeployConfig.L2GenesisGraniteTimeOffset = nil
 	cfg.DeployConfig.L2GenesisHoloceneTimeOffset = nil
+	cfg.DeployConfig.L2GenesisIsthmusTimeOffset = nil
 	// ADD NEW FORKS HERE!
 	return cfg
 }
@@ -235,6 +236,13 @@ func GraniteSystemConfig(t *testing.T, graniteTimeOffset *hexutil.Uint64, opts .
 func HoloceneSystemConfig(t *testing.T, holoceneTimeOffset *hexutil.Uint64, opts ...SystemConfigOpt) SystemConfig {
 	cfg := GraniteSystemConfig(t, &genesisTime, opts...)
 	cfg.DeployConfig.L2GenesisHoloceneTimeOffset = holoceneTimeOffset
+	return cfg
+}
+
+func IsthmusSystemConfig(t *testing.T, isthmusTimeOffset *hexutil.Uint64, opts ...SystemConfigOpt) SystemConfig {
+	cfg := HoloceneSystemConfig(t, &genesisTime, opts...)
+	cfg.DeployConfig.L1PragueTimeOffset = isthmusTimeOffset
+	cfg.DeployConfig.L2GenesisIsthmusTimeOffset = isthmusTimeOffset
 	return cfg
 }
 
@@ -642,6 +650,11 @@ func (cfg SystemConfig) Start(t *testing.T, startOpts ...StartOption) (*System, 
 			InteropTime:             cfg.DeployConfig.InteropTime(uint64(cfg.DeployConfig.L1GenesisBlockTimestamp)),
 			ProtocolVersionsAddress: cfg.L1Deployments.ProtocolVersionsProxy,
 			AltDAConfig:             rollupAltDAConfig,
+			ChainOpConfig: &params.OptimismConfig{
+				EIP1559Elasticity:        cfg.DeployConfig.EIP1559Elasticity,
+				EIP1559Denominator:       cfg.DeployConfig.EIP1559Denominator,
+				EIP1559DenominatorCanyon: &cfg.DeployConfig.EIP1559DenominatorCanyon,
+			},
 		}
 	}
 	defaultConfig := makeRollupConfig()

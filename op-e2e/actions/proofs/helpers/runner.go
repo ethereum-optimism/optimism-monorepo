@@ -93,24 +93,36 @@ func RunFaultProofProgram(t helpers.Testing, logger log.Logger, l1 *helpers.L1Mi
 	} else {
 		programCfg := NewOpProgramCfg(fixtureInputs)
 		withInProcessPrefetcher := hostcommon.WithPrefetcher(func(ctx context.Context, logger log.Logger, kv kvstore.KV, cfg *config.Config) (hostcommon.Prefetcher, error) {
-			// Set up in-process L1 sources
-			l1Cl := l1.L1ClientSimple(t)
-			l1BlobFetcher := l1.BlobSource()
-
-			// Set up in-process L2 source
-			var rpcClients []client.RPC
-			for _, source := range fixtureInputs.L2Sources {
-				rpcClients = append(rpcClients, source.Engine.RPCClient())
-			}
-			sources, err := prefetcher.NewRetryingL2Sources(ctx, logger, programCfg.Rollups, rpcClients, nil)
-			require.NoError(t, err, "failed to create L2 client")
-
-			executor := host.MakeProgramExecutor(logger, programCfg)
-			return prefetcher.NewPrefetcher(logger, l1Cl, l1BlobFetcher, fixtureInputs.L2ChainID, sources, kv, executor, cfg.L2Head, cfg.AgreedPrestate), nil
+			return CreateInprocessPrefetcher(t, ctx, logger, l1, kv, cfg, fixtureInputs)
 		})
 		ctx, cancel := context.WithTimeout(t.Ctx(), 2*time.Minute)
 		defer cancel()
 		err = hostcommon.FaultProofProgram(ctx, logger, programCfg, withInProcessPrefetcher)
 		checkResult(t, err)
 	}
+}
+
+func CreateInprocessPrefetcher(
+	t helpers.Testing,
+	ctx context.Context,
+	logger log.Logger,
+	l1 *helpers.L1Miner,
+	kv kvstore.KV,
+	cfg *config.Config,
+	fixtureInputs *FixtureInputs,
+) (hostcommon.Prefetcher, error) {
+	// Set up in-process L1 sources
+	l1Cl := l1.L1ClientSimple(t)
+	l1BlobFetcher := l1.BlobSource()
+
+	// Set up in-process L2 source
+	var rpcClients []client.RPC
+	for _, source := range fixtureInputs.L2Sources {
+		rpcClients = append(rpcClients, source.Engine.RPCClient())
+	}
+	sources, err := prefetcher.NewRetryingL2Sources(ctx, logger, cfg.Rollups, rpcClients, nil)
+	require.NoError(t, err, "failed to create L2 client")
+
+	executor := host.MakeProgramExecutor(logger, cfg)
+	return prefetcher.NewPrefetcher(logger, l1Cl, l1BlobFetcher, fixtureInputs.L2ChainID, sources, kv, executor, cfg.L2Head, cfg.AgreedPrestate), nil
 }

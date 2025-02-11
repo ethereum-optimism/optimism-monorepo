@@ -70,6 +70,7 @@ func NewL2Genesis(config *DeployConfig, l1StartHeader *types.Header) (*core.Gene
 		GraniteTime:             config.GraniteTime(l1StartTime),
 		HoloceneTime:            config.HoloceneTime(l1StartTime),
 		IsthmusTime:             config.IsthmusTime(l1StartTime),
+		PragueTime:              config.IsthmusTime(l1StartTime),
 		InteropTime:             config.InteropTime(l1StartTime),
 		Optimism: &params.OptimismConfig{
 			EIP1559Denominator:       eip1559Denom,
@@ -166,6 +167,10 @@ func NewL1Genesis(config *DeployConfig) (*core.Genesis, error) {
 	if config.L1CancunTimeOffset != nil {
 		cancunTime := uint64(timestamp) + uint64(*config.L1CancunTimeOffset)
 		chainConfig.CancunTime = &cancunTime
+	}
+	if config.L1PragueTimeOffset != nil {
+		pragueTime := uint64(timestamp) + uint64(*config.L1PragueTimeOffset)
+		chainConfig.PragueTime = &pragueTime
 	}
 
 	return &core.Genesis{

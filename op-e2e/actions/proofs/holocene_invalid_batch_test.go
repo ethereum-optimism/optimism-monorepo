@@ -185,7 +185,7 @@ func Test_ProgramAction_HoloceneInvalidBatch(gt *testing.T) {
 			if !testCfg.Custom.breachMaxSequencerDrift {
 				// Send an L2 tx
 				env.Alice.L2.ActResetTxOpts(t)
-				env.Alice.L2.ActSetTxToAddr(&env.Dp.Addresses.Bob)
+				env.Alice.L2.ActSetTxToAddr(&env.Dp.Addresses.Bob)(t)
 				env.Alice.L2.ActMakeTx(t)
 				env.Engine.ActL2IncludeTx(env.Alice.Address())(t)
 			}
@@ -196,7 +196,7 @@ func Test_ProgramAction_HoloceneInvalidBatch(gt *testing.T) {
 				parentNum == 1801 {
 				// Send an L2 tx and force sequencer to include it
 				env.Alice.L2.ActResetTxOpts(t)
-				env.Alice.L2.ActSetTxToAddr(&env.Dp.Addresses.Bob)
+				env.Alice.L2.ActSetTxToAddr(&env.Dp.Addresses.Bob)(t)
 				env.Alice.L2.ActMakeTx(t)
 				env.Engine.ActL2IncludeTxIgnoreForcedEmpty(env.Alice.Address())(t)
 			}

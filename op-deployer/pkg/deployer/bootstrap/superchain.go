@@ -139,19 +139,10 @@ func Superchain(ctx context.Context, cfg SuperchainConfig) (opcm.DeploySuperchai
 	}
 
 	lgr := cfg.Logger
-	progressor := func(curr, total int64) {
-		lgr.Info("artifacts download progress", "current", curr, "total", total)
-	}
-
-	artifactsFS, cleanup, err := artifacts.Download(ctx, cfg.ArtifactsLocator, progressor)
+	artifactsFS, err := artifacts.Download(ctx, cfg.ArtifactsLocator, artifacts.BarProgressor())
 	if err != nil {
 		return dso, fmt.Errorf("failed to download artifacts: %w", err)
 	}
-	defer func() {
-		if err := cleanup(); err != nil {
-			lgr.Warn("failed to clean up artifacts", "err", err)
-		}
-	}()
 
 	l1Client, err := ethclient.Dial(cfg.L1RPCUrl)
 	if err != nil {

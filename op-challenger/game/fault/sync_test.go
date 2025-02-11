@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/types"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/stretchr/testify/require"
 )
@@ -34,7 +35,7 @@ func TestSyncStatusProvider(t *testing.T) {
 				},
 			},
 			statusReqErr: nil,
-			expected:     ErrNotInSync,
+			expected:     types.ErrNotInSync,
 		},
 		{
 			name:       "CurrentL1EqualToGameL1Head",
@@ -45,7 +46,7 @@ func TestSyncStatusProvider(t *testing.T) {
 				},
 			},
 			statusReqErr: nil,
-			expected:     ErrNotInSync,
+			expected:     types.ErrNotInSync,
 		},
 		{
 			name:       "CurrentL1AboveGameL1Head",

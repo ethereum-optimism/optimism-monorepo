@@ -157,8 +157,6 @@ library Predeploys {
             || _addr == L1_FEE_VAULT || _addr == SCHEMA_REGISTRY || _addr == EAS || _addr == GOVERNANCE_TOKEN
             || (_useInterop && _addr == CROSS_L2_INBOX) || (_useInterop && _addr == L2_TO_L2_CROSS_DOMAIN_MESSENGER)
             || (_useInterop && _addr == SUPERCHAIN_WETH) || (_useInterop && _addr == ETH_LIQUIDITY)
-            || (_useInterop && _addr == OPTIMISM_SUPERCHAIN_ERC20_FACTORY)
-            || (_useInterop && _addr == OPTIMISM_SUPERCHAIN_ERC20_BEACON)
             || (_useInterop && _addr == SUPERCHAIN_TOKEN_BRIDGE);
     }
 
