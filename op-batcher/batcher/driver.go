@@ -160,7 +160,7 @@ func (l *BatchSubmitter) StartBatchSubmitting() error {
 	l.txpoolMutex.Unlock()
 
 	pendingBytesUpdated := make(chan int64)
-	blocksLoadedCh := make(chan struct{})
+	blocksLoaded := make(chan struct{})
 
 	// DA throttling loop should always be started except for testing (indicated by ThrottleInterval == 0)
 	if l.Config.ThrottleInterval > 0 {
@@ -171,9 +171,9 @@ func (l *BatchSubmitter) StartBatchSubmitting() error {
 	}
 
 	l.wg.Add(3)
-	go l.processReceiptsLoop(l.wg, receiptsCh)                              // ranges over receiptsCh channel
-	go l.writeLoop(l.shutdownCtx, l.wg, receiptsCh, blocksLoadedCh)         // ranges over blocksLoaded, sends on receiptsCh, closes it when done
-	go l.readLoop(l.shutdownCtx, l.wg, pendingBytesUpdated, blocksLoadedCh) // sends on pendingBytesUpdated, and blocksLoaded closes them when done
+	go l.processReceiptsLoop(l.wg, receiptsCh)                            // ranges over receiptsCh channel
+	go l.writeLoop(l.shutdownCtx, l.wg, receiptsCh, blocksLoaded)         // ranges over blocksLoaded, sends on receiptsCh, closes it when done
+	go l.readLoop(l.shutdownCtx, l.wg, pendingBytesUpdated, blocksLoaded) // sends on pendingBytesUpdated, and blocksLoaded closes them when done
 
 	l.Log.Info("Batch Submitter started")
 	return nil
