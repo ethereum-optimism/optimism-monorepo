@@ -113,18 +113,15 @@ type BatchSubmitter struct {
 
 	channelMgrMutex sync.Mutex // guards channelMgr and prevCurrentL1
 	channelMgr      *channelManager
-
-	prevCurrentL1 eth.L1BlockRef // cached CurrentL1 from the last syncStatus
+	prevCurrentL1   eth.L1BlockRef // cached CurrentL1 from the last syncStatus
 }
 
 // NewBatchSubmitter initializes the BatchSubmitter driver from a preconfigured DriverSetup
 func NewBatchSubmitter(setup DriverSetup) *BatchSubmitter {
 	state := NewChannelManager(setup.Log, setup.Metr, setup.ChannelConfig, setup.RollupConfig)
-
 	if setup.ChannelOutFactory != nil {
 		state.SetChannelOutFactory(setup.ChannelOutFactory)
 	}
-
 	return &BatchSubmitter{
 		DriverSetup: setup,
 		channelMgr:  state,
@@ -142,9 +139,10 @@ func (l *BatchSubmitter) StartBatchSubmitting() error {
 	}
 	l.running = true
 
-	l.killCtx, l.cancelKillCtx = context.WithCancel(context.Background())
-	l.clearState(l.killCtx)
 	l.shutdownCtx, l.cancelShutdownCtx = context.WithCancel(context.Background())
+
+	l.killCtx, l.cancelKillCtx = context.WithCancel(context.Background())
+	l.clearState(l.shutdownCtx)
 	l.wg = &sync.WaitGroup{}
 
 	if err := l.waitForL2Genesis(); err != nil {
@@ -209,7 +207,7 @@ func (l *BatchSubmitter) waitForL2Genesis() error {
 		case <-genesisTrigger:
 			l.Log.Info("L2 genesis time reached")
 			return nil
-		case <-l.killCtx.Done():
+		case <-l.shutdownCtx.Done():
 			return errors.New("batcher stopped")
 		}
 	}
@@ -246,7 +244,6 @@ func (l *BatchSubmitter) StopBatchSubmitting(ctx context.Context) error {
 
 	l.cancelShutdownCtx()
 	l.wg.Wait()
-
 	l.cancelKillCtx()
 
 	l.Log.Info("Batch Submitter stopped")
