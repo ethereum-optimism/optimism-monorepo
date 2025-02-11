@@ -159,6 +159,7 @@ func (l *BatchSubmitter) StartBatchSubmitting() error {
 	l.txpoolState = TxpoolGood
 	l.txpoolMutex.Unlock()
 
+	// Channels used to signal between the loops
 	pendingBytesUpdated := make(chan int64)
 	blocksLoaded := make(chan struct{})
 
@@ -171,7 +172,7 @@ func (l *BatchSubmitter) StartBatchSubmitting() error {
 	}
 
 	l.wg.Add(3)
-	go l.processReceiptsLoop(l.wg, receiptsCh)                            // ranges over receiptsCh channel
+	go l.receiptsLoop(l.wg, receiptsCh)                                   // ranges over receiptsCh channel
 	go l.writeLoop(l.shutdownCtx, l.wg, receiptsCh, blocksLoaded)         // ranges over blocksLoaded, sends on receiptsCh, closes it when done
 	go l.readLoop(l.shutdownCtx, l.wg, pendingBytesUpdated, blocksLoaded) // sends on pendingBytesUpdated, and blocksLoaded closes them when done
 
@@ -499,8 +500,8 @@ func (l *BatchSubmitter) readLoop(ctx context.Context, wg *sync.WaitGroup, pendi
 	}
 }
 
-// processReceiptsLoop handles transaction receipts from the DA layer
-func (l *BatchSubmitter) processReceiptsLoop(wg *sync.WaitGroup, receiptsCh chan txmgr.TxReceipt[txRef]) {
+// receiptsLoop handles transaction receipts from the DA layer
+func (l *BatchSubmitter) receiptsLoop(wg *sync.WaitGroup, receiptsCh chan txmgr.TxReceipt[txRef]) {
 	defer wg.Done()
 	l.Log.Info("Starting receipts processing loop")
 	for r := range receiptsCh {
