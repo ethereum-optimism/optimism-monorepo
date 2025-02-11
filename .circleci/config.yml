@@ -642,20 +642,6 @@ jobs:
               circleci-agent step halt
             fi
       - run:
-          name: Check if PR has exempt label
-          command: |
-            # Get PR number from CIRCLE_PULL_REQUEST
-            PR_NUMBER=$(echo $CIRCLE_PULL_REQUEST | rev | cut -d/ -f1 | rev)
-
-            # Use GitHub API to get labels
-            LABELS=$(curl -s "https://api.github.com/repos/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}/pulls/${PR_NUMBER}" | jq -r .labels)
-
-            # If the PR has the "S-exempt-frozen-files" label, do not run this check
-            if echo $LABELS | jq -e 'any(.[]; .name == "S-exempt-frozen-files")' > /dev/null; then
-              echo "Skipping frozen files check, PR has exempt label"
-              exit 0
-            fi
-      - run:
           name: Check frozen files
           command: just check-frozen-code
           working_directory: packages/contracts-bedrock
