@@ -304,19 +304,19 @@ func testFees(t *testing.T, cfg e2esys.SystemConfig) {
 			new(big.Float).SetInt(receipt.L1Fee), "fee field in receipt matches gas used times scalar times base fee")
 	}
 
-	if sys.RollupConfig.IsIsthmus(header.Time) {
-		require.Equal(t,
-			new(big.Int).Add(
-				new(big.Int).Div(
-					new(big.Int).Mul(
-						gasUsed,
-						new(big.Int).SetUint64(uint64(cfg.DeployConfig.GasPriceOracleOperatorFeeScalar)),
-					),
-					new(big.Int).SetUint64(uint64(1e6)),
-				),
-				new(big.Int).SetUint64(cfg.DeployConfig.GasPriceOracleOperatorFeeConstant),
+	expectedOperatorFee := new(big.Int).Add(
+		new(big.Int).Div(
+			new(big.Int).Mul(
+				gasUsed,
+				new(big.Int).SetUint64(uint64(cfg.DeployConfig.GasPriceOracleOperatorFeeScalar)),
 			),
-			operatorFee.ToBig(),
+			new(big.Int).SetUint64(uint64(1e6)),
+		),
+		new(big.Int).SetUint64(cfg.DeployConfig.GasPriceOracleOperatorFeeConstant),
+	)
+
+	if sys.RollupConfig.IsIsthmus(header.Time) {
+		require.True(t, expectedOperatorFee.Cmp(operatorFee.ToBig()) == 0,
 			"operator fee is correct",
 		)
 
