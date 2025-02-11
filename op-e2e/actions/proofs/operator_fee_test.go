@@ -5,7 +5,6 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/ethereum-optimism/optimism/op-chain-ops/genesis"
 	actionsHelpers "github.com/ethereum-optimism/optimism/op-e2e/actions/helpers"
 	"github.com/ethereum-optimism/optimism/op-e2e/actions/proofs/helpers"
 	"github.com/ethereum-optimism/optimism/op-e2e/bindings"
@@ -13,7 +12,6 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/predeploys"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -25,13 +23,7 @@ func Test_Operator_Fee_Constistency(gt *testing.T) {
 	runIsthmusDerivationTest := func(gt *testing.T, testCfg *helpers.TestCfg[any]) {
 		t := actionsHelpers.NewDefaultTesting(gt)
 
-		var setHardForksTime = func(dc *genesis.DeployConfig) {
-			zero := hexutil.Uint64(0)
-			dc.L2GenesisHoloceneTimeOffset = &zero
-			dc.L2GenesisIsthmusTimeOffset = &zero
-		}
-
-		env := helpers.NewL2FaultProofEnv(t, testCfg, helpers.NewTestParams(), helpers.NewBatcherCfg(), setHardForksTime)
+		env := helpers.NewL2FaultProofEnv(t, testCfg, helpers.NewTestParams(), helpers.NewBatcherCfg())
 
 		t.Logf("L2 Genesis Time: %d, IsthmusTime: %d ", env.Sequencer.RollupCfg.Genesis.L2Time, *env.Sequencer.RollupCfg.IsthmusTime)
 
@@ -69,7 +61,7 @@ func Test_Operator_Fee_Constistency(gt *testing.T) {
 		receipt := env.Alice.L2.LastTxReceipt(t)
 
 		// Check that the operator fee was applied
-		require.Equal(t, OperatorFeeScalar, *receipt.OperatorFeeScalar)
+		require.Equal(t, OperatorFeeScalar, uint32(*receipt.OperatorFeeScalar))
 		require.Equal(t, OperatorFeeConstant, *receipt.OperatorFeeConstant)
 
 		l1FeeVaultBalance, err := env.Engine.EthClient().BalanceAt(context.Background(), predeploys.L1FeeVaultAddr, nil)
