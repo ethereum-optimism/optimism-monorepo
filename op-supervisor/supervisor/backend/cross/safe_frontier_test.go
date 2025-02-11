@@ -44,7 +44,7 @@ func TestHazardSafeFrontierChecks(t *testing.T) {
 		l1Source := eth.BlockID{Number: 2}
 		hazards := map[types.ChainIndex]types.BlockSeal{types.ChainIndex(0): {}}
 		// when there is one hazard, and CrossSource returns a BlockSeal within scope
-		// (ie the hazard's block number is less than or equal to the derivedFrom block number),
+		// (ie the hazard's block number is less than or equal to the source block number),
 		// no error is returned
 		err := HazardSafeFrontierChecks(sfcd, l1Source, hazards)
 		require.NoError(t, err)
@@ -57,7 +57,7 @@ func TestHazardSafeFrontierChecks(t *testing.T) {
 		l1Source := eth.BlockID{Number: 2}
 		hazards := map[types.ChainIndex]types.BlockSeal{types.ChainIndex(0): {}}
 		// when there is one hazard, and CrossSource returns a BlockSeal out of scope
-		// (ie the hazard's block number is greater than the derivedFrom block number),
+		// (ie the hazard's block number is greater than the source block number),
 		// an error is returned as a ErrOutOfScope
 		err := HazardSafeFrontierChecks(sfcd, l1Source, hazards)
 		require.ErrorIs(t, err, types.ErrOutOfScope)
@@ -144,7 +144,7 @@ func TestHazardSafeFrontierChecks(t *testing.T) {
 type mockSafeFrontierCheckDeps struct {
 	deps                 mockDependencySet
 	candidateCrossSafeFn func() (candidate types.DerivedBlockRefPair, err error)
-	crossSourceFn        func() (derivedFrom types.BlockSeal, err error)
+	crossSourceFn        func() (source types.BlockSeal, err error)
 }
 
 func (m *mockSafeFrontierCheckDeps) CandidateCrossSafe(chain eth.ChainID) (candidate types.DerivedBlockRefPair, err error) {
@@ -154,7 +154,7 @@ func (m *mockSafeFrontierCheckDeps) CandidateCrossSafe(chain eth.ChainID) (candi
 	return types.DerivedBlockRefPair{}, nil
 }
 
-func (m *mockSafeFrontierCheckDeps) CrossDerivedToSource(chainID eth.ChainID, derived eth.BlockID) (derivedFrom types.BlockSeal, err error) {
+func (m *mockSafeFrontierCheckDeps) CrossDerivedToSource(chainID eth.ChainID, derived eth.BlockID) (source types.BlockSeal, err error) {
 	if m.crossSourceFn != nil {
 		return m.crossSourceFn()
 	}

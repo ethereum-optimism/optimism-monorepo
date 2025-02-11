@@ -30,7 +30,7 @@ func (m *mockDerivationStorage) Last() (pair types.DerivedBlockSealPair, err err
 func (m *mockDerivationStorage) Invalidated() (pair types.DerivedBlockSealPair, err error) {
 	return types.DerivedBlockSealPair{}, nil
 }
-func (m *mockDerivationStorage) AddDerived(derivedFrom eth.BlockRef, derived eth.BlockRef) error {
+func (m *mockDerivationStorage) AddDerived(source eth.BlockRef, derived eth.BlockRef) error {
 	return nil
 }
 func (m *mockDerivationStorage) ReplaceInvalidatedBlock(replacementDerived eth.BlockRef, invalidated common.Hash) (types.DerivedBlockSealPair, error) {

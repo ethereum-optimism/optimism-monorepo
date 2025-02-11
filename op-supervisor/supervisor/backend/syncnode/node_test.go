@@ -45,7 +45,7 @@ func TestEventResponse(t *testing.T) {
 		return nil
 	}
 	// the node will call UpdateCrossSafe when a cross-safe event is received from the database
-	syncCtrl.updateCrossSafeFn = func(ctx context.Context, derived eth.BlockID, derivedFrom eth.BlockID) error {
+	syncCtrl.updateCrossSafeFn = func(ctx context.Context, derived eth.BlockID, source eth.BlockID) error {
 		crossSafe++
 		return nil
 	}
@@ -166,8 +166,8 @@ func TestResetConflict(t *testing.T) {
 				},
 			}
 			backend := &mockBackend{
-				safeDerivedAtFn: func(ctx context.Context, chainID eth.ChainID, derivedFrom eth.BlockID) (eth.BlockID, error) {
-					return eth.BlockID{Number: derivedFrom.Number}, nil
+				safeDerivedAtFn: func(ctx context.Context, chainID eth.ChainID, source eth.BlockID) (eth.BlockID, error) {
+					return eth.BlockID{Number: source.Number}, nil
 				},
 			}
 

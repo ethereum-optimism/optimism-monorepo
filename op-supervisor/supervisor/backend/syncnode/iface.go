@@ -38,7 +38,7 @@ type SyncControl interface {
 	PullEvent(ctx context.Context) (*types.ManagedEvent, error)
 
 	UpdateCrossUnsafe(ctx context.Context, id eth.BlockID) error
-	UpdateCrossSafe(ctx context.Context, derived eth.BlockID, derivedFrom eth.BlockID) error
+	UpdateCrossSafe(ctx context.Context, derived eth.BlockID, source eth.BlockID) error
 	UpdateFinalized(ctx context.Context, id eth.BlockID) error
 
 	InvalidateBlock(ctx context.Context, seal types.BlockSeal) error

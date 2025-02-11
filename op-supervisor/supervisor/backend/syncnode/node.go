@@ -26,7 +26,7 @@ type backend interface {
 	LocalSafe(ctx context.Context, chainID eth.ChainID) (pair types.DerivedIDPair, err error)
 	LocalUnsafe(ctx context.Context, chainID eth.ChainID) (eth.BlockID, error)
 	CrossSafe(ctx context.Context, chainID eth.ChainID) (pair types.DerivedIDPair, err error)
-	SafeDerivedAt(ctx context.Context, chainID eth.ChainID, derivedFrom eth.BlockID) (derived eth.BlockID, err error)
+	SafeDerivedAt(ctx context.Context, chainID eth.ChainID, source eth.BlockID) (derived eth.BlockID, err error)
 	Finalized(ctx context.Context, chainID eth.ChainID) (eth.BlockID, error)
 	L1BlockRefByNumber(ctx context.Context, number uint64) (eth.L1BlockRef, error)
 }
@@ -250,7 +250,7 @@ func (m *ManagedNode) onCrossUnsafeUpdate(seal types.BlockSeal) {
 }
 
 func (m *ManagedNode) onCrossSafeUpdate(pair types.DerivedBlockSealPair) {
-	m.log.Debug("updating cross safe", "derived", pair.Derived, "derivedFrom", pair.Source)
+	m.log.Debug("updating cross safe", "derived", pair.Derived, "source", pair.Source)
 	ctx, cancel := context.WithTimeout(m.ctx, nodeTimeout)
 	defer cancel()
 	pairIDs := pair.IDs()
@@ -283,7 +283,7 @@ func (m *ManagedNode) onUnsafeBlock(unsafeRef eth.BlockRef) {
 
 func (m *ManagedNode) onDerivationUpdate(pair types.DerivedBlockRefPair) {
 	m.log.Info("Node derived new block", "derived", pair.Derived,
-		"derivedParent", pair.Derived.ParentID(), "derivedFrom", pair.Source)
+		"derivedParent", pair.Derived.ParentID(), "source", pair.Source)
 	m.emitter.Emit(superevents.LocalDerivedEvent{
 		ChainID: m.chainID,
 		Derived: pair,
