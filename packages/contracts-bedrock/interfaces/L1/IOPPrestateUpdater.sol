@@ -3,7 +3,6 @@ pragma solidity ^0.8.0;
 
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 import { IProtocolVersions } from "interfaces/L1/IProtocolVersions.sol";
-import { IProxyAdmin } from "interfaces/universal/IProxyAdmin.sol";
 import { IOPContractsManager } from "interfaces/L1/IOPContractsManager.sol";
 
 interface IOPPrestateUpdater is IOPContractsManager {
@@ -11,16 +10,12 @@ interface IOPPrestateUpdater is IOPContractsManager {
     error NotImplemented();
 
     /// @notice Thrown when the prestate of a permissioned disputed game is 0.
-    error PDGPrestateRequired();
+    error PrestateRequired();
 
     function __constructor__(
         ISuperchainConfig _superchainConfig,
         IProtocolVersions _protocolVersions,
-        IProxyAdmin _superchainProxyAdmin,
-        string memory _l1ContractsRelease,
-        Blueprints memory _blueprints,
-        Implementations memory _implementations,
-        address _upgradeController
+        Blueprints memory _blueprints
     )
     external;
 

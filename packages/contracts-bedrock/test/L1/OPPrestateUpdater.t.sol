@@ -21,6 +21,7 @@ import { IDelayedWETH } from "interfaces/dispute/IDelayedWETH.sol";
 import { IOPContractsManager } from "interfaces/L1/IOPContractsManager.sol";
 import { IDisputeGameFactory } from "interfaces/dispute/IDisputeGameFactory.sol";
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
+import { IOPPrestateUpdater } from "interfaces/L1/IOPPrestateUpdater.sol";
 
 // Contracts
 import { OPContractsManager } from "src/L1/OPContractsManager.sol";
@@ -133,16 +134,8 @@ contract OPPrestateUpdater_Test is Test {
                 _name: "OPPrestateUpdater",
                 _args: DeployUtils.encodeConstructor(
                     abi.encodeCall(
-                        IOPContractsManager.__constructor__,
-                        (
-                            ISuperchainConfig(address(this)),
-                            IProtocolVersions(address(this)),
-                            superchainProxyAdmin,
-                            "dev",
-                            blueprints,
-                            impls,
-                            address(0)
-                        )
+                        IOPPrestateUpdater.__constructor__,
+                        (ISuperchainConfig(address(this)), IProtocolVersions(address(this)), blueprints)
                     )
                 ),
                 _salt: DeployUtils.DEFAULT_SALT
@@ -218,7 +211,7 @@ contract OPPrestateUpdater_Test is Test {
         address proxyAdminOwner = chainDeployOutput.opChainProxyAdmin.owner();
         vm.etch(address(proxyAdminOwner), vm.getDeployedCode("test/mocks/Callers.sol:DelegateCaller"));
 
-        vm.expectRevert(OPPrestateUpdater.PDGPrestateRequired.selector);
+        vm.expectRevert(OPPrestateUpdater.PrestateRequired.selector);
         DelegateCaller(proxyAdminOwner).dcForward(
             address(prestateUpdater), abi.encodeCall(OPPrestateUpdater.updatePrestate, (inputs))
         );

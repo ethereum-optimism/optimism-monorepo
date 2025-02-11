@@ -12,16 +12,6 @@
         "type": "address"
       },
       {
-        "internalType": "contract IProxyAdmin",
-        "name": "_superchainProxyAdmin",
-        "type": "address"
-      },
-      {
-        "internalType": "string",
-        "name": "_l1ContractsRelease",
-        "type": "string"
-      },
-      {
         "components": [
           {
             "internalType": "address",
@@ -139,11 +129,6 @@
         "internalType": "struct OPContractsManager.Implementations",
         "name": "_implementations",
         "type": "tuple"
-      },
-      {
-        "internalType": "address",
-        "name": "_upgradeController",
-        "type": "address"
       }
     ],
     "stateMutability": "nonpayable",
@@ -905,12 +890,12 @@
   },
   {
     "inputs": [],
-    "name": "PDGPrestateRequired",
+    "name": "PrestateNotSet",
     "type": "error"
   },
   {
     "inputs": [],
-    "name": "PrestateNotSet",
+    "name": "PrestateRequired",
     "type": "error"
   },
   {

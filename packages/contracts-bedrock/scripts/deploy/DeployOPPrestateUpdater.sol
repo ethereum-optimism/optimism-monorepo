@@ -1,19 +1,24 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
+// Scripting
 import { Script } from "forge-std/Script.sol";
 
+// Libraries
 import { LibString } from "@solady/utils/LibString.sol";
 
+// Scripts
 import { BaseDeployIO } from "scripts/deploy/BaseDeployIO.sol";
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 
+// Interfaces
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 import { IProtocolVersions } from "interfaces/L1/IProtocolVersions.sol";
 import { IOPContractsManager } from "interfaces/L1/IOPContractsManager.sol";
-
+import { IOPPrestateUpdater } from "interfaces/L1/IOPPrestateUpdater.sol";
 import { IProxyAdmin } from "interfaces/universal/IProxyAdmin.sol";
 
+// Contracts
 import { OPPrestateUpdater } from "src/L1/OPPrestateUpdater.sol";
 
 contract DeployOPPrestateUpdaterInput is BaseDeployIO {
@@ -249,30 +254,7 @@ contract DeployOPPrestateUpdater is Script {
             permissionlessDisputeGame2: _doi.permissionlessDisputeGame2Blueprint()
         });
 
-        IOPContractsManager.Implementations memory implementations = IOPContractsManager.Implementations({
-            superchainConfigImpl: address(_doi.superchainConfigImpl()),
-            protocolVersionsImpl: address(_doi.protocolVersionsImpl()),
-            l1ERC721BridgeImpl: address(_doi.l1ERC721BridgeImpl()),
-            optimismPortalImpl: address(_doi.optimismPortalImpl()),
-            systemConfigImpl: address(_doi.systemConfigImpl()),
-            optimismMintableERC20FactoryImpl: address(_doi.optimismMintableERC20FactoryImpl()),
-            l1CrossDomainMessengerImpl: address(_doi.l1CrossDomainMessengerImpl()),
-            l1StandardBridgeImpl: address(_doi.l1StandardBridgeImpl()),
-            disputeGameFactoryImpl: address(_doi.disputeGameFactoryImpl()),
-            anchorStateRegistryImpl: address(_doi.anchorStateRegistryImpl()),
-            delayedWETHImpl: address(_doi.delayedWETHImpl()),
-            mipsImpl: address(_doi.mipsImpl())
-        });
-
-        OPPrestateUpdater oppu_ = deployOPPrestateUpdater(
-            _doi.superchainConfig(),
-            _doi.protocolVersions(),
-            _doi.superchainProxyAdmin(),
-            blueprints,
-            implementations,
-            _doi.l1ContractsRelease(),
-            _doi.upgradeController()
-        );
+        OPPrestateUpdater oppu_ = deployOPPrestateUpdater(_doi.superchainConfig(), _doi.protocolVersions(), blueprints);
         _doo.set(_doo.oppu.selector, address(oppu_));
 
         assertValidPrestateUpdater(_doi, _doo);
@@ -281,11 +263,7 @@ contract DeployOPPrestateUpdater is Script {
     function deployOPPrestateUpdater(
         ISuperchainConfig _superchainConfig,
         IProtocolVersions _protocolVersions,
-        IProxyAdmin _superchainProxyAdmin,
-        IOPContractsManager.Blueprints memory _blueprints,
-        IOPContractsManager.Implementations memory _implementations,
-        string memory _l1ContractsRelease,
-        address _upgradeController
+        IOPContractsManager.Blueprints memory _blueprints
     )
         public
         returns (OPPrestateUpdater oppu_)
@@ -295,18 +273,7 @@ contract DeployOPPrestateUpdater is Script {
             DeployUtils.createDeterministic({
                 _name: "OPPrestateUpdater",
                 _args: DeployUtils.encodeConstructor(
-                    abi.encodeCall(
-                        IOPContractsManager.__constructor__,
-                        (
-                            _superchainConfig,
-                            _protocolVersions,
-                            _superchainProxyAdmin,
-                            _l1ContractsRelease,
-                            _blueprints,
-                            _implementations,
-                            _upgradeController
-                        )
-                    )
+                    abi.encodeCall(IOPPrestateUpdater.__constructor__, (_superchainConfig, _protocolVersions, _blueprints))
                 ),
                 _salt: bytes32(_salt)
             })

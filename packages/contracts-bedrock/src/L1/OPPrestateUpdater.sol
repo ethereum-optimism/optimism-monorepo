@@ -28,7 +28,7 @@ contract OPPrestateUpdater is OPContractsManager {
     error NotImplemented();
 
     /// @notice Thrown when the prestate of a permissioned disputed game is 0.
-    error PDGPrestateRequired();
+    error PrestateRequired();
 
     // @return Version string
     /// @custom:semver 1.0.0
@@ -39,27 +39,34 @@ contract OPPrestateUpdater is OPContractsManager {
     // @notice Constructs the CustomOPContractsManager contract
     // @param _superchainConfig Address of the SuperchainConfig contract
     // @param _protocolVersions Address of the ProtocolVersions contract
-    // @param _l1ContractsRelease Version string for L1 contracts release
     // @param _blueprints Addresses of Blueprint contracts
     // @param _implementations Addresses of implementation contracts
-    // @param _upgradeController Address of the upgrade controller
     constructor(
         ISuperchainConfig _superchainConfig,
         IProtocolVersions _protocolVersions,
-        IProxyAdmin _superchainProxyAdmin,
-        string memory _l1ContractsRelease,
-        Blueprints memory _blueprints,
-        Implementations memory _implementations,
-        address _upgradeController
+        Blueprints memory _blueprints
     )
         OPContractsManager(
             _superchainConfig,
             _protocolVersions,
-            _superchainProxyAdmin,
-            _l1ContractsRelease,
+            IProxyAdmin(address(0)),
+            "",
             _blueprints,
-            _implementations,
-            _upgradeController
+            Implementations(
+                address(0), // l1CrossDomainMessenger
+                address(0), // l1StandardBridge
+                address(0), // l2OutputOracle
+                address(0), // optimismPortal
+                address(0), // optimismMintableERC20Factory
+                address(0), // protocolVersions
+                address(0), // superchainConfig
+                address(0), // systemConfig
+                address(0), // l1ERC721Bridge
+                address(0), // disputeGameFactory
+                address(0), // permissionedDisputeGame
+                address(0) // faultDisputeGame
+            ),
+            address(0)
         )
     { }
 
@@ -90,7 +97,7 @@ contract OPPrestateUpdater is OPContractsManager {
         // Loop through each chain and prestate hash
         for (uint256 i = 0; i < _prestateUpdateInputs.length; i++) {
             if (Claim.unwrap(_prestateUpdateInputs[i].absolutePrestate) == bytes32(0)) {
-                revert PDGPrestateRequired();
+                revert PrestateRequired();
             }
 
             IDisputeGameFactory dgf =
