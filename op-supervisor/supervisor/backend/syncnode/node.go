@@ -317,8 +317,8 @@ func (m *ManagedNode) resetFromError(errSignal error, l1Ref eth.BlockRef) {
 			// otherwise, ignore the out of order signal, the node is near enough to the tip.
 			m.log.Warn("Node is behind, ignoring", "l1Ref", l1Ref, "err", errSignal)
 		}
-	default:
-		// All other errors should be handled by the default reset.
+	case errors.Is(errSignal, types.ErrFuture):
+		// if the node is in the future, we need to reset it back to the tip of the supervisor
 		m.sendReset()
 	}
 }
