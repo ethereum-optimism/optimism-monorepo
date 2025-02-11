@@ -27,3 +27,15 @@ func (r *ClientRegistry) SuperchainWETH(address types.Address) (interfaces.Super
 		binding:         binding,
 	}, nil
 }
+
+func (r *ClientRegistry) EventLogger(address types.Address) (interfaces.EventLogger, error) {
+	binding, err := bindings.NewEventLogger(address, r.Client)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create EventLogger binding: %w", err)
+	}
+	return &eventLoggerBinding{
+		contractAddress: address,
+		client:          r.Client,
+		binding:         binding,
+	}, nil
+}

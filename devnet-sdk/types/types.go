@@ -34,3 +34,9 @@ type Wallet interface {
 }
 
 type Key = string
+
+type Topic = [32]byte
+
+type Hash = [32]byte
+
+type Identifier = string
