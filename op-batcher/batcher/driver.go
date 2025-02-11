@@ -188,7 +188,7 @@ func (l *BatchSubmitter) StartBatchSubmitting() error {
 	}
 
 	l.consumerWg.Add(1)
-	go l.processReceiptsLoop(l.consumerCtx, l.consumerWg, receiptsCh) // receives from receiptsCh
+	go l.processReceiptsLoop(l.consumerWg, receiptsCh) // receives from receiptsCh
 
 	l.producerWg.Add(2)
 	go l.writeLoop(l.producerCtx, l.producerWg, receiptsCh) // sends on receiptsCh
@@ -521,28 +521,24 @@ func (l *BatchSubmitter) readLoop(ctx context.Context, wg *sync.WaitGroup) {
 }
 
 // processReceiptsLoop handles transaction receipts from the DA layer
-func (l *BatchSubmitter) processReceiptsLoop(ctx context.Context, wg *sync.WaitGroup, receiptsCh chan txmgr.TxReceipt[txRef]) {
+func (l *BatchSubmitter) processReceiptsLoop(wg *sync.WaitGroup, receiptsCh chan txmgr.TxReceipt[txRef]) {
 	defer wg.Done()
 	l.Log.Info("Starting receipts processing loop")
-	for {
-		select {
-		case r := <-receiptsCh:
-			if errors.Is(r.Err, txpool.ErrAlreadyReserved) && l.txpoolState == TxpoolGood {
-				l.setTxPoolState(TxpoolBlocked, r.ID.isBlob)
-				l.Log.Warn("incompatible tx in txpool", "id", r.ID, "is_blob", r.ID.isBlob)
-			} else if r.ID.isCancel && l.txpoolState == TxpoolCancelPending {
-				// Set state to TxpoolGood even if the cancellation transaction ended in error
-				// since the stuck transaction could have cleared while we were waiting.
-				l.setTxPoolState(TxpoolGood, l.txpoolBlockedBlob)
-				l.Log.Info("txpool may no longer be blocked", "err", r.Err)
-			}
-			l.Log.Info("Handling receipt", "id", r.ID)
-			l.handleReceipt(r)
-		case <-ctx.Done():
-			l.Log.Info("Receipt processing loop returning")
-			return
+	for r := range receiptsCh {
+
+		if errors.Is(r.Err, txpool.ErrAlreadyReserved) && l.txpoolState == TxpoolGood {
+			l.setTxPoolState(TxpoolBlocked, r.ID.isBlob)
+			l.Log.Warn("incompatible tx in txpool", "id", r.ID, "is_blob", r.ID.isBlob)
+		} else if r.ID.isCancel && l.txpoolState == TxpoolCancelPending {
+			// Set state to TxpoolGood even if the cancellation transaction ended in error
+			// since the stuck transaction could have cleared while we were waiting.
+			l.setTxPoolState(TxpoolGood, l.txpoolBlockedBlob)
+			l.Log.Info("txpool may no longer be blocked", "err", r.Err)
 		}
+		l.Log.Info("Handling receipt", "id", r.ID)
+		l.handleReceipt(r)
 	}
+	l.Log.Info("Receipt processing loop returning")
 }
 
 // throttlingLoop monitors the backlog in bytes we need to make available, and appropriately enables or disables
