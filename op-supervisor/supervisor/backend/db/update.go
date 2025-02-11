@@ -80,26 +80,26 @@ func (db *ChainsDB) Rewind(chain eth.ChainID, headBlock eth.BlockID) error {
 	return nil
 }
 
-// UpdateLocalSafe updates the local-safe database with the given derivedFrom and lastDerived blocks.
+// UpdateLocalSafe updates the local-safe database with the given source and lastDerived blocks.
 // It wraps an inner function, blocking the call if the database is not initialized.
-func (db *ChainsDB) UpdateLocalSafe(chain eth.ChainID, derivedFrom eth.BlockRef, lastDerived eth.BlockRef) {
-	logger := db.logger.New("chain", chain, "derivedFrom", derivedFrom, "lastDerived", lastDerived)
+func (db *ChainsDB) UpdateLocalSafe(chain eth.ChainID, source eth.BlockRef, lastDerived eth.BlockRef) {
+	logger := db.logger.New("chain", chain, "source", source, "lastDerived", lastDerived)
 	if !db.isInitialized(chain) {
 		logger.Error("cannot UpdateLocalSafe on uninitialized database", "chain", chain)
 		return
 	}
-	db.initializedUpdateLocalSafe(chain, derivedFrom, lastDerived)
+	db.initializedUpdateLocalSafe(chain, source, lastDerived)
 }
 
-func (db *ChainsDB) initializedUpdateLocalSafe(chain eth.ChainID, derivedFrom eth.BlockRef, lastDerived eth.BlockRef) {
-	logger := db.logger.New("chain", chain, "derivedFrom", derivedFrom, "lastDerived", lastDerived)
+func (db *ChainsDB) initializedUpdateLocalSafe(chain eth.ChainID, source eth.BlockRef, lastDerived eth.BlockRef) {
+	logger := db.logger.New("chain", chain, "ource", source, "lastDerived", lastDerived)
 	localDB, ok := db.localDBs.Get(chain)
 	if !ok {
 		logger.Error("Cannot update local-safe DB, unknown chain")
 		return
 	}
 	logger.Debug("Updating local safe DB")
-	if err := localDB.AddDerived(derivedFrom, lastDerived); err != nil {
+	if err := localDB.AddDerived(source, lastDerived); err != nil {
 		if errors.Is(err, types.ErrIneffective) {
 			logger.Info("Node is syncing known source blocks on known latest local-safe block", "err", err)
 			return
@@ -107,7 +107,7 @@ func (db *ChainsDB) initializedUpdateLocalSafe(chain eth.ChainID, derivedFrom et
 		logger.Warn("Failed to update local safe", "err", err)
 		db.emitter.Emit(superevents.LocalSafeOutOfSyncEvent{
 			ChainID: chain,
-			L1Ref:   derivedFrom,
+			L1Ref:   source,
 			Err:     err,
 		})
 		return
@@ -116,7 +116,7 @@ func (db *ChainsDB) initializedUpdateLocalSafe(chain eth.ChainID, derivedFrom et
 	db.emitter.Emit(superevents.LocalSafeUpdateEvent{
 		ChainID: chain,
 		NewLocalSafe: types.DerivedBlockSealPair{
-			Source:  types.BlockSealFromRef(derivedFrom),
+			Source:  types.BlockSealFromRef(source),
 			Derived: types.BlockSealFromRef(lastDerived),
 		},
 	})

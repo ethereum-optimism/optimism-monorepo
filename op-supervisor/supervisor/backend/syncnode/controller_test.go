@@ -21,7 +21,7 @@ type mockSyncControl struct {
 	anchorPointFn       func(ctx context.Context) (types.DerivedBlockRefPair, error)
 	provideL1Fn         func(ctx context.Context, ref eth.BlockRef) error
 	resetFn             func(ctx context.Context, unsafe, safe, finalized eth.BlockID) error
-	updateCrossSafeFn   func(ctx context.Context, derived, derivedFrom eth.BlockID) error
+	updateCrossSafeFn   func(ctx context.Context, derived, source eth.BlockID) error
 	updateCrossUnsafeFn func(ctx context.Context, derived eth.BlockID) error
 	updateFinalizedFn   func(ctx context.Context, id eth.BlockID) error
 	pullEventFn         func(ctx context.Context) (*types.ManagedEvent, error)
@@ -65,9 +65,9 @@ func (m *mockSyncControl) SubscribeEvents(ctx context.Context, ch chan *types.Ma
 	return m.subscribeEvents.Subscribe(ch), nil
 }
 
-func (m *mockSyncControl) UpdateCrossSafe(ctx context.Context, derived eth.BlockID, derivedFrom eth.BlockID) error {
+func (m *mockSyncControl) UpdateCrossSafe(ctx context.Context, derived eth.BlockID, source eth.BlockID) error {
 	if m.updateCrossSafeFn != nil {
-		return m.updateCrossSafeFn(ctx, derived, derivedFrom)
+		return m.updateCrossSafeFn(ctx, derived, source)
 	}
 	return nil
 }
@@ -93,7 +93,7 @@ func (m *mockSyncControl) String() string {
 var _ SyncControl = (*mockSyncControl)(nil)
 
 type mockBackend struct {
-	safeDerivedAtFn func(ctx context.Context, chainID eth.ChainID, derivedFrom eth.BlockID) (eth.BlockID, error)
+	safeDerivedAtFn func(ctx context.Context, chainID eth.ChainID, source eth.BlockID) (eth.BlockID, error)
 }
 
 func (m *mockBackend) LocalSafe(ctx context.Context, chainID eth.ChainID) (pair types.DerivedIDPair, err error) {
@@ -108,9 +108,9 @@ func (m *mockBackend) LocalUnsafe(ctx context.Context, chainID eth.ChainID) (eth
 	return eth.BlockID{}, nil
 }
 
-func (m *mockBackend) SafeDerivedAt(ctx context.Context, chainID eth.ChainID, derivedFrom eth.BlockID) (derived eth.BlockID, err error) {
+func (m *mockBackend) SafeDerivedAt(ctx context.Context, chainID eth.ChainID, source eth.BlockID) (derived eth.BlockID, err error) {
 	if m.safeDerivedAtFn != nil {
-		return m.safeDerivedAtFn(ctx, chainID, derivedFrom)
+		return m.safeDerivedAtFn(ctx, chainID, source)
 	}
 	return eth.BlockID{}, nil
 }

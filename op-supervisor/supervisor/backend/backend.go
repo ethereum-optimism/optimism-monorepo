@@ -514,8 +514,8 @@ func (su *SupervisorBackend) CrossUnsafe(ctx context.Context, chainID eth.ChainI
 	return v.ID(), nil
 }
 
-func (su *SupervisorBackend) SafeDerivedAt(ctx context.Context, chainID eth.ChainID, derivedFrom eth.BlockID) (eth.BlockID, error) {
-	v, err := su.chainDBs.SafeDerivedAt(chainID, derivedFrom)
+func (su *SupervisorBackend) SafeDerivedAt(ctx context.Context, chainID eth.ChainID, source eth.BlockID) (eth.BlockID, error) {
+	v, err := su.chainDBs.SafeDerivedAt(chainID, source)
 	if err != nil {
 		return eth.BlockID{}, err
 	}
@@ -523,11 +523,11 @@ func (su *SupervisorBackend) SafeDerivedAt(ctx context.Context, chainID eth.Chai
 }
 
 // AllSafeDerivedAt returns the last derived block for each chain, from the given L1 block
-func (su *SupervisorBackend) AllSafeDerivedAt(ctx context.Context, derivedFrom eth.BlockID) (map[eth.ChainID]eth.BlockID, error) {
+func (su *SupervisorBackend) AllSafeDerivedAt(ctx context.Context, source eth.BlockID) (map[eth.ChainID]eth.BlockID, error) {
 	chains := su.depSet.Chains()
 	ret := map[eth.ChainID]eth.BlockID{}
 	for _, chainID := range chains {
-		derived, err := su.SafeDerivedAt(ctx, chainID, derivedFrom)
+		derived, err := su.SafeDerivedAt(ctx, chainID, source)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get last derived block for chain %v: %w", chainID, err)
 		}
@@ -596,12 +596,12 @@ func (su *SupervisorBackend) SuperRootAtTimestamp(ctx context.Context, timestamp
 		if err != nil {
 			return eth.SuperRootResponse{}, err
 		}
-		derivedFrom, err := su.chainDBs.CrossDerivedToSource(chainID, ref.ID())
+		source, err := su.chainDBs.CrossDerivedToSource(chainID, ref.ID())
 		if err != nil {
 			return eth.SuperRootResponse{}, err
 		}
-		if crossSafeSource.Number == 0 || crossSafeSource.Number < derivedFrom.Number {
-			crossSafeSource = derivedFrom.ID()
+		if crossSafeSource.Number == 0 || crossSafeSource.Number < source.Number {
+			crossSafeSource = source.ID()
 		}
 	}
 	superRoot := eth.SuperRoot(&eth.SuperV1{
