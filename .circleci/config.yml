@@ -684,7 +684,7 @@ jobs:
             # If the target branch is not develop, do not run this check
             if [ "$TARGET_BRANCH" != "develop" ]; then
               echo "Target branch is not develop, skipping frozen files check"
-              exit 0
+              circleci-agent step halt
             fi
       - run:
           name: Check if PR has exempt label
@@ -698,7 +698,7 @@ jobs:
             # If the PR has the "S-exempt-frozen-files" label, do not run this check
             if echo $LABELS | jq -e 'any(.[]; .name == "S-exempt-frozen-files")' > /dev/null; then
               echo "Skipping frozen files check, PR has exempt label"
-              exit 0
+              circleci-agent step halt
             fi
       - run:
           name: Check frozen files
