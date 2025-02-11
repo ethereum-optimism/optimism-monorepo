@@ -16,3 +16,10 @@ func (r *EmptyRegistry) SuperchainWETH(address types.Address) (interfaces.Superc
 		Address:      address,
 	}
 }
+
+func (r *EmptyRegistry) EventLogger(address types.Address) (interfaces.EventLogger, error) {
+	return nil, &interfaces.ErrContractNotFound{
+		ContractType: "EventLogger",
+		Address:      address,
+	}
+}

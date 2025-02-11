@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"math/big"
 
+	"github.com/ethereum-optimism/optimism/devnet-sdk/contracts/bindings"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -27,3 +28,9 @@ type InvocationResult interface {
 }
 
 type Key = *ecdsa.PrivateKey
+
+type Topic = [32]byte
+
+type Hash = [32]byte
+
+type Identifier = bindings.Identifier
