@@ -79,7 +79,22 @@ func TestFees(t *testing.T) {
 		testFees(t, cfg)
 	})
 
-	t.Run("isthmus", func(t *testing.T) {
+	t.Run("isthmus without operator fee", func(t *testing.T) {
+		op_e2e.InitParallel(t)
+		cfg := e2esys.DefaultSystemConfig(t)
+		cfg.DeployConfig.L1GenesisBlockBaseFeePerGas = (*hexutil.Big)(big.NewInt(7))
+
+		cfg.DeployConfig.L2GenesisRegolithTimeOffset = new(hexutil.Uint64)
+		cfg.DeployConfig.L2GenesisCanyonTimeOffset = new(hexutil.Uint64)
+		cfg.DeployConfig.L2GenesisDeltaTimeOffset = new(hexutil.Uint64)
+		cfg.DeployConfig.L2GenesisEcotoneTimeOffset = new(hexutil.Uint64)
+		cfg.DeployConfig.L2GenesisFjordTimeOffset = new(hexutil.Uint64)
+		cfg.DeployConfig.L2GenesisHoloceneTimeOffset = new(hexutil.Uint64)
+		cfg.DeployConfig.L2GenesisIsthmusTimeOffset = new(hexutil.Uint64)
+		testFees(t, cfg)
+	})
+
+	t.Run("isthmus with operator fee", func(t *testing.T) {
 		op_e2e.InitParallel(t)
 		cfg := e2esys.DefaultSystemConfig(t)
 		cfg.DeployConfig.L1GenesisBlockBaseFeePerGas = (*hexutil.Big)(big.NewInt(7))
