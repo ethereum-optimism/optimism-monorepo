@@ -491,3 +491,21 @@ func testSpanChannelOut_MaxBlocksPerSpanBatch(t *testing.T, tt maxBlocksTest) {
 		require.Equalf(t, batch0, batch, "iteration %d", i)
 	}
 }
+
+func TestSpanChannelOut_ExceedMaxRLPBytesPerChannel(t *testing.T) {
+
+	largeBatchSize := int(rollup.NewChainSpec(&rollupCfg).MaxRLPBytesPerChannel(0))
+	cout, singularBatches := SpanChannelAndBatches(t, 100, 1, Zlib)
+
+	cout.rlp[0] = bytes.NewBuffer(make([]byte, largeBatchSize))
+	cout.rlp[1] = bytes.NewBuffer(make([]byte, largeBatchSize))
+	cout.sealedRLPBytes = largeBatchSize
+
+	for _, batch := range singularBatches {
+		err := cout.addSingularBatch(batch, 1)
+		require.ErrorIs(t, err, ErrTooManyRLPBytes)
+	}
+
+	require.Equal(t, cout.activeRLP().Len(), largeBatchSize)
+	require.Greater(t, cout.inactiveRLP().Len(), largeBatchSize)
+}

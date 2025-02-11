@@ -178,6 +178,7 @@ func (co *SpanChannelOut) addSingularBatch(batch *SingularBatch, seqNum uint64) 
 	// the Fjord activation.
 	maxRLPBytesPerChannel := co.chainSpec.MaxRLPBytesPerChannel(batch.Timestamp)
 	if active.Len() > int(maxRLPBytesPerChannel) {
+		co.swapRLP()
 		return fmt.Errorf("could not take %d bytes as replacement of channel of %d bytes, max is %d. err: %w",
 			active.Len(), co.inactiveRLP().Len(), maxRLPBytesPerChannel, ErrTooManyRLPBytes)
 	}
