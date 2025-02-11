@@ -311,8 +311,8 @@ func (m *ManagedNode) resetFromError(errSignal error, l1Ref eth.BlockRef) {
 		// if the out of order signal shows the node is far enough behind,
 		// push a reset to attempt to get the node to tip more quickly.
 		if m.farBehind(l1Ref.ID()) {
-			m.log.Warn("Node is far behind, resetting", "l1Ref", l1Ref, "err", errSignal)
-			m.sendReset()
+			m.log.Warn("Node is far behind and should be reset", "l1Ref", l1Ref, "err", errSignal)
+			// m.sendReset()
 		} else {
 			// otherwise, ignore the out of order signal, the node is near enough to the tip.
 			m.log.Warn("Node is behind, ignoring", "l1Ref", l1Ref, "err", errSignal)
