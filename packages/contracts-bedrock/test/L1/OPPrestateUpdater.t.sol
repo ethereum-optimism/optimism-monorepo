@@ -279,7 +279,7 @@ contract OPPrestateUpdater_Test is Test {
                 disputeClockExtension: Duration.wrap(10800),
                 disputeMaxClockDuration: Duration.wrap(302400),
                 initialBond: 1 ether,
-                vm: IBigStepper(address(opcm.implementations().mipsImpl)),
+                vm: IBigStepper(address(0)),
                 permissioned: true
             })
         );
@@ -326,54 +326,5 @@ contract OPPrestateUpdater_Test is Test {
             vm: IBigStepper(address(opcm.implementations().mipsImpl)),
             permissioned: permissioned
         });
-    }
-
-    function assertValidGameType(
-        IOPContractsManager.AddGameInput memory agi,
-        IOPContractsManager.AddGameOutput memory ago
-    )
-        internal
-        view
-    {
-        // Check the config for the game itself
-        assertEq(ago.faultDisputeGame.gameType().raw(), agi.disputeGameType.raw(), "gameType mismatch");
-        assertEq(
-            ago.faultDisputeGame.absolutePrestate().raw(),
-            agi.disputeAbsolutePrestate.raw(),
-            "absolutePrestate mismatch"
-        );
-        assertEq(ago.faultDisputeGame.maxGameDepth(), agi.disputeMaxGameDepth, "maxGameDepth mismatch");
-        assertEq(ago.faultDisputeGame.splitDepth(), agi.disputeSplitDepth, "splitDepth mismatch");
-        assertEq(
-            ago.faultDisputeGame.clockExtension().raw(), agi.disputeClockExtension.raw(), "clockExtension mismatch"
-        );
-        assertEq(
-            ago.faultDisputeGame.maxClockDuration().raw(),
-            agi.disputeMaxClockDuration.raw(),
-            "maxClockDuration mismatch"
-        );
-        assertEq(address(ago.faultDisputeGame.vm()), address(agi.vm), "vm address mismatch");
-        assertEq(address(ago.faultDisputeGame.weth()), address(ago.delayedWETH), "delayedWETH address mismatch");
-        assertEq(
-            address(ago.faultDisputeGame.anchorStateRegistry()),
-            address(chainDeployOutput.anchorStateRegistryProxy),
-            "ASR address mismatch"
-        );
-
-        // Check the DGF
-        assertEq(
-            chainDeployOutput.disputeGameFactoryProxy.gameImpls(agi.disputeGameType).gameType().raw(),
-            agi.disputeGameType.raw(),
-            "gameType mismatch"
-        );
-        assertEq(
-            address(chainDeployOutput.disputeGameFactoryProxy.gameImpls(agi.disputeGameType)),
-            address(ago.faultDisputeGame),
-            "gameImpl address mismatch"
-        );
-        assertEq(address(ago.faultDisputeGame.weth()), address(ago.delayedWETH), "weth address mismatch");
-        assertEq(
-            chainDeployOutput.disputeGameFactoryProxy.initBonds(agi.disputeGameType), agi.initialBond, "bond mismatch"
-        );
     }
 }
