@@ -76,7 +76,7 @@ contract AnchorStateRegistry_GetAnchorRoot_Test is AnchorStateRegistry_Init {
     /// @notice Tests that getAnchorRoot will return the value of the starting anchor root when no
     ///         anchor game exists yet.
     function test_getAnchorRoot_noAnchorGame_succeeds() public {
-        skipIfForkTest("");
+        skipIfForkTest("On a forked network, there would most likely be an anchor game already.");
 
         // Assert that we nave no anchor game yet.
         assert(address(anchorStateRegistry.anchorGame()) == address(0));
