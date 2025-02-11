@@ -160,6 +160,7 @@ func (l *BatchSubmitter) StartBatchSubmitting() error {
 	l.txpoolMutex.Unlock()
 
 	pendingBytesUpdated := make(chan int64)
+	blocksLoadedCh := make(chan struct{})
 
 	// DA throttling loop should always be started except for testing (indicated by ThrottleInterval == 0)
 	if l.Config.ThrottleInterval > 0 {
@@ -170,9 +171,9 @@ func (l *BatchSubmitter) StartBatchSubmitting() error {
 	}
 
 	l.wg.Add(3)
-	go l.processReceiptsLoop(l.wg, receiptsCh)              // ranges over receiptsCh channel
-	go l.writeLoop(l.shutdownCtx, l.wg, receiptsCh)         // sends on receiptsCh, closes it when done
-	go l.readLoop(l.shutdownCtx, l.wg, pendingBytesUpdated) // sends on pendingBytesUpdated, closes it when done
+	go l.processReceiptsLoop(l.wg, receiptsCh)                              // ranges over receiptsCh channel
+	go l.writeLoop(l.shutdownCtx, l.wg, receiptsCh, blocksLoadedCh)         // ranges over blocksLoaded, sends on receiptsCh, closes it when done
+	go l.readLoop(l.shutdownCtx, l.wg, pendingBytesUpdated, blocksLoadedCh) // sends on pendingBytesUpdated, and blocksLoaded closes them when done
 
 	l.Log.Info("Batch Submitter started")
 	return nil
@@ -432,7 +433,7 @@ func (l *BatchSubmitter) syncAndPrune(syncStatus *eth.SyncStatus) *inclusiveBloc
 // -  waits for a signal that blocks have been loaded
 // -  drives the creation of channels and frames
 // -  sends transactions to the DA layer
-func (l *BatchSubmitter) writeLoop(ctx context.Context, wg *sync.WaitGroup, receiptsCh chan txmgr.TxReceipt[txRef]) {
+func (l *BatchSubmitter) writeLoop(ctx context.Context, wg *sync.WaitGroup, receiptsCh chan txmgr.TxReceipt[txRef], blocksLoadedCh chan struct{}) {
 	defer close(receiptsCh)
 	defer wg.Done()
 
@@ -444,35 +445,30 @@ func (l *BatchSubmitter) writeLoop(ctx context.Context, wg *sync.WaitGroup, rece
 	}
 	txQueue := txmgr.NewQueue[txRef](l.killCtx, l.Txmgr, l.Config.MaxPendingTransactions)
 
-	ticker := time.NewTicker(l.Config.PollInterval)
+	for range blocksLoadedCh {
+		if !l.checkTxpool(txQueue, receiptsCh) {
+			continue
+		}
+		l.publishStateToL1(ctx, txQueue, receiptsCh, daGroup)
+	}
 
-	for {
-		select {
-		case <-ticker.C:
-			if !l.checkTxpool(txQueue, receiptsCh) {
-				continue
-			}
-			l.publishStateToL1(ctx, txQueue, receiptsCh, daGroup)
-		case <-ctx.Done():
-			if err := txQueue.Wait(); err != nil {
-				if !errors.Is(err, context.Canceled) {
-					l.Log.Error("error waiting for transactions to complete", "err", err)
-				}
-			}
-			l.Log.Warn("writeloop returning")
-			return
+	if err := txQueue.Wait(); err != nil {
+		if !errors.Is(err, context.Canceled) {
+			l.Log.Error("error waiting for transactions to complete", "err", err)
 		}
 	}
+	l.Log.Warn("writeloop returning")
 }
 
 // readLoop
 // -  polls the sequencer,
 // -  prunes the channel manager state (i.e. safe blocks)
 // -  loads unsafe blocks from the sequencer
-func (l *BatchSubmitter) readLoop(ctx context.Context, wg *sync.WaitGroup, pendingBytesUpdated chan int64) {
+func (l *BatchSubmitter) readLoop(ctx context.Context, wg *sync.WaitGroup, pendingBytesUpdated chan int64, blocksLoadedCh chan struct{}) {
 	ticker := time.NewTicker(l.Config.PollInterval)
 	defer ticker.Stop()
 	defer close(pendingBytesUpdated)
+	defer close(blocksLoadedCh)
 	defer wg.Done()
 	for {
 		select {
@@ -493,6 +489,7 @@ func (l *BatchSubmitter) readLoop(ctx context.Context, wg *sync.WaitGroup, pendi
 					continue
 				} else {
 					l.promptDAThrottlingCheck(pendingBytesUpdated) // we have increased the pending data. Signal the throttling loop to check if it should throttle.
+					blocksLoadedCh <- struct{}{}                   // signal to the write loop that blocks have been loaded
 				}
 			}
 		case <-ctx.Done():
