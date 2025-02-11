@@ -97,15 +97,6 @@ contract FaultDisputeGame_Init is DisputeGameFactory_Init {
         disputeGameFactory.setImplementation(GAME_TYPE, gameImpl);
         uint256 bondAmount = disputeGameFactory.initBonds(GAME_TYPE);
         // Create a new game.
-        if (isForkTest()) {
-            // Mock the call anchorStateRegistry.getAnchorRoot() to return block number, 0
-            (Hash root,) = anchorStateRegistry.getAnchorRoot();
-            vm.mockCall(
-                address(anchorStateRegistry),
-                abi.encodeCall(IAnchorStateRegistry.getAnchorRoot, ()),
-                abi.encode(root, 0)
-            );
-        }
         gameProxy = IFaultDisputeGame(
             payable(address(disputeGameFactory.create{ value: bondAmount }(GAME_TYPE, rootClaim, extraData)))
         );
@@ -2947,6 +2938,17 @@ contract FaultDispute_1v1_Actors_Test is FaultDisputeGame_Init {
     )
         internal
     {
+        if (isForkTest()) {
+            // Mock the call anchorStateRegistry.getAnchorRoot() to return 0 as the block number
+            (Hash root,) = anchorStateRegistry.getAnchorRoot();
+            vm.store(address(anchorStateRegistry), bytes32(uint256(1)), bytes32(uint256(0)));
+            vm.mockCall(
+                address(anchorStateRegistry),
+                abi.encodeCall(IAnchorStateRegistry.getAnchorRoot, ()),
+                abi.encode(root, 0)
+            );
+        }
+
         // Setup the environment
         bytes memory absolutePrestateData =
             _setup({ _absolutePrestateData: _absolutePrestateData, _rootClaim: _rootClaim });

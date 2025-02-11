@@ -77,7 +77,7 @@ prepare-upgrade-env *ARGS : build-go-ffi
   #!/bin/bash
   echo "Running upgrade tests at block $pinnedBlockNumber"
   export FORK_BLOCK_NUMBER=$pinnedBlockNumber
-  export NO_MATCH_CONTRACTS="OptimismPortal2_FinalizeWithdrawal_Test|FaultDisputeGame_Test|FaultDispute_1v1_Actors_Test"
+  export NO_MATCH_CONTRACTS="OptimismPortal2_FinalizeWithdrawal_Test|FaultDisputeGame_Test"
   export FORK_RPC_URL=$ETH_RPC_URL
   export FORK_TEST=true
   {{ARGS}} \
