@@ -46,6 +46,7 @@ contract OPPrestateUpdater_Test is Test {
         IProtocolVersions protocolVersionsProxy = IProtocolVersions(makeAddr("protocolVersions"));
         bytes32 salt = hex"01";
         IOPContractsManager.Blueprints memory blueprints;
+
         (blueprints.addressManager,) = Blueprint.create(vm.getCode("AddressManager"), salt);
         (blueprints.proxy,) = Blueprint.create(vm.getCode("Proxy"), salt);
         (blueprints.proxyAdmin,) = Blueprint.create(vm.getCode("ProxyAdmin"), salt);
