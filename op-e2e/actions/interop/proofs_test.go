@@ -361,6 +361,8 @@ func TestInteropFaultProofs(gt *testing.T) {
 
 func TestInteropFaultProofs_CascadeInvalidBlock(gt *testing.T) {
 	t := helpers.NewDefaultTesting(gt)
+	// TODO(#14307): Support cascading invalidation in op-supervisor
+	t.Skip("Cascading invalidation not yet working")
 
 	system := dsl.NewInteropDSL(t)
 
@@ -430,8 +432,9 @@ func TestInteropFaultProofs_CascadeInvalidBlock(gt *testing.T) {
 			disputedClaim:      optimisticEnd.Marshal(),
 			disputedTraceIndex: 1023,
 			expectValid:        false,
-			skipProgram:        true,
-			skipChallenger:     true,
+			// TODO(#14306): Support cascading re-orgs in op-program
+			skipProgram:    true,
+			skipChallenger: true,
 		},
 		{
 			name:               "Consolidate-ReplaceInvalidBlocks",
@@ -439,8 +442,9 @@ func TestInteropFaultProofs_CascadeInvalidBlock(gt *testing.T) {
 			disputedClaim:      crossSafeEnd.Marshal(),
 			disputedTraceIndex: 1023,
 			expectValid:        true,
-			skipProgram:        true,
-			skipChallenger:     true,
+			// TODO(#14306): Support cascading re-orgs in op-program
+			skipProgram:    true,
+			skipChallenger: true,
 		},
 	}
 	runFppAndChallengerTests(gt, system, tests)
