@@ -211,6 +211,37 @@ func TestGet(t *testing.T) {
 			require.Equalf(t, InvalidTransitionHash, claim, "incorrect claim at index %d", i)
 		}
 	})
+	t.Run("Step0ForTimestampBeyondChainHead", func(t *testing.T) {
+		provider, _, _, _ := createProvider(t)
+		// No response added so supervisor will return not found.
+		claim, err := provider.Get(context.Background(), types.RootPosition)
+		require.NoError(t, err)
+		require.Equal(t, InvalidTransitionHash, claim)
+	})
+	t.Run("NextSuperRootTimestampBeyondChainHead", func(t *testing.T) {
+		provider, stubSupervisor, l1Head, _ := createProvider(t)
+		prev, _ := createValidSuperRoots(l1Head)
+		stubSupervisor.Add(prev.response)
+		// Next super root response is not added so supervisor will return not found
+
+		// All steps should be the invalid transition hash.
+		for i := int64(0); i < StepsPerTimestamp+1; i++ {
+			claim, err := provider.Get(context.Background(), types.NewPosition(gameDepth, big.NewInt(i)))
+			require.NoError(t, err)
+			require.Equalf(t, InvalidTransitionHash, claim, "incorrect claim at index %d", i)
+		}
+	})
+	t.Run("PreviousSuperRootTimestampBeyondChainHead", func(t *testing.T) {
+		provider, _, _, _ := createProvider(t)
+		// No super root responses are added so supervisor will return not found
+
+		// All steps should be the invalid transition hash.
+		for i := int64(0); i < StepsPerTimestamp+1; i++ {
+			claim, err := provider.Get(context.Background(), types.NewPosition(gameDepth, big.NewInt(i)))
+			require.NoError(t, err)
+			require.Equalf(t, InvalidTransitionHash, claim, "incorrect claim at index %d", i)
+		}
+	})
 }
 
 func TestGetStepDataReturnsError(t *testing.T) {
@@ -452,7 +483,8 @@ func (s *stubRootProvider) AllSafeDerivedAt(_ context.Context, derivedFrom eth.B
 func (s *stubRootProvider) SuperRootAtTimestamp(_ context.Context, timestamp hexutil.Uint64) (eth.SuperRootResponse, error) {
 	root, ok := s.rootsByTimestamp[uint64(timestamp)]
 	if !ok {
-		return eth.SuperRootResponse{}, fmt.Errorf("timestamp %v %w", uint64(timestamp), ethereum.NotFound)
+		// Note: We use NotFound.Error() because the rpc server converts the error to a string, losing the type info
+		return eth.SuperRootResponse{}, fmt.Errorf("timestamp %v %v", uint64(timestamp), ethereum.NotFound.Error())
 	}
 	return root, nil
 }
