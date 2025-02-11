@@ -102,8 +102,6 @@ type BatchSubmitter struct {
 	shutdownCtx, killCtx             context.Context
 	cancelShutdownCtx, cancelKillCtx context.CancelFunc
 
-	pendingBytesUpdated chan int64 // notifies the throttling with the new pending bytes
-
 	mutex   sync.Mutex
 	running bool
 
@@ -140,7 +138,6 @@ func (l *BatchSubmitter) StartBatchSubmitting() error {
 	l.running = true
 
 	l.shutdownCtx, l.cancelShutdownCtx = context.WithCancel(context.Background())
-
 	l.killCtx, l.cancelKillCtx = context.WithCancel(context.Background())
 	l.clearState(l.shutdownCtx)
 	l.wg = &sync.WaitGroup{}
@@ -162,22 +159,20 @@ func (l *BatchSubmitter) StartBatchSubmitting() error {
 	l.txpoolState = TxpoolGood
 	l.txpoolMutex.Unlock()
 
-	l.pendingBytesUpdated = make(chan int64)
-
-	// Go routines launched below, consumers before producers:
+	pendingBytesUpdated := make(chan int64)
 
 	// DA throttling loop should always be started except for testing (indicated by ThrottleInterval == 0)
 	if l.Config.ThrottleInterval > 0 {
 		l.wg.Add(1)
-		go l.throttlingLoop(l.wg) // reads from pendingBytesUpdated
+		go l.throttlingLoop(l.wg, pendingBytesUpdated) // ranges over pendingBytesUpdated channel
 	} else {
 		l.Log.Warn("Throttling loop is DISABLED due to 0 throttle-interval. This should not be disabled in prod.")
 	}
 
 	l.wg.Add(3)
-	go l.processReceiptsLoop(l.wg, receiptsCh)      // receives from receiptsCh
-	go l.writeLoop(l.shutdownCtx, l.wg, receiptsCh) // sends on receiptsCh
-	go l.readLoop(l.shutdownCtx, l.wg)              // sends on pendingBytesUpdated
+	go l.processReceiptsLoop(l.wg, receiptsCh)              // ranges over receiptsCh channel
+	go l.writeLoop(l.shutdownCtx, l.wg, receiptsCh)         // sends on receiptsCh, closes it when done
+	go l.readLoop(l.shutdownCtx, l.wg, pendingBytesUpdated) // sends on pendingBytesUpdated, closes it when done
 
 	l.Log.Info("Batch Submitter started")
 	return nil
@@ -385,13 +380,13 @@ const (
 
 // promptDAThrottlingCheck sends the current pending bytes to the throttling loop.
 // It is not blocking, no signal will be sent if the channel is full.
-func (l *BatchSubmitter) promptDAThrottlingCheck() {
+func (l *BatchSubmitter) promptDAThrottlingCheck(pendingBytesUpdated chan int64) {
 	if l.Config.ThrottleInterval == 0 {
 		return
 	}
 	// notify the throttling loop it may be time to initiate throttling without blocking
 	select {
-	case l.pendingBytesUpdated <- l.channelMgr.PendingDABytes():
+	case pendingBytesUpdated <- l.channelMgr.PendingDABytes():
 	default:
 	}
 }
@@ -474,10 +469,10 @@ func (l *BatchSubmitter) writeLoop(ctx context.Context, wg *sync.WaitGroup, rece
 // -  polls the sequencer,
 // -  prunes the channel manager state (i.e. safe blocks)
 // -  loads unsafe blocks from the sequencer
-func (l *BatchSubmitter) readLoop(ctx context.Context, wg *sync.WaitGroup) {
+func (l *BatchSubmitter) readLoop(ctx context.Context, wg *sync.WaitGroup, pendingBytesUpdated chan int64) {
 	ticker := time.NewTicker(l.Config.PollInterval)
 	defer ticker.Stop()
-	defer close(l.pendingBytesUpdated)
+	defer close(pendingBytesUpdated)
 	defer wg.Done()
 	for {
 		select {
@@ -497,7 +492,7 @@ func (l *BatchSubmitter) readLoop(ctx context.Context, wg *sync.WaitGroup) {
 					l.waitNodeSyncAndClearState()
 					continue
 				} else {
-					l.promptDAThrottlingCheck() // we have increased the pending data. Signal the throttling loop to check if it should throttle.
+					l.promptDAThrottlingCheck(pendingBytesUpdated) // we have increased the pending data. Signal the throttling loop to check if it should throttle.
 				}
 			}
 		case <-ctx.Done():
@@ -532,7 +527,7 @@ func (l *BatchSubmitter) processReceiptsLoop(wg *sync.WaitGroup, receiptsCh chan
 // throttling of incoming data prevent the backlog from growing too large. By looping & calling the miner API setter
 // continuously, we ensure the engine currently in use is always going to be reset to the proper throttling settings
 // even in the event of sequencer failover.
-func (l *BatchSubmitter) throttlingLoop(wg *sync.WaitGroup) {
+func (l *BatchSubmitter) throttlingLoop(wg *sync.WaitGroup, pendingBytesUpdated chan int64) {
 	defer wg.Done()
 	l.Log.Info("Starting DA throttling loop")
 
@@ -588,7 +583,7 @@ func (l *BatchSubmitter) throttlingLoop(wg *sync.WaitGroup) {
 		}
 	}
 
-	for pendingBytes := range l.pendingBytesUpdated {
+	for pendingBytes := range pendingBytesUpdated {
 		updateParams(pendingBytes)
 	}
 	l.Log.Info("DA throttling loop returning")
