@@ -51,12 +51,13 @@ func TestService(t *testing.T) {
 		JWTSecretPath: filepath.Join(t.TempDir(), "test_jwt_secret.txt"),
 	}
 	logger := testlog.Logger(t, log.LevelError)
+
 	s, err := FromConfig(context.Background(), cfg, logger)
 	require.NoError(t, err)
 	require.NoError(t, s.Start(context.Background()), "start service")
 	// run some RPC tests against the service with the mock backend
 	{
-		endpoint := "http://" + s.rpcServer.Endpoint()
+		endpoint := s.httpServer.HTTPEndpoint()
 		t.Logf("dialing %s", endpoint)
 		opts := []client.RPCOption{
 			client.WithFixedDialBackoff(time.Second * 5),

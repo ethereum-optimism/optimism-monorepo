@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
+	"strconv"
 	"sync/atomic"
 
 	"github.com/ethereum/go-ethereum/log"
@@ -18,11 +20,13 @@ import (
 	"github.com/ethereum-optimism/optimism/op-test-sequencer/config"
 	"github.com/ethereum-optimism/optimism/op-test-sequencer/metrics"
 	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/backend"
+	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/backend/work"
 	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/frontend"
 )
 
 type serviceBackend interface {
-	frontend.Backend
+	frontend.AdminBackend
+	frontend.BuildBackend
 	Start(ctx context.Context) error
 	Stop(ctx context.Context) error
 }
@@ -40,7 +44,8 @@ type Service struct {
 	metrics      metrics.Metricer
 	pprofService *oppprof.Service
 	metricsSrv   *httputil.HTTPServer
-	rpcServer    *oprpc.Server
+	rpcHandler   *oprpc.Handler
+	httpServer   *httputil.HTTPServer
 	jwtSecret    eth.Bytes32
 }
 
@@ -65,8 +70,11 @@ func (s *Service) initFromCLIConfig(ctx context.Context, cfg *config.Config) err
 	if err := s.initBackend(ctx, cfg); err != nil {
 		return fmt.Errorf("failed to start backend: %w", err)
 	}
-	if err := s.initRPCServer(cfg); err != nil {
-		return fmt.Errorf("failed to start RPC server: %w", err)
+	if err := s.initRPCHandler(cfg); err != nil {
+		return fmt.Errorf("failed to start RPC handler: %w", err)
+	}
+	if err := s.initHTTPServer(cfg); err != nil {
+		return fmt.Errorf("failed to start HTTP server: %w", err)
 	}
 	return nil
 }
@@ -117,43 +125,65 @@ func (s *Service) initMetricsServer(cfg *config.Config) error {
 	return nil
 }
 
+func (s *Service) initRPCHandler(cfg *config.Config) error {
+	secret, err := oprpc.ObtainJWTSecret(s.log, cfg.JWTSecretPath, true)
+	if err != nil {
+		return err
+	}
+	s.jwtSecret = secret
+	s.rpcHandler = oprpc.NewHandler(cfg.Version,
+		oprpc.WithLogger(s.log),
+		oprpc.WithJWTSecret(secret[:]),
+		oprpc.WithWebsocketEnabled(),
+	)
+	if cfg.RPC.EnableAdmin {
+		s.log.Info("Admin RPC enabled")
+		if err := s.rpcHandler.AddAPI(rpc.API{
+			Namespace:     "admin",
+			Service:       &frontend.AdminFrontend{Backend: s.backend},
+			Authenticated: true,
+		}); err != nil {
+			return fmt.Errorf("failed to add admin API: %w", err)
+		}
+	}
+	if err := s.rpcHandler.AddAPI(rpc.API{
+		Namespace: "build",
+		Service:   &frontend.BuildFrontend{Backend: s.backend},
+	}); err != nil {
+		return fmt.Errorf("failed to add build API: %w", err)
+	}
+	return nil
+}
+
 func (s *Service) initBackend(ctx context.Context, cfg *config.Config) error {
 	if cfg.MockRun {
 		s.backend = backend.NewMockBackend()
 		return nil
 	}
-	s.backend = backend.NewBackend(s.log, s.metrics)
+	setup, err := cfg.Ensemble.Load(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to load builder setup: %w", err)
+	}
+	builders, err := setup.Start(ctx, &work.StartOpts{
+		Log:     s.log,
+		Metrics: s.metrics,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to setup builders: %w", err)
+	}
+	s.backend = backend.NewBackend(s.log, s.metrics, builders, s.rpcHandler)
 	return nil
 }
 
-func (s *Service) initRPCServer(cfg *config.Config) error {
-	secret, err := oprpc.ObtainJWTSecret(s.log, cfg.JWTSecretPath, true)
-	if err != nil {
-		return err
-	}
-	server := oprpc.NewServer(
-		cfg.RPC.ListenAddr,
-		cfg.RPC.ListenPort,
-		cfg.Version,
-		oprpc.WithLogger(s.log),
-		oprpc.WithJWTSecret(secret[:]),
-	)
-	if cfg.RPC.EnableAdmin {
-		s.log.Info("Admin RPC enabled")
-		server.AddAPI(rpc.API{
-			Namespace:     "admin",
-			Service:       &frontend.AdminFrontend{Backend: s.backend},
-			Authenticated: true,
-		})
-	}
-	s.jwtSecret = secret
-	s.rpcServer = server
+func (s *Service) initHTTPServer(cfg *config.Config) error {
+	endpoint := net.JoinHostPort(cfg.RPC.ListenAddr, strconv.Itoa(cfg.RPC.ListenPort))
+	s.httpServer = httputil.NewHTTPServer(endpoint, s.rpcHandler)
 	return nil
 }
 
 func (s *Service) Start(ctx context.Context) error {
 	s.log.Info("Starting JSON-RPC server")
-	if err := s.rpcServer.Start(); err != nil {
+	if err := s.httpServer.Start(); err != nil {
 		return fmt.Errorf("unable to start RPC server: %w", err)
 	}
 
@@ -162,7 +192,7 @@ func (s *Service) Start(ctx context.Context) error {
 	}
 
 	s.metrics.RecordUp()
-	s.log.Info("JSON-RPC Server started", "endpoint", s.rpcServer.Endpoint())
+	s.log.Info("JSON-RPC Server started", "endpoint", s.httpServer.HTTPEndpoint())
 	return nil
 }
 
@@ -173,10 +203,13 @@ func (s *Service) Stop(ctx context.Context) error {
 	}
 	s.log.Info("Stopping JSON-RPC server")
 	var result error
-	if s.rpcServer != nil {
-		if err := s.rpcServer.Stop(); err != nil {
-			result = errors.Join(result, fmt.Errorf("failed to stop RPC server: %w", err))
+	if s.httpServer != nil {
+		if err := s.httpServer.Stop(ctx); err != nil {
+			result = errors.Join(result, fmt.Errorf("failed to stop HTTP server: %w", err))
 		}
+	}
+	if s.rpcHandler != nil {
+		s.rpcHandler.Stop()
 	}
 	s.log.Info("Stopped RPC Server")
 	if s.backend != nil {
@@ -205,7 +238,5 @@ func (s *Service) Stopped() bool {
 }
 
 func (s *Service) RPC() string {
-	// the RPC endpoint is assumed to be HTTP
-	// TODO(#11032): make this flexible for ws if the server supports it
-	return "http://" + s.rpcServer.Endpoint()
+	return s.httpServer.HTTPEndpoint()
 }

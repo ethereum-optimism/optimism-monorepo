@@ -7,6 +7,12 @@ import (
 	opmetrics "github.com/ethereum-optimism/optimism/op-service/metrics"
 	"github.com/ethereum-optimism/optimism/op-service/oppprof"
 	oprpc "github.com/ethereum-optimism/optimism/op-service/rpc"
+	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/backend/work"
+	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/backend/work/config"
+)
+
+const (
+	DefaultConfigYaml = "config.yaml"
 )
 
 type Config struct {
@@ -18,6 +24,8 @@ type Config struct {
 	RPC           oprpc.CLIConfig
 
 	JWTSecretPath string
+
+	Ensemble work.Loader
 
 	MockRun bool
 }
@@ -37,5 +45,7 @@ func DefaultCLIConfig() *Config {
 		MetricsConfig: opmetrics.DefaultCLIConfig(),
 		PprofConfig:   oppprof.DefaultCLIConfig(),
 		RPC:           oprpc.DefaultCLIConfig(),
+		Ensemble:      &config.YamlLoader{Path: DefaultConfigYaml},
+		MockRun:       false,
 	}
 }
