@@ -54,11 +54,17 @@ library GameTypes {
     /// @dev A permissioned dispute game type that uses the cannon vm.
     GameType internal constant PERMISSIONED_CANNON = GameType.wrap(1);
 
-    /// @notice A dispute game type that uses the asterisc VM
+    /// @notice A dispute game type that uses the asterisc vm.
     GameType internal constant ASTERISC = GameType.wrap(2);
 
-    /// @notice A dispute game type that uses the asterisc VM with Kona
+    /// @notice A dispute game type that uses the asterisc vm with Kona.
     GameType internal constant ASTERISC_KONA = GameType.wrap(3);
+
+    /// @notice A dispute game type that uses the super-cannon vm.
+    GameType internal constant SUPER_CANNON = GameType.wrap(4);
+
+    /// @notice A permissioned dispute game type that uses the super-cannon vm.
+    GameType internal constant PERMISSIONED_SUPER_CANNON = GameType.wrap(5);
 
     /// @notice A dispute game type that uses OP Succinct
     GameType internal constant OP_SUCCINCT = GameType.wrap(6);
