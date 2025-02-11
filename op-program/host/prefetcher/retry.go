@@ -173,6 +173,16 @@ func (s *RetryingL2Source) OutputByNumber(ctx context.Context, blockNum uint64) 
 	})
 }
 
+func (s *RetryingL2Source) GetProof(ctx context.Context, address common.Address, storage []common.Hash, blockTag string) (*eth.AccountResult, error) {
+	// these aren't retried because they are currently experimental and can be slow
+	return s.source.GetProof(ctx, address, storage, blockTag)
+}
+
+func (s *RetryingL2Source) PayloadExecutionWitness(ctx context.Context, parentHash common.Hash, payloadAttributes eth.PayloadAttributes) (*eth.ExecutionWitness, error) {
+	// these aren't retried because they are currently experimental and can be slow
+	return s.source.PayloadExecutionWitness(ctx, parentHash, payloadAttributes)
+}
+
 func NewRetryingL2Source(logger log.Logger, source hosttypes.L2Source) *RetryingL2Source {
 	return &RetryingL2Source{
 		logger:   logger,
