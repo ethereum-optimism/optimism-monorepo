@@ -768,13 +768,13 @@
       {
         "indexed": false,
         "internalType": "contract IDisputeGame",
-        "name": "disputeGame",
+        "name": "newDisputeGame",
         "type": "address"
       },
       {
         "indexed": false,
-        "internalType": "contract IDelayedWETH",
-        "name": "delayedWETH",
+        "internalType": "contract IDisputeGame",
+        "name": "oldDisputeGame",
         "type": "address"
       }
     ],

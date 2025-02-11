@@ -169,9 +169,9 @@ interface IOPContractsManager {
     /// @notice Emitted when a new game type is added to a chain
     /// @param l2ChainId Chain ID of the chain
     /// @param gameType Type of the game being added
-    /// @param disputeGame Address of the deployed dispute game
-    /// @param delayedWETH Address of the WETH contract used by the game
-    event GameTypeAdded(uint256 indexed l2ChainId, GameType indexed gameType, IDisputeGame disputeGame, IDelayedWETH delayedWETH);
+    /// @param newDisputeGame Address of the deployed dispute game
+    /// @param oldDisputeGame Address of the old dispute game
+    event GameTypeAdded(uint256 indexed l2ChainId, GameType indexed gameType, IDisputeGame newDisputeGame, IDisputeGame oldDisputeGame);
 
     // -------- Errors --------
 
