@@ -289,6 +289,19 @@ func TestDeriveBlockForConsolidateStep(t *testing.T) {
 			},
 		},
 		{
+			name: "ReplaceChainB-MessageExpiry",
+			testCase: consolidationTestCase{
+				logBuilderFn: func(includeBlockNumbers map[supervisortypes.ChainIndex]uint64, config *staticConfigSource) map[supervisortypes.ChainIndex][]*gethTypes.Log {
+					init := createInitLog()
+					execMsg := createExecMessage(includeBlockNumbers[chainA], config)
+					return map[supervisortypes.ChainIndex][]*gethTypes.Log{chainA: {init}, chainB: {convertExecutingMessageToLog(t, execMsg)}}
+				},
+				expectBlockReplacements: func(config *staticConfigSource) []supervisortypes.ChainIndex {
+					return []supervisortypes.ChainIndex{chainB}
+				},
+			},
+		},
+		{
 			name: "ReplaceBothChains",
 			testCase: consolidationTestCase{
 				logBuilderFn: func(includeBlockNumbers map[supervisortypes.ChainIndex]uint64, config *staticConfigSource) map[supervisortypes.ChainIndex][]*gethTypes.Log {

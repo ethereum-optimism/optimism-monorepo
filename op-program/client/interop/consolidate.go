@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum-optimism/optimism/op-program/client/boot"
 	"github.com/ethereum-optimism/optimism/op-program/client/interop/types"
 	"github.com/ethereum-optimism/optimism/op-program/client/l1"
@@ -18,8 +19,6 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
 )
-
-const messageExpiryTimeSeconds = 15552000 // 180 days
 
 func ReceiptsToExecutingMessages(depset depset.ChainIndexFromID, receipts ethtypes.Receipts) ([]*supervisortypes.ExecutingMessage, uint32, error) {
 	var execMsgs []*supervisortypes.ExecutingMessage
@@ -70,6 +69,7 @@ func RunConsolidation(
 	if err != nil {
 		return eth.Bytes32{}, err
 	}
+	// TODO(#14306): Handle cascading reorgs
 	// invalidChains tracks blocks that need to be replaced with a deposits-only block.
 	// The replacement is done after a first pass on all chains to avoid "contaminating" the caonical block
 	// oracle in a way that alters the result of hazard checks after a reorg.
@@ -97,7 +97,11 @@ func RunConsolidation(
 			Number:    optimisticBlock.NumberU64(),
 			Timestamp: optimisticBlock.Time(),
 		}
-		if err := checkHazards(deps, candidate, chain.ChainID, execMsgs); err != nil {
+		rollupCfg, err := bootInfo.Configs.RollupConfig(chain.ChainID)
+		if err != nil {
+			return eth.Bytes32{}, fmt.Errorf("no rollup config available for chain ID %v: %w", chain.ChainID, err)
+		}
+		if err := checkHazards(rollupCfg, deps, candidate, chain.ChainID, execMsgs); err != nil {
 			if !isInvalidMessageError(err) {
 				return eth.Bytes32{}, err
 			}
@@ -154,12 +158,14 @@ type ConsolidateCheckDeps interface {
 }
 
 func checkHazards(
+	rollupCfg *rollup.Config,
 	deps ConsolidateCheckDeps,
 	candidate supervisortypes.BlockSeal,
 	chainID eth.ChainID,
 	execMsgs []*supervisortypes.ExecutingMessage,
 ) error {
 	// TODO(#14234): remove this check once the supervisor is updated handle msg expiry
+	messageExpiryTimeSeconds := rollupCfg.GetMessageExpiryTimeInterop()
 	for _, msg := range execMsgs {
 		if msg.Timestamp+messageExpiryTimeSeconds < candidate.Timestamp {
 			return fmt.Errorf(
