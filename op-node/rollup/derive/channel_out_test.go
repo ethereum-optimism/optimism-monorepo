@@ -493,9 +493,17 @@ func testSpanChannelOut_MaxBlocksPerSpanBatch(t *testing.T, tt maxBlocksTest) {
 }
 
 func TestSpanChannelOut_ExceedMaxRLPBytesPerChannel(t *testing.T) {
+	for _, algo := range CompressionAlgos {
+		t.Run("testSpanChannelOut_ExceedMaxRLPBytesPerChannel_"+algo.String(), func(t *testing.T) {
+			testSpanChannelOut_ExceedMaxRLPBytesPerChannel(t, algo)
+		})
+	}
+}
+
+func testSpanChannelOut_ExceedMaxRLPBytesPerChannel(t *testing.T, algo CompressionAlgo) {
 
 	largeBatchSize := int(rollup.NewChainSpec(&rollupCfg).MaxRLPBytesPerChannel(0))
-	cout, singularBatches := SpanChannelAndBatches(t, 100, 1, Zlib)
+	cout, singularBatches := SpanChannelAndBatches(t, 100, 1, algo)
 
 	cout.rlp[0] = bytes.NewBuffer(make([]byte, largeBatchSize))
 	cout.rlp[1] = bytes.NewBuffer(make([]byte, largeBatchSize))
