@@ -145,6 +145,7 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
         ROOT_CLAIM = Claim.wrap(Hash.unwrap(root));
 
         if (isForkTest()) {
+            // Set the init bond of anchor game type 0 to be 0.
             vm.store(
                 address(disputeGameFactory), keccak256(abi.encode(GameType.wrap(0), uint256(102))), bytes32(uint256(0))
             );
