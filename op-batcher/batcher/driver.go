@@ -98,7 +98,7 @@ type DriverSetup struct {
 type BatchSubmitter struct {
 	DriverSetup
 
-	producerWg, consumerWg                              *sync.WaitGroup
+	wg                                                  *sync.WaitGroup
 	producerCtx, consumerCtx, killCtx                   context.Context
 	cancelProducerCtx, cancelConsumerCtx, cancelKillCtx context.CancelFunc
 
@@ -149,7 +149,7 @@ func (l *BatchSubmitter) StartBatchSubmitting() error {
 	l.clearState(l.killCtx)
 	l.consumerCtx, l.cancelConsumerCtx = context.WithCancel(context.Background())
 	l.producerCtx, l.cancelProducerCtx = context.WithCancel(context.Background())
-	l.consumerWg, l.producerWg = &sync.WaitGroup{}, &sync.WaitGroup{}
+	l.wg = &sync.WaitGroup{}
 
 	if err := l.waitForL2Genesis(); err != nil {
 		return fmt.Errorf("error waiting for L2 genesis: %w", err)
@@ -181,18 +181,16 @@ func (l *BatchSubmitter) StartBatchSubmitting() error {
 
 	// DA throttling loop should always be started except for testing (indicated by ThrottleInterval == 0)
 	if l.Config.ThrottleInterval > 0 {
-		l.consumerWg.Add(1)
-		go l.throttlingLoop(l.consumerWg) // reads from pendingBytesUpdated
+		l.wg.Add(1)
+		go l.throttlingLoop(l.wg) // reads from pendingBytesUpdated
 	} else {
 		l.Log.Warn("Throttling loop is DISABLED due to 0 throttle-interval. This should not be disabled in prod.")
 	}
 
-	l.consumerWg.Add(1)
-	go l.processReceiptsLoop(l.consumerWg, receiptsCh) // receives from receiptsCh
-
-	l.producerWg.Add(2)
-	go l.writeLoop(l.producerCtx, l.producerWg, receiptsCh) // sends on receiptsCh
-	go l.readLoop(l.producerCtx, l.producerWg)              // sends on pendingBytesUpdated
+	l.wg.Add(3)
+	go l.processReceiptsLoop(l.wg, receiptsCh)      // receives from receiptsCh
+	go l.writeLoop(l.producerCtx, l.wg, receiptsCh) // sends on receiptsCh
+	go l.readLoop(l.producerCtx, l.wg)              // sends on pendingBytesUpdated
 
 	l.Log.Info("Batch Submitter started")
 	return nil
@@ -258,9 +256,8 @@ func (l *BatchSubmitter) StopBatchSubmitting(ctx context.Context) error {
 	}()
 
 	l.cancelProducerCtx()
-	l.producerWg.Wait()
 	l.cancelConsumerCtx()
-	l.consumerWg.Wait()
+	l.wg.Wait()
 
 	l.cancelKillCtx()
 
