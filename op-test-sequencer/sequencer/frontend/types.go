@@ -28,7 +28,9 @@ func (id *JobID) UnmarshalText(data []byte) error {
 }
 
 type BuildOpts struct {
+	// Parent block to build on top of
 	Parent common.Hash `json:"parent"`
+
 	// L1Origin overrides the L1 origin of the block.
 	// Optional, by default the L1 origin of the parent block
 	// is progressed when first allowed (respecting time invariants).

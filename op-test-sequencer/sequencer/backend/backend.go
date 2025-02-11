@@ -9,6 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum-optimism/optimism/op-test-sequencer/metrics"
+	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/backend/builder"
 	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/frontend"
 )
 
@@ -21,14 +22,14 @@ type Backend struct {
 	started atomic.Bool
 	logger  log.Logger
 	m       metrics.Metricer
-	builder *Builder
+	builder builder.Builder
 }
 
 func NewBackend(log log.Logger, m metrics.Metricer) *Backend {
 	return &Backend{
 		logger:  log,
 		m:       m,
-		builder: NewBuilder(log, m),
+		builder: builder.NewLocalBuilder(log, m),
 	}
 }
 

@@ -3,6 +3,7 @@ package backend
 import (
 	"context"
 
+	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/backend/builder"
 	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/frontend"
 )
 
@@ -13,7 +14,7 @@ func NewMockBackend() *MockBackend {
 }
 
 func (ba *MockBackend) Builder() frontend.BuildBackend {
-	return &NoopBuilder{}
+	return builder.NoopBuilder{}
 }
 
 func (ba *MockBackend) Start(ctx context.Context) error {
