@@ -3,11 +3,13 @@ package backend
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync/atomic"
 
 	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum-optimism/optimism/op-test-sequencer/metrics"
+	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/frontend"
 )
 
 var (
@@ -19,13 +21,19 @@ type Backend struct {
 	started atomic.Bool
 	logger  log.Logger
 	m       metrics.Metricer
+	builder *Builder
 }
 
 func NewBackend(log log.Logger, m metrics.Metricer) *Backend {
 	return &Backend{
-		logger: log,
-		m:      m,
+		logger:  log,
+		m:       m,
+		builder: NewBuilder(log, m),
 	}
+}
+
+func (ba *Backend) Builder() frontend.BuildBackend {
+	return ba.builder
 }
 
 func (ba *Backend) Start(ctx context.Context) error {
@@ -41,7 +49,11 @@ func (ba *Backend) Stop(ctx context.Context) error {
 		return errAlreadyStopped
 	}
 	ba.logger.Info("Stopping sequencer backend")
-	return nil
+	var result error
+	if err := ba.builder.Close(); err != nil {
+		result = errors.Join(result, fmt.Errorf("failed to close builder: %w", err))
+	}
+	return result
 }
 
 func (ba *Backend) Hello(ctx context.Context, name string) (string, error) {

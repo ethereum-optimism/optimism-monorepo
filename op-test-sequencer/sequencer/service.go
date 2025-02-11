@@ -22,7 +22,8 @@ import (
 )
 
 type serviceBackend interface {
-	frontend.Backend
+	frontend.AdminBackend
+	Builder() frontend.BuildBackend
 	Start(ctx context.Context) error
 	Stop(ctx context.Context) error
 }
@@ -146,6 +147,10 @@ func (s *Service) initRPCServer(cfg *config.Config) error {
 			Authenticated: true,
 		})
 	}
+	server.AddAPI(rpc.API{
+		Namespace: "test",
+		Service:   &frontend.BuildFrontend{Backend: s.backend},
+	})
 	s.jwtSecret = secret
 	s.rpcServer = server
 	return nil

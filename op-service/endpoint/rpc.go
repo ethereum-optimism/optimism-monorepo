@@ -13,6 +13,15 @@ type RPC interface {
 	RPC() string
 }
 
+// URL is a generic RPC endpoint URL
+type URL string
+
+var _ RPC = URL("")
+
+func (u URL) RPC() string {
+	return string(u)
+}
+
 // WsRPC is an RPC extension interface,
 // to explicitly provide the Websocket RPC option.
 type WsRPC interface {

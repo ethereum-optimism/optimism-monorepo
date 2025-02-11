@@ -1,11 +1,19 @@
 package backend
 
-import "context"
+import (
+	"context"
+
+	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/frontend"
+)
 
 type MockBackend struct{}
 
 func NewMockBackend() *MockBackend {
 	return &MockBackend{}
+}
+
+func (ba *MockBackend) Builder() frontend.BuildBackend {
+	return &NoopBuilder{}
 }
 
 func (ba *MockBackend) Start(ctx context.Context) error {
