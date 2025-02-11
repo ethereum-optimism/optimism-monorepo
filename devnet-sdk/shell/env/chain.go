@@ -10,8 +10,9 @@ import (
 )
 
 const (
-	EnvFileVar   = "DEVNET_ENV_FILE"
-	ChainNameVar = "DEVNET_CHAIN_NAME"
+	EnvFileVar             = "DEVNET_ENV_FILE"
+	ChainNameVar           = "DEVNET_CHAIN_NAME"
+	ExpectPreconditionsMet = "DEVNET_EXPECT_PRECONDITIONS_MET"
 )
 
 type ChainConfig struct {
@@ -21,8 +22,8 @@ type ChainConfig struct {
 }
 
 type ChainEnv struct {
-	Motd    string
-	EnvVars map[string]string
+	motd    string
+	envVars map[string]string
 }
 
 func (c *ChainConfig) getRpcUrl() (string, error) {
@@ -72,20 +73,54 @@ func (c *ChainConfig) motd() string {
 	return buf.String()
 }
 
-func (c *ChainConfig) GetEnv() (*ChainEnv, error) {
-	mapping := map[string]func() (string, error){
-		"ETH_RPC_URL":        c.getRpcUrl,
-		"ETH_RPC_JWT_SECRET": c.getJwtSecret,
+type ChainConfigOption func(*ChainConfig, *chainConfigOpts) error
+
+type chainConfigOpts struct {
+	extraEnvVars map[string]string
+}
+
+func WithCastIntegration(cast bool) ChainConfigOption {
+	return func(c *ChainConfig, o *chainConfigOpts) error {
+		mapping := map[string]func() (string, error){
+			"ETH_RPC_URL":        c.getRpcUrl,
+			"ETH_RPC_JWT_SECRET": c.getJwtSecret,
+		}
+
+		for key, fn := range mapping {
+			value := ""
+			var err error
+			if cast {
+				if value, err = fn(); err != nil {
+					return err
+				}
+			}
+			o.extraEnvVars[key] = value
+		}
+		return nil
+	}
+}
+
+func WithExpectedPreconditions(pre bool) ChainConfigOption {
+	return func(c *ChainConfig, o *chainConfigOpts) error {
+		if pre {
+			o.extraEnvVars[ExpectPreconditionsMet] = "true"
+		} else {
+			o.extraEnvVars[ExpectPreconditionsMet] = ""
+		}
+		return nil
+	}
+}
+
+func (c *ChainConfig) GetEnv(opts ...ChainConfigOption) (*ChainEnv, error) {
+	motd := c.motd()
+	o := &chainConfigOpts{
+		extraEnvVars: make(map[string]string),
 	}
 
-	motd := c.motd()
-	envVars := make(map[string]string)
-	for key, fn := range mapping {
-		value, err := fn()
-		if err != nil {
+	for _, opt := range opts {
+		if err := opt(c, o); err != nil {
 			return nil, err
 		}
-		envVars[key] = value
 	}
 
 	// To allow commands within the shell to know which devnet and chain they are in
@@ -93,11 +128,22 @@ func (c *ChainConfig) GetEnv() (*ChainEnv, error) {
 	if err != nil {
 		absPath = c.devnetFile // Fallback to original path if abs fails
 	}
-	envVars[EnvFileVar] = absPath
-	envVars[ChainNameVar] = c.name
+	o.extraEnvVars[EnvFileVar] = absPath
+	o.extraEnvVars[ChainNameVar] = c.name
 
 	return &ChainEnv{
-		Motd:    motd,
-		EnvVars: envVars,
+		motd:    motd,
+		envVars: o.extraEnvVars,
 	}, nil
+}
+
+func (e *ChainEnv) ApplyToEnv(env []string) []string {
+	for key, value := range e.envVars {
+		env = append(env, fmt.Sprintf("%s=%s", key, value))
+	}
+	return env
+}
+
+func (e *ChainEnv) GetMotd() string {
+	return e.motd
 }
