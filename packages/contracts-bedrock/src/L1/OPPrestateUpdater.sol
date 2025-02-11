@@ -40,7 +40,6 @@ contract OPPrestateUpdater is OPContractsManager {
     // @param _superchainConfig Address of the SuperchainConfig contract
     // @param _protocolVersions Address of the ProtocolVersions contract
     // @param _blueprints Addresses of Blueprint contracts
-    // @param _implementations Addresses of implementation contracts
     constructor(
         ISuperchainConfig _superchainConfig,
         IProtocolVersions _protocolVersions,
