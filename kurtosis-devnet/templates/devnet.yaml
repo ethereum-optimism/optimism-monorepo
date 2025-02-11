@@ -1,6 +1,6 @@
 {{- $context := or . (dict)}}
-{{- $default_l2s := dict 
-    "2151908" (dict "nodes" (list "op-geth")) 
+{{- $default_l2s := dict
+    "2151908" (dict "nodes" (list "op-geth"))
     "2151909" (dict "nodes" (list "op-geth"))
 }}
 {{- $l2s := dig "l2s" $default_l2s $context }}
@@ -33,6 +33,9 @@ optimism_package:
   global_tolerations: []
   persistent: false
 ethereum_package:
+  participants:
+    - el_type: geth
+      cl_type: teku
   network_params:
     preset: minimal
     genesis_delay: 5
