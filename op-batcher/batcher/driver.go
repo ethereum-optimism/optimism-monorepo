@@ -182,7 +182,7 @@ func (l *BatchSubmitter) StartBatchSubmitting() error {
 	// DA throttling loop should always be started except for testing (indicated by ThrottleInterval == 0)
 	if l.Config.ThrottleInterval > 0 {
 		l.consumerWg.Add(1)
-		go l.throttlingLoop(l.consumerCtx, l.consumerWg) // reads from pendingBytesUpdated
+		go l.throttlingLoop(l.consumerWg) // reads from pendingBytesUpdated
 	} else {
 		l.Log.Warn("Throttling loop is DISABLED due to 0 throttle-interval. This should not be disabled in prod.")
 	}
@@ -549,13 +549,13 @@ func (l *BatchSubmitter) processReceiptsLoop(ctx context.Context, wg *sync.WaitG
 // throttling of incoming data prevent the backlog from growing too large. By looping & calling the miner API setter
 // continuously, we ensure the engine currently in use is always going to be reset to the proper throttling settings
 // even in the event of sequencer failover.
-func (l *BatchSubmitter) throttlingLoop(ctx context.Context, wg *sync.WaitGroup) {
+func (l *BatchSubmitter) throttlingLoop(wg *sync.WaitGroup) {
 	defer wg.Done()
 	l.Log.Info("Starting DA throttling loop")
 
 	// TODO reinstate some retry logic, depending on the error
 	updateParams := func(pendingBytes int64) {
-		ctx, cancel := context.WithTimeout(ctx, l.Config.NetworkTimeout)
+		ctx, cancel := context.WithTimeout(l.consumerCtx, l.Config.NetworkTimeout)
 		defer cancel()
 		cl, err := l.EndpointProvider.EthClient(ctx)
 		if err != nil {
@@ -605,16 +605,10 @@ func (l *BatchSubmitter) throttlingLoop(ctx context.Context, wg *sync.WaitGroup)
 		}
 	}
 
-	for {
-		select {
-		case pendingBytes := <-l.pendingBytesUpdated:
-			updateParams(pendingBytes)
-			// TODO add case for active sequencer change event
-		case <-ctx.Done():
-			l.Log.Info("DA throttling loop returning")
-			return
-		}
+	for pendingBytes := range l.pendingBytesUpdated {
+		updateParams(pendingBytes)
 	}
+	l.Log.Info("DA throttling loop returning")
 }
 
 func (l *BatchSubmitter) waitNodeSyncAndClearState() {
