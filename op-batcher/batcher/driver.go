@@ -380,9 +380,9 @@ const (
 	TxpoolCancelPending
 )
 
-// promptThrottlingLoop sends the current pending bytes to the throttling loop.
+// sendToThrottlingLoop sends the current pending bytes to the throttling loop.
 // It is not blocking, no signal will be sent if the channel is full.
-func (l *BatchSubmitter) promptThrottlingLoop(pendingBytesUpdated chan int64) {
+func (l *BatchSubmitter) sendToThrottlingLoop(pendingBytesUpdated chan int64) {
 	if l.Config.ThrottleInterval == 0 {
 		return
 	}
@@ -393,9 +393,9 @@ func (l *BatchSubmitter) promptThrottlingLoop(pendingBytesUpdated chan int64) {
 	}
 }
 
-// promptDAThrottlingCheck sends the current pending bytes to the throttling loop.
+// signalWriteLoop sends the current pending bytes to the throttling loop.
 // It is not blocking, no signal will be sent if the channel is full.
-func (l *BatchSubmitter) promptWriteLoop(blocksLoaded chan struct{}) {
+func (l *BatchSubmitter) signalWriteLoop(blocksLoaded chan struct{}) {
 	// notify the writeLoop in a non blocking way
 	select {
 	case blocksLoaded <- struct{}{}:
@@ -499,8 +499,8 @@ func (l *BatchSubmitter) readLoop(ctx context.Context, wg *sync.WaitGroup, pendi
 					l.waitNodeSyncAndClearState()
 					continue
 				} else {
-					l.promptThrottlingLoop(pendingBytesUpdated) // we have increased the pending data. Signal the throttling loop to check if it should throttle.
-					l.promptWriteLoop(blocksLoadedCh)           // signal the write loop that blocks have been loaded
+					l.sendToThrottlingLoop(pendingBytesUpdated) // we have increased the pending data. Signal the throttling loop to check if it should throttle.
+					l.signalWriteLoop(blocksLoadedCh)           // signal the write loop that blocks have been loaded
 				}
 			}
 		case <-ctx.Done():
