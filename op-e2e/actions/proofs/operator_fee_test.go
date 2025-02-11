@@ -34,7 +34,8 @@ func Test_Operator_Fee_Constistency(gt *testing.T) {
 		require.NoError(t, err)
 
 		// Update the operator fee parameters
-		sysCfgContract.SetOperatorFeeScalars(sysCfgOwner, OperatorFeeScalar, OperatorFeeConstant)
+		_, err = sysCfgContract.SetOperatorFeeScalars(sysCfgOwner, OperatorFeeScalar, OperatorFeeConstant)
+		require.NoError(t, err)
 
 		env.Miner.ActL1StartBlock(12)(t)
 		env.Miner.ActL1IncludeTx(env.Dp.Addresses.Deployer)(t)
