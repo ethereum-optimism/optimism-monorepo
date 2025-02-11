@@ -1447,7 +1447,7 @@ workflows:
             - contracts-bedrock-build
       - contracts-bedrock-frozen-code:
           requires:
-            - contracts-bedrock-checks
+            - contracts-bedrock-build
       - diff-asterisc-bytecode
       - semgrep-scan:
           name: semgrep-scan-local
