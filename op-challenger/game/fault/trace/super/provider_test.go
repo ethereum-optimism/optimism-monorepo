@@ -483,8 +483,8 @@ func (s *stubRootProvider) AllSafeDerivedAt(_ context.Context, derivedFrom eth.B
 func (s *stubRootProvider) SuperRootAtTimestamp(_ context.Context, timestamp hexutil.Uint64) (eth.SuperRootResponse, error) {
 	root, ok := s.rootsByTimestamp[uint64(timestamp)]
 	if !ok {
-		// Note: We use NotFound.Error() because the rpc server converts the error to a string, losing the type info
-		return eth.SuperRootResponse{}, fmt.Errorf("timestamp %v %v", uint64(timestamp), ethereum.NotFound.Error())
+		// Note: SupervisorClient.SuperRootAtTimestamp specifically returns ethereum.NotFound
+		return eth.SuperRootResponse{}, fmt.Errorf("timestamp %v %w", uint64(timestamp), ethereum.NotFound)
 	}
 	return root, nil
 }
