@@ -114,9 +114,6 @@ type BatchSubmitter struct {
 	channelMgrMutex sync.Mutex // guards channelMgr and prevCurrentL1
 	channelMgr      *channelManager
 
-	txQueue *txmgr.Queue[txRef]
-	daGroup *errgroup.Group
-
 	prevCurrentL1 eth.L1BlockRef // cached CurrentL1 from the last syncStatus
 }
 
@@ -162,13 +159,6 @@ func (l *BatchSubmitter) StartBatchSubmitting() error {
 	}
 
 	receiptsCh := make(chan txmgr.TxReceipt[txRef])
-	l.daGroup = &errgroup.Group{}
-	// errgroup with limit of 0 means no goroutine is able to run concurrently,
-	// so we only set the limit if it is greater than 0.
-	if l.Config.MaxConcurrentDARequests > 0 {
-		l.daGroup.SetLimit(int(l.Config.MaxConcurrentDARequests))
-	}
-	l.txQueue = txmgr.NewQueue[txRef](l.killCtx, l.Txmgr, l.Config.MaxPendingTransactions)
 
 	l.txpoolMutex.Lock()
 	l.txpoolState = TxpoolGood
@@ -453,16 +443,26 @@ func (l *BatchSubmitter) syncAndPrune(syncStatus *eth.SyncStatus) *inclusiveBloc
 func (l *BatchSubmitter) writeLoop(ctx context.Context, wg *sync.WaitGroup, receiptsCh chan txmgr.TxReceipt[txRef]) {
 	defer close(receiptsCh)
 	defer wg.Done()
+
+	daGroup := &errgroup.Group{}
+	// errgroup with limit of 0 means no goroutine is able to run concurrently,
+	// so we only set the limit if it is greater than 0.
+	if l.Config.MaxConcurrentDARequests > 0 {
+		daGroup.SetLimit(int(l.Config.MaxConcurrentDARequests))
+	}
+	txQueue := txmgr.NewQueue[txRef](l.killCtx, l.Txmgr, l.Config.MaxPendingTransactions)
+
 	ticker := time.NewTicker(l.Config.PollInterval)
+
 	for {
 		select {
 		case <-ticker.C:
-			if !l.checkTxpool(l.txQueue, receiptsCh) {
+			if !l.checkTxpool(txQueue, receiptsCh) {
 				continue
 			}
-			l.publishStateToL1(ctx, l.txQueue, receiptsCh, l.daGroup)
+			l.publishStateToL1(ctx, txQueue, receiptsCh, daGroup)
 		case <-ctx.Done():
-			if err := l.txQueue.Wait(); err != nil {
+			if err := txQueue.Wait(); err != nil {
 				if !errors.Is(err, context.Canceled) {
 					l.Log.Error("error waiting for transactions to complete", "err", err)
 				}
