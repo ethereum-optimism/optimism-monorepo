@@ -1,8 +1,58 @@
 package endpoint
 
 import (
+	"errors"
+	"fmt"
+
 	"github.com/ethereum/go-ethereum/rpc"
 )
+
+type MustRPC struct {
+	Value RPC
+}
+
+func (u *MustRPC) UnmarshalText(data []byte) error {
+	if u == nil {
+		return fmt.Errorf("cannot unmarshal %q into nil MustRPC", string(data))
+	}
+	v := URL(data)
+	if v == "" {
+		return errors.New("empty RPC URL")
+	}
+	u.Value = v
+	return nil
+}
+
+func (u MustRPC) MarshalText() ([]byte, error) {
+	if u.Value == nil {
+		return nil, errors.New("missing RPC")
+	}
+	out := u.Value.RPC()
+	if out == "" {
+		return nil, errors.New("missing RPC")
+	}
+	return []byte(out), nil
+}
+
+type OptionalRPC struct {
+	Value RPC
+}
+
+func (u *OptionalRPC) UnmarshalText(data []byte) error {
+	if u == nil {
+		return fmt.Errorf("cannot unmarshal %q into nil OptionalRPC", string(data))
+	}
+	u.Value = URL(data)
+	return nil
+}
+
+func (u OptionalRPC) MarshalText() ([]byte, error) {
+	if u.Value == nil {
+		return []byte{}, nil
+	}
+	out := u.Value.RPC()
+	return []byte(out), nil
+}
 
 // RPC is an interface for an endpoint to provide flexibility.
 // By default the RPC just returns an RPC endpoint string.
@@ -11,6 +61,15 @@ import (
 // or even a fully initialized client binding.
 type RPC interface {
 	RPC() string
+}
+
+// URL is a generic RPC endpoint URL
+type URL string
+
+var _ RPC = URL("")
+
+func (u URL) RPC() string {
+	return string(u)
 }
 
 // WsRPC is an RPC extension interface,

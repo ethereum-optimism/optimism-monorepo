@@ -56,7 +56,7 @@ func TestService(t *testing.T) {
 	require.NoError(t, s.Start(context.Background()), "start service")
 	// run some RPC tests against the service with the mock backend
 	{
-		endpoint := "http://" + s.rpcServer.Endpoint()
+		endpoint := s.httpServer.HTTPEndpoint()
 		t.Logf("dialing %s", endpoint)
 		opts := []client.RPCOption{
 			client.WithFixedDialBackoff(time.Second * 5),
