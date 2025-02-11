@@ -128,11 +128,6 @@ contract OPPrestateUpdater_Test is Test {
             })
         );
 
-        // Also add a permissionless game
-        IOPContractsManager.AddGameInput memory input = newGameInputFactory({ permissioned: false });
-        input.disputeGameType = GameTypes.CANNON;
-        addGameType(input);
-
         prestateUpdater = OPPrestateUpdater(
             DeployUtils.createDeterministic({
                 _name: "OPPrestateUpdater",
@@ -159,15 +154,39 @@ contract OPPrestateUpdater_Test is Test {
         assertNotEq(abi.encode(prestateUpdater.version()), abi.encode(0));
     }
 
-    function test_updatePrestate_withValidInput_succeeds() public {
-        OPPrestateUpdater.PrestateUpdateInput[] memory inputs = new OPPrestateUpdater.PrestateUpdateInput[](1);
-        inputs[0] = OPPrestateUpdater.PrestateUpdateInput({
-            opChain: OPContractsManager.OpChainConfig({
-                systemConfigProxy: chainDeployOutput.systemConfigProxy,
-                proxyAdmin: chainDeployOutput.opChainProxyAdmin
-            }),
-            absolutePrestate: Claim.wrap(bytes32(hex"ABBA"))
-        });
+    function test_updatePrestate_pdgOnlyWithValidInput_succeeds() public {
+        OPContractsManager.OpChainConfig[] memory inputs = new OPContractsManager.OpChainConfig[](1);
+        inputs[0] = OPContractsManager.OpChainConfig(
+            chainDeployOutput.systemConfigProxy, chainDeployOutput.opChainProxyAdmin, Claim.wrap(bytes32(hex"ABBA"))
+        );
+        address proxyAdminOwner = chainDeployOutput.opChainProxyAdmin.owner();
+
+        vm.etch(address(proxyAdminOwner), vm.getDeployedCode("test/mocks/Callers.sol:DelegateCaller"));
+        DelegateCaller(proxyAdminOwner).dcForward(
+            address(prestateUpdater), abi.encodeCall(OPPrestateUpdater.updatePrestate, (inputs))
+        );
+
+        IPermissionedDisputeGame pdg = IPermissionedDisputeGame(
+            address(
+                IDisputeGameFactory(chainDeployOutput.systemConfigProxy.disputeGameFactory()).gameImpls(
+                    GameTypes.PERMISSIONED_CANNON
+                )
+            )
+        );
+
+        assertEq(pdg.absolutePrestate().raw(), inputs[0].absolutePrestate.raw(), "pdg prestate mismatch");
+    }
+
+    function test_updatePrestate_bothGamesWithValidInput_succeeds() public {
+        // Also add a permissionless game
+        IOPContractsManager.AddGameInput memory input = newGameInputFactory({ permissioned: false });
+        input.disputeGameType = GameTypes.CANNON;
+        addGameType(input);
+
+        OPContractsManager.OpChainConfig[] memory inputs = new OPContractsManager.OpChainConfig[](1);
+        inputs[0] = OPContractsManager.OpChainConfig(
+            chainDeployOutput.systemConfigProxy, chainDeployOutput.opChainProxyAdmin, Claim.wrap(bytes32(hex"ABBA"))
+        );
         address proxyAdminOwner = chainDeployOutput.opChainProxyAdmin.owner();
 
         vm.etch(address(proxyAdminOwner), vm.getDeployedCode("test/mocks/Callers.sol:DelegateCaller"));
