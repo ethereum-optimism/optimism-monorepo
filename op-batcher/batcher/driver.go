@@ -453,10 +453,15 @@ func (l *BatchSubmitter) syncAndPrune(syncStatus *eth.SyncStatus) *inclusiveBloc
 func (l *BatchSubmitter) writeLoop(ctx context.Context, wg *sync.WaitGroup, receiptsCh chan txmgr.TxReceipt[txRef]) {
 	defer close(receiptsCh)
 	defer wg.Done()
+	ticker := time.NewTicker(l.Config.PollInterval)
 	for {
 		select {
+		case <-ticker.C:
+			if !l.checkTxpool(l.txQueue, receiptsCh) {
+				continue
+			}
+			l.publishStateToL1(ctx, l.txQueue, receiptsCh, l.daGroup)
 		case <-ctx.Done():
-
 			if err := l.txQueue.Wait(); err != nil {
 				if !errors.Is(err, context.Canceled) {
 					l.Log.Error("error waiting for transactions to complete", "err", err)
@@ -464,14 +469,6 @@ func (l *BatchSubmitter) writeLoop(ctx context.Context, wg *sync.WaitGroup, rece
 			}
 			l.Log.Warn("writeloop returning")
 			return
-		default:
-			if !l.checkTxpool(l.txQueue, receiptsCh) {
-				continue
-			}
-
-			l.Log.Info("WRITING BATCHES")
-			l.publishStateToL1(ctx, l.txQueue, receiptsCh, l.daGroup)
-			time.Sleep(l.Config.PollInterval) // when we published everything, wait so we get a chance to pull more blocks
 		}
 	}
 }
@@ -488,8 +485,6 @@ func (l *BatchSubmitter) readLoop(ctx context.Context, wg *sync.WaitGroup) {
 	for {
 		select {
 		case <-ticker.C:
-			l.Log.Info("LOADING BLOCKS")
-
 			syncStatus, err := l.getSyncStatus(ctx)
 			if err != nil {
 				l.Log.Warn("could not get sync status", "err", err)
