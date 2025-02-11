@@ -173,8 +173,8 @@ func (l *BatchSubmitter) StartBatchSubmitting() error {
 
 	l.wg.Add(3)
 	go l.receiptsLoop(l.wg, receiptsCh)                                   // ranges over receiptsCh channel
-	go l.writeLoop(l.shutdownCtx, l.wg, receiptsCh, blocksLoaded)         // ranges over blocksLoaded, sends on receiptsCh, closes it when done
-	go l.readLoop(l.shutdownCtx, l.wg, pendingBytesUpdated, blocksLoaded) // sends on pendingBytesUpdated, and blocksLoaded closes them when done
+	go l.writeLoop(l.shutdownCtx, l.wg, receiptsCh, blocksLoaded)         // ranges over blocksLoaded, sends on receiptsCh + closes it when done
+	go l.readLoop(l.shutdownCtx, l.wg, pendingBytesUpdated, blocksLoaded) // sends on pendingBytesUpdated (if throttling enabled), and blocksLoaded + closes them both when done
 
 	l.Log.Info("Batch Submitter started")
 	return nil
@@ -380,15 +380,25 @@ const (
 	TxpoolCancelPending
 )
 
-// promptDAThrottlingCheck sends the current pending bytes to the throttling loop.
+// promptThrottlingLoop sends the current pending bytes to the throttling loop.
 // It is not blocking, no signal will be sent if the channel is full.
-func (l *BatchSubmitter) promptDAThrottlingCheck(pendingBytesUpdated chan int64) {
+func (l *BatchSubmitter) promptThrottlingLoop(pendingBytesUpdated chan int64) {
 	if l.Config.ThrottleInterval == 0 {
 		return
 	}
 	// notify the throttling loop it may be time to initiate throttling without blocking
 	select {
 	case pendingBytesUpdated <- l.channelMgr.PendingDABytes():
+	default:
+	}
+}
+
+// promptDAThrottlingCheck sends the current pending bytes to the throttling loop.
+// It is not blocking, no signal will be sent if the channel is full.
+func (l *BatchSubmitter) promptWriteLoop(blocksLoaded chan struct{}) {
+	// notify the writeLoop in a non blocking way
+	select {
+	case blocksLoaded <- struct{}{}:
 	default:
 	}
 }
@@ -489,8 +499,8 @@ func (l *BatchSubmitter) readLoop(ctx context.Context, wg *sync.WaitGroup, pendi
 					l.waitNodeSyncAndClearState()
 					continue
 				} else {
-					l.promptDAThrottlingCheck(pendingBytesUpdated) // we have increased the pending data. Signal the throttling loop to check if it should throttle.
-					blocksLoadedCh <- struct{}{}                   // signal to the write loop that blocks have been loaded
+					l.promptThrottlingLoop(pendingBytesUpdated) // we have increased the pending data. Signal the throttling loop to check if it should throttle.
+					l.promptWriteLoop(blocksLoadedCh)           // signal the write loop that blocks have been loaded
 				}
 			}
 		case <-ctx.Done():
