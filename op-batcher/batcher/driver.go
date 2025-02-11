@@ -602,13 +602,13 @@ func (l *BatchSubmitter) waitNodeSyncAndClearState() {
 	if err != nil {
 		l.Log.Warn("error waiting for node sync", "err", err)
 	}
-	l.clearState(l.killCtx)
+	l.clearState(l.shutdownCtx)
 }
 
 // waitNodeSync Check to see if there was a batcher tx sent recently that
 // still needs more block confirmations before being considered finalized
 func (l *BatchSubmitter) waitNodeSync() error {
-	ctx := l.killCtx
+	ctx := l.shutdownCtx
 	rollupClient, err := l.EndpointProvider.RollupClient(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get rollup client: %w", err)
@@ -634,7 +634,7 @@ func (l *BatchSubmitter) waitNodeSync() error {
 		l1TargetBlock = recentBlock
 	}
 
-	return dial.WaitRollupSync(l.killCtx, l.Log, rollupClient, l1TargetBlock, time.Second*12)
+	return dial.WaitRollupSync(l.shutdownCtx, l.Log, rollupClient, l1TargetBlock, time.Second*12)
 }
 
 // publishStateToL1 queues up all pending TxData to be published to the L1, returning when there is no more data to
@@ -798,7 +798,7 @@ func (l *BatchSubmitter) publishToAltDAAndL1(txdata txData, queue *txmgr.Queue[t
 		// but sendTransaction receives l.killCtx as an argument, which currently is only canceled after waiting for the main loop
 		// to exit, which would wait on this DA call to finish, which would take a long time.
 		// So we prefer to mimic the behavior of txmgr and cancel all pending DA/txmgr requests when the batcher is stopped.
-		comm, err := l.AltDA.SetInput(l.killCtx, txdata.CallData())
+		comm, err := l.AltDA.SetInput(l.shutdownCtx, txdata.CallData())
 		if err != nil {
 			// Don't log context cancelled events because they are expected,
 			// and can happen after tests complete which causes a panic.
