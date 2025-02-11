@@ -98,9 +98,9 @@ type DriverSetup struct {
 type BatchSubmitter struct {
 	DriverSetup
 
-	wg                                                  *sync.WaitGroup
-	producerCtx, consumerCtx, killCtx                   context.Context
-	cancelProducerCtx, cancelConsumerCtx, cancelKillCtx context.CancelFunc
+	wg                               *sync.WaitGroup
+	shutdownCtx, killCtx             context.Context
+	cancelShutdownCtx, cancelKillCtx context.CancelFunc
 
 	pendingBytesUpdated chan int64 // notifies the throttling with the new pending bytes
 
@@ -147,8 +147,7 @@ func (l *BatchSubmitter) StartBatchSubmitting() error {
 
 	l.killCtx, l.cancelKillCtx = context.WithCancel(context.Background())
 	l.clearState(l.killCtx)
-	l.consumerCtx, l.cancelConsumerCtx = context.WithCancel(context.Background())
-	l.producerCtx, l.cancelProducerCtx = context.WithCancel(context.Background())
+	l.shutdownCtx, l.cancelShutdownCtx = context.WithCancel(context.Background())
 	l.wg = &sync.WaitGroup{}
 
 	if err := l.waitForL2Genesis(); err != nil {
@@ -189,8 +188,8 @@ func (l *BatchSubmitter) StartBatchSubmitting() error {
 
 	l.wg.Add(3)
 	go l.processReceiptsLoop(l.wg, receiptsCh)      // receives from receiptsCh
-	go l.writeLoop(l.producerCtx, l.wg, receiptsCh) // sends on receiptsCh
-	go l.readLoop(l.producerCtx, l.wg)              // sends on pendingBytesUpdated
+	go l.writeLoop(l.shutdownCtx, l.wg, receiptsCh) // sends on receiptsCh
+	go l.readLoop(l.shutdownCtx, l.wg)              // sends on pendingBytesUpdated
 
 	l.Log.Info("Batch Submitter started")
 	return nil
@@ -255,8 +254,7 @@ func (l *BatchSubmitter) StopBatchSubmitting(ctx context.Context) error {
 		cancelKill()
 	}()
 
-	l.cancelProducerCtx()
-	l.cancelConsumerCtx()
+	l.cancelShutdownCtx()
 	l.wg.Wait()
 
 	l.cancelKillCtx()
@@ -548,7 +546,7 @@ func (l *BatchSubmitter) throttlingLoop(wg *sync.WaitGroup) {
 
 	// TODO reinstate some retry logic, depending on the error
 	updateParams := func(pendingBytes int64) {
-		ctx, cancel := context.WithTimeout(l.consumerCtx, l.Config.NetworkTimeout)
+		ctx, cancel := context.WithTimeout(l.shutdownCtx, l.Config.NetworkTimeout)
 		defer cancel()
 		cl, err := l.EndpointProvider.EthClient(ctx)
 		if err != nil {
