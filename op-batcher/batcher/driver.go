@@ -386,9 +386,14 @@ func (l *BatchSubmitter) sendToThrottlingLoop(pendingBytesUpdated chan int64) {
 	if l.Config.ThrottleInterval == 0 {
 		return
 	}
+
+	l.channelMgrMutex.Lock()
+	pendingBytes := l.channelMgr.PendingDABytes()
+	l.channelMgrMutex.Unlock()
+
 	// notify the throttling loop it may be time to initiate throttling without blocking
 	select {
-	case pendingBytesUpdated <- l.channelMgr.PendingDABytes():
+	case pendingBytesUpdated <- pendingBytes:
 	default:
 	}
 }
