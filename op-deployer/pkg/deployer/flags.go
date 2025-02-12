@@ -13,15 +13,17 @@ import (
 )
 
 const (
-	EnvVarPrefix       = "DEPLOYER"
-	L1RPCURLFlagName   = "l1-rpc-url"
-	CacheDirFlagName   = "cache-dir"
-	L1ChainIDFlagName  = "l1-chain-id"
-	L2ChainIDsFlagName = "l2-chain-ids"
-	WorkdirFlagName    = "workdir"
-	OutdirFlagName     = "outdir"
-	PrivateKeyFlagName = "private-key"
-	IntentTypeFlagName = "intent-type"
+	EnvVarPrefix            = "DEPLOYER"
+	L1RPCURLFlagName        = "l1-rpc-url"
+	CacheDirFlagName        = "cache-dir"
+	L1ChainIDFlagName       = "l1-chain-id"
+	L2ChainIDsFlagName      = "l2-chain-ids"
+	WorkdirFlagName         = "workdir"
+	OutdirFlagName          = "outdir"
+	PrivateKeyFlagName      = "private-key"
+	IntentTypeFlagName      = "intent-type"
+	EtherscanAPIKeyFlagName = "etherscan-api-key"
+	ContractBundleFlagName  = "contract-bundle"
 )
 
 type DeploymentTarget string
@@ -117,6 +119,17 @@ var (
 			"intent-config-type",
 		},
 	}
+	EtherscanAPIKeyFlag = &cli.StringFlag{
+		Name:     EtherscanAPIKeyFlagName,
+		Usage:    "Etherscan API key for contract verification.",
+		EnvVars:  PrefixEnvVar("ETHERSCAN_API_KEY"),
+		Required: true,
+	}
+	ContractBundleFlag = &cli.StringFlag{
+		Name:    ContractBundleFlagName,
+		Usage:   "Which contract bundle/grouping to use (superchain, opchain, or implementations)",
+		EnvVars: PrefixEnvVar("CONTRACT_BUNDLE"),
+	}
 )
 
 var GlobalFlags = append([]cli.Flag{CacheDirFlag}, oplog.CLIFlags(EnvVarPrefix)...)
@@ -139,6 +152,13 @@ var UpgradeFlags = []cli.Flag{
 	L1RPCURLFlag,
 	PrivateKeyFlag,
 	DeploymentTargetFlag,
+}
+
+var VerifyFlags = []cli.Flag{
+	L1RPCURLFlag,
+	WorkdirFlag,
+	EtherscanAPIKeyFlag,
+	ContractBundleFlag,
 }
 
 func PrefixEnvVar(name string) []string {

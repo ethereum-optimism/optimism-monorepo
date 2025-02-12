@@ -161,6 +161,7 @@ func ApplyPipeline(
 		return fmt.Errorf("failed to download L1 artifacts: %w", err)
 	}
 
+	fmt.Println("Downloading L2 artifacts")
 	var l2ArtifactsFS foundry.StatDirFs
 	if intent.L1ContractsLocator.Equal(intent.L2ContractsLocator) {
 		l2ArtifactsFS = l1ArtifactsFS
