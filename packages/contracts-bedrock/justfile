@@ -30,12 +30,10 @@ build-source:
 # Builds the contracts.
 build *ARGS: lint-fix-no-fail
   just forge-build {{ARGS}}
-  just interfaces-check-no-build
 
 # Builds the contracts (developer mode).
 build-dev *ARGS: lint-fix-no-fail
   just forge-build-dev {{ARGS}}
-  just interfaces-check-no-build
 
 # Builds the go-ffi tool for contract tests.
 build-go-ffi-default:
