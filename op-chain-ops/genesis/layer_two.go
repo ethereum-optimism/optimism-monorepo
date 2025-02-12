@@ -45,7 +45,9 @@ func BuildL2Genesis(config *DeployConfig, dump *foundry.ForgeAllocs, l1StartBloc
 	if err != nil {
 		return nil, err
 	}
-	genspec.Alloc = dump.Copy().Accounts
+	for addr, val := range dump.Copy().Accounts {
+		genspec.Alloc[addr] = val
+	}
 	// ensure the dev accounts are not funded unintentionally
 	if devAccounts, err := RetrieveDevAccounts(genspec.Alloc); err != nil {
 		return nil, fmt.Errorf("failed to check dev accounts: %w", err)

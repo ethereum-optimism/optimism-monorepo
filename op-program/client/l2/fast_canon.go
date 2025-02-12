@@ -147,11 +147,7 @@ func (o *FastCanonicalBlockHeaderOracle) getHistoricalBlockHash(head *types.Head
 func (o *FastCanonicalBlockHeaderOracle) SetCanonical(head *types.Header) common.Hash {
 	o.head = head
 	o.fallback.SetCanonical(head)
-	for _, number := range o.cache.Keys() {
-		if number >= head.Number.Uint64() {
-			o.cache.Remove(number)
-		}
-	}
+	o.cache.Purge()
 	return head.Hash()
 }
 

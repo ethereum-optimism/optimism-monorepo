@@ -161,7 +161,7 @@ func TestFastCannonBlockHeaderOracle_WithFallback(t *testing.T) {
 func TestFastCanonBlockHeaderOracle_SetCanonical(t *testing.T) {
 	t.Parallel()
 
-	t.Run("reset on same chain", func(t *testing.T) {
+	t.Run("rollback", func(t *testing.T) {
 		t.Parallel()
 		logger, _ := testlog.CaptureLogger(t, log.LvlInfo)
 		miner, backend := test.NewMiner(t, logger, 0)
@@ -219,33 +219,22 @@ func TestFastCanonBlockHeaderOracle_SetCanonical(t *testing.T) {
 		require.NotEqual(t, head.Hash(), forkHead.Hash())
 		require.Equal(t, numBlocks, forkHead.Number.Uint64())
 
-		canon.SetCanonical(backend.GetBlockByNumber(forkBlockNumber + 1).Header())
-
-		runTest := func(blockNum uint64, expectedNumRequests int) {
-			requestedBlocks = make(map[common.Hash]int)
-			numRequests = 0
-			expect := backend.GetBlockByNumber(blockNum).Hash()
-			h := canon.GetHeaderByNumber(blockNum)
-			require.Equalf(t, expect, h.Hash(), "Unexpected block hash for block: %v (%d)", expect, blockNum)
-			require.Equalf(t, expectedNumRequests, numRequests, "Unexpected number of requests for block: %v (%d)", expect, blockNum)
-		}
+		newCanonHeadNumber := uint64(9000)
+		canon.SetCanonical(backend.GetBlockByNumber(newCanonHeadNumber).Header())
 
 		// historical windows:
-		// head: [8193, 16383]
-		// 8193: [2, 8192]
-		// 2:    [0, 1]
-
-		// the cached historical headers prior to fork are still valid; so expect 1 oracle request for the target block
-		for i := uint64(0); i <= forkBlockNumber+1; i++ {
-			switch i {
-			case 2:
-				runTest(i, 0) // at a start window, it's cached
-			case forkBlockNumber + 1:
-				runTest(i, 0) // no oracle requests at head
-			default:
-				runTest(i, 1)
-			}
-		}
+		// newCanonHead: [809, 8999]
+		// 809:          [0, 808]
+		runCanonicalCacheTest(t, backend, 0, 3)
+		runCanonicalCacheTest(t, backend, 1, 3)
+		runCanonicalCacheTest(t, backend, 2, 2)
+		runCanonicalCacheTest(t, backend, 3, 2)
+		runCanonicalCacheTest(t, backend, 4, 2)
+		runCanonicalCacheTest(t, backend, 8191, 2)
+		runCanonicalCacheTest(t, backend, 8192, 2)
+		runCanonicalCacheTest(t, backend, 8193, 1)
+		runCanonicalCacheTest(t, backend, newCanonHeadNumber-1, 1)
+		runCanonicalCacheTest(t, backend, newCanonHeadNumber, 1)
 	})
 }
 
