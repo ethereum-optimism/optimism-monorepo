@@ -1,0 +1,37 @@
+name: Kurtosis Devnet
+
+on:
+  push:
+    branches: [eigenda-develop]
+  pull_request:
+
+jobs:
+  # This is an optimism devnet which talks to the eigenda holesky testnet via an eigenda-proxy.
+  # TODO: we should connect this to an eigenda kurtosis devnet instead of using our holesky testnet.
+  run_op_eigenda_holesky_devnet:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+        with:
+          version: 2024.12.14 # [default: latest] mise version to install
+          install: true # [default: true] run `mise install`
+          cache: true # [default: true] cache mise using GitHub's cache
+          experimental: true # [default: false] enable experimental features
+      # Needed by the just eigenda-holesky-devnet command below
+      # These secrets get injected into the eigenda-holesky.yaml kurtosis config file
+      - name: Create EigenDA secrets file
+        run: |
+          cat > kurtosis-devnet/eigenda-secrets.json << EOF
+          {
+            "secrets": {
+              "eigenda.signer-private-key-hex": "${{ secrets.EIGENDA_V1_HOLESKY_TESTNET_SIGNER_KEY }}",
+              "eigenda.eth_rpc": "https://ethereum-holesky-rpc.publicnode.com"
+            }
+          }
+          EOF
+      - name: Run Starlark
+        working-directory: kurtosis-devnet
+        run: |
+          just eigenda-holesky-devnet

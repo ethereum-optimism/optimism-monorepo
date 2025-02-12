@@ -19,6 +19,7 @@ To see available devnets, consult the `justfile` to see what `.*-devnet` targets
 - `simple-devnet`
 - `interop-devnet`
 - `user-devnet`
+- `eigenda-holesky-devnet`
 
 You can read over the referenced `yaml` files located in this directory to see the network definition which would be deployed. Mini and Simple are example network definitions, and User expects a provided network definition.
 

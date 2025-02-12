@@ -73,6 +73,11 @@ devnet-test DEVNET *TEST:
 
 # Devnet recipes
 
+# EigenDA devnet that uses eigenda-proxy connected to eigenda holesky testnet network
+eigenda-holesky-devnet: (devnet "eigenda-holesky.yaml" "eigenda-secrets.json" "eigenda-holesky")
+eigenda-holesky-devnet-clean:
+  kurtosis enclave rm eigenda-holesky-devnet --force
+
 # Simple devnet
 simple-devnet: (devnet "simple.yaml")
 

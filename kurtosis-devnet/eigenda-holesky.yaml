@@ -1,0 +1,112 @@
+# This devnet uses an eigenda-proxy to interact with the eigenda holesky testnet network.
+# As a requirement, you must first create and populate the eigenda-secrets.json file
+# 1. cp eigenda-secrets.example.json eigenda-secrets.json
+# 2. Populate the file with the required values
+# TODO: Connect this with an eigenda v1 kurtosis devnet instead of using our holesky testnet.
+#       See https://github.com/Layr-Labs/avs-devnet/blob/main/examples/eigenda.yaml
+{{- $context := or . (dict)}}
+---
+optimism_package:
+  altda_deploy_config:
+    use_altda: true
+    # We use the generic commitment which means that the dachallenge contract won't get deployed.
+    # We align with l2beat's analysis of the da_challenge contract not being economically viable,
+    # so even if a rollup failsover to keccak commitments, not using the da_challenge contract is fine
+    # (has same security as using it).
+    # See https://l2beat.com/scaling/projects/redstone#da-layer-risk-analysis and
+    # https://discord.com/channels/1244729134312198194/1260612364865245224/1290294353688002562 for
+    # an economic analysis of the da challenge contract.
+    da_commitment_type: GenericCommitment
+    da_challenge_window: 16
+    da_resolve_window: 16
+    da_bond_size: 0
+    da_resolver_refund_percentage: 0
+  chains:
+    - participants:
+      - el_type: op-geth
+        el_image: ""
+        el_log_level: ""
+        el_extra_env_vars: {}
+        el_extra_labels: {}
+        el_extra_params: []
+        cl_type: op-node
+        cl_image: {{ localDockerImage "op-node" }}
+        cl_log_level: "debug"
+        cl_extra_env_vars: {}
+        cl_extra_labels: {}
+        cl_extra_params: []
+        count: 2
+      network_params:
+        network: "kurtosis"
+        network_id: "2151908"
+        seconds_per_slot: 2
+        name: "op-kurtosis"
+        fjord_time_offset: 0
+        granite_time_offset: 0
+        holocene_time_offset: 0
+        fund_dev_accounts: true
+      batcher_params:
+        image: {{ localDockerImage "op-batcher" }}
+        extra_params: []
+      proposer_params:
+        image: {{ localDockerImage "op-proposer" }}
+        extra_params: []
+        game_type: 1
+        proposal_interval: 10m
+      challenger_params:
+        image: {{ localDockerImage "op-challenger" }}
+        cannon_prestate_path: ""
+        cannon_prestates_url: "http://fileserver/proofs/op-program/cannon"
+        extra_params: []
+      mev_params:
+        rollup_boost_image: ""
+        builder_host: ""
+        builder_port: ""
+      da_server_params:
+        image: ghcr.io/layr-labs/eigenda-proxy:v1.6.3
+        cmd:
+          - --addr
+          - 0.0.0.0
+          - --port
+          - "3100"
+          - --eigenda.disperser-rpc
+          - disperser-holesky.eigenda.xyz:443
+          - --eigenda.svc-manager-addr
+          - "0xD4A7E1Bd8015057293f0D0A557088c286942e84b"
+          # The two params below are loaded from the eigenda-secrets.json file
+          - --eigenda.signer-private-key-hex
+          - {{ dig "secrets" "eigenda.signer-private-key-hex" "" $context }}
+          - --eigenda.eth-rpc
+          - {{ dig "secrets" "eigenda.eth_rpc" "" $context }}
+      additional_services:
+        - da_server
+  op_contract_deployer_params:
+    image: {{ localDockerImage "op-deployer" }}
+    l1_artifacts_locator: {{ localContractArtifacts "l1" }}
+    l2_artifacts_locator: {{ localContractArtifacts "l2" }}
+    global_deploy_overrides:
+      faultGameAbsolutePrestate: {{ localPrestate.Hashes.prestate }}
+  global_log_level: "info"
+  global_node_selectors: {}
+  global_tolerations: []
+  persistent: false
+ethereum_package:
+  participants:
+    - el_type: geth
+      cl_type: teku
+  network_params:
+    preset: minimal
+    genesis_delay: 5
+    additional_preloaded_contracts: |
+      {
+        "0x4e59b44847b379578588920cA78FbF26c0B4956C": {
+          "balance": "0ETH",
+          "code": "0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe03601600081602082378035828234f58015156039578182fd5b8082525050506014600cf3",
+          "storage": {},
+          "nonce": "1"
+        }
+      }
+  port_publisher:
+    el:
+      enabled: true
+      public_port_start: 32000
