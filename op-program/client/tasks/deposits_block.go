@@ -8,7 +8,6 @@ import (
 
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/derive"
-	preimage "github.com/ethereum-optimism/optimism/op-preimage"
 	"github.com/ethereum-optimism/optimism/op-program/client/l1"
 	"github.com/ethereum-optimism/optimism/op-program/client/l2"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
@@ -33,17 +32,16 @@ func BuildDepositOnlyBlock(
 	agreedL2OutputRoot eth.Bytes32,
 	l1Oracle l1.Oracle,
 	l2Oracle l2.Oracle,
-	hClient preimage.Hinter,
 ) (common.Hash, eth.Bytes32, error) {
 	engineBackend, err := l2.NewOracleBackedL2Chain(logger, l2Oracle, l1Oracle, l2Cfg, common.Hash(agreedL2OutputRoot), memorydb.New())
 	if err != nil {
 		return common.Hash{}, eth.Bytes32{}, fmt.Errorf("failed to create oracle-backed L2 chain: %w", err)
 	}
-	l2Source := l2.NewOracleEngine(cfg, logger, engineBackend, hClient)
+	l2Source := l2.NewOracleEngine(cfg, logger, engineBackend, l2Oracle.Hinter())
 	l2Head := l2Oracle.BlockByHash(optimisticBlock.ParentHash(), eth.ChainIDFromBig(l2Cfg.ChainID))
 	l2HeadHash := l2Head.Hash()
 
-	optimisticBlockOutput, err := getL2Output(logger, cfg, l2Cfg, l2Oracle, l1Oracle, optimisticBlock, hClient)
+	optimisticBlockOutput, err := getL2Output(logger, cfg, l2Cfg, l2Oracle, l1Oracle, optimisticBlock)
 	if err != nil {
 		return common.Hash{}, eth.Bytes32{}, fmt.Errorf("failed to get L2 output: %w", err)
 	}
@@ -93,9 +91,9 @@ func BuildDepositOnlyBlock(
 	return blockHash, outputRoot, nil
 }
 
-func getL2Output(logger log.Logger, cfg *rollup.Config, l2Cfg *params.ChainConfig, l2Oracle l2.Oracle, l1Oracle l1.Oracle, block *types.Block, hClient preimage.Hinter) (*eth.OutputV0, error) {
+func getL2Output(logger log.Logger, cfg *rollup.Config, l2Cfg *params.ChainConfig, l2Oracle l2.Oracle, l1Oracle l1.Oracle, block *types.Block) (*eth.OutputV0, error) {
 	backend := l2.NewOracleBackedL2ChainFromHead(logger, l2Oracle, l1Oracle, l2Cfg, block, memorydb.New())
-	engine := l2.NewOracleEngine(cfg, logger, backend, hClient)
+	engine := l2.NewOracleEngine(cfg, logger, backend, l2Oracle.Hinter())
 	output, err := engine.L2OutputAtBlockHash(block.Hash())
 	if err != nil {
 		return nil, fmt.Errorf("failed to get L2 output: %w", err)
