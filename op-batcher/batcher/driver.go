@@ -473,7 +473,7 @@ func (l *BatchSubmitter) writeLoop(ctx context.Context, wg *sync.WaitGroup, rece
 			l.Log.Error("error waiting for transactions to complete", "err", err)
 		}
 	}
-	l.Log.Warn("writeloop returning")
+	l.Log.Info("writeLoop returning")
 }
 
 // readLoop
@@ -509,7 +509,7 @@ func (l *BatchSubmitter) readLoop(ctx context.Context, wg *sync.WaitGroup, pendi
 				}
 			}
 		case <-ctx.Done():
-			l.Log.Warn("readloop returning")
+			l.Log.Info("readLoop returning")
 			return
 		}
 	}
@@ -533,7 +533,7 @@ func (l *BatchSubmitter) receiptsLoop(wg *sync.WaitGroup, receiptsCh chan txmgr.
 		l.Log.Info("Handling receipt", "id", r.ID)
 		l.handleReceipt(r)
 	}
-	l.Log.Info("Receipt processing loop returning")
+	l.Log.Info("receiptsLoop returning")
 }
 
 // throttlingLoop monitors the backlog in bytes we need to make available, and appropriately enables or disables
@@ -599,7 +599,7 @@ func (l *BatchSubmitter) throttlingLoop(wg *sync.WaitGroup, pendingBytesUpdated 
 	for pendingBytes := range pendingBytesUpdated {
 		updateParams(pendingBytes)
 	}
-	l.Log.Info("DA throttling loop returning")
+	l.Log.Info("throttlingLoop returning")
 }
 
 func (l *BatchSubmitter) waitNodeSyncAndClearState() {
