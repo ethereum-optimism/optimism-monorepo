@@ -777,8 +777,11 @@ func (h *Host) ScriptBackendFn(to common.Address) CallBackendFn {
 
 // EnforceMaxCodeSize configures the EVM to enforce (if true), or not enforce (if false),
 // the maximum contract bytecode size.
-func (h *Host) EnforceMaxCodeSize(v bool) {
+// Returns the previous setting, to roll back max-code-size changes easily.
+func (h *Host) EnforceMaxCodeSize(v bool) (prev bool) {
+	prev = !h.env.Config.NoMaxCodeSize
 	h.env.Config.NoMaxCodeSize = !v
+	return prev
 }
 
 // LogCallStack is a convenience method for debugging,
