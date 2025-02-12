@@ -673,7 +673,6 @@ func (l *BatchSubmitter) publishStateToL1(ctx context.Context, queue *txmgr.Queu
 			}
 		}
 	}
-
 }
 
 // clearState clears the state of the channel manager
