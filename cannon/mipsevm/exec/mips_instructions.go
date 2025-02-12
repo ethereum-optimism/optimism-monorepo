@@ -148,7 +148,7 @@ func ExecMipsCoreStepLogic(cpu *mipsevm.CpuScalars, registers *[32]Word, memory 
 		// lo and hi registers
 		// can write back
 		if fun >= 0x10 && fun < funSel {
-			err = HandleHiLo(cpu, registers, fun, rs, rt, rdReg)
+			err = HandleHiLo(cpu, registers, insn, fun, rs, rt, rdReg)
 			return
 		}
 	}
@@ -210,16 +210,28 @@ func ExecuteMipsInstruction(insn uint32, opcode uint32, fun uint32, rs, rt, mem 
 		case 0x00: // sll
 			shiftAmt := (insn >> 6) & 0x1F
 			return SignExtend((rt<<shiftAmt)&U32Mask, 32)
-		case 0x02: // srl
-			return SignExtend((rt&U32Mask)>>((insn>>6)&0x1F), 32)
+		case 0x02:
+			sa := (insn >> 6) & 0x1F
+			maskedRt := rt & U32Mask
+			if (insn>>21)&0x1 == 1 { // rotr
+				return SignExtend((maskedRt>>sa)|(maskedRt<<(32-sa)), 32)
+			} else { // srl
+				return SignExtend(maskedRt>>sa, 32)
+			}
 		case 0x03: // sra
 			shamt := Word((insn >> 6) & 0x1F)
 			return SignExtend((rt&U32Mask)>>shamt, 32-shamt)
 		case 0x04: // sllv
 			shiftAmt := rs & 0x1F
 			return SignExtend((rt<<shiftAmt)&U32Mask, 32)
-		case 0x06: // srlv
-			return SignExtend((rt&U32Mask)>>(rs&0x1F), 32)
+		case 0x06:
+			shift := rs & 0x1F
+			maskedRt := rt & U32Mask
+			if (insn>>6)&0x1 == 1 { // rotrv
+				return SignExtend((maskedRt>>shift)|(maskedRt<<(32-shift)), 32)
+			} else { // srlv
+				return SignExtend(maskedRt>>shift, 32)
+			}
 		case 0x07: // srav
 			shamt := Word(rs & 0x1F)
 			return SignExtend((rt&U32Mask)>>shamt, 32-shamt)
@@ -316,18 +328,28 @@ func ExecuteMipsInstruction(insn uint32, opcode uint32, fun uint32, rs, rt, mem 
 		case 0x38: // dsll
 			assertMips64(insn)
 			return rt << ((insn >> 6) & 0x1f)
-		case 0x3A: // dsrl
+		case 0x3A:
 			assertMips64(insn)
-			return rt >> ((insn >> 6) & 0x1f)
+			shift := (insn >> 6) & 0x1f
+			if (insn>>21)&0x1 == 1 { // drotr
+				return (rt >> shift) | (rt << (64 - shift))
+			} else { // dsrl
+				return rt >> shift
+			}
 		case 0x3B: // dsra
 			assertMips64(insn)
 			return Word(int64(rt) >> ((insn >> 6) & 0x1f))
 		case 0x3C: // dsll32
 			assertMips64(insn)
 			return rt << (((insn >> 6) & 0x1f) + 32)
-		case 0x3E: // dsrl32
+		case 0x3E:
 			assertMips64(insn)
-			return rt >> (((insn >> 6) & 0x1f) + 32)
+			shift := ((insn >> 6) & 0x1f) + 32
+			if (insn>>21)&0x1 == 1 { // drot32
+				return (rt >> shift) | (rt << (64 - shift))
+			} else {
+				return rt >> shift // dsrl32
+			}
 		case 0x3F: // dsra32
 			assertMips64(insn)
 			return Word(int64(rt) >> (((insn >> 6) & 0x1f) + 32))
@@ -526,7 +548,7 @@ func HandleBranch(cpu *mipsevm.CpuScalars, registers *[32]Word, opcode uint32, i
 }
 
 // HandleHiLo handles instructions that modify HI and LO registers. It also additionally handles doubleword variable shift operations
-func HandleHiLo(cpu *mipsevm.CpuScalars, registers *[32]Word, fun uint32, rs Word, rt Word, storeReg Word) error {
+func HandleHiLo(cpu *mipsevm.CpuScalars, registers *[32]Word, insn uint32, fun uint32, rs Word, rt Word, storeReg Word) error {
 	val := Word(0)
 	switch fun {
 	case 0x10: // mfhi
@@ -560,9 +582,13 @@ func HandleHiLo(cpu *mipsevm.CpuScalars, registers *[32]Word, fun uint32, rs Wor
 	case 0x14: // dsllv
 		assertMips64Fun(fun)
 		val = rt << (rs & 0x3F)
-	case 0x16: // dsrlv
+	case 0x16:
 		assertMips64Fun(fun)
-		val = rt >> (rs & 0x3F)
+		if (insn>>6)&0x1 == 1 { // drotrv
+			val = (rt >> (rs & 0x3F)) | (rt << (64 - (rs & 0x3F)))
+		} else { // dsrlv
+			val = rt >> (rs & 0x3F)
+		}
 	case 0x17: // dsrav
 		assertMips64Fun(fun)
 		val = Word(int64(rt) >> (rs & 0x3F))
