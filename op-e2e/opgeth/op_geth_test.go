@@ -1114,6 +1114,7 @@ func TestIsthmus(t *testing.T) {
 		}},
 	}
 
+	// Taken from https://eips.ethereum.org/assets/eip-2537/test-vectors
 	precompilesToTest := []struct {
 		precompileName        string
 		precompileAddr        common.Address
