@@ -38,32 +38,96 @@ func (m *testEmitter) Emit(ev event.Event) {
 	m.events = append(m.events, ev)
 }
 
+// testChain represents a single chain's test data and state
 type testChain struct {
+	logDB   *logs.DB
+	localDB *fromda.DB
+	crossDB *fromda.DB
+	chainID eth.ChainID
+}
+
+func (c *testChain) close() {
+	if c.logDB != nil {
+		c.logDB.Close()
+	}
+	if c.localDB != nil {
+		c.localDB.Close()
+	}
+	if c.crossDB != nil {
+		c.crossDB.Close()
+	}
+}
+
+func (c *testChain) sealBlocks(t *testing.T, blocks ...eth.L2BlockRef) {
+	for _, block := range blocks {
+		require.NoError(t, c.logDB.SealBlock(block.ParentHash, block.ID(), block.Time))
+		t.Logf("Sealed block %d (hash: %s, parent: %s) for chain %v", block.Number, block.Hash, block.ParentHash, c.chainID)
+	}
+}
+
+func (c *testChain) makeBlockSafe(t *testing.T, chainsDB *db.ChainsDB, l2Block eth.L2BlockRef, l1Block eth.BlockRef, makeCrossSafe bool) {
+	t.Logf("Making block %d (hash: %s) safe for chain %v with L1 block %d (hash: %s)",
+		l2Block.Number, l2Block.Hash, c.chainID, l1Block.Number, l1Block.Hash)
+
+	// Make cross-unsafe
+	err := chainsDB.UpdateCrossUnsafe(c.chainID, types.BlockSealFromRef(l2Block.BlockRef()))
+	require.NoError(t, err)
+
+	// Make local-safe
+	chainsDB.UpdateLocalSafe(c.chainID, l1Block, l2Block.BlockRef())
+
+	// Make cross-safe
+	if makeCrossSafe {
+		err = chainsDB.UpdateCrossSafe(c.chainID, l1Block, l2Block.BlockRef())
+		require.NoError(t, err)
+	}
+}
+
+func (c *testChain) assertHeads(t *testing.T, chainsDB *db.ChainsDB, expectedLogsHead eth.BlockID, expectedLocalSafe eth.BlockID, expectedCrossSafe eth.BlockID, msg string) {
+	// Check logs head
+	head, ok := c.logDB.LatestSealedBlock()
+	require.True(t, ok)
+	require.Equal(t, expectedLogsHead, head, msg+": logs head mismatch")
+
+	// Check local-safe head
+	localSafe, err := chainsDB.LocalSafe(c.chainID)
+	require.NoError(t, err)
+	require.Equal(t, expectedLocalSafe.Hash, localSafe.Derived.Hash, msg+": local-safe head mismatch")
+
+	// Check cross-safe head
+	crossSafe, err := chainsDB.CrossSafe(c.chainID)
+	require.NoError(t, err)
+	require.Equal(t, expectedCrossSafe.Hash, crossSafe.Derived.Hash, msg+": cross-safe head mismatch")
+}
+
+func (c *testChain) assertAllHeads(t *testing.T, chainsDB *db.ChainsDB, head eth.BlockID, msg string) {
+	c.assertHeads(t, chainsDB, head, head, head, msg)
+}
+
+// testCluster represents the entire test environment with multiple chains
+type testCluster struct {
 	t        *testing.T
 	logger   log.Logger
 	dataDir  string
 	chainsDB *db.ChainsDB
-	logDB    *logs.DB
-	localDB  *fromda.DB
-	crossDB  *fromda.DB
 	emitter  *testEmitter
-	chainID  eth.ChainID
-
 	l1Node   *mockL1Node
 	rewinder *Rewinder
+	chains   map[eth.ChainID]*testChain
 }
 
-func newTestChain(t *testing.T) *testChain {
-	chainID := eth.ChainID{1}
+func newTestCluster(t *testing.T, chainIDs ...eth.ChainID) *testCluster {
 	logger := testlog.Logger(t, log.LvlDebug)
 	dataDir := t.TempDir()
 
 	// Create dependency set
 	deps := make(map[eth.ChainID]*depset.StaticConfigDependency)
-	deps[chainID] = &depset.StaticConfigDependency{
-		ChainIndex:     types.ChainIndex(1),
-		ActivationTime: 42,
-		HistoryMinTime: 100,
+	for i, chainID := range chainIDs {
+		deps[chainID] = &depset.StaticConfigDependency{
+			ChainIndex:     types.ChainIndex(i + 1), // Start indices at 1
+			ActivationTime: 42,
+			HistoryMinTime: 100,
+		}
 	}
 	depSet, err := depset.NewStaticConfigDependencySet(deps)
 	require.NoError(t, err)
@@ -80,108 +144,70 @@ func newTestChain(t *testing.T) *testChain {
 	rewinder := New(logger, chainsDB, l1Node)
 	rewinder.AttachEmitter(sharedEmitter)
 
-	// Create the chain directory
-	chainDir := filepath.Join(dataDir, "001", "1")
-	err = os.MkdirAll(chainDir, 0o755)
-	require.NoError(t, err)
-	metrics := &stubDBMetrics{}
-
-	// Create and open the log DB
-	logDB, err := logs.NewFromFile(logger, metrics, filepath.Join(chainDir, "log.db"), true)
-	require.NoError(t, err)
-	chainsDB.AddLogDB(chainID, logDB)
-
-	// Create and open the local derived-from DB
-	localDB, err := fromda.NewFromFile(logger, metrics, filepath.Join(chainDir, "local_safe.db"))
-	require.NoError(t, err)
-	chainsDB.AddLocalDerivationDB(chainID, localDB)
-
-	// Create and open the cross derived-from DB
-	crossDB, err := fromda.NewFromFile(logger, metrics, filepath.Join(chainDir, "cross_safe.db"))
-	require.NoError(t, err)
-	chainsDB.AddCrossDerivationDB(chainID, crossDB)
-
-	// Add cross-unsafe tracker
-	chainsDB.AddCrossUnsafeTracker(chainID)
-
-	return &testChain{
+	cluster := &testCluster{
 		t:        t,
 		logger:   logger,
 		dataDir:  dataDir,
 		chainsDB: chainsDB,
-		logDB:    logDB,
-		localDB:  localDB,
-		crossDB:  crossDB,
 		emitter:  sharedEmitter,
-		chainID:  chainID,
 		l1Node:   l1Node,
 		rewinder: rewinder,
+		chains:   make(map[eth.ChainID]*testChain),
+	}
+
+	// Initialize each chain
+	for _, chainID := range chainIDs {
+		chain := &testChain{
+			chainID: chainID,
+		}
+
+		// Create the chain directory
+		chainDir := filepath.Join(dataDir, "001", chainID.String())
+		err = os.MkdirAll(chainDir, 0o755)
+		require.NoError(t, err)
+		metrics := &stubDBMetrics{}
+
+		// Create and open the log DB
+		chain.logDB, err = logs.NewFromFile(logger, metrics, filepath.Join(chainDir, "log.db"), true)
+		require.NoError(t, err)
+		chainsDB.AddLogDB(chainID, chain.logDB)
+
+		// Create and open the local derived-from DB
+		chain.localDB, err = fromda.NewFromFile(logger, metrics, filepath.Join(chainDir, "local_safe.db"))
+		require.NoError(t, err)
+		chainsDB.AddLocalDerivationDB(chainID, chain.localDB)
+
+		// Create and open the cross derived-from DB
+		chain.crossDB, err = fromda.NewFromFile(logger, metrics, filepath.Join(chainDir, "cross_safe.db"))
+		require.NoError(t, err)
+		chainsDB.AddCrossDerivationDB(chainID, chain.crossDB)
+
+		// Add cross-unsafe tracker
+		chainsDB.AddCrossUnsafeTracker(chainID)
+
+		cluster.chains[chainID] = chain
+	}
+
+	return cluster
+}
+
+func (c *testCluster) close() {
+	c.chainsDB.Close()
+	for _, chain := range c.chains {
+		chain.close()
 	}
 }
 
-func (s *testChain) close() {
-	s.chainsDB.Close()
-	s.logDB.Close()
-	s.localDB.Close()
-	s.crossDB.Close()
-}
-
-func (s *testChain) sealBlocks(blocks ...eth.L2BlockRef) {
-	for _, block := range blocks {
-		require.NoError(s.t, s.logDB.SealBlock(block.ParentHash, block.ID(), block.Time))
-		s.t.Logf("Sealed block %d (hash: %s, parent: %s) for chain %v", block.Number, block.Hash, block.ParentHash, s.chainID)
-	}
-}
-
-func (s *testChain) makeBlockSafe(l2Block eth.L2BlockRef, l1Block eth.BlockRef, makeCrossSafe bool) {
-	s.t.Logf("Making block %d (hash: %s) safe for chain %v with L1 block %d (hash: %s)",
-		l2Block.Number, l2Block.Hash, s.chainID, l1Block.Number, l1Block.Hash)
-
-	// Make cross-unsafe
-	err := s.chainsDB.UpdateCrossUnsafe(s.chainID, types.BlockSealFromRef(l2Block.BlockRef()))
-	require.NoError(s.t, err)
-
-	// Make local-safe
-	s.chainsDB.UpdateLocalSafe(s.chainID, l1Block, l2Block.BlockRef())
-
-	// Make cross-safe
-	if makeCrossSafe {
-		err = s.chainsDB.UpdateCrossSafe(s.chainID, l1Block, l2Block.BlockRef())
-		require.NoError(s.t, err)
-	}
-}
-
-func (s *testChain) assertHeads(expectedLogsHead eth.BlockID, expectedLocalSafe eth.BlockID, expectedCrossSafe eth.BlockID, msg string) {
-	// Check logs head
-	head, ok := s.logDB.LatestSealedBlock()
-	require.True(s.t, ok)
-	require.Equal(s.t, expectedLogsHead, head, msg+": logs head mismatch")
-
-	// Check local-safe head
-	localSafe, err := s.chainsDB.LocalSafe(s.chainID)
-	require.NoError(s.t, err)
-	require.Equal(s.t, expectedLocalSafe.Hash, localSafe.Derived.Hash, msg+": local-safe head mismatch")
-
-	// Check cross-safe head
-	crossSafe, err := s.chainsDB.CrossSafe(s.chainID)
-	require.NoError(s.t, err)
-	require.Equal(s.t, expectedCrossSafe.Hash, crossSafe.Derived.Hash, msg+": cross-safe head mismatch")
-}
-
-func (s *testChain) assertAllHeads(head eth.BlockID, msg string) {
-	s.assertHeads(head, head, head, msg)
-}
-
-func (s *testChain) processEvents() {
-	for len(s.emitter.events) > 0 {
+func (c *testCluster) processEvents() {
+	for len(c.emitter.events) > 0 {
 		// Dequeue the first event
-		ev := s.emitter.events[0]
-		s.emitter.events = s.emitter.events[1:]
+		ev := c.emitter.events[0]
+		c.emitter.events = c.emitter.events[1:]
 
 		// Send the event to our components
-		s.logger.Debug("Processing event", "event", ev)
-		s.chainsDB.OnEvent(ev)
-		s.rewinder.OnEvent(ev)
+		c.logger.Debug("Processing event", "event", ev)
+		c.chainsDB.OnEvent(ev)
+		c.rewinder.OnEvent(ev)
 	}
 }
 
