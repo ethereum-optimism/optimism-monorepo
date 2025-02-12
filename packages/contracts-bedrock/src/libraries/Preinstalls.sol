@@ -57,6 +57,16 @@ library Preinstalls {
     /// if the code is already in place.
     address internal constant BeaconBlockRootsSender = 0x0B799C86a49DEeb90402691F1041aa3AF2d3C875;
 
+    /// @notice Address of history storage contract, introduced in the Prague upgrade.
+    ///         See HISTORY_STORAGE_ADDRESS in EIP-2935.
+    ///         This contract is introduced in L2 through an Ecotone upgrade transaction, if not already in genesis.
+    address internal constant HistoryStorage = 0x0F792be4B0c0cb4DAE440Ef133E90C0eCD48CCCC;
+
+    /// @notice See https://eips.ethereum.org/EIPS/eip-2935, this is the address of the sender of the deployment tx.
+    /// The nonce of this account must be non-zero, to ensure the Ishtmus upgrade tx is still successful
+    /// if the code is already in place.
+    address internal constant HistoryStorageSender = 0xE9f0662359Bb2c8111840eFFD73B9AFA77CbDE10;
+
     // @notice Permit2 code is templated. The template is a copy of the Mainnet Ethereum L1 Permit2 deployment.
     //         This deployed bytecode contains two immutable values _CACHED_CHAIN_ID and _CACHED_DOMAIN_SEPARATOR,
     //         which depend on the chain-ID (the domain-separator is computed with the chain-ID as input).
@@ -108,6 +118,9 @@ library Preinstalls {
     bytes internal constant BeaconBlockRootsCode =
         hex"3373fffffffffffffffffffffffffffffffffffffffe14604d57602036146024575f5ffd5b5f35801560495762001fff810690815414603c575f5ffd5b62001fff01545f5260205ff35b5f5ffd5b62001fff42064281555f359062001fff015500";
 
+    bytes internal constant HistoryStorageCode =
+        hex"3373fffffffffffffffffffffffffffffffffffffffe14604657602036036042575f35600143038111604257611fff81430311604257611fff9006545f5260205ff35b5f5ffd5b5f35611fff60014303065500";
+
     function getDeployedCode(address _addr, uint256 _chainID) internal pure returns (bytes memory out_) {
         if (_addr == MultiCall3) return MultiCall3Code;
         if (_addr == Create2Deployer) return Create2DeployerCode;
@@ -124,6 +137,7 @@ library Preinstalls {
 
         if (_addr == Permit2) return getPermit2Code(_chainID);
         if (_addr == BeaconBlockRoots) return BeaconBlockRootsCode;
+        if (_addr == HistoryStorage) return HistoryStorageCode;
         if (_addr == CreateX) return CreateXCode;
 
         revert("Preinstalls: unknown preinstall");
@@ -145,6 +159,7 @@ library Preinstalls {
         if (_addr == SenderCreator_v070) return "SenderCreator_v070";
         if (_addr == EntryPoint_v070) return "EntryPoint_v070";
         if (_addr == BeaconBlockRoots) return "BeaconBlockRoots";
+        if (_addr == HistoryStorage) return "HistoryStorage";
         if (_addr == CreateX) return "CreateX";
         revert("Preinstalls: unnamed preinstall");
     }

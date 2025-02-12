@@ -313,6 +313,7 @@ contract Setup {
         labelPreinstall(Preinstalls.SenderCreator_v070);
         labelPreinstall(Preinstalls.EntryPoint_v070);
         labelPreinstall(Preinstalls.BeaconBlockRoots);
+        labelPreinstall(Preinstalls.HistoryStorage);
         labelPreinstall(Preinstalls.CreateX);
 
         console.log("Setup: completed L2 genesis");
