@@ -110,7 +110,6 @@ contract OPPrestateUpdater is OPContractsManager {
             AddGameInput memory pdgInput;
             AddGameInput memory fdgInput;
 
-
             // Get the existing game parameters and init bond for the permissioned game
             IFaultDisputeGame.GameConstructorParams memory pdgParams =
                 getGameConstructorParams(IFaultDisputeGame(address(pdg)));
