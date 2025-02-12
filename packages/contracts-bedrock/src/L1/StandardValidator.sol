@@ -29,7 +29,6 @@ contract StandardValidatorV180 {
     ISuperchainConfig internal superchainConfig;
     address internal l1PAOMultisig;
     address internal mips;
-    address internal guardian;
     address internal challenger;
 
     // Semver strings for our contracts. Pulled from the Superchain Registry.
@@ -71,14 +70,12 @@ contract StandardValidatorV180 {
         ISuperchainConfig _superchainConfig,
         address _l1PAOMultisig,
         address _mips,
-        address _guardian,
         address _challenger
     ) {
         impls = _implementations;
         superchainConfig = _superchainConfig;
         l1PAOMultisig = _l1PAOMultisig;
         mips = _mips;
-        guardian = _guardian;
         challenger = _challenger;
     }
 
@@ -123,8 +120,7 @@ contract StandardValidatorV180 {
     }
 
     function assertValidSuperchainConfig(string memory _errors) internal view returns (string memory) {
-        _errors = internalRequire(superchainConfig.guardian() == guardian, "SPRCFG-10", _errors);
-        _errors = internalRequire(!superchainConfig.paused(), "SPRCFG-20", _errors);
+        _errors = internalRequire(!superchainConfig.paused(), "SPRCFG-10", _errors);
         return _errors;
     }
 
@@ -285,7 +281,7 @@ contract StandardValidatorV180 {
         _errors = internalRequire(address(_portal.systemConfig()) == address(_sysCfg), "PORTAL-40", _errors);
         _errors =
             internalRequire(address(_portal.superchainConfig()) == address(superchainConfig), "PORTAL-50", _errors);
-        _errors = internalRequire(_portal.guardian() == guardian, "PORTAL-60", _errors);
+        _errors = internalRequire(_portal.guardian() == superchainConfig.guardian(), "PORTAL-60", _errors);
         _errors = internalRequire(_portal.paused() == superchainConfig.paused(), "PORTAL-70", _errors);
         _errors = internalRequire(_portal.l2Sender() == Constants.DEFAULT_L2_SENDER, "PORTAL-80", _errors);
         return _errors;

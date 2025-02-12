@@ -92,7 +92,6 @@ contract StandardValidatorV180_Test is Test {
             superchainConfig,
             l1PAOMultisig,
             mips,
-            guardian,
             challenger
         );
 
@@ -147,7 +146,6 @@ contract StandardValidatorV180_Test is Test {
             ISuperchainConfig(address(0x95703e0982140D16f8ebA6d158FccEde42f04a4C)),
             address(0x5a0Aae59D09fccBdDb6C6CcEB07B7279367C3d2A), // l1PAOMultisig
             address(0x5fE03a12C1236F9C22Cb6479778DDAa4bce6299C), // mips
-            address(0x09f7150D8c019BeF34450d6920f6B3608ceFdAf2), // guardian
             address(0x9BA6e03D8B90dE867373Db8cF1A58d2F7F006b3A) // challenger
         );
 
