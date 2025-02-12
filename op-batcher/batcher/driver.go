@@ -544,7 +544,6 @@ func (l *BatchSubmitter) throttlingLoop(wg *sync.WaitGroup, pendingBytesUpdated 
 	defer wg.Done()
 	l.Log.Info("Starting DA throttling loop")
 
-	// TODO reinstate some retry logic, depending on the error
 	updateParams := func(pendingBytes int64) {
 		ctx, cancel := context.WithTimeout(l.shutdownCtx, l.Config.NetworkTimeout)
 		defer cancel()
