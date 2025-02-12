@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum-optimism/optimism/op-node/rollup/event"
@@ -36,6 +37,9 @@ type rewinderDB interface {
 	Finalized(eth.ChainID) (types.BlockSeal, error)
 
 	LocalDerivedToSource(chain eth.ChainID, derived eth.BlockID) (derivedFrom types.BlockSeal, err error)
+
+	FindFirstBlockReferencingLogs(sourceBlock eth.BlockRef, sourceChainIndex types.ChainIndex, foreignChainID eth.ChainID) (eth.BlockRef, bool, error)
+	InvalidateLocalSafe(chainID eth.ChainID, pair types.DerivedBlockRefPair) error
 }
 
 // Rewinder is responsible for handling the rewinding of databases to the latest common ancestor between
@@ -66,6 +70,9 @@ func (r *Rewinder) OnEvent(ev event.Event) bool {
 		return true
 	case superevents.LocalSafeUpdateEvent:
 		r.handleLocalDerivedEvent(x)
+		return true
+	case superevents.InvalidateLocalSafeEvent:
+		r.handleInvalidateLocalSafeCascade(x)
 		return true
 	default:
 		return false
@@ -157,7 +164,7 @@ func (r *Rewinder) rewindL1ChainIfReorged(chainID eth.ChainID, newTip eth.BlockI
 
 	// Get the canonical L1 block at our local head's height
 	canonicalL1, err := r.l1Node.L1BlockRefByNumber(context.Background(), localSafeL1.Number)
-	if err != nil {
+	if err != nil && !errors.Is(err, ethereum.NotFound) {
 		return fmt.Errorf("failed to get canonical L1 block at height %d: %w", localSafeL1.Number, err)
 	}
 
@@ -189,9 +196,14 @@ func (r *Rewinder) rewindL1ChainIfReorged(chainID eth.ChainID, newTip eth.BlockI
 	currentL1 := localSafeL1.ID()
 	for currentL1.Number >= finalizedL1.Number {
 		// Get the canonical L1 block at this height from the node
+		// If it's not found we'll continue through the loop and try the previous block
 		remoteL1, err := r.l1Node.L1BlockRefByNumber(context.Background(), currentL1.Number)
 		if err != nil {
-			return fmt.Errorf("failed to get L1 block at height %d: %w", currentL1.Number, err)
+			if errors.Is(err, ethereum.NotFound) {
+				r.log.Debug("no L1 block at height", "chain", chainID, "height", currentL1.Number)
+			} else {
+				return fmt.Errorf("failed to get L1 block at height %d: %w", currentL1.Number, err)
+			}
 		}
 
 		// If hashes match, we found the common ancestor
@@ -248,4 +260,45 @@ func (r *Rewinder) rewindL1ChainIfReorged(chainID eth.ChainID, newTip eth.BlockI
 		ChainID: chainID,
 	})
 	return nil
+}
+
+// cascadeRewind finds the first block in each chain that depends on logs from the invalidated block
+// and triggers rewinding. This creates a cascade effect as each rewind may  trigger further rewinding
+// in other chains.
+func (r *Rewinder) cascadeRewind(invalidBlock types.DerivedBlockRefPair, sourceChainID eth.ChainID) {
+	sourceChainIndex, err := r.db.DependencySet().ChainIndexFromID(sourceChainID)
+	if err != nil {
+		r.log.Error("failed to get chain index", "chain", sourceChainID, "err", err)
+		return
+	}
+
+	for _, chainID := range r.db.DependencySet().Chains() {
+		if chainID == sourceChainID {
+			continue
+		}
+
+		block, found, err := r.db.FindFirstBlockReferencingLogs(invalidBlock.Derived, sourceChainIndex, chainID)
+		if err != nil {
+			r.log.Error("failed to find dependent block", "chain", chainID, "err", err)
+			continue
+		}
+		if !found {
+			continue
+		}
+
+		// Create the pair needed for InvalidateLocalSafe
+		pair := types.DerivedBlockRefPair{
+			Source:  invalidBlock.Source,
+			Derived: block,
+		}
+
+		// Trigger invalidation of the dependent block
+		if err := r.db.InvalidateLocalSafe(chainID, pair); err != nil {
+			r.log.Error("failed to invalidate dependent block", "chain", chainID, "block", block, "err", err)
+		}
+	}
+}
+
+func (r *Rewinder) handleInvalidateLocalSafeCascade(ev superevents.InvalidateLocalSafeEvent) {
+	r.cascadeRewind(ev.Candidate, ev.ChainID)
 }

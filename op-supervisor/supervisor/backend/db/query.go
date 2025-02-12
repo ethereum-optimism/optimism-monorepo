@@ -480,3 +480,46 @@ func (db *ChainsDB) IteratorStartingAt(chain eth.ChainID, sealedNum uint64, logI
 	}
 	return logDB.IteratorStartingAt(sealedNum, logIndex)
 }
+
+// FindFirstBlockReferencingLogs returns the first block in the given foreign chain that contains messages
+// depending on logs from the source block or its descendants.
+func (db *ChainsDB) FindFirstBlockReferencingLogs(sourceBlock eth.BlockRef, sourceChainIndex types.ChainIndex, foreignChainID eth.ChainID) (eth.BlockRef, bool, error) {
+	// Get the log storage for the foreign chain
+	logDB, ok := db.logDBs.Get(foreignChainID)
+	if !ok {
+		return eth.BlockRef{}, false, fmt.Errorf("%w: %v", types.ErrUnknownChain, foreignChainID)
+	}
+
+	// Get the latest block number to know where to start scanning
+	latestBlock, ok := logDB.LatestSealedBlock()
+	if !ok {
+		// No blocks in the chain yet
+		return eth.BlockRef{}, false, nil
+	}
+
+	// Check each block starting from the latest and moving backward until we hit
+	// one with timestamp < sourceBlock.Timestamp or genesis
+	var earliestMatch eth.BlockRef
+	var found bool
+	for blockNum := latestBlock.Number; blockNum > 0; blockNum-- {
+		blockRef, _, execMsgs, err := logDB.OpenBlock(blockNum)
+		if err != nil {
+			return eth.BlockRef{}, false, fmt.Errorf("failed to open block %d: %w", blockNum, err)
+		}
+		if blockRef.Time < sourceBlock.Time {
+			break
+		}
+
+		// Check each exec message to see if it references our source block or descendant
+		for _, execMsg := range execMsgs {
+			if execMsg.Chain == sourceChainIndex && execMsg.BlockNum >= sourceBlock.Number {
+				// We found a match - since we're iterating backwards, this is always the earliest we've seen
+				earliestMatch = blockRef
+				found = true
+				break // No need to check other messages in this block
+			}
+		}
+	}
+
+	return earliestMatch, found, nil
+}
