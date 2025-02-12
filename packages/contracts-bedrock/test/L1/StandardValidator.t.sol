@@ -124,7 +124,7 @@ contract StandardValidatorV180_Test is Test {
     }
 
     function test_validate_opMainnet_succeeds() public {
-        string memory rpcUrl = vm.envString("MAINNET_RPC_URL");
+        string memory rpcUrl = vm.envOr(string("MAINNET_RPC_URL"), string(""));
         if (bytes(rpcUrl).length == 0) {
             return;
         }
@@ -199,7 +199,7 @@ contract StandardValidatorV180_Test is Test {
         );
 
         // Expect revert with PDDG-10 error message
-        vm.expectRevert("StandardValidator: PDDG-10");
+        vm.expectRevert("StandardValidatorV180: PDDG-10");
         validator.validate(input, false);
     }
 
