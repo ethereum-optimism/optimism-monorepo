@@ -10,7 +10,7 @@ import { IDelayedWETH } from "interfaces/dispute/IDelayedWETH.sol";
 import { IAnchorStateRegistry } from "interfaces/dispute/IAnchorStateRegistry.sol";
 import { IAddressManager } from "interfaces/legacy/IAddressManager.sol";
 import { IProxyAdmin } from "interfaces/universal/IProxyAdmin.sol";
-import { IDelayedWETH } from "interfaces/dispute/IDelayedWETH.sol";
+import { IDisputeGame } from "interfaces/dispute/IDisputeGame.sol";
 import { IDisputeGameFactory } from "interfaces/dispute/IDisputeGameFactory.sol";
 import { IFaultDisputeGame } from "interfaces/dispute/IFaultDisputeGame.sol";
 import { IPermissionedDisputeGame } from "interfaces/dispute/IPermissionedDisputeGame.sol";
@@ -165,6 +165,13 @@ interface IOPContractsManager {
     /// @param systemConfig Address of the chain's SystemConfig contract
     /// @param upgrader Address that initiated the upgrade
     event Upgraded(uint256 indexed l2ChainId, ISystemConfig indexed systemConfig, address indexed upgrader);
+
+    /// @notice Emitted when a new game type is added to a chain
+    /// @param l2ChainId Chain ID of the chain
+    /// @param gameType Type of the game being added
+    /// @param newDisputeGame Address of the deployed dispute game
+    /// @param oldDisputeGame Address of the old dispute game
+    event GameTypeAdded(uint256 indexed l2ChainId, GameType indexed gameType, IDisputeGame newDisputeGame, IDisputeGame oldDisputeGame);
 
     // -------- Errors --------
 

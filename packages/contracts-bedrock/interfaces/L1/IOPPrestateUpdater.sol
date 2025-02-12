@@ -1,12 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+// Libraries
+import { GameType } from "src/dispute/lib/Types.sol";
+
 // Interfaces
 import { IProxyAdmin } from "interfaces/universal/IProxyAdmin.sol";
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 import { IProtocolVersions } from "interfaces/L1/IProtocolVersions.sol";
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 import { IOPContractsManager } from "interfaces/L1/IOPContractsManager.sol";
+import { IDisputeGame } from "interfaces/dispute/IDisputeGame.sol";
 
 interface IOPPrestateUpdater {
     // -------- Constants and Variables --------
@@ -38,6 +42,13 @@ interface IOPPrestateUpdater {
     /// @param systemConfig Address of the chain's SystemConfig contract
     /// @param upgrader Address that initiated the upgrade
     event Upgraded(uint256 indexed l2ChainId, ISystemConfig indexed systemConfig, address indexed upgrader);
+
+    /// @notice Emitted when a new game type is added to a chain
+    /// @param l2ChainId Chain ID of the chain
+    /// @param gameType Type of the game being added
+    /// @param newDisputeGame Address of the deployed dispute game
+    /// @param oldDisputeGame Address of the old dispute game
+    event GameTypeAdded(uint256 indexed l2ChainId, GameType indexed gameType, IDisputeGame newDisputeGame, IDisputeGame oldDisputeGame);
 
     // -------- Errors --------
 
