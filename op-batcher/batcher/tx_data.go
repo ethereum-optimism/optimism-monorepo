@@ -13,8 +13,11 @@ import (
 type DaType int
 
 const (
+	// DaTypeCalldata means that the (single) frame in the txData is submitted as calldata.
 	DaTypeCalldata DaType = iota
+	// DaTypeBlob means that the frame(s) in the txData are submitted as ethereum 4844 blobs.
 	DaTypeBlob
+	// DaTypeAltDA means that the frame(s) in the txData are submitted to an altda da-server.
 	DaTypeAltDA
 )
 
@@ -25,6 +28,7 @@ const (
 // different channels.
 type txData struct {
 	frames []frameData
+	// daType represents the DA type which the frames data will be submitted to.
 	daType DaType
 }
 
