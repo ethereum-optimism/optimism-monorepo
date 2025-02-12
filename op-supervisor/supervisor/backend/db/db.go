@@ -75,7 +75,7 @@ type DerivationStorage interface {
 	AddDerived(source eth.BlockRef, derived eth.BlockRef) error
 	ReplaceInvalidatedBlock(replacementDerived eth.BlockRef, invalidated common.Hash) (types.DerivedBlockSealPair, error)
 
-	// rewining
+	// rewinding
 	RewindAndInvalidate(invalidated types.DerivedBlockRefPair) error
 	RewindToScope(scope eth.BlockID) error
 	RewindToFirstDerived(v eth.BlockID) error
