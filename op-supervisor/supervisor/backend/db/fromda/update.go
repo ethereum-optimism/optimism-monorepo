@@ -212,6 +212,7 @@ func (db *DB) addLink(derivedFrom eth.BlockRef, derived eth.BlockRef, invalidate
 		// Repeat of same information. No entries to be written.
 		// But we can silently ignore and not return an error, as that brings the caller
 		// in a consistent state, after which it can insert the actual new derived-from information.
+		db.log.Debug("Database link already written", "derived", derived, "lastDerived", lastDerived)
 		return nil
 	}
 
