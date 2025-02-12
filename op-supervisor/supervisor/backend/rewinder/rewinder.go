@@ -37,6 +37,9 @@ type rewinderDB interface {
 	Finalized(eth.ChainID) (types.BlockSeal, error)
 
 	LocalDerivedToSource(chain eth.ChainID, derived eth.BlockID) (derivedFrom types.BlockSeal, err error)
+
+	FindFirstBlockReferencingLogs(sourceBlock types.BlockSeal, sourceChainIndex types.ChainIndex, foreignChainID eth.ChainID) (eth.BlockRef, bool, error)
+	InvalidateLocalSafe(chainID eth.ChainID, pair types.DerivedBlockRefPair) error
 }
 
 // Rewinder is responsible for handling the rewinding of databases to the latest common ancestor between
@@ -67,6 +70,9 @@ func (r *Rewinder) OnEvent(ev event.Event) bool {
 		return true
 	case superevents.LocalSafeUpdateEvent:
 		r.handleLocalDerivedEvent(x)
+		return true
+	case superevents.InvalidateLocalSafeEvent:
+		r.handleInvalidateLocalSafeCascade(x)
 		return true
 	default:
 		return false
@@ -254,4 +260,45 @@ func (r *Rewinder) rewindL1ChainIfReorged(chainID eth.ChainID, newTip eth.BlockI
 		ChainID: chainID,
 	})
 	return nil
+}
+
+// cascadeRewind finds the first block in each chain that depends on logs from the invalidated block
+// and triggers their invalidation. This creates a cascade effect as each invalidation may
+// trigger further invalidations in other chains.
+func (r *Rewinder) cascadeRewind(invalidBlock types.DerivedBlockRefPair, sourceChainID eth.ChainID) {
+	sourceChainIndex, err := r.db.DependencySet().ChainIndexFromID(sourceChainID)
+	if err != nil {
+		r.log.Error("failed to get chain index", "chain", sourceChainID, "err", err)
+		return
+	}
+
+	for _, chainID := range r.db.DependencySet().Chains() {
+		if chainID == sourceChainID {
+			continue
+		}
+
+		block, found, err := r.db.FindFirstBlockReferencingLogs(types.BlockSealFromRef(invalidBlock.Derived), sourceChainIndex, chainID)
+		if err != nil {
+			r.log.Error("failed to find dependent block", "chain", chainID, "err", err)
+			continue
+		}
+		if !found {
+			continue
+		}
+
+		// Create the pair needed for InvalidateLocalSafe
+		pair := types.DerivedBlockRefPair{
+			Source:  invalidBlock.Source,
+			Derived: block,
+		}
+
+		// Trigger invalidation of the dependent block
+		if err := r.db.InvalidateLocalSafe(chainID, pair); err != nil {
+			r.log.Error("failed to invalidate dependent block", "chain", chainID, "block", block, "err", err)
+		}
+	}
+}
+
+func (r *Rewinder) handleInvalidateLocalSafeCascade(ev superevents.InvalidateLocalSafeEvent) {
+	r.cascadeRewind(ev.Candidate, ev.ChainID)
 }
