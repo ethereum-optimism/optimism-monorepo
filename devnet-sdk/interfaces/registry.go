@@ -18,7 +18,7 @@ func (e *ErrContractNotFound) Error() string {
 
 // ContractsRegistry provides access to all supported contract instances
 type ContractsRegistry interface {
-	EventLogger(address types.Address) (EventLogger, error)
+	//	EventLogger(address types.Address) (EventLogger, error)
 	SuperchainWETH(address types.Address) (SuperchainWETH, error)
 }
 

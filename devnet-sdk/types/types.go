@@ -4,6 +4,7 @@ import (
 	"context"
 	"math/big"
 
+	"github.com/ethereum-optimism/optimism/devnet-sdk/contracts/bindings"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -39,4 +40,4 @@ type Topic = [32]byte
 
 type Hash = [32]byte
 
-type Identifier = string
+type Identifier = bindings.Identifier

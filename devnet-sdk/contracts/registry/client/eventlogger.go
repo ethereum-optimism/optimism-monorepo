@@ -3,7 +3,6 @@ package client
 import (
 	"context"
 	"fmt"
-	"math/big"
 
 	"github.com/ethereum-optimism/optimism/devnet-sdk/contracts/bindings"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/interfaces"
@@ -89,28 +88,7 @@ func (i *eventLoggerValidateMessageImpl) Call(ctx context.Context) (any, error) 
 		},
 	}
 
-	// Parse the identifier string into components
-	// Format expected: "origin:blockNumber:logIndex:timestamp:chainId"
-	var origin common.Address
-	var blockNumber, logIndex, timestamp, chainId uint64
-	_, err := fmt.Sscanf(string(i.id), "%x:%d:%d:%d:%d",
-		&origin,
-		&blockNumber,
-		&logIndex,
-		&timestamp,
-		&chainId,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse identifier: %w", err)
-	}
-
-	bindingsId := bindings.Identifier{
-		Origin:      origin,
-		BlockNumber: new(big.Int).SetUint64(blockNumber),
-		LogIndex:    new(big.Int).SetUint64(logIndex),
-		Timestamp:   new(big.Int).SetUint64(timestamp),
-		ChainId:     new(big.Int).SetUint64(chainId),
-	}
+	bindingsId := i.id
 
 	tx, err := i.contract.binding.ValidateMessage(opts, bindingsId, i.msgHash)
 	if err != nil {
