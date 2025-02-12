@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"encoding/binary"
+	"encoding/hex"
 	"fmt"
 	"math/big"
 	"os"
@@ -13,6 +15,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/trie"
 	"github.com/ethereum/go-ethereum/triedb"
 	"github.com/ethereum/go-ethereum/triedb/hashdb"
@@ -30,6 +33,12 @@ var (
 	dynBytes, _ = abi.NewType("bytes", "", nil)
 	bytesArgs   = abi.Arguments{
 		{Type: dynBytes},
+	}
+
+	// String type for protocol version
+	stringType, _ = abi.NewType("string", "", nil)
+	stringArgs    = abi.Arguments{
+		{Type: stringType},
 	}
 
 	// Plain fixed bytes32 type
@@ -105,6 +114,12 @@ var (
 	// Dependency tuple (uint256)
 	dependencyArgs = abi.Arguments{{Name: "chainId", Type: uint256Type}}
 )
+
+func parseUint32(s string) uint32 {
+	val, err := strconv.ParseUint(s, 10, 32)
+	checkErr(err, "Error parsing uint32")
+	return uint32(val)
+}
 
 func DiffTestUtils() {
 	args := os.Args[2:]
@@ -521,7 +536,62 @@ func DiffTestUtils() {
 		checkErr(err, "Error encoding output")
 
 		fmt.Print(hexutil.Encode(packed))
+	case "encodeProtocolVersion":
+		if len(args) != 6 {
+			panic("encodeProtocolVersion requires 5 arguments: build, major, minor, patch, preRelease")
+		}
+		buildHex := args[1]
+		if len(buildHex) != 18 { // "0x" + 16 hex chars
+			panic("build must be 16 hex characters with 0x prefix")
+		}
+		var build [8]byte
+		if _, err := hex.Decode(build[:], []byte(buildHex[2:])); err != nil {
+			panic(fmt.Sprintf("failed to decode build: %v", err))
+		}
+
+		major := parseUint32(args[2])
+		minor := parseUint32(args[3])
+		patch := parseUint32(args[4])
+		preRelease := parseUint32(args[5])
+
+		// Create a 32-byte array with the build ID at the start
+		var encoded [32]byte
+		// First 8 bytes are zeros
+		copy(encoded[8:16], build[:]) // build after zeros
+		binary.BigEndian.PutUint32(encoded[16:20], major)
+		binary.BigEndian.PutUint32(encoded[20:24], minor)
+		binary.BigEndian.PutUint32(encoded[24:28], patch)
+		binary.BigEndian.PutUint32(encoded[28:32], preRelease)
+
+		// Pack encoded version
+		packed, err := bytesArgs.Pack(encoded[:])
+		checkErr(err, "Error encoding output")
+		fmt.Print(hexutil.Encode(packed))
+	case "decodeProtocolVersion":
+		if len(args) != 2 {
+			panic("decodeProtocolVersion requires 1 argument: version")
+		}
+		versionBytes := common.FromHex(args[1])
+		fmt.Fprintf(os.Stderr, "Input version bytes: %x\n", versionBytes)
+		var v params.ProtocolVersionV0
+		v.Build = [8]byte(versionBytes[0:8])
+		v.Major = binary.BigEndian.Uint32(versionBytes[8:12])
+		v.Minor = binary.BigEndian.Uint32(versionBytes[12:16])
+		v.Patch = binary.BigEndian.Uint32(versionBytes[16:20])
+		v.PreRelease = binary.BigEndian.Uint32(versionBytes[20:24])
+		result := fmt.Sprintf("v%d.%d.%d", v.Major, v.Minor, v.Patch)
+		if v.PreRelease != 0 {
+			result = fmt.Sprintf("%s-%d", result, v.PreRelease)
+		}
+		if !bytes.Equal(v.Build[:], make([]byte, 8)) {
+			result = fmt.Sprintf("%s+0x%s", result, hex.EncodeToString(v.Build[:]))
+		}
+
+		// Pack string using stringArgs instead of bytesArgs
+		packed, err := stringArgs.Pack(result)
+		checkErr(err, "Error encoding output")
+		fmt.Print(hexutil.Encode(packed))
 	default:
-		panic(fmt.Errorf("Unknown command: %s", args[0]))
+		panic(fmt.Errorf("unknown command: %s", args[0]))
 	}
 }
