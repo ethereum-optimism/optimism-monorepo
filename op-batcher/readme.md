@@ -29,22 +29,36 @@ The philosophy behind the current architecture is:
 * When something goes wrong, we rewind the state cursors by the minimal amount we need to get going again.
 
 
-### Happy path
+### Routines
 
-In the happy path, the batcher periodically:
-0. Queries the sequencer's syncStatus and
+The batcher has up to 4 concurrent routines:
+
+The `readLoop`, which (in the happy path)
+1. Queries the sequencer's syncStatus and
   a. (optionally) waits for it to ingest more L1 data before taking action
   b. prunes blocks and channels from its internal state which are no longer required
-1. Enqueues unsafe blocks and dequeues safe blocks from the sequencer to its internal state.
+2. Enqueues unsafe blocks and dequeues safe blocks from the sequencer to the batcher's internal state.
+3. Signals to the `writeLoop` and to the `throttlingLoop` when new blocks are loaded
+
+The `writeLoop` which
+1. Waits for a signal from the `readLoop`
 2. Enqueues a new channel, if necessary.
 3. Processes some unprocessed blocks into the current channel, triggers the compression of the block data and the creation of frames.
 4. Sends frames from the channel queue to the DA layer as (e.g. to Ethereum L1 as calldata or blob transactions).
-5. If there is more transaction data to send, go to 2. Else wait for a tick and go to 0.
+5. If there is more transaction data to send, go to 2. Else go to 1.
 
+The `receiptsLoop` which
+1. Receives receipts from handlers spawned by the `writeLoop`.
+2. Updates metrics
+3. (Conditionally) Modifies the batcher state to cope when a channel times out on chain (see below).
 
+The `throttlingLoop` which
+1. Waits for a signal from the `readLoop`
+2. If it detects that the pending data in state is over a threshold, calls the sequencer over RPC and tells it to throttle the amount of L2 data it produces. See the (section below)[#data-availability-backlog]
+
+### State variables
 The `blockCursor` state variable tracks the next unprocessed block.
 In each channel, the `frameCursor` tracks the next unsent frame.
-
 
 ### Reorgs
 When an L2 unsafe reorg is detected, the batch submitter will reset its state, and wait for any in flight transactions to be ingested by the verifier nodes before starting work again.
