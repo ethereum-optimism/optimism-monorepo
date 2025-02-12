@@ -706,7 +706,6 @@ func (cfg SystemConfig) Start(t *testing.T, startOpts ...StartOption) (*System, 
 	}
 
 	for _, name := range l2Nodes {
-		var ethClient services.EthInstance
 		if name != RoleSeq && !cfg.DisableTxForwarder {
 			cfg.GethOptions[name] = append(cfg.GethOptions[name], func(ethCfg *ethconfig.Config, nodeCfg *node.Config) error {
 				ethCfg.RollupSequencerHTTP = sys.EthInstances[RoleSeq].UserRPC().RPC()
@@ -722,9 +721,7 @@ func (cfg SystemConfig) Start(t *testing.T, startOpts ...StartOption) (*System, 
 			return nil, err
 		}
 
-		ethClient = l2Geth
-
-		sys.EthInstances[name] = ethClient
+		sys.EthInstances[name] = l2Geth
 	}
 
 	// Configure connections to L1 and L2 for rollup nodes.
@@ -754,7 +751,6 @@ func (cfg SystemConfig) Start(t *testing.T, startOpts ...StartOption) (*System, 
 			if err != nil {
 				return nil, fmt.Errorf("failed to init p2p host for node %s", name)
 			}
-			h.Network()
 			_, ok := cfg.Nodes[name]
 			if !ok {
 				return nil, fmt.Errorf("node %s from p2p topology not found in actual nodes map", name)
@@ -824,6 +820,7 @@ func (cfg SystemConfig) Start(t *testing.T, startOpts ...StartOption) (*System, 
 
 		if action, ok := parsedStartOpts.Get("afterRollupNodeStart", name); ok {
 			action(&cfg, sys)
+			sys.Cfg = cfg
 		}
 	}
 
@@ -961,6 +958,7 @@ func (cfg SystemConfig) Start(t *testing.T, startOpts ...StartOption) (*System, 
 	sys.BatchSubmitter = batcher
 	if action, ok := parsedStartOpts.Get("beforeBatcherStart", ""); ok {
 		action(&cfg, sys)
+		sys.Cfg = cfg
 	}
 	if err := batcher.Start(context.Background()); err != nil {
 		return nil, errors.Join(fmt.Errorf("failed to start batch submitter: %w", err), batcher.Stop(context.Background()))
