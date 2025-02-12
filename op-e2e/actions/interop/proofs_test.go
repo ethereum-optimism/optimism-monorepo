@@ -452,6 +452,87 @@ func TestInteropFaultProofs_CascadeInvalidBlock(gt *testing.T) {
 	runFppAndChallengerTests(gt, system, tests)
 }
 
+func TestInteropFaultProofs_MessageExpiry(gt *testing.T) {
+	t := helpers.NewDefaultTesting(gt)
+	// TODO(#14234): Check message expiry in op-supervisor
+	t.Skip("Message expiry not yet implemented")
+
+	system := dsl.NewInteropDSL(t)
+
+	actors := system.Actors
+	alice := system.CreateUser()
+	emitterContract := dsl.NewEmitterContract(t)
+	system.AddL2Block(actors.ChainA, dsl.WithL2BlockTransactions(
+		emitterContract.Deploy(alice),
+	))
+	system.AddL2Block(actors.ChainA, dsl.WithL2BlockTransactions(
+		emitterContract.EmitMessage(alice, "test message"),
+	))
+	emitTx := emitterContract.LastEmittedMessage()
+
+	// Bring ChainB to the same height and timestamp
+	system.AddL2Block(actors.ChainB)
+	system.AddL2Block(actors.ChainB)
+	system.SubmitBatchData()
+
+	// Wait until message expires an expired message
+	msgExpiryTime := actors.ChainA.RollupCfg.GetMessageExpiryTimeInterop()
+	end := emitTx.Identifier().Timestamp.Uint64() + msgExpiryTime
+	for {
+		if system.Actors.ChainB.Sequencer.L2Unsafe().Time >= end {
+			break
+		}
+		system.AddL2Block(actors.ChainA)
+		system.AddL2Block(actors.ChainB)
+	}
+	system.SubmitBatchData()
+
+	system.AddL2Block(actors.ChainB, func(opts *dsl.AddL2BlockOpts) {
+		opts.TransactionCreators = []dsl.TransactionCreator{system.InboxContract.Execute(alice, emitTx.Identifier(), emitTx.MessagePayload())}
+		opts.BlockIsNotCrossUnsafe = true
+	})
+	system.AddL2Block(actors.ChainA)
+
+	system.SubmitBatchData(func(opts *dsl.SubmitBatchDataOpts) {
+		opts.SkipCrossSafeUpdate = true
+	})
+	execTx := system.InboxContract.LastTransaction()
+	execTx.CheckIncluded()
+
+	endTimestamp := actors.ChainB.Sequencer.L2Unsafe().Time
+	startTimestamp := endTimestamp - 1
+	optimisticEnd := system.Outputs.SuperRoot(endTimestamp)
+
+	preConsolidation := system.Outputs.TransitionState(startTimestamp, 1023,
+		system.Outputs.OptimisticBlockAtTimestamp(actors.ChainA, endTimestamp),
+		system.Outputs.OptimisticBlockAtTimestamp(actors.ChainB, endTimestamp),
+	).Marshal()
+
+	// Induce block replacement
+	system.ProcessCrossSafe()
+	// assert that the invalid message txs were reorged out
+	execTx.CheckNotIncluded()
+	crossSafeEnd := system.Outputs.SuperRoot(endTimestamp)
+
+	tests := []*transitionTest{
+		{
+			name:               "Consolidate-ExpectInvalidPendingBlock",
+			agreedClaim:        preConsolidation,
+			disputedClaim:      optimisticEnd.Marshal(),
+			disputedTraceIndex: 1023,
+			expectValid:        false,
+		},
+		{
+			name:               "Consolidate-ReplaceInvalidBlocks",
+			agreedClaim:        preConsolidation,
+			disputedClaim:      crossSafeEnd.Marshal(),
+			disputedTraceIndex: 1023,
+			expectValid:        true,
+		},
+	}
+	runFppAndChallengerTests(gt, system, tests)
+}
+
 func TestInteropFaultProofsInvalidBlock(gt *testing.T) {
 	t := helpers.NewDefaultTesting(gt)
 
