@@ -221,10 +221,10 @@ func TestCommonL1(t *testing.T) {
 }
 
 func TestFindFirstBlockReferencingLogs(t *testing.T) {
-	sourceBlock := types.BlockSeal{
-		Hash:      common.HexToHash("0x1234"),
-		Number:    100,
-		Timestamp: 1000,
+	sourceBlock := eth.BlockRef{
+		Hash:   common.HexToHash("0x1234"),
+		Number: 100,
+		Time:   1000,
 	}
 	sourceChainIndex := types.ChainIndex(1)
 	foreignChainID := eth.ChainIDFromUInt64(2)

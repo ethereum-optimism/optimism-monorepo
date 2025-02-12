@@ -38,7 +38,7 @@ type rewinderDB interface {
 
 	LocalDerivedToSource(chain eth.ChainID, derived eth.BlockID) (derivedFrom types.BlockSeal, err error)
 
-	FindFirstBlockReferencingLogs(sourceBlock types.BlockSeal, sourceChainIndex types.ChainIndex, foreignChainID eth.ChainID) (eth.BlockRef, bool, error)
+	FindFirstBlockReferencingLogs(sourceBlock eth.BlockRef, sourceChainIndex types.ChainIndex, foreignChainID eth.ChainID) (eth.BlockRef, bool, error)
 	InvalidateLocalSafe(chainID eth.ChainID, pair types.DerivedBlockRefPair) error
 }
 
@@ -263,8 +263,8 @@ func (r *Rewinder) rewindL1ChainIfReorged(chainID eth.ChainID, newTip eth.BlockI
 }
 
 // cascadeRewind finds the first block in each chain that depends on logs from the invalidated block
-// and triggers their invalidation. This creates a cascade effect as each invalidation may
-// trigger further invalidations in other chains.
+// and triggers rewinding. This creates a cascade effect as each rewind may  trigger further rewinding
+// in other chains.
 func (r *Rewinder) cascadeRewind(invalidBlock types.DerivedBlockRefPair, sourceChainID eth.ChainID) {
 	sourceChainIndex, err := r.db.DependencySet().ChainIndexFromID(sourceChainID)
 	if err != nil {
@@ -277,7 +277,7 @@ func (r *Rewinder) cascadeRewind(invalidBlock types.DerivedBlockRefPair, sourceC
 			continue
 		}
 
-		block, found, err := r.db.FindFirstBlockReferencingLogs(types.BlockSealFromRef(invalidBlock.Derived), sourceChainIndex, chainID)
+		block, found, err := r.db.FindFirstBlockReferencingLogs(invalidBlock.Derived, sourceChainIndex, chainID)
 		if err != nil {
 			r.log.Error("failed to find dependent block", "chain", chainID, "err", err)
 			continue
