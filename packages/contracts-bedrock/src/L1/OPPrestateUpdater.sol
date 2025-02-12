@@ -27,9 +27,9 @@ contract OPPrestateUpdater is OPContractsManager {
     error PrestateRequired();
 
     // @return Version string
-    /// @custom:semver 1.1.0
+    /// @custom:semver 1.2.0
     function version() public pure override returns (string memory) {
-        return "1.1.0";
+        return "1.2.0";
     }
 
     // @notice Constructs the OPPrestateUpdater contract
