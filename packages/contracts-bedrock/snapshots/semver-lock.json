@@ -24,8 +24,8 @@
     "sourceCodeHash": "0xf9e820880250d9a1889d07e87f3dfc2c86397cd743f6e6ac9101e621b90f912d"
   },
   "src/L1/OPPrestateUpdater.sol": {
-    "initCodeHash": "0x4e8acd5a9fa64ca3cfd2f1bef65303dd0c48f475bda7267b6ac3570a70cceb13",
-    "sourceCodeHash": "0xc5dfed0f99ddedb85e12fdb48fa7cf9fb6f37bc0ef5c10288cc7e12bee726cf5"
+    "initCodeHash": "0x0ce5828c7a7f363c097d43aeb3c89c2f74cf392b4444fd9f32945e6984bae8cf",
+    "sourceCodeHash": "0xee180729187ac93171476cce7b0467b586a3b8b6516fedf92650e4f72a880fe9"
   },
   "src/L1/OptimismPortal2.sol": {
     "initCodeHash": "0x2cc5776c92d6cb154aa3d9897c476deaf49d98dc81493fabaea72987b9588853",
