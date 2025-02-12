@@ -56,6 +56,21 @@ The `throttlingLoop` which
 1. Waits for a signal from the `readLoop`
 2. If it detects that the pending data in state is over a threshold, calls the sequencer over RPC and tells it to throttle the amount of L2 data it produces. See the (section below)[#data-availability-backlog]
 
+The relationships are shown in this diagram:
+```mermaid
+architecture-beta
+    group bs(server)[BatchSubmitter]
+
+    service readLoop(server)[readLoop] in bs
+    service writeLoop(server)[writeLoop] in bs
+    service receiptsLoop(server)[receiptsLoop] in bs
+    service throttlingLoop(server)[throttlingLoop] in bs
+
+		readLoop:R --> L:writeLoop
+		readLoop:B --> T:throttlingLoop
+		writeLoop:B --> T:receiptsLoop
+```
+
 ### State variables
 The `blockCursor` state variable tracks the next unprocessed block.
 In each channel, the `frameCursor` tracks the next unsent frame.
