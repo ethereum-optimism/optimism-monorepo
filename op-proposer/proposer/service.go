@@ -69,7 +69,8 @@ type ProposerService struct {
 
 	balanceMetricer io.Closer
 
-	stopped atomic.Bool
+	stopped              atomic.Bool
+	NotSubmittingOnStart bool
 }
 
 // ProposerServiceFromCLIConfig creates a new ProposerService from a CLIConfig.
@@ -86,6 +87,7 @@ func ProposerServiceFromCLIConfig(ctx context.Context, version string, cfg *CLIC
 func (ps *ProposerService) initFromCLIConfig(ctx context.Context, version string, cfg *CLIConfig, log log.Logger) error {
 	ps.Version = version
 	ps.Log = log
+	ps.NotSubmittingOnStart = cfg.Stopped
 
 	ps.initMetrics(cfg)
 
@@ -266,7 +268,11 @@ func (ps *ProposerService) initRPCServer(cfg *CLIConfig) error {
 // and starts L2Output-submission work if the proposer is configured to start submit data on startup.
 func (ps *ProposerService) Start(_ context.Context) error {
 	ps.Log.Info("Starting Proposer")
-	return ps.driver.StartL2OutputSubmitting()
+
+	if !ps.NotSubmittingOnStart {
+		return ps.driver.StartL2OutputSubmitting()
+	}
+	return nil
 }
 
 func (ps *ProposerService) Stopped() bool {
