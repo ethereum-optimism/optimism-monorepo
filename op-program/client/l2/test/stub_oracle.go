@@ -56,7 +56,7 @@ func NewStubOracleWithBlocks(t *testing.T, chain []*gethTypes.Block, outputs []e
 		t:           t,
 		Blocks:      blocks,
 		Outputs:     o,
-		stateOracle: &KvStateOracle{t: t, Source: db},
+		stateOracle: &KvStateOracle{T: t, Source: db},
 	}
 }
 
@@ -101,13 +101,13 @@ func (o StubBlockOracle) ReceiptsByBlockHash(blockHash common.Hash, chainID eth.
 
 // KvStateOracle loads data from a source ethdb.KeyValueStore
 type KvStateOracle struct {
-	t      *testing.T
+	T      *testing.T
 	Source ethdb.KeyValueStore
 }
 
 func NewKvStateOracle(t *testing.T, db ethdb.KeyValueStore) *KvStateOracle {
 	return &KvStateOracle{
-		t:      t,
+		T:      t,
 		Source: db,
 	}
 }
@@ -115,7 +115,7 @@ func NewKvStateOracle(t *testing.T, db ethdb.KeyValueStore) *KvStateOracle {
 func (o *KvStateOracle) NodeByHash(nodeHash common.Hash, chainID eth.ChainID) []byte {
 	val, err := o.Source.Get(nodeHash.Bytes())
 	if err != nil {
-		o.t.Fatalf("error retrieving node %v: %v", nodeHash, err)
+		o.T.Fatalf("error retrieving node %v: %v", nodeHash, err)
 	}
 	return val
 }
