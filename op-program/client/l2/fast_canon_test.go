@@ -84,14 +84,8 @@ func TestFastCanonBlockHeaderOracle_LargeWindow(t *testing.T) {
 	invalidHeader := testutils.RandomHeader(rand.New(rand.NewSource(12)))
 	fallback := NewCanonicalBlockHeaderOracle(invalidHeader, fatalBlockByHash)
 
-	requestedBlocks := make(map[common.Hash]int)
-	numRequests := 0
-	blockByHash := func(hash common.Hash) *types.Block {
-		requestedBlocks[hash] += 1
-		numRequests += 1
-		return backend.GetBlockByHash(hash)
-	}
-	canon := NewFastCanonicalBlockHeaderOracle(head, blockByHash, backend.Config(), stateOracle, rawdb.NewMemoryDatabase(), fallback)
+	tracker := newTrackingBlockByHash(backend.GetBlockByHash)
+	canon := NewFastCanonicalBlockHeaderOracle(head, tracker.BlockByHash, backend.Config(), stateOracle, rawdb.NewMemoryDatabase(), fallback)
 	require.Equal(t, head.Hash(), canon.CurrentHeader().Hash())
 	require.Nil(t, canon.GetHeaderByNumber(headNum+1))
 
@@ -104,7 +98,7 @@ func TestFastCanonBlockHeaderOracle_LargeWindow(t *testing.T) {
 		require.Equal(t, expect, h.Hash())
 		// Since we're iterating backwards, we will fetch exactly one block from the oracle.
 		// Because, other than the historical window at head, all other canonical queries will short-circuit to a cached historical block.
-		require.Equalf(t, 1, requestedBlocks[expect], "Unexpected number of requests for block: %v (%d)", expect, i)
+		require.Equalf(t, 1, tracker.requests[expect], "Unexpected number of requests for block: %v (%d)", expect, i)
 	}
 
 	runCanonicalCacheTest(t, backend, 0, 3)
@@ -135,26 +129,22 @@ func TestFastCannonBlockHeaderOracle_WithFallback(t *testing.T) {
 	headNum := head.Number.Uint64()
 	require.Equal(t, uint64(numBlocks), headNum)
 
-	fallbackOracleRequests := make(map[common.Hash]int)
-	fallbackBlockByHash := func(hash common.Hash) *types.Block {
-		fallbackOracleRequests[hash] += 1
-		return backend.GetBlockByHash(hash)
-	}
-	fallback := NewCanonicalBlockHeaderOracle(head, fallbackBlockByHash)
+	fallbackBlockByHash := newTrackingBlockByHash(backend.GetBlockByHash)
+	fallback := NewCanonicalBlockHeaderOracle(head, fallbackBlockByHash.BlockByHash)
 	canon := NewFastCanonicalBlockHeaderOracle(head, backend.GetBlockByHash, backend.Config(), stateOracle, rawdb.NewMemoryDatabase(), fallback)
 
 	for i := 0; i <= int(isthmusBlockActivation); i++ {
 		i := uint64(i)
 		expected := backend.GetBlockByNumber(i).Hash()
 		require.Equalf(t, expected, canon.GetHeaderByNumber(i).Hash(), "Expected block %d to be canonical", i)
-		require.Equalf(t, 1, fallbackOracleRequests[expected], "Expected 1 fallback request for block %d", i)
+		require.Equalf(t, 1, fallbackBlockByHash.requests[expected], "Expected 1 fallback request for block %d", i)
 	}
-	fallbackOracleRequests = make(map[common.Hash]int)
+	fallbackBlockByHash.requests = make(map[common.Hash]int)
 	for i := int(isthmusBlockActivation) + 1; i < numBlocks; i++ {
 		i := uint64(i)
 		expected := backend.GetBlockByNumber(i).Hash()
 		require.Equalf(t, expected, canon.GetHeaderByNumber(i).Hash(), "Expected block %d to be canonical", i)
-		require.Equalf(t, 0, fallbackOracleRequests[expected], "Expected 0 fallback requests for block %d", i)
+		require.Equalf(t, 0, fallbackBlockByHash.requests[expected], "Expected 0 fallback requests for block %d", i)
 	}
 }
 
@@ -197,14 +187,8 @@ func TestFastCanonBlockHeaderOracle_SetCanonical(t *testing.T) {
 		headNum := head.Number.Uint64()
 
 		fallback := NewCanonicalBlockHeaderOracle(head, backend.GetBlockByHash)
-		requestedBlocks := make(map[common.Hash]int)
-		numRequests := 0
-		blockByHash := func(hash common.Hash) *types.Block {
-			requestedBlocks[hash] += 1
-			numRequests += 1
-			return backend.GetBlockByHash(hash)
-		}
-		canon := NewFastCanonicalBlockHeaderOracle(head, blockByHash, backend.Config(), stateOracle, rawdb.NewMemoryDatabase(), fallback)
+		tracker := newTrackingBlockByHash(backend.GetBlockByHash)
+		canon := NewFastCanonicalBlockHeaderOracle(head, tracker.BlockByHash, backend.Config(), stateOracle, rawdb.NewMemoryDatabase(), fallback)
 		for i := uint64(0); i <= headNum; i++ {
 			// prime the cache
 			canon.GetHeaderByNumber(i)
@@ -222,19 +206,12 @@ func TestFastCanonBlockHeaderOracle_SetCanonical(t *testing.T) {
 		newCanonHeadNumber := uint64(9000)
 		canon.SetCanonical(backend.GetBlockByNumber(newCanonHeadNumber).Header())
 
-		// historical windows:
-		// newCanonHead: [809, 8999]
-		// 809:          [0, 808]
-		runCanonicalCacheTest(t, backend, 0, 3)
-		runCanonicalCacheTest(t, backend, 1, 3)
-		runCanonicalCacheTest(t, backend, 2, 2)
-		runCanonicalCacheTest(t, backend, 3, 2)
-		runCanonicalCacheTest(t, backend, 4, 2)
-		runCanonicalCacheTest(t, backend, 8191, 2)
-		runCanonicalCacheTest(t, backend, 8192, 2)
-		runCanonicalCacheTest(t, backend, 8193, 1)
-		runCanonicalCacheTest(t, backend, newCanonHeadNumber-1, 1)
-		runCanonicalCacheTest(t, backend, newCanonHeadNumber, 1)
+		require.Nil(t, canon.GetHeaderByNumber(newCanonHeadNumber+1))
+		for i := uint64(0); i <= newCanonHeadNumber; i++ {
+			expect := backend.GetBlockByNumber(i).Hash()
+			h := canon.GetHeaderByNumber(i)
+			require.Equalf(t, expect, h.Hash(), "Unexpected block hash for block: %d", i)
+		}
 	})
 }
 
@@ -242,13 +219,7 @@ func TestFastCanonBlockHeaderOracle_SetCanonical(t *testing.T) {
 // It also asserts that the retrieved block hash at the specified height is canonical
 func runCanonicalCacheTest(t *testing.T, backend *core.BlockChain, blockNum uint64, expectedNumRequests int) {
 	head := backend.CurrentHeader()
-	requestedBlocks := make(map[common.Hash]int)
-	numRequests := 0
-	blockByHash := func(hash common.Hash) *types.Block {
-		requestedBlocks[hash] += 1
-		numRequests += 1
-		return backend.GetBlockByHash(hash)
-	}
+	tracker := newTrackingBlockByHash(backend.GetBlockByHash)
 	stateOracle := &test.KvStateOracle{T: t, Source: backend.TrieDB().Disk()}
 	// Create invalid fallback to assert that it's never used.
 	fatalBlockByHash := func(hash common.Hash) *types.Block {
@@ -257,10 +228,29 @@ func runCanonicalCacheTest(t *testing.T, backend *core.BlockChain, blockNum uint
 	}
 	invalidHeader := testutils.RandomHeader(rand.New(rand.NewSource(12)))
 	fallback := NewCanonicalBlockHeaderOracle(invalidHeader, fatalBlockByHash)
-	canon := NewFastCanonicalBlockHeaderOracle(head, blockByHash, backend.Config(), stateOracle, rawdb.NewMemoryDatabase(), fallback)
+	canon := NewFastCanonicalBlockHeaderOracle(head, tracker.BlockByHash, backend.Config(), stateOracle, rawdb.NewMemoryDatabase(), fallback)
 
 	expect := backend.GetBlockByNumber(blockNum).Hash()
 	h := canon.GetHeaderByNumber(blockNum)
 	require.Equal(t, expect, h.Hash())
-	require.Equalf(t, expectedNumRequests, numRequests, "Unexpected number of requests for block: %v (%d)", expect, blockNum)
+	require.Equalf(t, expectedNumRequests, tracker.numRequests, "Unexpected number of requests for block: %v (%d)", expect, blockNum)
+}
+
+type trackingBlockByHash struct {
+	fn          BlockByHashFn
+	numRequests int
+	requests    map[common.Hash]int
+}
+
+func newTrackingBlockByHash(fn BlockByHashFn) *trackingBlockByHash {
+	return &trackingBlockByHash{
+		fn:       fn,
+		requests: make(map[common.Hash]int),
+	}
+}
+
+func (o *trackingBlockByHash) BlockByHash(hash common.Hash) *types.Block {
+	o.numRequests += 1
+	o.requests[hash] += 1
+	return o.fn(hash)
 }
