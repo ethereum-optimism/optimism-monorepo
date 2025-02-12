@@ -21,9 +21,9 @@ import (
 )
 
 // historicalCacheSize is the number of cached eip-2935 historical block lookups
-// This covers 4 weeks worth of blocks on a 2 second block time.
-// We keep the cache size small to reduce memory usage and to ensure cache scans are fast.
-const historicalCacheSize = 160
+// This covers 8 weeks worth of blocks on a 2 second block time.
+// We keep a small cache size to ensure cache scans are fast.
+const historicalCacheSize = 320
 
 type FastCanonicalBlockHeaderOracle struct {
 	head          *types.Header
@@ -81,15 +81,12 @@ func (o *FastCanonicalBlockHeaderOracle) GetHeaderByNumber(n uint64) *types.Head
 	if cover != math.MaxUint64 {
 		h, _ = o.cache.Get(cover)
 	}
+	if !o.config.IsIsthmus(h.Time) {
+		return o.fallback.GetHeaderByNumber(n)
+	}
 
-	for h.Number.Uint64() >= n {
+	for h.Number.Uint64() > n {
 		headNumber := h.Number.Uint64()
-		if headNumber == n {
-			return h
-		}
-		if !o.config.IsIsthmus(h.Time) {
-			return o.fallback.GetHeaderByNumber(n)
-		}
 		var currEarliestHistory uint64
 		if params.HistoryServeWindow-1 < headNumber {
 			currEarliestHistory = headNumber - (params.HistoryServeWindow - 1)
@@ -101,7 +98,7 @@ func (o *FastCanonicalBlockHeaderOracle) GetHeaderByNumber(n uint64) *types.Head
 			}
 			return block.Header()
 		}
-		block := o.getHistoricalBlockHash(h, uint64(currEarliestHistory))
+		block := o.getHistoricalBlockHash(h, currEarliestHistory)
 		if block == nil {
 			return o.fallback.GetHeaderByNumber(n)
 		}
@@ -121,7 +118,7 @@ func (o *FastCanonicalBlockHeaderOracle) getHistoricalBlockHash(head *types.Head
 
 	context := core.NewEVMBlockContext(head, o.ctx, nil, o.config, statedb)
 	vmenv := vm.NewEVM(context, statedb, o.config, vm.Config{})
-	var caller vm.AccountRef // can be anything as long aa it's not the system contract
+	var caller vm.AccountRef // can be anything as long as it's not the system contract
 	gas := uint64(1000000)
 	var input [32]byte
 	binary.BigEndian.PutUint64(input[24:], n)

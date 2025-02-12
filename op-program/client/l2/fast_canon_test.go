@@ -148,6 +148,33 @@ func TestFastCannonBlockHeaderOracle_WithFallback(t *testing.T) {
 	}
 }
 
+func TestFastCanonBlockHeaderOracle_PreIsthmus(t *testing.T) {
+	t.Parallel()
+
+	logger, _ := testlog.CaptureLogger(t, log.LvlInfo)
+	isthmusTime := uint64(4)
+	isthmusBlockActivation := 2 // isthmusTime / blockTime
+	miner, backend := test.NewMiner(t, logger, isthmusTime)
+	stateOracle := &test.KvStateOracle{T: t, Source: backend.TrieDB().Disk()}
+	numBlocks := 5
+	for i := 0; i < numBlocks; i++ {
+		miner.Mine(t, nil)
+	}
+	head := backend.CurrentHeader()
+	headNum := head.Number.Uint64()
+	require.Equal(t, uint64(numBlocks), headNum)
+	preIsthmusHead := backend.GetBlockByNumber(uint64(isthmusBlockActivation) - 1).Header()
+
+	fallbackBlockByHash := newTrackingBlockByHash(backend.GetBlockByHash)
+	fallback := NewCanonicalBlockHeaderOracle(preIsthmusHead, fallbackBlockByHash.BlockByHash)
+	canon := NewFastCanonicalBlockHeaderOracle(preIsthmusHead, backend.GetBlockByHash, backend.Config(), stateOracle, rawdb.NewMemoryDatabase(), fallback)
+
+	for i := uint64(0); i <= preIsthmusHead.Number.Uint64(); i++ {
+		head := canon.GetHeaderByNumber(i)
+		require.Equal(t, backend.GetBlockByNumber(i).Hash(), head.Hash())
+	}
+}
+
 func TestFastCanonBlockHeaderOracle_SetCanonical(t *testing.T) {
 	t.Parallel()
 
@@ -234,6 +261,12 @@ func runCanonicalCacheTest(t *testing.T, backend *core.BlockChain, blockNum uint
 	h := canon.GetHeaderByNumber(blockNum)
 	require.Equal(t, expect, h.Hash())
 	require.Equalf(t, expectedNumRequests, tracker.numRequests, "Unexpected number of requests for block: %v (%d)", expect, blockNum)
+
+	// query again and assert that it's cached
+	tracker.numRequests = 0
+	h = canon.GetHeaderByNumber(blockNum)
+	require.Equal(t, expect, h.Hash())
+	require.Equalf(t, 1, tracker.numRequests, "Unexpected number of requests for block: %v (%d)", expect, blockNum)
 }
 
 type trackingBlockByHash struct {

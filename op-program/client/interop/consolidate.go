@@ -205,7 +205,7 @@ func newConsolidateCheckDeps(bootInfo *boot.BootInfoInterop, transitionState *ty
 
 func (d *consolidateCheckDeps) Contains(chain eth.ChainID, query supervisortypes.ContainsQuery) (includedIn supervisortypes.BlockSeal, err error) {
 	// We can assume the oracle has the block the executing message is in
-	block, err := d.BlockByNumber(d.oracle, query.BlockNum, chain)
+	block, err := d.CanonBlockByNumber(d.oracle, query.BlockNum, chain)
 	if err != nil {
 		return supervisortypes.BlockSeal{}, err
 	}
@@ -227,7 +227,7 @@ func (d *consolidateCheckDeps) IsLocalUnsafe(chainID eth.ChainID, block eth.Bloc
 }
 
 func (d *consolidateCheckDeps) ParentBlock(chainID eth.ChainID, parentOf eth.BlockID) (parent eth.BlockID, err error) {
-	block, err := d.BlockByNumber(d.oracle, parentOf.Number-1, chainID)
+	block, err := d.CanonBlockByNumber(d.oracle, parentOf.Number-1, chainID)
 	if err != nil {
 		return eth.BlockID{}, err
 	}
@@ -241,7 +241,7 @@ func (d *consolidateCheckDeps) OpenBlock(
 	chainID eth.ChainID,
 	blockNum uint64,
 ) (ref eth.BlockRef, logCount uint32, execMsgs map[uint32]*supervisortypes.ExecutingMessage, err error) {
-	block, err := d.BlockByNumber(d.oracle, blockNum, chainID)
+	block, err := d.CanonBlockByNumber(d.oracle, blockNum, chainID)
 	if err != nil {
 		return eth.BlockRef{}, 0, nil, err
 	}
@@ -265,7 +265,7 @@ func (d *consolidateCheckDeps) DependencySet() depset.DependencySet {
 	return d.depset
 }
 
-func (d *consolidateCheckDeps) BlockByNumber(oracle l2.Oracle, blockNum uint64, chainID eth.ChainID) (*ethtypes.Block, error) {
+func (d *consolidateCheckDeps) CanonBlockByNumber(oracle l2.Oracle, blockNum uint64, chainID eth.ChainID) (*ethtypes.Block, error) {
 	head := d.canonBlocks[chainID].GetHeaderByNumber(blockNum)
 	if head == nil {
 		return nil, fmt.Errorf("head not found for chain %v", chainID)
