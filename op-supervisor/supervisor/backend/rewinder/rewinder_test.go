@@ -6,6 +6,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/superevents"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
 )
 
@@ -580,4 +581,170 @@ func TestRewindL2ChainWithUnsafeBlocks(t *testing.T) {
 	chain.sealBlocks(t, block4B)
 	chain.makeBlockSafe(t, s.chainsDB, block4B, l1Block4, true)
 	chain.assertAllHeads(t, s.chainsDB, block4B.ID(), "should now have block4B for all heads")
+}
+
+func TestRewindCascadeInvalidation(t *testing.T) {
+	chain1 := eth.ChainID{1}
+	chain2 := eth.ChainID{2}
+	s := newTestCluster(t, chain1, chain2)
+	defer s.close()
+
+	builder := newChainBuilder(s.l1Node)
+
+	// Create L1 blocks
+	l1Block0 := builder.createL1Block(eth.BlockRef{})
+	l1Block1 := builder.createL1Block(l1Block0)
+	l1Block2 := builder.createL1Block(l1Block1)
+	l1Block3A := builder.createL1Block(l1Block2)
+
+	// Create chain1 blocks
+	chain1Genesis := builder.createL2Block(eth.L2BlockRef{}, l1Block0.ID(), 0)
+	chain1Block1 := builder.createL2Block(chain1Genesis, l1Block1.ID(), 0)
+	chain1Block2 := builder.createL2Block(chain1Block1, l1Block2.ID(), 0)
+	chain1Block3A := builder.createL2Block(chain1Block2, l1Block3A.ID(), 0)
+
+	// Create chain2 blocks that depend on chain1 blocks
+	chain2Genesis := builder.createL2Block(eth.L2BlockRef{}, l1Block0.ID(), 0)
+	chain2Block1 := builder.createL2Block(chain2Genesis, l1Block1.ID(), 0)
+	// chain2Block2 depends on chain1Block2 via an executing message
+	chain2Block2 := builder.createL2Block(chain2Block1, l1Block2.ID(), 0)
+
+	// Set up chain1
+	chain1DB := s.chains[chain1]
+	chain1DB.sealBlocks(t, chain1Genesis, chain1Block1, chain1Block2, chain1Block3A)
+	chain1DB.makeBlockSafe(t, s.chainsDB, chain1Genesis, l1Block0, true)
+	chain1DB.makeBlockSafe(t, s.chainsDB, chain1Block1, l1Block1, true)
+	chain1DB.makeBlockSafe(t, s.chainsDB, chain1Block2, l1Block2, true)
+	chain1DB.makeBlockSafe(t, s.chainsDB, chain1Block3A, l1Block3A, true)
+
+	// Set up chain2
+	chain2DB := s.chains[chain2]
+	chain2DB.sealBlocks(t, chain2Genesis, chain2Block1, chain2Block2)
+	chain2DB.makeBlockSafe(t, s.chainsDB, chain2Genesis, l1Block0, true)
+	chain2DB.makeBlockSafe(t, s.chainsDB, chain2Block1, l1Block1, true)
+	chain2DB.makeBlockSafe(t, s.chainsDB, chain2Block2, l1Block2, true)
+
+	// Add executing message to chain2Block2 that depends on chain1Block2
+	execMsg := &types.ExecutingMessage{
+		Chain:     1, // Chain1's index
+		BlockNum:  chain1Block2.Number,
+		LogIdx:    0,
+		Timestamp: chain2Block2.Time,
+	}
+	require.NoError(t, chain2DB.logDB.AddLog(common.Hash{}, chain2Block2.ID(), 0, execMsg))
+
+	// Verify initial state
+	chain1DB.assertAllHeads(t, s.chainsDB, chain1Block3A.ID(), "chain1 should have chain1Block3A as head")
+	chain2DB.assertAllHeads(t, s.chainsDB, chain2Block2.ID(), "chain2 should have chain2Block2 as head")
+
+	// Create alternate chain1Block3B that will replace chain1Block3A
+	l1Block3B := builder.createL1Block(l1Block2)
+	chain1Block3B := builder.createL2Block(chain1Block2, l1Block3B.ID(), 0)
+
+	// Trigger L1 reorg to l1Block3B
+	require.NoError(t, s.l1Node.reorg(l1Block3B))
+	s.emitter.Emit(superevents.RewindL1Event{
+		IncomingBlock: l1Block3B.ID(),
+	})
+
+	// Signal that chain1Block3B is the correct derivation
+	s.emitter.Emit(superevents.InvalidateLocalSafeEvent{
+		ChainID: chain1,
+		Candidate: types.DerivedBlockRefPair{
+			Source:  l1Block3B,
+			Derived: chain1Block3B.BlockRef(),
+		},
+	})
+	s.processEvents()
+
+	// Verify chain1 rewound to chain1Block2
+	chain1DB.assertHeads(t, s.chainsDB, chain1Block2.ID(), chain1Block2.ID(), chain1Block2.ID(),
+		"chain1 should have rewound to chain1Block2")
+
+	// Verify chain2 also rewound to chain2Block1 since chain2Block2 depended on the invalidated chain1Block2
+	chain2DB.assertHeads(t, s.chainsDB, chain2Block1.ID(), chain2Block1.ID(), chain2Block1.ID(),
+		"chain2 should have rewound to chain2Block1 due to cascade")
+}
+
+func TestRewindCascadeIsNoopOnUnrelatedChains(t *testing.T) {
+	chain1 := eth.ChainID{1}
+	chain2 := eth.ChainID{2}
+	s := newTestCluster(t, chain1, chain2)
+	defer s.close()
+
+	builder := newChainBuilder(s.l1Node)
+
+	// Create L1 blocks
+	l1Block0 := builder.createL1Block(eth.BlockRef{})
+	l1Block1 := builder.createL1Block(l1Block0)
+	l1Block2 := builder.createL1Block(l1Block1)
+	l1Block3A := builder.createL1Block(l1Block2)
+
+	// Create chain1 blocks
+	chain1Genesis := builder.createL2Block(eth.L2BlockRef{}, l1Block0.ID(), 0)
+	chain1Block1 := builder.createL2Block(chain1Genesis, l1Block1.ID(), 0)
+	chain1Block2 := builder.createL2Block(chain1Block1, l1Block2.ID(), 0)
+	chain1Block3A := builder.createL2Block(chain1Block2, l1Block3A.ID(), 0)
+
+	// Create chain2 blocks that are independent of chain1 blocks
+	chain2Genesis := builder.createL2Block(eth.L2BlockRef{}, l1Block0.ID(), 0)
+	chain2Block1 := builder.createL2Block(chain2Genesis, l1Block1.ID(), 0)
+	chain2Block2 := builder.createL2Block(chain2Block1, l1Block2.ID(), 0)
+	// Note: chain2Block2 has no dependency on chain1Block2
+
+	// Set up chain1
+	chain1DB := s.chains[chain1]
+	chain1DB.sealBlocks(t, chain1Genesis, chain1Block1, chain1Block2, chain1Block3A)
+	chain1DB.makeBlockSafe(t, s.chainsDB, chain1Genesis, l1Block0, true)
+	chain1DB.makeBlockSafe(t, s.chainsDB, chain1Block1, l1Block1, true)
+	chain1DB.makeBlockSafe(t, s.chainsDB, chain1Block2, l1Block2, true)
+	chain1DB.makeBlockSafe(t, s.chainsDB, chain1Block3A, l1Block3A, true)
+
+	// Set up chain2
+	chain2DB := s.chains[chain2]
+	chain2DB.sealBlocks(t, chain2Genesis, chain2Block1, chain2Block2)
+	chain2DB.makeBlockSafe(t, s.chainsDB, chain2Genesis, l1Block0, true)
+	chain2DB.makeBlockSafe(t, s.chainsDB, chain2Block1, l1Block1, true)
+	chain2DB.makeBlockSafe(t, s.chainsDB, chain2Block2, l1Block2, true)
+
+	// Add an executing message to chain2Block2 that depends on a different block (not chain1Block2)
+	execMsg := &types.ExecutingMessage{
+		Chain:     1,                   // Chain1's index
+		BlockNum:  chain1Block1.Number, // Depends on chain1Block1 which won't be invalidated
+		LogIdx:    0,
+		Timestamp: chain2Block2.Time,
+	}
+	require.NoError(t, chain2DB.logDB.AddLog(common.Hash{}, chain2Block2.ID(), 0, execMsg))
+
+	// Verify initial state
+	chain1DB.assertAllHeads(t, s.chainsDB, chain1Block3A.ID(), "chain1 should have chain1Block3A as head")
+	chain2DB.assertAllHeads(t, s.chainsDB, chain2Block2.ID(), "chain2 should have chain2Block2 as head")
+
+	// Create alternate chain1Block3B that will replace chain1Block3A
+	l1Block3B := builder.createL1Block(l1Block2)
+	chain1Block3B := builder.createL2Block(chain1Block2, l1Block3B.ID(), 0)
+
+	// Trigger L1 reorg to l1Block3B
+	require.NoError(t, s.l1Node.reorg(l1Block3B))
+	s.emitter.Emit(superevents.RewindL1Event{
+		IncomingBlock: l1Block3B.ID(),
+	})
+
+	// Signal that chain1Block3B is the correct derivation
+	s.emitter.Emit(superevents.InvalidateLocalSafeEvent{
+		ChainID: chain1,
+		Candidate: types.DerivedBlockRefPair{
+			Source:  l1Block3B,
+			Derived: chain1Block3B.BlockRef(),
+		},
+	})
+	s.processEvents()
+
+	// Verify chain1 rewound to chain1Block2
+	chain1DB.assertHeads(t, s.chainsDB, chain1Block2.ID(), chain1Block2.ID(), chain1Block2.ID(),
+		"chain1 should have rewound to chain1Block2")
+
+	// Verify chain2 was not affected since it had no dependency on the invalidated block
+	chain2DB.assertAllHeads(t, s.chainsDB, chain2Block2.ID(),
+		"chain2 should not have rewound since it had no dependency on invalidated block")
 }
