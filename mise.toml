@@ -34,7 +34,7 @@ cast = "nightly-5d16800a64e5357fbb2493e4cae061756d145981"
 anvil = "nightly-5d16800a64e5357fbb2493e4cae061756d145981"
 
 # NPM dependencies
-"npm:doctoc" = "2.2.0"
+# "npm:doctoc" = "2.2.0"
 
 # Other dependencies
 codecov-uploader = "0.8.0"
