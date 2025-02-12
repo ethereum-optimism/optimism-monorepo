@@ -756,11 +756,11 @@ func (l *BatchSubmitter) safeL1Origin(ctx context.Context) (eth.BlockID, error) 
 	}
 
 	// If the safe L2 block origin is 0, we are at the genesis block and should use the L1 origin from the rollup config.
-	if status.SafeL2.L1Origin.Number == 0 {
+	if status.LocalSafeL2.L1Origin.Number == 0 {
 		return l.RollupConfig.Genesis.L1, nil
 	}
 
-	return status.SafeL2.L1Origin, nil
+	return status.LocalSafeL2.L1Origin, nil
 }
 
 // cancelBlockingTx creates an empty transaction of appropriate type to cancel out the incompatible

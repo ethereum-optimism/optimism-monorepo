@@ -88,7 +88,7 @@ func TestBatchSubmitter_SafeL1Origin(t *testing.T) {
 				ep.rollupClient.ExpectSyncStatus(&eth.SyncStatus{}, errors.New("failed to fetch sync status"))
 			} else {
 				ep.rollupClient.ExpectSyncStatus(&eth.SyncStatus{
-					SafeL2: eth.L2BlockRef{
+					LocalSafeL2: eth.L2BlockRef{
 						L1Origin: eth.BlockID{
 							Number: tt.currentSafeOrigin,
 						},

@@ -49,8 +49,8 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 	}
 
 	var allUnsafeBlocks *inclusiveBlockRange
-	if newSyncStatus.UnsafeL2.Number > newSyncStatus.SafeL2.Number {
-		allUnsafeBlocks = &inclusiveBlockRange{newSyncStatus.SafeL2.Number + 1, newSyncStatus.UnsafeL2.Number}
+	if newSyncStatus.UnsafeL2.Number > newSyncStatus.LocalSafeL2.Number {
+		allUnsafeBlocks = &inclusiveBlockRange{newSyncStatus.LocalSafeL2.Number + 1, newSyncStatus.UnsafeL2.Number}
 	}
 
 	// PART 2: checks involving only the oldest block in the state
@@ -69,18 +69,18 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 	// and we need to start over, loading all unsafe blocks
 	// from the sequencer.
 	startAfresh := syncActions{
-		clearState:   &newSyncStatus.SafeL2.L1Origin,
+		clearState:   &newSyncStatus.LocalSafeL2.L1Origin,
 		blocksToLoad: allUnsafeBlocks,
 	}
 
 	oldestBlockInStateNum := oldestBlockInState.NumberU64()
-	nextSafeBlockNum := newSyncStatus.SafeL2.Number + 1
+	nextSafeBlockNum := newSyncStatus.LocalSafeL2.Number + 1
 
 	if nextSafeBlockNum < oldestBlockInStateNum {
 		l.Warn("next safe block is below oldest block in state",
 			"syncActions", startAfresh,
 			"oldestBlockInState", oldestBlockInState,
-			"safeL2", newSyncStatus.SafeL2)
+			"safeL2", newSyncStatus.LocalSafeL2)
 		return startAfresh, false
 	}
 
@@ -96,17 +96,17 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 		// from channels sent by a previous batcher instance.
 		l.Warn("safe head above newest block in state, clearing channel manager state",
 			"syncActions", startAfresh,
-			"safeL2", newSyncStatus.SafeL2,
+			"safeL2", newSyncStatus.LocalSafeL2,
 			"newestBlockInState", eth.ToBlockID(newestBlockInState),
 		)
 		return startAfresh, false
 	}
 
-	if numBlocksToDequeue > 0 && blocks[numBlocksToDequeue-1].Hash() != newSyncStatus.SafeL2.Hash {
+	if numBlocksToDequeue > 0 && blocks[numBlocksToDequeue-1].Hash() != newSyncStatus.LocalSafeL2.Hash {
 		l.Warn("safe chain reorg, clearing channel manager state",
 			"syncActions", startAfresh,
 			"existingBlock", eth.ToBlockID(blocks[numBlocksToDequeue-1]),
-			"safeL2", newSyncStatus.SafeL2)
+			"safeL2", newSyncStatus.LocalSafeL2)
 		return startAfresh, false
 	}
 
@@ -115,7 +115,7 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 		if ch.isFullySubmitted() &&
 			!ch.isTimedOut() &&
 			newSyncStatus.CurrentL1.Number > ch.MaxInclusionBlock() &&
-			newSyncStatus.SafeL2.Number < ch.LatestL2().Number {
+			newSyncStatus.LocalSafeL2.Number < ch.LatestL2().Number {
 			// Safe head did not make the expected progress
 			// for a fully submitted channel. This indicates
 			// that the derivation pipeline may have stalled
@@ -123,7 +123,7 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 			l.Warn("sequencer did not make expected progress",
 				"syncActions", startAfresh,
 				"existingBlock", ch.LatestL2(),
-				"safeL2", newSyncStatus.SafeL2)
+				"safeL2", newSyncStatus.LocalSafeL2)
 			return startAfresh, false
 		}
 	}
@@ -131,7 +131,7 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 	// PART 5: happy path
 	numChannelsToPrune := 0
 	for _, ch := range channels {
-		if ch.LatestL2().Number > newSyncStatus.SafeL2.Number {
+		if ch.LatestL2().Number > newSyncStatus.LocalSafeL2.Number {
 			// If the channel has blocks which are not yet safe
 			// we do not want to prune it.
 			break
