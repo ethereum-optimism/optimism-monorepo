@@ -709,7 +709,7 @@ contract OPContractsManager is ISemver {
                                 gameConfig.disputeMaxClockDuration,
                                 gameConfig.vm,
                                 outputs[i].delayedWETH,
-                                getAnchorStateRegistry(pdg),
+                                getAnchorStateRegistry(fdg),
                                 l2ChainId
                             )
                         )

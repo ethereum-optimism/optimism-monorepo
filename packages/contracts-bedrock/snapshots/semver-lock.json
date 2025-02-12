@@ -16,16 +16,16 @@
     "sourceCodeHash": "0xf9ba98657dc235355146e381b654fe3ed766feb7cd87636ec0c9d4c6dd3e1973"
   },
   "src/L1/OPContractsManager.sol": {
-    "initCodeHash": "0x997aa1eb8c9323ece8942344d0d27bac71f6a4f4ccf7dac7b9ab7232f90bed93",
-    "sourceCodeHash": "0xc9214c3ac97f51d3e3435500a987346518eaa04cf2cb672827d295b8bd226a61"
+    "initCodeHash": "0x15550fa725bd32cbe63b2dda8e531ede83f3a4d8bc309c3e3e79a78ef92b5747",
+    "sourceCodeHash": "0x017c7d92a3653ae086670e69837c8ef71252e7f45fd225b85e417932ba8b9d94"
   },
   "src/L1/OPContractsManagerInterop.sol": {
-    "initCodeHash": "0xef5ec182708fa5c29cf2f42a6109d748cac653981f8a773ce1d6453aff863362",
-    "sourceCodeHash": "0xf9e820880250d9a1889d07e87f3dfc2c86397cd743f6e6ac9101e621b90f912d"
+    "initCodeHash": "0x1019dd99901321ceff8ca6984cc8bacb409edab1f9fbf5d6dfb87d0617603d41",
+    "sourceCodeHash": "0xa5f8b31a02896d2e8ba6c5b64a8a7c1d78bd95af998184cdd11d66760fdedabd"
   },
   "src/L1/OPPrestateUpdater.sol": {
-    "initCodeHash": "0xcbf87fdc1409afb25e7c8a6a01edc56d4cbe4913b6bbc4922a0c7a441afd69c0",
-    "sourceCodeHash": "0x8a4eb72a9c0d5c73542239b6dfe25c7dfc29d3b26a1c0a8a9f2f5b16c01c9fd6"
+    "initCodeHash": "0xa2d5860bab46bd11feb5656269433c9a15f867c4b7e0bc0d0e3a54ddd78f62ac",
+    "sourceCodeHash": "0xdc543f8f2138deccb4b2aace7535f5ea3ee09b8d77ed5b634fc75289fbd39cac"
   },
   "src/L1/OptimismPortal2.sol": {
     "initCodeHash": "0x2cc5776c92d6cb154aa3d9897c476deaf49d98dc81493fabaea72987b9588853",
