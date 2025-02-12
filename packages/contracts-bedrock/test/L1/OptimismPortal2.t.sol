@@ -395,11 +395,24 @@ contract OptimismPortal2_FinalizeWithdrawal_Test is CommonTest {
 
     /// @dev Setup the system for a ready-to-use state.
     function setUp() public virtual override {
-        // Warp forward in time to ensure that the game is created after the retirement timestamp.
-        vm.warp(optimismPortal2.respectedGameTypeUpdatedAt() + 1 seconds);
+        if (isForkTest()) {
+            // Set the proposed block number to be the next block number on the forked network
+            (, _proposedBlockNumber) = anchorStateRegistry.getAnchorRoot();
+            _proposedBlockNumber += 1;
 
-        // Set up the dummy game.
-        _proposedBlockNumber = 0xFF;
+            // Set the init bond of anchor game type 0 to be 0.
+            // It is a mapping so the storage slot is calculated as keccak256(abi.encode(key, slot)).
+            // The storage slot for the initBond mapping is 102, see `snapshots/storageLayout/DisputeGameFactory.json`.
+            vm.store(
+                address(disputeGameFactory), keccak256(abi.encode(GameType.wrap(0), uint256(102))), bytes32(uint256(0))
+            );
+        } else {
+            // Warp forward in time to ensure that the game is created after the retirement timestamp.
+            vm.warp(optimismPortal2.respectedGameTypeUpdatedAt() + 1 seconds);
+
+            // Set up the dummy game.
+            _proposedBlockNumber = 0xFF;
+        }
         GameType respectedGameType = optimismPortal2.respectedGameType();
         game = IFaultDisputeGame(
             payable(
@@ -863,14 +876,13 @@ contract OptimismPortal2_FinalizeWithdrawal_Test is CommonTest {
             messagePasserStorageRoot: _storageRoot_noData,
             latestBlockhash: bytes32(uint256(0))
         });
-        uint256 _proposedBlockNumber_noData = 0xFF;
         IFaultDisputeGame game_noData = IFaultDisputeGame(
             payable(
                 address(
                     disputeGameFactory.create(
                         optimismPortal2.respectedGameType(),
                         Claim.wrap(_outputRoot_noData),
-                        abi.encode(_proposedBlockNumber_noData)
+                        abi.encode(_proposedBlockNumber)
                     )
                 )
             )
@@ -1253,6 +1265,8 @@ contract OptimismPortal2_FinalizeWithdrawal_Test is CommonTest {
     )
         external
     {
+        skipIfForkTest("Skipping on forked tests because of the L2ToL1MessageParser call below");
+
         vm.assume(
             _target != address(optimismPortal2) // Cannot call the optimism portal or a contract
                 && _target.code.length == 0 // No accounts with code
@@ -1328,6 +1342,8 @@ contract OptimismPortal2_FinalizeWithdrawal_Test is CommonTest {
     )
         external
     {
+        skipIfForkTest("Skipping on forked tests because of the L2ToL1MessageParser call below");
+
         vm.assume(
             _target != address(optimismPortal2) // Cannot call the optimism portal or a contract
                 && _target.code.length == 0 // No accounts with code
