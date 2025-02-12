@@ -18,6 +18,7 @@ High-level information about these contracts can be found within this README and
   - [Style Guide](#style-guide)
   - [Contract Interfaces](#contract-interfaces)
   - [Solidity Versioning](#solidity-versioning)
+  - [Frozen Code](#frozen-code)
 - [Deployment](#deployment)
   - [Deploying Production Networks](#deploying-production-networks)
 - [Generating L2 Genesis Allocs](#generating-l2-genesis-allocs)

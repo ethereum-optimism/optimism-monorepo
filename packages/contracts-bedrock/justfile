@@ -349,3 +349,13 @@ lint-fix-no-fail:
 
 # Fixes linting errors and checks that the code is correctly formatted.
 lint: lint-fix lint-check
+
+
+########################################################
+#                         DOCS                         #
+########################################################
+
+# Update TOCs
+update-tocs:
+  doctoc README.md
+  doctoc meta/POLICY.md
