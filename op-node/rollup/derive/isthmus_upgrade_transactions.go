@@ -46,23 +46,6 @@ var (
 func IsthmusNetworkUpgradeTransactions() ([]hexutil.Bytes, error) {
 	upgradeTxns := make([]hexutil.Bytes, 0, 8)
 
-	deployHistoricalBlockHashesContract, err := types.NewTx(&types.DepositTx{
-		SourceHash:          blockHashDeployerSource.SourceHash(),
-		From:                BlockHashDeployerAddress,
-		To:                  nil,
-		Mint:                big.NewInt(0),
-		Value:               big.NewInt(0),
-		Gas:                 250_000,
-		IsSystemTransaction: false,
-		Data:                blockHashDeploymentBytecode,
-	}).MarshalBinary()
-
-	if err != nil {
-		return nil, err
-	}
-
-	upgradeTxns = append(upgradeTxns, deployHistoricalBlockHashesContract)
-
 	// Deploy L1 Block transaction
 	deployL1BlockTransaction, err := types.NewTx(&types.DepositTx{
 		SourceHash:          deployIsthmusL1BlockSource.SourceHash(),
@@ -188,6 +171,23 @@ func IsthmusNetworkUpgradeTransactions() ([]hexutil.Bytes, error) {
 	}
 
 	upgradeTxns = append(upgradeTxns, enableIsthmus)
+
+	deployHistoricalBlockHashesContract, err := types.NewTx(&types.DepositTx{
+		SourceHash:          blockHashDeployerSource.SourceHash(),
+		From:                BlockHashDeployerAddress,
+		To:                  nil,
+		Mint:                big.NewInt(0),
+		Value:               big.NewInt(0),
+		Gas:                 250_000,
+		IsSystemTransaction: false,
+		Data:                blockHashDeploymentBytecode,
+	}).MarshalBinary()
+
+	if err != nil {
+		return nil, err
+	}
+
+	upgradeTxns = append(upgradeTxns, deployHistoricalBlockHashesContract)
 
 	return upgradeTxns, nil
 }
