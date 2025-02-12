@@ -28,7 +28,8 @@ contract SystemConfig is OwnableUpgradeable, ISemver {
         FEE_SCALARS,
         GAS_LIMIT,
         UNSAFE_BLOCK_SIGNER,
-        EIP_1559_PARAMS
+        EIP_1559_PARAMS,
+        OPERATOR_FEE_PARAMS
     }
 
     /// @notice Struct representing the addresses of L1 system contracts. These should be the
@@ -122,6 +123,12 @@ contract SystemConfig is OwnableUpgradeable, ISemver {
     /// @notice The EIP-1559 elasticity multiplier.
     uint32 public eip1559Elasticity;
 
+    /// @notice The operator fee scalar.
+    uint32 public operatorFeeScalar;
+
+    /// @notice The operator fee constant.
+    uint64 public operatorFeeConstant;
+
     /// @notice Emitted when configuration is updated.
     /// @param version    SystemConfig version.
     /// @param updateType Type of update.
@@ -129,9 +136,9 @@ contract SystemConfig is OwnableUpgradeable, ISemver {
     event ConfigUpdate(uint256 indexed version, UpdateType indexed updateType, bytes data);
 
     /// @notice Semantic version.
-    /// @custom:semver 2.4.0
+    /// @custom:semver 2.4.0-beta.1
     function version() public pure virtual returns (string memory) {
-        return "2.4.0";
+        return "2.4.0-beta.1";
     }
 
     /// @notice Constructs the SystemConfig contract.
@@ -373,6 +380,22 @@ contract SystemConfig is OwnableUpgradeable, ISemver {
 
         bytes memory data = abi.encode(uint256(_denominator) << 32 | uint64(_elasticity));
         emit ConfigUpdate(VERSION, UpdateType.EIP_1559_PARAMS, data);
+    }
+
+    /// @notice Updates the operator fee parameters. Can only be called by the owner.
+    /// @param _operatorFeeScalar operator fee scalar.
+    /// @param _operatorFeeConstant  operator fee constant.
+    function setOperatorFeeScalars(uint32 _operatorFeeScalar, uint64 _operatorFeeConstant) external onlyOwner {
+        _setOperatorFeeScalars(_operatorFeeScalar, _operatorFeeConstant);
+    }
+
+    /// @notice Internal function for updating the operator fee parameters.
+    function _setOperatorFeeScalars(uint32 _operatorFeeScalar, uint64 _operatorFeeConstant) internal {
+        operatorFeeScalar = _operatorFeeScalar;
+        operatorFeeConstant = _operatorFeeConstant;
+
+        bytes memory data = abi.encode(uint256(_operatorFeeScalar) << 64 | _operatorFeeConstant);
+        emit ConfigUpdate(VERSION, UpdateType.OPERATOR_FEE_PARAMS, data);
     }
 
     /// @notice Sets the start block in a backwards compatible way. Proxies

@@ -116,6 +116,8 @@ contract Artifacts {
             return payable(Predeploys.BASE_FEE_VAULT);
         } else if (digest == keccak256(bytes("L1FeeVault"))) {
             return payable(Predeploys.L1_FEE_VAULT);
+        } else if (digest == keccak256(bytes("OperatorFeeVault"))) {
+            return payable(Predeploys.OPERATOR_FEE_VAULT);
         } else if (digest == keccak256(bytes("GovernanceToken"))) {
             return payable(Predeploys.GOVERNANCE_TOKEN);
         } else if (digest == keccak256(bytes("SchemaRegistry"))) {
