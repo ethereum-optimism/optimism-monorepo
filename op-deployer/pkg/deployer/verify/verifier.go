@@ -48,8 +48,7 @@ func NewVerifier(apiKey string, l1ChainID uint64, st *state.State, artifactsFS f
 		artifactsFS:  artifactsFS,
 		log:          l,
 		etherscanUrl: etherscanUrl,
-		//rateLimiter:  rate.NewLimiter(rate.Limit(3), 2),
-		rateLimiter: rate.NewLimiter(rate.Limit(5), 5),
+		rateLimiter:  rate.NewLimiter(rate.Limit(3), 2),
 	}
 
 	return v, nil
