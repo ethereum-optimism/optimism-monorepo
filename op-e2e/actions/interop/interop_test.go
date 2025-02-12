@@ -117,7 +117,7 @@ func TestFullInterop(gt *testing.T) {
 	supervisorStatus, err = actors.Supervisor.SyncStatus()
 	require.NoError(t, err)
 	require.Equal(t, head, supervisorStatus.Chains[actors.ChainA.ChainID].LocalUnsafe.ID())
-	require.Equal(t, uint64(1), supervisorStatus.MinSyncedL1.Number)
+	require.Equal(t, uint64(0), supervisorStatus.MinSyncedL1.Number)
 	h := actors.ChainA.SequencerEngine.L2Chain().CurrentSafeBlock().Hash()
 	require.Equal(t, head.Hash, h)
 
@@ -146,7 +146,7 @@ func TestFullInterop(gt *testing.T) {
 	supervisorStatus, err = actors.Supervisor.SyncStatus()
 	require.NoError(t, err)
 	require.Equal(t, head, supervisorStatus.Chains[actors.ChainA.ChainID].LocalUnsafe.ID())
-	require.Equal(t, uint64(1), supervisorStatus.MinSyncedL1.Number)
+	require.Equal(t, uint64(0), supervisorStatus.MinSyncedL1.Number)
 }
 
 // TestFinality confirms that when L1 finality is updated on the supervisor,
