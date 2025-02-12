@@ -2965,7 +2965,6 @@ contract FaultDispute_1v1_Actors_Test is FaultDisputeGame_Init {
         if (isForkTest()) {
             // Mock the call anchorStateRegistry.getAnchorRoot() to return 0 as the block number
             (Hash root,) = anchorStateRegistry.getAnchorRoot();
-            vm.store(address(anchorStateRegistry), bytes32(uint256(1)), bytes32(uint256(0)));
             vm.mockCall(
                 address(anchorStateRegistry),
                 abi.encodeCall(IAnchorStateRegistry.getAnchorRoot, ()),
