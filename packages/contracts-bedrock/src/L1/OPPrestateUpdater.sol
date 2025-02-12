@@ -19,11 +19,6 @@ import { Claim, GameTypes } from "src/dispute/lib/Types.sol";
 ///  @title OPPrestateUpdater
 ///  @notice A custom implementation of OPContractsManager that allows for modified deployment parameters
 contract OPPrestateUpdater is OPContractsManager {
-    struct PrestateUpdateInput {
-        OpChainConfig opChain;
-        Claim absolutePrestate;
-    }
-
     /// @notice Thrown when a function from the parent (OPCM) is not implemented.
     error NotImplemented();
 
@@ -92,7 +87,7 @@ contract OPPrestateUpdater is OPContractsManager {
 
     /// @notice Updates the prestate hash for a new game type while keeping all other parameters the same
     /// @param _prestateUpdateInputs The new prestate hash to use
-    function updatePrestate(PrestateUpdateInput[] memory _prestateUpdateInputs) external {
+    function updatePrestate(OpChainConfig[] memory _prestateUpdateInputs) external {
         // Loop through each chain and prestate hash
         for (uint256 i = 0; i < _prestateUpdateInputs.length; i++) {
             if (Claim.unwrap(_prestateUpdateInputs[i].absolutePrestate) == bytes32(0)) {

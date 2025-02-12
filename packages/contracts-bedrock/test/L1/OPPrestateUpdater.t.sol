@@ -200,12 +200,10 @@ contract OPPrestateUpdater_Test is Test {
     }
 
     function test_updatePrestate_whenPDGPrestateIsZero_reverts() public {
-        OPPrestateUpdater.PrestateUpdateInput[] memory inputs = new OPPrestateUpdater.PrestateUpdateInput[](1);
-        inputs[0] = OPPrestateUpdater.PrestateUpdateInput({
-            opChain: OPContractsManager.OpChainConfig({
-                systemConfigProxy: chainDeployOutput.systemConfigProxy,
-                proxyAdmin: chainDeployOutput.opChainProxyAdmin
-            }),
+        OPPrestateUpdater.OpChainConfig[] memory inputs = new OPPrestateUpdater.OpChainConfig[](1);
+        inputs[0] = OPContractsManager.OpChainConfig({
+            systemConfigProxy: chainDeployOutput.systemConfigProxy,
+            proxyAdmin: chainDeployOutput.opChainProxyAdmin,
             absolutePrestate: Claim.wrap(bytes32(0))
         });
 
