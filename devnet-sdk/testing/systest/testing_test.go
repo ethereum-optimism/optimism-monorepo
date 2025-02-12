@@ -12,6 +12,7 @@ import (
 	"github.com/ethereum-optimism/optimism/devnet-sdk/shell/env"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/system"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/types"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
 )
 
@@ -70,6 +71,31 @@ func (m *mockChain) ID() types.ChainID                               { return ty
 func (m *mockChain) ContractsRegistry() interfaces.ContractsRegistry { return nil }
 func (m *mockChain) Wallet(ctx context.Context, constraints ...constraints.WalletConstraint) (types.Wallet, error) {
 	return nil, nil
+}
+func (m *mockChain) GasPrice(ctx context.Context) (*big.Int, error) {
+	return big.NewInt(1), nil
+}
+func (m *mockChain) GasLimit(ctx context.Context, tx system.TransactionData) (uint64, error) {
+	return 1000000, nil
+}
+func (m *mockChain) PendingNonceAt(ctx context.Context, address common.Address) (uint64, error) {
+	return 0, nil
+}
+func (m *mockChain) TransactionProcessor() (system.TransactionProcessor, error) {
+	return &mockTransactionProcessor{}, nil
+}
+func (m *mockChain) SupportsEIP(ctx context.Context, eip uint64) bool {
+	return true
+}
+
+type mockTransactionProcessor struct{}
+
+func (m *mockTransactionProcessor) Sign(tx system.Transaction, privateKey string) (system.Transaction, error) {
+	return tx, nil
+}
+
+func (m *mockTransactionProcessor) Send(ctx context.Context, tx system.Transaction) error {
+	return nil
 }
 
 // mockSystem implements a minimal system.System for testing
