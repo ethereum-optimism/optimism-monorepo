@@ -726,6 +726,7 @@ contract OPContractsManager is ISemver {
         if (_input.roles.challenger == address(0)) revert InvalidRoleAddress("challenger");
 
         if (_input.startingAnchorRoot.length == 0) revert InvalidStartingAnchorRoot();
+        if (bytes32(_input.startingAnchorRoot) == bytes32(0)) revert InvalidStartingAnchorRoot();
     }
 
     /// @notice Maps an L2 chain ID to an L1 batch inbox address as defined by the standard
