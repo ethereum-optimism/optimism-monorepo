@@ -54,13 +54,6 @@ func TestIsthmusNetworkTransactions(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, upgradeTxns, 8)
 
-	deployBlockHashesSender, deployBlockHashesContract := toDepositTxn(t, upgradeTxns[0])
-	require.Equal(t, deployBlockHashesSender, common.HexToAddress("0xE9f0662359Bb2c8111840eFFD73B9AFA77CbDE10"))
-	require.Equal(t, blockHashDeployerSource.SourceHash(), deployBlockHashesContract.SourceHash())
-	require.Nil(t, deployBlockHashesContract.To())
-	require.Equal(t, uint64(250_000), deployBlockHashesContract.Gas())
-	require.Equal(t, blockHashDeploymentBytecode, deployBlockHashesContract.Data())
-
 	deployL1BlockSender, deployL1Block := toDepositTxn(t, upgradeTxns[0])
 	require.Equal(t, deployL1BlockSender, common.HexToAddress("0x4210000000000000000000000000000000000003"))
 	require.Equal(t, deployIsthmusL1BlockSource.SourceHash(), deployL1Block.SourceHash())
@@ -113,4 +106,11 @@ func TestIsthmusNetworkTransactions(t *testing.T) {
 	require.Equal(t, *gpoSetIsthmus.To(), common.HexToAddress("0x420000000000000000000000000000000000000F"))
 	require.Equal(t, uint64(90_000), gpoSetIsthmus.Gas())
 	require.Equal(t, common.FromHex("291b0383"), gpoSetIsthmus.Data())
+
+	deployBlockHashesSender, deployBlockHashesContract := toDepositTxn(t, upgradeTxns[7])
+	require.Equal(t, deployBlockHashesSender, common.HexToAddress("0xE9f0662359Bb2c8111840eFFD73B9AFA77CbDE10"))
+	require.Equal(t, blockHashDeployerSource.SourceHash(), deployBlockHashesContract.SourceHash())
+	require.Nil(t, deployBlockHashesContract.To())
+	require.Equal(t, uint64(250_000), deployBlockHashesContract.Gas())
+	require.Equal(t, blockHashDeploymentBytecode, deployBlockHashesContract.Data())
 }
