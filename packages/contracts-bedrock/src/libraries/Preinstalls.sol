@@ -63,7 +63,7 @@ library Preinstalls {
     address internal constant HistoryStorage = 0x0F792be4B0c0cb4DAE440Ef133E90C0eCD48CCCC;
 
     /// @notice See https://eips.ethereum.org/EIPS/eip-2935, this is the address of the sender of the deployment tx.
-    /// The nonce of this account must be non-zero, to ensure the Ecotone upgrade tx is still successful
+    /// The nonce of this account must be non-zero, to ensure the Ishtmus upgrade tx is still successful
     /// if the code is already in place.
     address internal constant HistoryStorageSender = 0xE9f0662359Bb2c8111840eFFD73B9AFA77CbDE10;
 
