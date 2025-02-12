@@ -345,7 +345,7 @@ func ExecuteMipsInstruction(insn uint32, opcode uint32, fun uint32, rs, rt, mem 
 		case 0x3E:
 			assertMips64(insn)
 			shift := ((insn >> 6) & 0x1f) + 32
-			if (insn>>21)&0x1 == 1 { // drot32
+			if (insn>>21)&0x1 == 1 { // drotr32
 				return (rt >> shift) | (rt << (64 - shift))
 			} else {
 				return rt >> shift // dsrl32
@@ -481,6 +481,54 @@ func ExecuteMipsInstruction(insn uint32, opcode uint32, fun uint32, rs, rt, mem 
 		case 0x3F: // sd
 			assertMips64(insn)
 			return rt
+		case 0x1f: // SPECIAL3
+			assertMips64(insn)
+			switch fun {
+			case 0x20: // bshfl
+				switch (insn >> 6) & 0x1f {
+				case 0x10: // seb
+					return SignExtend(rt&0xFF, 8)
+				case 0x18: // seh
+					return SignExtend(rt&0xFFFF, 16)
+				}
+			case 0x3: // dext
+				lsb := (insn >> 6) & 0x1F
+				size := ((insn >> 11) & 0x1F) + 1
+				mask := ((Word(1) << size) - 1) << lsb
+				return Word((rs & mask) >> lsb)
+			case 0x1: // dextm
+				lsb := (insn >> 6) & 0x1F
+				size := ((insn >> 11) & 0x1F) + 1 + 32
+				mask := ((Word(1) << size) - 1) << lsb
+				return Word((rs & mask) >> lsb)
+			case 0x2: // dextu
+				lsb := (insn>>6)&0x1F + 32
+				size := ((insn >> 11) & 0x1F) + 1
+				mask := ((Word(1) << size) - 1) << lsb
+				return Word((rs & mask) >> lsb)
+			case 0x7: // dins
+				lsb := (insn >> 6) & 0x1F
+				size := ((insn >> 11) & 0x1F) + 1 - lsb
+				mask := (Word(1) << size) - 1
+				return (rt & ^(mask << lsb)) | ((rs & mask) << lsb)
+			case 0x5: // dinsm
+				lsb := (insn >> 6) & 0x1F
+				size := ((insn >> 11) & 0x1F) + 1 + 32 - lsb
+				mask := (Word(1) << size) - 1
+				return (rt & ^(mask << lsb)) | ((rs & mask) << lsb)
+			case 0x6: // dinsu
+				lsb := (insn>>6)&0x1F + 32
+				size := ((insn >> 11) & 0x1F) + 1 + 32 - lsb
+				mask := (Word(1) << size) - 1
+				return (rt & ^(mask << lsb)) | ((rs & mask) << lsb)
+			case 0x24: // dbshfl
+				switch (insn >> 6) & 0x1f {
+				case 0x2: // dsbh
+					return Word(((uint64(rt) & 0xFF00FF00FF00FF00) >> 8) | ((uint64(rt) & 0x00FF00FF00FF00FF) << 8))
+				case 0x5: // dshd
+					return Word(((uint64(rt) & 0xFFFF) << 48) | (((uint64(rt) >> 16) & 0xFFFF) << 32) | (((uint64(rt) >> 32) & 0xFFFF) << 16) | ((uint64(rt) >> 48) & 0xFFFF))
+				}
+			}
 		default:
 			panic(fmt.Sprintf("invalid instruction: %x", insn))
 		}
