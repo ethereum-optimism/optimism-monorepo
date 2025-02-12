@@ -334,14 +334,15 @@ func (db *ChainsDB) CandidateCrossSafe(chain eth.ChainID) (result types.DerivedB
 	}
 	crossSafeSourceRef := crossSafe.Source.MustWithParent(parentSource.ID())
 
+	result = types.DerivedBlockRefPair{
+		Source:  crossSafeSourceRef,
+		Derived: candidateRef,
+	}
 	if candidate.Source.Number <= crossSafe.Source.Number {
 		db.logger.Debug("Cross-safe source matches or exceeds candidate source", "crossSafe", crossSafe, "candidate", candidate)
-		return types.DerivedBlockRefPair{
-			Source:  crossSafeSourceRef,
-			Derived: candidateRef,
-		}, nil
+		return result, nil
 	}
-	return types.DerivedBlockRefPair{}, types.ErrOutOfScope
+	return result, types.ErrOutOfScope
 }
 
 func (db *ChainsDB) PreviousDerived(chain eth.ChainID, derived eth.BlockID) (prevDerived types.BlockSeal, err error) {
