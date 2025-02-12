@@ -71,15 +71,15 @@ func (db *ChainsDB) Rewind(chain eth.ChainID, headBlock eth.BlockID) error {
 	return nil
 }
 
-func (db *ChainsDB) UpdateLocalSafe(chain eth.ChainID, derivedFrom eth.BlockRef, lastDerived eth.BlockRef) {
-	logger := db.logger.New("chain", chain, "derivedFrom", derivedFrom, "lastDerived", lastDerived)
+func (db *ChainsDB) UpdateLocalSafe(chain eth.ChainID, source eth.BlockRef, lastDerived eth.BlockRef) {
+	logger := db.logger.New("chain", chain, "source", source, "lastDerived", lastDerived)
 	localDB, ok := db.localDBs.Get(chain)
 	if !ok {
 		logger.Error("Cannot update local-safe DB, unknown chain")
 		return
 	}
 	logger.Debug("Updating local safe DB")
-	if err := localDB.AddDerived(derivedFrom, lastDerived); err != nil {
+	if err := localDB.AddDerived(source, lastDerived); err != nil {
 		if errors.Is(err, types.ErrIneffective) {
 			logger.Info("Node is syncing known source blocks on known latest local-safe block", "err", err)
 			return
@@ -87,7 +87,7 @@ func (db *ChainsDB) UpdateLocalSafe(chain eth.ChainID, derivedFrom eth.BlockRef,
 		logger.Warn("Failed to update local safe", "err", err)
 		db.emitter.Emit(superevents.LocalSafeOutOfSyncEvent{
 			ChainID: chain,
-			L1Ref:   derivedFrom,
+			L1Ref:   source,
 			Err:     err,
 		})
 		return
@@ -96,7 +96,7 @@ func (db *ChainsDB) UpdateLocalSafe(chain eth.ChainID, derivedFrom eth.BlockRef,
 	db.emitter.Emit(superevents.LocalSafeUpdateEvent{
 		ChainID: chain,
 		NewLocalSafe: types.DerivedBlockSealPair{
-			Source:  types.BlockSealFromRef(derivedFrom),
+			Source:  types.BlockSealFromRef(source),
 			Derived: types.BlockSealFromRef(lastDerived),
 		},
 	})

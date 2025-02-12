@@ -95,7 +95,7 @@ func (db *DB) PreviousDerived(derived eth.BlockID) (prevDerived types.BlockSeal,
 }
 
 // Latest returns the last known values:
-// derivedFrom: the L1 block that the L2 block is safe for (not necessarily the first, multiple L2 blocks may be derived from the same L1 block).
+// source: the L1 block that the L2 block is safe for (not necessarily the first, multiple L2 blocks may be derived from the same L1 block).
 // derived: the L2 block that was derived (not necessarily the first, the L1 block may have been empty and repeated the last safe L2 block).
 // If the last entry is invalidated, this returns a types.ErrAwaitReplacementBlock error.
 func (db *DB) Last() (pair types.DerivedBlockSealPair, err error) {
@@ -314,11 +314,11 @@ func (db *DB) sourceNumToLastDerived(sourceNum uint64) (entrydb.EntryIdx, LinkEn
 	})
 }
 
-func (db *DB) lookup(derivedFrom, derived uint64) (entrydb.EntryIdx, LinkEntry, error) {
+func (db *DB) lookup(source, derived uint64) (entrydb.EntryIdx, LinkEntry, error) {
 	return db.find(false, func(link LinkEntry) int {
 		res := cmp.Compare(link.derived.Number, derived)
 		if res == 0 {
-			return cmp.Compare(link.source.Number, derivedFrom)
+			return cmp.Compare(link.source.Number, source)
 		}
 		return res
 	})
