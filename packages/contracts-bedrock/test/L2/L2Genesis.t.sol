@@ -179,6 +179,7 @@ contract L2GenesisTest is Test {
         expected += 256; // precompiles
         expected += 13; // preinstalls
         expected += 1; // 4788 deployer account
+        expected += 1; // 2935 deployer account
         // 16 prefunded dev accounts are excluded
         assertEq(expected, getJSONKeyCount(_path), "key count check");
 
