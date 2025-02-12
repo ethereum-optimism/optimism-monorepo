@@ -152,7 +152,9 @@ func TestTraceIndex(t *testing.T) {
 		{depth: 63, indexAtDepth: bi(9223372036854775806), maxDepth: 64, traceIndexExpected: bi(0).Sub(bi(0).Mul(bi(math.MaxInt64), bi(2)), bi(1))},
 	}
 	for _, test := range tests {
-		require.Equal(t, test.traceIndexExpected, NewPosition(test.depth, test.indexAtDepth).TraceIndex(test.maxDepth))
+		pos := NewPosition(test.depth, test.indexAtDepth)
+		require.Equal(t, test.traceIndexExpected, pos.TraceIndex(test.maxDepth))
+		require.Equal(t, pos.IndexAtDepth(), pos.TraceIndex(pos.Depth()))
 	}
 }
 
