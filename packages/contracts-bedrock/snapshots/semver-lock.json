@@ -20,11 +20,11 @@
     "sourceCodeHash": "0xe7aa40445e938825a0ef414fe46958bdb4de9c4ebbd737dddc96f3afa1d4e3db"
   },
   "src/L1/OPContractsManagerInterop.sol": {
-    "initCodeHash": "0xeb704127c7cccba7f40895e7ac3dea23eb74645389305bac528a919b4900bf4b",
+    "initCodeHash": "0xb68bdca9d8189a4f21750e7f75e3e2c51f12ebf38b7defd553c43de15eb2c0a6",
     "sourceCodeHash": "0x1bf5afe631f621078379773a0b0d6fda9d2b3bddd0acd7bd38fc461a2c8107bd"
   },
   "src/L1/OPPrestateUpdater.sol": {
-    "initCodeHash": "0x1ba6ba976847b82917d565fd8f79c1736f0e4ecce22158546f2af32c864f2908",
+    "initCodeHash": "0x4e8acd5a9fa64ca3cfd2f1bef65303dd0c48f475bda7267b6ac3570a70cceb13",
     "sourceCodeHash": "0xc5dfed0f99ddedb85e12fdb48fa7cf9fb6f37bc0ef5c10288cc7e12bee726cf5"
   },
   "src/L1/OptimismPortal2.sol": {
@@ -176,7 +176,7 @@
     "sourceCodeHash": "0x30ae8a7e5718b9c8b0536034143f8f93f01d6f8b53f287fe4d020eb1d7053ef9"
   },
   "src/dispute/PermissionedDisputeGame.sol": {
-    "initCodeHash": "0x3a63e11ab331486001b365b03584a6ef05d0c20b4dbebe15467afba8089cb4aa",
+    "initCodeHash": "0x77f51a5cc73ee6e3a1b2f8d406daccd0d4e0fb20751532e9a48f398183c99f94",
     "sourceCodeHash": "0x73b6788068565814ac516055269910e0c44273edd17978f421d05ba8431ef60b"
   },
   "src/legacy/DeployerWhitelist.sol": {
