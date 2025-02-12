@@ -5,6 +5,7 @@
 - [Policy](#policy)
   - [Contributing](#contributing)
   - [Versioning Policy](#versioning-policy)
+  - [Code Freeze Policy](#code-freeze-policy)
   - [Upgrade Policy](#upgrade-policy)
   - [Style Guide](#style-guide)
   - [Revert Data](#revert-data)
