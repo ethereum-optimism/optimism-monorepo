@@ -9,7 +9,6 @@ import (
 
 	"github.com/ethereum-optimism/optimism/op-node/chaincfg"
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
-	preimage "github.com/ethereum-optimism/optimism/op-preimage"
 	"github.com/ethereum-optimism/optimism/op-program/chainconfig"
 	"github.com/ethereum-optimism/optimism/op-program/client/boot"
 	"github.com/ethereum-optimism/optimism/op-program/client/interop/types"
@@ -32,10 +31,6 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
-
-type stubHinter struct{}
-
-func (s stubHinter) Hint(_ preimage.Hint) {}
 
 func setupTwoChains() (*staticConfigSource, *eth.SuperV1, *stubTasks) {
 	rollupCfg1 := chaincfg.OPSepolia()
@@ -82,7 +77,7 @@ func TestDeriveBlockForFirstChainFromSuperchainRoot(t *testing.T) {
 	}
 
 	expectedClaim := expectedIntermediateRoot.Hash()
-	verifyResult(t, logger, tasksStub, configSource, l2PreimageOracle, stubHinter{}, outputRootHash, agreedSuperRoot.Timestamp+100000, expectedClaim)
+	verifyResult(t, logger, tasksStub, configSource, l2PreimageOracle, outputRootHash, agreedSuperRoot.Timestamp+100000, expectedClaim)
 }
 
 func TestDeriveBlockForSecondChainFromTransitionState(t *testing.T) {
@@ -108,7 +103,7 @@ func TestDeriveBlockForSecondChainFromTransitionState(t *testing.T) {
 	}
 
 	expectedClaim := expectedIntermediateRoot.Hash()
-	verifyResult(t, logger, tasksStub, configSource, l2PreimageOracle, stubHinter{}, outputRootHash, agreedSuperRoot.Timestamp+100000, expectedClaim)
+	verifyResult(t, logger, tasksStub, configSource, l2PreimageOracle, outputRootHash, agreedSuperRoot.Timestamp+100000, expectedClaim)
 }
 
 func TestNoOpStep(t *testing.T) {
@@ -129,7 +124,7 @@ func TestNoOpStep(t *testing.T) {
 	expectedIntermediateRoot.Step = 3
 
 	expectedClaim := expectedIntermediateRoot.Hash()
-	verifyResult(t, logger, tasksStub, configSource, l2PreimageOracle, stubHinter{}, outputRootHash, agreedSuperRoot.Timestamp+100000, expectedClaim)
+	verifyResult(t, logger, tasksStub, configSource, l2PreimageOracle, outputRootHash, agreedSuperRoot.Timestamp+100000, expectedClaim)
 }
 
 var (
@@ -416,7 +411,6 @@ func runConsolidationTestCase(t *testing.T, testCase consolidationTestCase) {
 		tasksStub,
 		configSource,
 		l2PreimageOracle,
-		stubHinter{},
 		outputRootHash,
 		agreedSuperRoot.Timestamp+100000,
 		expectedClaim,
@@ -474,7 +468,7 @@ func TestTraceExtensionOnceClaimedTimestampIsReached(t *testing.T) {
 
 	// We have reached the game's timestamp so should just trace extend the agreed claim
 	expectedClaim := agreedPrestatehash
-	verifyResult(t, logger, tasksStub, configSource, l2PreimageOracle, stubHinter{}, agreedPrestatehash, agreedSuperRoot.Timestamp, expectedClaim)
+	verifyResult(t, logger, tasksStub, configSource, l2PreimageOracle, agreedPrestatehash, agreedSuperRoot.Timestamp, expectedClaim)
 }
 
 func TestPanicIfAgreedPrestateIsAfterGameTimestamp(t *testing.T) {
@@ -487,18 +481,18 @@ func TestPanicIfAgreedPrestateIsAfterGameTimestamp(t *testing.T) {
 	// We have reached the game's timestamp so should just trace extend the agreed claim
 	expectedClaim := agreedPrestatehash
 	require.PanicsWithError(t, fmt.Sprintf("agreed prestate timestamp %v is after the game timestamp %v", agreedSuperRoot.Timestamp, agreedSuperRoot.Timestamp-1), func() {
-		verifyResult(t, logger, tasksStub, configSource, l2PreimageOracle, stubHinter{}, agreedPrestatehash, agreedSuperRoot.Timestamp-1, expectedClaim)
+		verifyResult(t, logger, tasksStub, configSource, l2PreimageOracle, agreedPrestatehash, agreedSuperRoot.Timestamp-1, expectedClaim)
 	})
 }
 
-func verifyResult(t *testing.T, logger log.Logger, tasks *stubTasks, configSource *staticConfigSource, l2PreimageOracle *test.StubBlockOracle, hClient preimage.Hinter, agreedPrestate common.Hash, gameTimestamp uint64, expectedClaim common.Hash) {
+func verifyResult(t *testing.T, logger log.Logger, tasks *stubTasks, configSource *staticConfigSource, l2PreimageOracle *test.StubBlockOracle, agreedPrestate common.Hash, gameTimestamp uint64, expectedClaim common.Hash) {
 	bootInfo := &boot.BootInfoInterop{
 		AgreedPrestate: agreedPrestate,
 		GameTimestamp:  gameTimestamp,
 		Claim:          expectedClaim,
 		Configs:        configSource,
 	}
-	err := runInteropProgram(logger, bootInfo, nil, l2PreimageOracle, true, tasks, hClient)
+	err := runInteropProgram(logger, bootInfo, nil, l2PreimageOracle, true, tasks)
 	require.NoError(t, err)
 }
 
@@ -520,8 +514,7 @@ func (t *stubTasks) RunDerivation(
 	_ eth.Bytes32,
 	_ uint64,
 	_ l1.Oracle,
-	_ l2.Oracle,
-	_ preimage.Hinter) (tasks.DerivationResult, error) {
+	_ l2.Oracle) (tasks.DerivationResult, error) {
 	return tasks.DerivationResult{
 		Head:       t.l2SafeHead,
 		BlockHash:  t.blockHash,
@@ -538,7 +531,6 @@ func (t *stubTasks) BuildDepositOnlyBlock(
 	l1Oracle l1.Oracle,
 	l2Oracle l2.Oracle,
 	optimisticBlock *gethTypes.Block,
-	hClient preimage.Hinter,
 ) (common.Hash, eth.Bytes32, error) {
 	out := t.Mock.Called(
 		logger,
@@ -549,7 +541,6 @@ func (t *stubTasks) BuildDepositOnlyBlock(
 		l1Oracle,
 		l2Oracle,
 		optimisticBlock,
-		hClient,
 	)
 	return out.Get(0).(common.Hash), out.Get(1).(eth.Bytes32), nil
 }

@@ -1,7 +1,6 @@
 package client
 
 import (
-	preimage "github.com/ethereum-optimism/optimism/op-preimage"
 	"github.com/ethereum-optimism/optimism/op-program/client/boot"
 	"github.com/ethereum-optimism/optimism/op-program/client/claim"
 	"github.com/ethereum-optimism/optimism/op-program/client/l1"
@@ -17,7 +16,6 @@ func RunPreInteropProgram(
 	l1PreimageOracle *l1.CachingOracle,
 	l2PreimageOracle *l2.CachingOracle,
 	db l2.KeyValueStore,
-	hClient preimage.Hinter,
 	opts tasks.DerivationOptions,
 ) error {
 	logger.Info("Program Bootstrapped", "bootInfo", bootInfo)
@@ -32,7 +30,6 @@ func RunPreInteropProgram(
 		l2PreimageOracle,
 		db,
 		opts,
-		hClient,
 	)
 	if err != nil {
 		return err

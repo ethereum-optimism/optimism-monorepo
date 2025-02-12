@@ -5,6 +5,7 @@ import (
 	"math/big"
 
 	"github.com/ethereum-optimism/optimism/op-program/client/l2/engineapi"
+	l2Types "github.com/ethereum-optimism/optimism/op-program/client/l2/types"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/consensus"
@@ -103,6 +104,10 @@ func (o *OracleBackedL2Chain) CurrentHeader() *types.Header {
 
 func (o *OracleBackedL2Chain) GetHeaderByNumber(n uint64) *types.Header {
 	return o.canon.GetHeaderByNumber(n)
+}
+
+func (o *OracleBackedL2Chain) Hinter() l2Types.OracleHinter {
+	return o.oracle.Hinter()
 }
 
 func (o *OracleBackedL2Chain) GetTd(hash common.Hash, number uint64) *big.Int {
