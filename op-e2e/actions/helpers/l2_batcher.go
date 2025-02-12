@@ -527,3 +527,42 @@ func (s *L2Batcher) ActSubmitAllMultiBlobs(t Testing, numBlobs int) {
 	s.ActL2ChannelClose(t)
 	s.ActL2BatchSubmitMultiBlob(t, numBlobs)
 }
+
+// ActSubmitSetCodeTx submits a SetCodeTx to the batch inbox. This models a malicious
+// batcher and is only used to tests the derivation pipeline follows spec and ignores
+// the SetCodeTx.
+func (s *L2Batcher) ActSubmitSetCodeTx(t Testing) {
+	chainId := *uint256.MustFromBig(s.rollupCfg.L1ChainID)
+
+	nonce, err := s.l1.PendingNonceAt(t.Ctx(), s.BatcherAddr)
+	require.NoError(t, err, "need batcher nonce")
+
+	setCodeAuthorization := types.SetCodeAuthorization{
+		ChainID: chainId,
+		Address: common.HexToAddress("0xab"), // arbitrary nonzero address
+		Nonce:   nonce,
+	}
+
+	signedAuth, err := types.SignSetCode(s.l2BatcherCfg.BatcherKey, setCodeAuthorization)
+	require.NoError(t, err, "SignSetCode failed")
+
+	txData := &types.SetCodeTx{
+		ChainID:    &chainId,
+		Nonce:      nonce,
+		To:         s.rollupCfg.BatchInboxAddress, // send to batch inbox
+		Value:      uint256.NewInt(0),
+		Data:       s.ReadNextOutputFrame(t),
+		AccessList: types.AccessList{},
+		AuthList:   []types.SetCodeAuthorization{signedAuth},
+		Gas:        1_000_000,
+		GasFeeCap:  uint256.NewInt(1_000_000_000),
+	}
+
+	tx, err := types.SignNewTx(s.l2BatcherCfg.BatcherKey, s.l1Signer, txData)
+	require.NoError(t, err, "need to sign tx")
+
+	t.Log("submitting EIP 7702 Set Code Batcher Transaction...")
+	err = s.l1.SendTransaction(t.Ctx(), tx)
+	require.NoError(t, err, "need to send tx")
+	s.LastSubmitted = tx
+}
