@@ -1185,7 +1185,7 @@ func TestIsthmus(t *testing.T) {
 		test := test
 		for _, precompileToTest := range precompilesToTest {
 			precompileToTest := precompileToTest
-			t.Run(fmt.Sprintf("EIP2537_%s", test.name), func(t *testing.T) {
+			t.Run(fmt.Sprintf("EIP2537_%s_%s", test.name, precompileToTest.precompileName), func(t *testing.T) {
 				op_e2e.InitParallel(t)
 				cfg := e2esys.IsthmusSystemConfig(t, &test.isthmusTime)
 
