@@ -11,9 +11,10 @@ import (
 	"github.com/ethereum-optimism/optimism/devnet-sdk/contracts/constants"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/system"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/testing/systest"
-	"github.com/ethereum-optimism/optimism/devnet-sdk/types"
+	sdktypes "github.com/ethereum-optimism/optimism/devnet-sdk/types"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/stretchr/testify/require"
@@ -28,8 +29,8 @@ func smokeTestScenario(chainIdx uint64, userSentinel interface{}) systest.System
 		logger = logger.With("chain", chain.ID())
 		logger.InfoContext(ctx, "starting test")
 
-		funds := types.NewBalance(big.NewInt(0.5 * constants.ETH))
-		user := ctx.Value(userSentinel).(types.Wallet)
+		funds := sdktypes.NewBalance(big.NewInt(0.5 * constants.ETH))
+		user := ctx.Value(userSentinel).(sdktypes.Wallet)
 
 		scw0Addr := constants.SuperchainWETH
 		scw0, err := chain.ContractsRegistry().SuperchainWETH(scw0Addr)
@@ -58,7 +59,7 @@ func TestSystemWrapETH(t *testing.T) {
 
 	systest.SystemTest(t,
 		smokeTestScenario(chainIdx, testUserMarker),
-		walletFundsValidator(chainIdx, types.NewBalance(big.NewInt(1.0*constants.ETH)), testUserMarker),
+		walletFundsValidator(chainIdx, sdktypes.NewBalance(big.NewInt(1.0*constants.ETH)), testUserMarker),
 	)
 }
 
@@ -74,10 +75,10 @@ func TestSmokeTestFailure(t *testing.T) {
 	mockWallet := &mockFailingWallet{
 		addr: mockAddr,
 		key:  "mock-key",
-		bal:  types.NewBalance(big.NewInt(1000000)),
+		bal:  sdktypes.NewBalance(big.NewInt(1000000)),
 	}
 	mockChain := &mockFailingChain{
-		id:     types.ChainID(big.NewInt(1234)),
+		id:     sdktypes.ChainID(big.NewInt(1234)),
 		wallet: mockWallet,
 		reg:    &mockRegistry{},
 	}
@@ -123,7 +124,7 @@ func TestInteropSystemEventLoggerReference(t *testing.T) {
 		client, err := ethclient.Dial(rpcurl)
 		require.NoError(t, err)
 
-		wallet := ctx.Value(testUserMarker).(types.Wallet)
+		wallet := ctx.Value(testUserMarker).(sdktypes.Wallet)
 
 		privateKey, err := crypto.HexToECDSA(wallet.PrivateKey())
 		require.NoError(t, err)
@@ -135,7 +136,9 @@ func TestInteropSystemEventLoggerReference(t *testing.T) {
 		gasPrice, err := client.SuggestGasPrice(context.Background())
 		require.NoError(t, err)
 
-		auth := bind.NewKeyedTransactor(privateKey)
+		auth, err := bind.NewKeyedTransactorWithChainID(privateKey, chain.ID())
+		require.NoError(t, err)
+
 		auth.Nonce = big.NewInt(int64(nonce))
 		auth.Value = big.NewInt(0)       // in wei
 		auth.GasLimit = uint64(30000000) // in units
@@ -196,94 +199,195 @@ func TestInteropSystemEventLoggerReference(t *testing.T) {
 		fmt.Println(receipt3.Logs)
 		require.Equal(t, receipt3.Status, uint64(1)) // Check transaction succeeded
 	},
-		walletFundsValidator(chainIdx, types.NewBalance(big.NewInt(1.0*constants.ETH)), testUserMarker),
+		walletFundsValidator(chainIdx, sdktypes.NewBalance(big.NewInt(1.0*constants.ETH)), testUserMarker),
 	)
 }
 
+// BELOW: refactoring in progress
+
+// Helper struct to manage transaction creation and sending
+type txManager struct {
+	client *ethclient.Client
+	auth   *bind.TransactOpts
+	nonce  uint64
+}
+
+func newTxManager(ctx context.Context, client *ethclient.Client, wallet sdktypes.Wallet) (*txManager, error) {
+	privateKey, err := crypto.HexToECDSA(wallet.PrivateKey())
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse private key: %w", err)
+	}
+
+	nonce, err := client.PendingNonceAt(ctx, wallet.Address())
+	if err != nil {
+		return nil, fmt.Errorf("failed to get nonce: %w", err)
+	}
+
+	gasPrice, err := client.SuggestGasPrice(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get gas price: %w", err)
+	}
+
+	auth := bind.NewKeyedTransactor(privateKey)
+	auth.Nonce = big.NewInt(int64(nonce))
+	auth.Value = big.NewInt(0)       // in wei
+	auth.GasLimit = uint64(30000000) // in units
+	auth.GasPrice = gasPrice
+
+	return &txManager{
+		client: client,
+		auth:   auth,
+		nonce:  nonce,
+	}, nil
+}
+
+func (tm *txManager) nextTx(ctx context.Context) error {
+	tm.nonce++
+	tm.auth.Nonce = big.NewInt(int64(tm.nonce))
+	gasPrice, err := tm.client.SuggestGasPrice(ctx)
+	if err != nil {
+		return err
+	}
+	tm.auth.GasPrice = gasPrice
+	return nil
+}
+
+func (tm *txManager) sendAndWait(ctx context.Context, tx interface{}) (*types.Receipt, error) {
+	ethTx, ok := tx.(*types.Transaction)
+	if !ok {
+		return nil, fmt.Errorf("invalid transaction type")
+	}
+	receipt, err := bind.WaitMined(ctx, tm.client, ethTx)
+	if err != nil {
+		return nil, fmt.Errorf("failed waiting for transaction: %w", err)
+	}
+	if receipt.Status != uint64(1) {
+		return nil, fmt.Errorf("transaction failed with status: %d", receipt.Status)
+	}
+	return receipt, nil
+}
+
+// Helper function to build a message identifier and compute its hash from a log entry
+func buildMessageIdentifier(ctx context.Context, client *ethclient.Client, log *types.Log, chainID *big.Int) (bindings.Identifier, common.Hash, error) {
+	block, err := client.BlockByHash(ctx, log.BlockHash)
+	if err != nil {
+		return bindings.Identifier{}, common.Hash{}, fmt.Errorf("failed to get block: %w", err)
+	}
+
+	// Build message payload and hash
+	msgPayload := make([]byte, 0)
+	for _, topic := range log.Topics {
+		msgPayload = append(msgPayload, topic.Bytes()...)
+	}
+	msgPayload = append(msgPayload, log.Data...)
+
+	identifier := bindings.Identifier{
+		Origin:      log.Address,
+		BlockNumber: big.NewInt(int64(log.BlockNumber)),
+		LogIndex:    big.NewInt(int64(log.Index)),
+		Timestamp:   big.NewInt(int64(block.Time())),
+		ChainId:     chainID,
+	}
+	hash := common.BytesToHash(crypto.Keccak256(msgPayload))
+
+	return identifier, hash, nil
+}
+
+// Helper functions for EventLogger contract interactions
+type eventLogger struct {
+	instance *bindings.EventLogger
+	address  common.Address
+	tm       *txManager
+	client   *ethclient.Client
+}
+
+func deployEventLogger(ctx context.Context, tm *txManager) (*eventLogger, error) {
+	address, tx, instance, err := bindings.DeployEventLogger(tm.auth, tm.client)
+	if err != nil {
+		return nil, fmt.Errorf("failed to deploy EventLogger: %w", err)
+	}
+
+	if _, err := tm.sendAndWait(ctx, tx); err != nil {
+		return nil, fmt.Errorf("failed to wait for deployment: %w", err)
+	}
+
+	return &eventLogger{
+		instance: instance,
+		address:  address,
+		tm:       tm,
+		client:   tm.client,
+	}, nil
+}
+
+func (e *eventLogger) emitLog(ctx context.Context) (*types.Log, error) {
+	if err := e.tm.nextTx(ctx); err != nil {
+		return nil, fmt.Errorf("failed to prepare transaction: %w", err)
+	}
+
+	tx, err := e.instance.EmitLog(e.tm.auth, [][32]byte{}, []byte{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to emit log: %w", err)
+	}
+
+	receipt, err := e.tm.sendAndWait(ctx, tx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to wait for emit log: %w", err)
+	}
+
+	return receipt.Logs[0], nil
+}
+
+func (e *eventLogger) validateMessage(ctx context.Context, log *types.Log, chainID *big.Int) error {
+	if err := e.tm.nextTx(ctx); err != nil {
+		return fmt.Errorf("failed to prepare transaction: %w", err)
+	}
+
+	identifier, expectedHash, err := buildMessageIdentifier(ctx, e.client, log, chainID)
+	if err != nil {
+		return fmt.Errorf("failed to build message identifier: %w", err)
+	}
+
+	tx, err := e.instance.ValidateMessage(e.tm.auth, identifier, expectedHash)
+	if err != nil {
+		return fmt.Errorf("failed to validate message: %w", err)
+	}
+
+	if _, err := e.tm.sendAndWait(ctx, tx); err != nil {
+		return fmt.Errorf("failed to wait for validate message: %w", err)
+	}
+
+	return nil
+}
+
+// The real test
 func TestInteropSystemEventLogger(t *testing.T) {
 	chainIdx := uint64(0)
-	walletGetter, fundsValidator := AcquireL2WalletWithFunds(chainIdx, types.NewBalance(big.NewInt(1.0*constants.ETH)))
+	fundsNeeded := sdktypes.NewBalance(big.NewInt(1.0 * constants.ETH))
+
+	walletGetter, fundsValidator := AcquireL2WalletWithFunds(chainIdx, fundsNeeded)
 
 	systest.InteropSystemTest(t, func(t systest.T, sys system.InteropSystem) {
 		ctx := t.Context()
 		chain := sys.L2(chainIdx)
-		rpcurl := chain.RPCURL()
-		fmt.Println(rpcurl)
-		client, err := ethclient.Dial(rpcurl)
+		client, err := ethclient.Dial(chain.RPCURL())
 		require.NoError(t, err)
 
 		wallet := walletGetter(ctx)
-
-		privateKey, err := crypto.HexToECDSA(wallet.PrivateKey())
+		tm, err := newTxManager(ctx, client, wallet)
 		require.NoError(t, err)
 
-		fromAddress := wallet.Address()
-		nonce, err := client.PendingNonceAt(context.Background(), fromAddress)
+		// Deploy and setup contract
+		logger, err := deployEventLogger(ctx, tm)
+		require.NoError(t, err)
+		t.Logf("Contract deployed at %s", logger.address.Hex())
+
+		// Emit log
+		log, err := logger.emitLog(ctx)
 		require.NoError(t, err)
 
-		gasPrice, err := client.SuggestGasPrice(context.Background())
+		// Validate message
+		err = logger.validateMessage(ctx, log, chain.ID())
 		require.NoError(t, err)
-
-		auth := bind.NewKeyedTransactor(privateKey)
-		auth.Nonce = big.NewInt(int64(nonce))
-		auth.Value = big.NewInt(0)       // in wei
-		auth.GasLimit = uint64(30000000) // in units
-		auth.GasPrice = gasPrice
-
-		address, tx, instance, err := bindings.DeployEventLogger(auth, client)
-		require.NoError(t, err)
-
-		receipt, err := bind.WaitMined(context.Background(), client, tx)
-		require.NoError(t, err)
-		fmt.Println(receipt.Logs)
-		require.Equal(t, receipt.Status, uint64(1)) // Check transaction succeeded
-
-		fmt.Println(address.Hex())   // 0x147B8eb97fD247D06C4006D269c90C1908Fb5D54
-		fmt.Println(tx.Hash().Hex()) // 0xdae8ba5444eefdc99f4d45cd0c4f24056cba6a02cefbf78066ef9f4188ff7dc0
-
-		auth.Nonce = big.NewInt(int64(nonce + 1))
-		tx2, err := instance.EmitLog(auth, [][32]byte{}, []byte{})
-		require.NoError(t, err)
-
-		receipt2, err := bind.WaitMined(context.Background(), client, tx2)
-		require.NoError(t, err)
-		fmt.Println(receipt2.Logs)
-		require.Equal(t, receipt2.Status, uint64(1)) // Check transaction succeeded
-
-		log := receipt2.Logs[0]
-
-		fmt.Println("calling validateMessage")
-		auth.Nonce = big.NewInt(int64(nonce + 2))
-		gasPrice, err = client.SuggestGasPrice(ctx)
-		require.NoError(t, err)
-		auth.GasPrice = gasPrice
-
-		block, err := client.BlockByHash(ctx, log.BlockHash)
-		require.NoError(t, err)
-
-		msgPayload := make([]byte, 0)
-		for _, topic := range log.Topics {
-			msgPayload = append(msgPayload, topic.Bytes()...)
-		}
-		msgPayload = append(msgPayload, log.Data...)
-		expectedHash := common.BytesToHash(crypto.Keccak256(msgPayload))
-
-		tx3, err := instance.ValidateMessage(auth, bindings.Identifier{
-			Origin:      log.Address,
-			BlockNumber: big.NewInt(int64(log.BlockNumber)),
-			LogIndex:    big.NewInt(int64(log.Index)),
-			Timestamp:   big.NewInt(int64(block.Time())),
-			ChainId:     chain.ID(),
-		}, expectedHash)
-
-		require.NoError(t, err)
-
-		fmt.Println("waiting for tx3", tx3.Hash().Hex())
-		receipt3, err := bind.WaitMined(ctx, client, tx3)
-
-		require.NoError(t, err)
-		fmt.Println(receipt3.Logs)
-		require.Equal(t, receipt3.Status, uint64(1)) // Check transaction succeeded
 	},
 		fundsValidator,
 	)

@@ -23,7 +23,7 @@ type System interface {
 type Chain interface {
 	RPCURL() string
 	ID() types.ChainID
-	Wallet(ctx context.Context, constraints ...constraints.WalletConstraint) (types.Wallet, error)
+	Wallet(ctx context.Context, constraints ...constraints.WalletConstraint) (Wallet, error)
 	ContractsRegistry() interfaces.ContractsRegistry
 	SupportsEIP(ctx context.Context, eip uint64) bool
 
@@ -37,7 +37,7 @@ type Chain interface {
 }
 
 type TransactionProcessor interface {
-	Sign(tx Transaction, privateKey string) (Transaction, error)
+	Sign(tx Transaction) (Transaction, error)
 	Send(ctx context.Context, tx Transaction) error
 }
 
@@ -71,4 +71,17 @@ type Transaction interface {
 // on the transaction.
 type RawTransaction interface {
 	Raw() *coreTypes.Transaction
+}
+
+type Wallet interface {
+	PrivateKey() types.Key
+	Address() types.Address
+	SendETH(to types.Address, amount types.Balance) types.WriteInvocation[any]
+	Balance() types.Balance
+	Nonce() uint64
+
+	Signer() types.Signer
+
+	Sign(tx Transaction) (Transaction, error)
+	Send(ctx context.Context, tx Transaction) error
 }

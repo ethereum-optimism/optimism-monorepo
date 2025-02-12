@@ -57,7 +57,7 @@ type chain struct {
 	id     string
 	rpcUrl string
 
-	users    map[string]types.Wallet
+	users    map[string]Wallet
 	clients  *clientManager
 	registry interfaces.ContractsRegistry
 	mu       sync.Mutex
@@ -67,7 +67,7 @@ func (c *chain) getClient() (*ethclient.Client, error) {
 	return c.clients.getClient(c.rpcUrl)
 }
 
-func newChain(chainID string, rpcUrl string, users map[string]types.Wallet) *chain {
+func newChain(chainID string, rpcUrl string, users map[string]Wallet) *chain {
 	return &chain{
 		id:      chainID,
 		rpcUrl:  rpcUrl,
@@ -101,7 +101,7 @@ func (c *chain) RPCURL() string {
 // error.
 // Typically this will be one of the pre-funded wallets associated with
 // the deployed system.
-func (c *chain) Wallet(ctx context.Context, constraints ...constraints.WalletConstraint) (types.Wallet, error) {
+func (c *chain) Wallet(ctx context.Context, constraints ...constraints.WalletConstraint) (Wallet, error) {
 	// Try each user
 	for _, user := range c.users {
 		// Check all constraints
@@ -173,8 +173,9 @@ func (c *chain) TransactionProcessor() (TransactionProcessor, error) {
 		return nil, fmt.Errorf("failed to get client: %w", err)
 	}
 	return &transactionProcessor{
-		client:  client,
-		chainID: c.ID(),
+		client:     client,
+		chainID:    c.ID(),
+		privateKey: nil,
 	}, nil
 }
 
@@ -205,18 +206,22 @@ func (c *chain) SupportsEIP(ctx context.Context, eip uint64) bool {
 	return false
 }
 
-func chainFromDescriptor(d *descriptors.Chain) Chain {
+func chainFromDescriptor(d *descriptors.Chain) (Chain, error) {
 	// TODO: handle incorrect descriptors better. We could panic here.
 	firstNodeRPC := d.Nodes[0].Services["el"].Endpoints["rpc"]
 	rpcURL := fmt.Sprintf("http://%s:%d", firstNodeRPC.Host, firstNodeRPC.Port)
 
 	c := newChain(d.ID, rpcURL, nil) // Create chain first
 
-	users := make(map[string]types.Wallet)
+	users := make(map[string]Wallet)
 	for key, w := range d.Wallets {
-		users[key] = newWallet(w.PrivateKey, types.Address(w.Address), c)
+		k, err := newWallet(w.PrivateKey, w.Address, c)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create wallet: %w", err)
+		}
+		users[key] = k
 	}
 	c.users = users // Set users after creation
 
-	return c
+	return c, nil
 }

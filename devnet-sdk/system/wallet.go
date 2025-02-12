@@ -2,6 +2,7 @@ package system
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"strings"
 
@@ -9,6 +10,8 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
+
+	coreTypes "github.com/ethereum/go-ethereum/core/types"
 )
 
 // internalChain provides access to internal chain functionality
@@ -23,16 +26,26 @@ type wallet struct {
 	chain      internalChain
 }
 
-func newWallet(pk types.Key, addr types.Address, chain *chain) *wallet {
+func newWallet(pk string, addr types.Address, chain *chain) (*wallet, error) {
+	pk = strings.TrimPrefix(pk, "0x")
+	pkBytes, err := hex.DecodeString(pk)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode private key: %w", err)
+	}
+	privateKey, err := crypto.ToECDSA(pkBytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert private key to ECDSA: %w", err)
+	}
+
 	return &wallet{
-		privateKey: pk,
+		privateKey: privateKey,
 		address:    addr,
 		chain:      chain,
-	}
+	}, nil
 }
 
 func (w *wallet) PrivateKey() types.Key {
-	return strings.TrimPrefix(w.privateKey, "0x")
+	return w.privateKey
 }
 
 func (w *wallet) Address() types.Address {
@@ -76,6 +89,61 @@ func (w *wallet) Nonce() uint64 {
 	return nonce
 }
 
+func (w *wallet) Signer() types.Signer {
+	pk := w.PrivateKey()
+
+	auth, err := bind.NewKeyedTransactorWithChainID(pk, w.chain.ID())
+	if err != nil {
+		panic(err)
+	}
+
+	return auth
+}
+
+func (w *wallet) Sign(tx Transaction) (Transaction, error) {
+	pk := w.privateKey
+
+	var signer coreTypes.Signer
+	switch tx.Type() {
+	case coreTypes.DynamicFeeTxType:
+		signer = coreTypes.NewLondonSigner(w.chain.ID())
+	case coreTypes.AccessListTxType:
+		signer = coreTypes.NewEIP2930Signer(w.chain.ID())
+	default:
+		signer = coreTypes.NewEIP155Signer(w.chain.ID())
+	}
+
+	if rt, ok := tx.(RawTransaction); ok {
+		signedTx, err := coreTypes.SignTx(rt.Raw(), signer, pk)
+		if err != nil {
+			return nil, fmt.Errorf("failed to sign transaction: %w", err)
+		}
+
+		return &EthTx{
+			tx:     signedTx,
+			from:   tx.From(),
+			txType: tx.Type(),
+		}, nil
+	}
+
+	return nil, fmt.Errorf("transaction does not support signing")
+}
+
+func (w *wallet) Send(ctx context.Context, tx Transaction) error {
+	if st, ok := tx.(RawTransaction); ok {
+		client, err := w.chain.getClient()
+		if err != nil {
+			return fmt.Errorf("failed to get client: %w", err)
+		}
+		if err := client.SendTransaction(ctx, st.Raw()); err != nil {
+			return fmt.Errorf("failed to send transaction: %w", err)
+		}
+		return nil
+	}
+
+	return fmt.Errorf("transaction is not signed")
+}
+
 type sendImpl struct {
 	chain  internalChain
 	pk     types.Key
@@ -84,10 +152,7 @@ type sendImpl struct {
 }
 
 func (i *sendImpl) Call(ctx context.Context) (any, error) {
-	pk, err := crypto.HexToECDSA(string(i.pk))
-	if err != nil {
-		return nil, fmt.Errorf("invalid private key: %w", err)
-	}
+	pk := i.pk
 
 	from := crypto.PubkeyToAddress(pk.PublicKey)
 	toAddr := i.to
@@ -107,7 +172,7 @@ func (i *sendImpl) Call(ctx context.Context) (any, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get transaction processor: %w", err)
 	}
-	tx, err = processor.Sign(tx, string(i.pk))
+	tx, err = processor.Sign(tx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign transaction: %w", err)
 	}
@@ -161,12 +226,7 @@ func (r *sendResult) Wait() error {
 	return nil
 }
 
-func sendETH(ctx context.Context, chain internalChain, privateKey string, to types.Address, amount types.Balance) (Transaction, error) {
-	pk, err := crypto.HexToECDSA(privateKey)
-	if err != nil {
-		return nil, fmt.Errorf("invalid private key: %w", err)
-	}
-
+func sendETH(ctx context.Context, chain internalChain, pk types.Key, to types.Address, amount types.Balance) (Transaction, error) {
 	from := crypto.PubkeyToAddress(pk.PublicKey)
 
 	builder := NewTxBuilder(ctx, chain)
@@ -184,7 +244,7 @@ func sendETH(ctx context.Context, chain internalChain, privateKey string, to typ
 	if err != nil {
 		return nil, fmt.Errorf("failed to get transaction processor: %w", err)
 	}
-	tx, err = processor.Sign(tx, privateKey)
+	tx, err = processor.Sign(tx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign transaction: %w", err)
 	}

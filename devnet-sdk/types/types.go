@@ -2,9 +2,11 @@ package types
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"math/big"
 
 	"github.com/ethereum-optimism/optimism/devnet-sdk/contracts/bindings"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -26,15 +28,9 @@ type InvocationResult interface {
 	Wait() error
 }
 
-type Wallet interface {
-	PrivateKey() Key
-	Address() Address
-	SendETH(to Address, amount Balance) WriteInvocation[any]
-	Balance() Balance
-	Nonce() uint64
-}
+type Signer = *bind.TransactOpts
 
-type Key = string
+type Key = *ecdsa.PrivateKey
 
 type Topic = [32]byte
 
