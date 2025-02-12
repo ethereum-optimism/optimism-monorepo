@@ -401,6 +401,8 @@ contract OptimismPortal2_FinalizeWithdrawal_Test is CommonTest {
             _proposedBlockNumber += 1;
 
             // Set the init bond of anchor game type 0 to be 0.
+            // It is a mapping so the storage slot is calculated as keccak256(abi.encode(key, slot)).
+            // The storage slot for the initBond mapping is 102, see `snapshots/storageLayout/DisputeGameFactory.json`.
             vm.store(
                 address(disputeGameFactory), keccak256(abi.encode(GameType.wrap(0), uint256(102))), bytes32(uint256(0))
             );

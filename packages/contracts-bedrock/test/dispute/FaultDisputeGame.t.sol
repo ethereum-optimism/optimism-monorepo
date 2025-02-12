@@ -130,7 +130,7 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
     /// @dev The absolute prestate of the trace.
     Claim internal absolutePrestate;
     /// @dev The l2BlockNumber of the current anchor root during setup.
-    uint256 L2_BLOCK_NUMBER;
+    uint256 validL2BlockNumber;
 
     function setUp() public override {
         absolutePrestateData = abi.encode(0);
@@ -140,7 +140,7 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
 
         // Get the actual anchor roots
         (Hash root, uint256 l2Bn) = anchorStateRegistry.getAnchorRoot();
-        L2_BLOCK_NUMBER = l2Bn;
+        validL2BlockNumber = l2Bn + 1;
 
         ROOT_CLAIM = Claim.wrap(Hash.unwrap(root));
 
@@ -150,7 +150,7 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
                 address(disputeGameFactory), keccak256(abi.encode(GameType.wrap(0), uint256(102))), bytes32(uint256(0))
             );
         }
-        super.init({ rootClaim: ROOT_CLAIM, absolutePrestate: absolutePrestate, l2BlockNumber: L2_BLOCK_NUMBER + 1 });
+        super.init({ rootClaim: ROOT_CLAIM, absolutePrestate: absolutePrestate, l2BlockNumber: validL2BlockNumber });
     }
 
     ////////////////////////////////////////////////////////////////
@@ -463,7 +463,9 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
         gameProxy = IFaultDisputeGame(
             payable(
                 address(
-                    disputeGameFactory.create{ value: _value }(GAME_TYPE, ROOT_CLAIM, abi.encode(L2_BLOCK_NUMBER + 2))
+                    disputeGameFactory.create{ value: _value }(
+                        GAME_TYPE, ROOT_CLAIM, abi.encode(validL2BlockNumber + 1)
+                    )
                 )
             )
         );
@@ -975,13 +977,14 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
     )
         public
     {
-        _l2BlockNumber = bound(_l2BlockNumber, L2_BLOCK_NUMBER, type(uint256).max - 1);
+        _l2BlockNumber = bound(_l2BlockNumber, validL2BlockNumber, type(uint256).max - 1);
 
         (Types.OutputRootProof memory outputRootProof, bytes32 outputRoot, bytes memory headerRLP) =
             _generateOutputRootProof(_storageRoot, _withdrawalRoot, abi.encodePacked(_l2BlockNumber));
 
         // Create the dispute game with the output root at the wrong L2 block number.
-        IDisputeGame game = disputeGameFactory.create(GAME_TYPE, Claim.wrap(outputRoot), abi.encode(_l2BlockNumber + 1));
+        uint256 wrongL2BlockNumber = bound(vm.randomUint(), _l2BlockNumber + 1, type(uint256).max);
+        IDisputeGame game = disputeGameFactory.create(GAME_TYPE, Claim.wrap(outputRoot), abi.encode(wrongL2BlockNumber));
 
         // Challenge the L2 block number.
         IFaultDisputeGame fdg = IFaultDisputeGame(address(game));
@@ -1012,7 +1015,7 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
         public
     {
         vm.deal(address(0xb0b), 1 ether);
-        _l2BlockNumber = bound(_l2BlockNumber, L2_BLOCK_NUMBER, type(uint256).max - 1);
+        _l2BlockNumber = bound(_l2BlockNumber, validL2BlockNumber, type(uint256).max - 1);
 
         (Types.OutputRootProof memory outputRootProof, bytes32 outputRoot, bytes memory headerRLP) =
             _generateOutputRootProof(_storageRoot, _withdrawalRoot, abi.encodePacked(_l2BlockNumber));
@@ -1082,7 +1085,7 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
     )
         public
     {
-        _l2BlockNumber = bound(_l2BlockNumber, L2_BLOCK_NUMBER + 1, type(uint256).max);
+        _l2BlockNumber = bound(_l2BlockNumber, validL2BlockNumber, type(uint256).max);
 
         (Types.OutputRootProof memory outputRootProof, bytes32 outputRoot, bytes memory headerRLP) =
             _generateOutputRootProof(_storageRoot, _withdrawalRoot, abi.encodePacked(_l2BlockNumber));
@@ -1120,8 +1123,7 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
         bytes32 outputRoot = Hashing.hashOutputRootProof(outputRootProof);
 
         // Create the dispute game with the output root at the wrong L2 block number.
-        IDisputeGame game =
-            disputeGameFactory.create(GAME_TYPE, Claim.wrap(outputRoot), abi.encode(L2_BLOCK_NUMBER + 1));
+        IDisputeGame game = disputeGameFactory.create(GAME_TYPE, Claim.wrap(outputRoot), abi.encode(validL2BlockNumber));
         IFaultDisputeGame fdg = IFaultDisputeGame(address(game));
 
         vm.expectRevert(InvalidHeaderRLP.selector);
@@ -1134,8 +1136,7 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
             _generateOutputRootProof(0, 0, new bytes(64));
 
         // Create the dispute game with the output root at the wrong L2 block number.
-        IDisputeGame game =
-            disputeGameFactory.create(GAME_TYPE, Claim.wrap(outputRoot), abi.encode(L2_BLOCK_NUMBER + 1));
+        IDisputeGame game = disputeGameFactory.create(GAME_TYPE, Claim.wrap(outputRoot), abi.encode(validL2BlockNumber));
         IFaultDisputeGame fdg = IFaultDisputeGame(address(game));
 
         vm.expectRevert(InvalidHeaderRLP.selector);
@@ -2143,7 +2144,7 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
             gameProxy.l1Head().raw(),
             startingClaim,
             disputedClaim,
-            bytes32(L2_BLOCK_NUMBER + 1 << 0xC0),
+            bytes32(validL2BlockNumber << 0xC0),
             bytes32(gameProxy.l2ChainId() << 0xC0)
         ];
 
@@ -2194,7 +2195,7 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
             gameProxy.l1Head().raw(),
             startingClaim,
             disputedClaim,
-            bytes32(uint256(L2_BLOCK_NUMBER + 1) << 0xC0),
+            bytes32(validL2BlockNumber << 0xC0),
             bytes32(gameProxy.l2ChainId() << 0xC0)
         ];
 
@@ -2226,9 +2227,7 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
         // the leaves in our output bisection test tree, at SPLIT_DEPTH = 2 ** 2
         IFaultDisputeGame game = IFaultDisputeGame(
             address(
-                disputeGameFactory.create(
-                    GAME_TYPE, Claim.wrap(bytes32(uint256(0xFF))), abi.encode(L2_BLOCK_NUMBER + 1)
-                )
+                disputeGameFactory.create(GAME_TYPE, Claim.wrap(bytes32(uint256(0xFF))), abi.encode(validL2BlockNumber))
             )
         );
 
@@ -2265,7 +2264,7 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
 
         // Expected local data. This should be `l2BlockNumber`, and not the actual bisected-to block,
         // as we choose the minimum between the two.
-        bytes32 expectedNumber = bytes32(uint256((L2_BLOCK_NUMBER + 1) << 0xC0));
+        bytes32 expectedNumber = bytes32(validL2BlockNumber << 0xC0);
         uint256 expectedLen = 8;
         uint256 l2NumberIdent = LocalPreimageKey.DISPUTED_L2_BLOCK_NUMBER;
 
