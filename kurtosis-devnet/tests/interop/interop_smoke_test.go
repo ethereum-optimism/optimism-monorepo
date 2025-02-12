@@ -199,3 +199,92 @@ func TestInteropSystemEventLoggerReference(t *testing.T) {
 		walletFundsValidator(chainIdx, types.NewBalance(big.NewInt(1.0*constants.ETH)), testUserMarker),
 	)
 }
+
+func TestInteropSystemEventLogger(t *testing.T) {
+	chainIdx := uint64(0)
+	walletGetter, fundsValidator := AcquireL2WalletWithFunds(chainIdx, types.NewBalance(big.NewInt(1.0*constants.ETH)))
+
+	systest.InteropSystemTest(t, func(t systest.T, sys system.InteropSystem) {
+		ctx := t.Context()
+		chain := sys.L2(chainIdx)
+		rpcurl := chain.RPCURL()
+		fmt.Println(rpcurl)
+		client, err := ethclient.Dial(rpcurl)
+		require.NoError(t, err)
+
+		wallet := walletGetter(ctx)
+
+		privateKey, err := crypto.HexToECDSA(wallet.PrivateKey())
+		require.NoError(t, err)
+
+		fromAddress := wallet.Address()
+		nonce, err := client.PendingNonceAt(context.Background(), fromAddress)
+		require.NoError(t, err)
+
+		gasPrice, err := client.SuggestGasPrice(context.Background())
+		require.NoError(t, err)
+
+		auth := bind.NewKeyedTransactor(privateKey)
+		auth.Nonce = big.NewInt(int64(nonce))
+		auth.Value = big.NewInt(0)       // in wei
+		auth.GasLimit = uint64(30000000) // in units
+		auth.GasPrice = gasPrice
+
+		address, tx, instance, err := bindings.DeployEventLogger(auth, client)
+		require.NoError(t, err)
+
+		receipt, err := bind.WaitMined(context.Background(), client, tx)
+		require.NoError(t, err)
+		fmt.Println(receipt.Logs)
+		require.Equal(t, receipt.Status, uint64(1)) // Check transaction succeeded
+
+		fmt.Println(address.Hex())   // 0x147B8eb97fD247D06C4006D269c90C1908Fb5D54
+		fmt.Println(tx.Hash().Hex()) // 0xdae8ba5444eefdc99f4d45cd0c4f24056cba6a02cefbf78066ef9f4188ff7dc0
+
+		auth.Nonce = big.NewInt(int64(nonce + 1))
+		tx2, err := instance.EmitLog(auth, [][32]byte{}, []byte{})
+		require.NoError(t, err)
+
+		receipt2, err := bind.WaitMined(context.Background(), client, tx2)
+		require.NoError(t, err)
+		fmt.Println(receipt2.Logs)
+		require.Equal(t, receipt2.Status, uint64(1)) // Check transaction succeeded
+
+		log := receipt2.Logs[0]
+
+		fmt.Println("calling validateMessage")
+		auth.Nonce = big.NewInt(int64(nonce + 2))
+		gasPrice, err = client.SuggestGasPrice(ctx)
+		require.NoError(t, err)
+		auth.GasPrice = gasPrice
+
+		block, err := client.BlockByHash(ctx, log.BlockHash)
+		require.NoError(t, err)
+
+		msgPayload := make([]byte, 0)
+		for _, topic := range log.Topics {
+			msgPayload = append(msgPayload, topic.Bytes()...)
+		}
+		msgPayload = append(msgPayload, log.Data...)
+		expectedHash := common.BytesToHash(crypto.Keccak256(msgPayload))
+
+		tx3, err := instance.ValidateMessage(auth, bindings.Identifier{
+			Origin:      log.Address,
+			BlockNumber: big.NewInt(int64(log.BlockNumber)),
+			LogIndex:    big.NewInt(int64(log.Index)),
+			Timestamp:   big.NewInt(int64(block.Time())),
+			ChainId:     chain.ID(),
+		}, expectedHash)
+
+		require.NoError(t, err)
+
+		fmt.Println("waiting for tx3", tx3.Hash().Hex())
+		receipt3, err := bind.WaitMined(ctx, client, tx3)
+
+		require.NoError(t, err)
+		fmt.Println(receipt3.Logs)
+		require.Equal(t, receipt3.Status, uint64(1)) // Check transaction succeeded
+	},
+		fundsValidator,
+	)
+}
