@@ -181,7 +181,7 @@ contract OPContractsManager is ISemver {
     bool public isRC = true;
 
     /// @notice Returns the release string. Appends "-rc" if this is a release candidate.
-    function l1ContractsRelease() external view returns (string memory) {
+    function l1ContractsRelease() external view virtual returns (string memory) {
         return isRC ? string.concat(L1_CONTRACTS_RELEASE, "-rc") : L1_CONTRACTS_RELEASE;
     }
 
@@ -254,15 +254,15 @@ contract OPContractsManager is ISemver {
         assertValidContractAddress(address(_protocolVersions));
         superchainConfig = _superchainConfig;
         protocolVersions = _protocolVersions;
-        L1_CONTRACTS_RELEASE = _l1ContractsRelease;
         superchainProxyAdmin = _superchainProxyAdmin;
+        L1_CONTRACTS_RELEASE = _l1ContractsRelease;
         blueprint = _blueprints;
         implementation = _implementations;
         thisOPCM = this;
         upgradeController = _upgradeController;
     }
 
-    function deploy(DeployInput calldata _input) external returns (DeployOutput memory) {
+    function deploy(DeployInput calldata _input) external virtual returns (DeployOutput memory) {
         assertValidInputs(_input);
         uint256 l2ChainId = _input.l2ChainId;
         string memory saltMixer = _input.saltMixer;
@@ -443,7 +443,7 @@ contract OPContractsManager is ISemver {
     /// @notice Upgrades a set of chains to the latest implementation contracts
     /// @param _opChainConfigs Array of OpChain structs, one per chain to upgrade
     /// @dev This function is intended to be called via DELEGATECALL from the Upgrade Controller Safe
-    function upgrade(OpChainConfig[] memory _opChainConfigs) external {
+    function upgrade(OpChainConfig[] memory _opChainConfigs) external virtual {
         if (address(this) == address(thisOPCM)) revert OnlyDelegatecall();
 
         // If this is delegatecalled by the upgrade controller, set isRC to false first, else, continue execution.
@@ -603,7 +603,7 @@ contract OPContractsManager is ISemver {
 
     /// @notice addGameType deploys a new dispute game and links it to the DisputeGameFactory. The inputted _gameConfigs
     /// must be added in ascending GameType order.
-    function addGameType(AddGameInput[] memory _gameConfigs) external returns (AddGameOutput[] memory) {
+    function addGameType(AddGameInput[] memory _gameConfigs) public virtual returns (AddGameOutput[] memory) {
         if (address(this) == address(thisOPCM)) revert OnlyDelegatecall();
         if (_gameConfigs.length == 0) revert InvalidGameConfigs();
 

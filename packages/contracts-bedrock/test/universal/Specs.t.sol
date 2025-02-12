@@ -10,6 +10,7 @@ import { ForgeArtifacts, Abi, AbiEntry } from "scripts/libraries/ForgeArtifacts.
 
 // Interfaces
 import { IOPContractsManager } from "interfaces/L1/IOPContractsManager.sol";
+import { IOPPrestateUpdater } from "interfaces/L1/IOPPrestateUpdater.sol";
 import { IOptimismPortal2 } from "interfaces/L1/IOptimismPortal2.sol";
 import { IOptimismPortalInterop } from "interfaces/L1/IOptimismPortalInterop.sol";
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
@@ -789,6 +790,23 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "OPContractsManager", _sel: _getSel("isRC()") });
         _addSpec({ _name: "OPContractsManager", _sel: _getSel("setRC(bool)") });
         _addSpec({ _name: "OPContractsManager", _sel: _getSel("upgradeController()") });
+
+        // OPPrestateUpdate
+        _addSpec({ _name: "OPPrestateUpdater", _sel: _getSel("version()") });
+        _addSpec({ _name: "OPPrestateUpdater", _sel: _getSel("superchainConfig()") });
+        _addSpec({ _name: "OPPrestateUpdater", _sel: _getSel("protocolVersions()") });
+        _addSpec({ _name: "OPPrestateUpdater", _sel: _getSel("superchainProxyAdmin()") });
+        _addSpec({ _name: "OPPrestateUpdater", _sel: _getSel("l1ContractsRelease()") });
+        _addSpec({ _name: "OPPrestateUpdater", _sel: IOPContractsManager.deploy.selector });
+        _addSpec({ _name: "OPPrestateUpdater", _sel: IOPContractsManager.blueprints.selector });
+        _addSpec({ _name: "OPPrestateUpdater", _sel: IOPContractsManager.chainIdToBatchInboxAddress.selector });
+        _addSpec({ _name: "OPPrestateUpdater", _sel: IOPContractsManager.implementations.selector });
+        _addSpec({ _name: "OPPrestateUpdater", _sel: IOPContractsManager.upgrade.selector });
+        _addSpec({ _name: "OPPrestateUpdater", _sel: IOPContractsManager.addGameType.selector });
+        _addSpec({ _name: "OPPrestateUpdater", _sel: IOPPrestateUpdater.updatePrestate.selector });
+        _addSpec({ _name: "OPPrestateUpdater", _sel: _getSel("isRC()") });
+        _addSpec({ _name: "OPPrestateUpdater", _sel: _getSel("setRC(bool)") });
+        _addSpec({ _name: "OPPrestateUpdater", _sel: _getSel("upgradeController()") });
 
         // OPContractsManagerInterop
         _addSpec({ _name: "OPContractsManagerInterop", _sel: _getSel("version()") });
