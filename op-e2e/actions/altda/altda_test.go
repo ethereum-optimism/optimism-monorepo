@@ -644,7 +644,7 @@ func TestAltDA_Finalization(gt *testing.T) {
 	require.Equal(t, uint64(36), a.sequencer.SyncStatus().FinalizedL2.Number)
 }
 
-// This test tests ethDA -> altDA -> ethDA finalization behavior, simulating a temp altDA failure.
+// This test tests altDA -> ethDA -> altDA finalization behavior, simulating a temp altDA failure.
 func TestAltDA_FinalizationAfterEthDAFailover(gt *testing.T) {
 	t := helpers.NewDefaultTesting(gt)
 	// we only print critical logs to be able to see the statusLogs
