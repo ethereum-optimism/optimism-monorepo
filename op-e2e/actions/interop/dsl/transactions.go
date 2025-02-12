@@ -5,6 +5,7 @@ import (
 
 	"github.com/ethereum-optimism/optimism/op-e2e/actions/helpers"
 	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/interop/contracts/bindings/inbox"
+	stypes "github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/stretchr/testify/require"
@@ -38,6 +39,13 @@ func (m *GeneratedTransaction) Identifier() inbox.Identifier {
 		Timestamp:   new(big.Int).SetUint64(block.Time()),
 		ChainId:     m.chain.RollupCfg.L2ChainID,
 	}
+}
+
+func (m *GeneratedTransaction) MessagePayload() []byte {
+	rcpt, err := m.chain.SequencerEngine.EthClient().TransactionReceipt(m.t.Ctx(), m.tx.Hash())
+	require.NoError(m.t, err)
+	require.NotZero(m.t, len(rcpt.Logs), "Transaction did not include any logs to reference")
+	return stypes.LogToMessagePayload(rcpt.Logs[0])
 }
 
 func (m *GeneratedTransaction) CheckIncluded() {

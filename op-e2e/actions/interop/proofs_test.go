@@ -78,6 +78,58 @@ func TestInteropFaultProofs_TraceExtensionActivation(gt *testing.T) {
 	runFppAndChallengerTests(gt, system, tests)
 }
 
+func TestInteropFaultProofs_ConsolidateValidCrossChainMessage(gt *testing.T) {
+	t := helpers.NewDefaultTesting(gt)
+	system := dsl.NewInteropDSL(t)
+	actors := system.Actors
+
+	alice := system.CreateUser()
+	emitter := dsl.NewEmitterContract(t)
+	system.AddL2Block(actors.ChainA, dsl.WithL2BlockTransactions(emitter.Deploy(alice)))
+	system.AddL2Block(actors.ChainB, dsl.WithL2BlockTransactions(emitter.Deploy(alice)))
+
+	system.AddL2Block(system.Actors.ChainA, dsl.WithL2BlockTransactions(emitter.EmitMessage(alice, "hello")))
+	initMsg := emitter.LastEmittedMessage()
+	system.AddL2Block(system.Actors.ChainB, dsl.WithL2BlockTransactions(system.InboxContract.Execute(alice, initMsg.Identifier(), initMsg.MessagePayload())))
+
+	// Submit batch data for each chain in separate L1 blocks so tests can have one chain safe and one unsafe
+	system.SubmitBatchData(func(opts *dsl.SubmitBatchDataOpts) {
+		opts.SetChains(system.Actors.ChainA)
+	})
+	system.SubmitBatchData(func(opts *dsl.SubmitBatchDataOpts) {
+		opts.SetChains(system.Actors.ChainB)
+	})
+
+	endTimestamp := system.Actors.ChainA.Sequencer.L2Safe().Time
+	startTimestamp := endTimestamp - 1
+	end := system.Outputs.SuperRoot(endTimestamp)
+
+	paddingStep := func(step uint64) []byte {
+		return system.Outputs.TransitionState(startTimestamp, step,
+			system.Outputs.OptimisticBlockAtTimestamp(actors.ChainA, endTimestamp),
+			system.Outputs.OptimisticBlockAtTimestamp(actors.ChainB, endTimestamp),
+		).Marshal()
+	}
+
+	tests := []*transitionTest{
+		{
+			name:               "Consolidate-AllValid",
+			agreedClaim:        paddingStep(1023),
+			disputedClaim:      end.Marshal(),
+			disputedTraceIndex: 1023,
+			expectValid:        true,
+		},
+		{
+			name:               "Consolidate-AllValid-InvalidNoChange",
+			agreedClaim:        paddingStep(1023),
+			disputedClaim:      paddingStep(1023),
+			disputedTraceIndex: 1023,
+			expectValid:        false,
+		},
+	}
+	runFppAndChallengerTests(gt, system, tests)
+}
+
 func TestInteropFaultProofs(gt *testing.T) {
 	t := helpers.NewDefaultTesting(gt)
 	system := dsl.NewInteropDSL(t)
@@ -187,20 +239,6 @@ func TestInteropFaultProofs(gt *testing.T) {
 			disputedClaim:      paddingStep(1023),
 			disputedTraceIndex: 1022,
 			expectValid:        true,
-		},
-		{
-			name:               "Consolidate-AllValid",
-			agreedClaim:        paddingStep(1023),
-			disputedClaim:      end.Marshal(),
-			disputedTraceIndex: 1023,
-			expectValid:        true,
-		},
-		{
-			name:               "Consolidate-AllValid-InvalidNoChange",
-			agreedClaim:        paddingStep(1023),
-			disputedClaim:      paddingStep(1023),
-			disputedTraceIndex: 1023,
-			expectValid:        false,
 		},
 		{
 			// The proposed block timestamp is after the unsafe head block timestamp.
@@ -321,6 +359,97 @@ func TestInteropFaultProofs(gt *testing.T) {
 	runFppAndChallengerTests(gt, system, tests)
 }
 
+func TestInteropFaultProofs_CascadeInvalidBlock(gt *testing.T) {
+	t := helpers.NewDefaultTesting(gt)
+	// TODO(#14307): Support cascading invalidation in op-supervisor
+	t.Skip("Cascading invalidation not yet working")
+
+	system := dsl.NewInteropDSL(t)
+
+	actors := system.Actors
+	alice := system.CreateUser()
+	emitterContract := dsl.NewEmitterContract(t)
+	// Deploy emitter contract to both chains
+	system.AddL2Block(actors.ChainA, dsl.WithL2BlockTransactions(
+		emitterContract.Deploy(alice),
+	))
+	system.AddL2Block(actors.ChainB, dsl.WithL2BlockTransactions(
+		emitterContract.Deploy(alice),
+	))
+
+	// Initiating messages on chain A
+	system.AddL2Block(actors.ChainA, dsl.WithL2BlockTransactions(
+		emitterContract.EmitMessage(alice, "chainA message"),
+	))
+	chainAInitTx := emitterContract.LastEmittedMessage()
+	system.AddL2Block(actors.ChainB)
+	system.SubmitBatchData()
+
+	// Create a message with a conflicting payload on chain B, that also emits an initiating message
+	system.AddL2Block(actors.ChainB, dsl.WithL2BlockTransactions(
+		system.InboxContract.Execute(alice, chainAInitTx.Identifier(), []byte("this message was never emitted")),
+		emitterContract.EmitMessage(alice, "chainB message"),
+	), dsl.WithL1BlockCrossUnsafe())
+	chainBExecTx := system.InboxContract.LastTransaction()
+	chainBExecTx.CheckIncluded()
+	chainBInitTx := emitterContract.LastEmittedMessage()
+
+	// Create a message with a valid message on chain A, pointing to the initiating message on B from the same block
+	// as an invalid message.
+	system.AddL2Block(actors.ChainA,
+		dsl.WithL2BlockTransactions(system.InboxContract.Execute(alice, chainBInitTx.Identifier(), chainBInitTx.MessagePayload())),
+		// Block becomes cross-unsafe because the init msg is currently present, but it should not become cross-safe.
+	)
+	chainAExecTx := system.InboxContract.LastTransaction()
+	chainAExecTx.CheckIncluded()
+
+	system.SubmitBatchData(func(opts *dsl.SubmitBatchDataOpts) {
+		opts.SkipCrossSafeUpdate = true
+	})
+
+	endTimestamp := actors.ChainB.Sequencer.L2Unsafe().Time
+	startTimestamp := endTimestamp - 1
+	optimisticEnd := system.Outputs.SuperRoot(endTimestamp)
+
+	preConsolidation := system.Outputs.TransitionState(startTimestamp, 1023,
+		system.Outputs.OptimisticBlockAtTimestamp(actors.ChainA, endTimestamp),
+		system.Outputs.OptimisticBlockAtTimestamp(actors.ChainB, endTimestamp),
+	).Marshal()
+
+	// Induce block replacement
+	system.ProcessCrossSafe()
+	// assert that the invalid message txs were reorged out
+	chainBExecTx.CheckNotIncluded()
+	chainBInitTx.CheckNotIncluded() // Should have been reorged out with chainBExecTx
+	chainAExecTx.CheckNotIncluded() // Reorged out because chainBInitTx was reorged out
+
+	crossSafeEnd := system.Outputs.SuperRoot(endTimestamp)
+
+	tests := []*transitionTest{
+		{
+			name:               "Consolidate-ExpectInvalidPendingBlock",
+			agreedClaim:        preConsolidation,
+			disputedClaim:      optimisticEnd.Marshal(),
+			disputedTraceIndex: 1023,
+			expectValid:        false,
+			// TODO(#14306): Support cascading re-orgs in op-program
+			skipProgram:    true,
+			skipChallenger: true,
+		},
+		{
+			name:               "Consolidate-ReplaceInvalidBlocks",
+			agreedClaim:        preConsolidation,
+			disputedClaim:      crossSafeEnd.Marshal(),
+			disputedTraceIndex: 1023,
+			expectValid:        true,
+			// TODO(#14306): Support cascading re-orgs in op-program
+			skipProgram:    true,
+			skipChallenger: true,
+		},
+	}
+	runFppAndChallengerTests(gt, system, tests)
+}
+
 func TestInteropFaultProofsInvalidBlock(gt *testing.T) {
 	t := helpers.NewDefaultTesting(gt)
 
@@ -344,23 +473,17 @@ func TestInteropFaultProofsInvalidBlock(gt *testing.T) {
 
 	// Create a message with a conflicting payload
 	fakeMessage := []byte("this message was never emitted")
-	inboxContract := dsl.NewInboxContract(t)
 	system.AddL2Block(actors.ChainB, func(opts *dsl.AddL2BlockOpts) {
-		opts.TransactionCreators = []dsl.TransactionCreator{inboxContract.Execute(alice, emitTx.Identifier(), fakeMessage)}
-		opts.BlockIsNotCrossSafe = true
+		opts.TransactionCreators = []dsl.TransactionCreator{system.InboxContract.Execute(alice, emitTx.Identifier(), fakeMessage)}
+		opts.BlockIsNotCrossUnsafe = true
 	})
 	system.AddL2Block(actors.ChainA)
 
-	// TODO: I wonder if it would be better to have `opts.ExpectInvalid` that specifies the invalid tx
-	// then the DSL can assert that it becomes local safe and is then reorged out automatically
-	// We could still grab the superroot and output roots for the invalid block while it is unsafe
-	// Other tests may still want to have SkipCrossUnsafeUpdate but generally nicer to be more declarative and
-	// high level to avoid leaking the details of when supervisor will trigger the reorg if possible.
 	system.SubmitBatchData(func(opts *dsl.SubmitBatchDataOpts) {
 		opts.SkipCrossSafeUpdate = true
 	})
 
-	execTx := inboxContract.LastTransaction()
+	execTx := system.InboxContract.LastTransaction()
 	execTx.CheckIncluded()
 
 	// safe head is still behind until we verify cross-safe
@@ -460,14 +583,6 @@ func TestInteropFaultProofsInvalidBlock(gt *testing.T) {
 			expectValid:        true,
 			skipProgram:        true,
 			skipChallenger:     true,
-		},
-		{
-			name: "Consolidate-ReplaceBlockInvalidatedByFirstInvalidatedBlock",
-			// Will need to generate an invalid block before this can be enabled
-			// Check that if a block B depends on a log in block A, and block A is found to have an invalid message
-			// that block B is also replaced with a deposit only block because A no longer contains the log it needs
-			skipProgram:    true,
-			skipChallenger: true,
 		},
 		{
 			name:               "AlreadyAtClaimedTimestamp",
