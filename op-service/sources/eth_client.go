@@ -69,6 +69,25 @@ type EthClientConfig struct {
 	MethodResetDuration time.Duration
 }
 
+// DefaultEthClientConfig creates a new eth client config,
+// with caching of data using the given cache-size (in number of blocks).
+func DefaultEthClientConfig(cacheSize int) *EthClientConfig {
+	return &EthClientConfig{
+		// receipts and transactions are cached per block
+		ReceiptsCacheSize:     cacheSize,
+		TransactionsCacheSize: cacheSize,
+		HeadersCacheSize:      cacheSize,
+		PayloadsCacheSize:     cacheSize,
+		MaxRequestsPerBatch:   20,
+		MaxConcurrentRequests: 10,
+		BlockRefsCacheSize:    cacheSize,
+		TrustRPC:              false,
+		MustBePostMerge:       true,
+		RPCProviderKind:       RPCKindStandard,
+		MethodResetDuration:   time.Minute,
+	}
+}
+
 func (c *EthClientConfig) Check() error {
 	if c.ReceiptsCacheSize < 0 {
 		return fmt.Errorf("invalid receipts cache size: %d", c.ReceiptsCacheSize)
