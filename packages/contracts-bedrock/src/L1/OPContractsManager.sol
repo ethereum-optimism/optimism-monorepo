@@ -478,7 +478,13 @@ contract OPContractsManager is ISemver {
                 optimismMintableERC20Factory: _opChainConfigs[i].systemConfigProxy.optimismMintableERC20Factory()
             });
 
-            if (IOptimismPortal2(payable(opChainAddrs.optimismPortal)).superchainConfig() != superchainConfig) {
+            // Check that all contracts have the correct superchainConfig
+            if (
+                IOptimismPortal2(payable(opChainAddrs.optimismPortal)).superchainConfig() != superchainConfig
+                    || IL1CrossDomainMessenger(opChainAddrs.l1CrossDomainMessenger).superchainConfig() != superchainConfig
+                    || IL1ERC721Bridge(opChainAddrs.l1ERC721Bridge).superchainConfig() != superchainConfig
+                    || IL1StandardBridge(payable(opChainAddrs.l1StandardBridge)).superchainConfig() != superchainConfig
+            ) {
                 revert SuperchainConfigMismatch(_opChainConfigs[i].systemConfigProxy);
             }
 
