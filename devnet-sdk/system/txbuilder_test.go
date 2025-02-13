@@ -63,14 +63,12 @@ func (m *mockTransactionProcessor) Send(ctx context.Context, tx Transaction) err
 // mockChain implements the Chain interface for testing
 type mockChain struct {
 	mock.Mock
-	txProcessor *mockTransactionProcessor
-	wallet      *mockWallet
+	wallet *mockWallet
 }
 
 func newMockChain() *mockChain {
 	return &mockChain{
-		txProcessor: new(mockTransactionProcessor),
-		wallet:      new(mockWallet),
+		wallet: new(mockWallet),
 	}
 }
 
@@ -107,14 +105,6 @@ func (m *mockChain) ContractsRegistry() interfaces.ContractsRegistry {
 func (m *mockChain) RPCURL() string {
 	args := m.Called()
 	return args.String(0)
-}
-
-func (m *mockChain) TransactionProcessor() (TransactionProcessor, error) {
-	args := m.Called()
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return m.txProcessor, args.Error(1)
 }
 
 func (m *mockChain) Wallet(ctx context.Context, constraints ...constraints.WalletConstraint) (types.Wallet, error) {

@@ -14,10 +14,15 @@ import (
 	coreTypes "github.com/ethereum/go-ethereum/core/types"
 )
 
+var (
+	// This will make sure that we implement the Chain interface
+	_ Wallet = (*wallet)(nil)
+)
+
 // internalChain provides access to internal chain functionality
 type internalChain interface {
 	Chain
-	getClient() (*ethclient.Client, error)
+	Client() (*ethclient.Client, error)
 }
 
 type wallet struct {
@@ -54,15 +59,16 @@ func (w *wallet) Address() types.Address {
 
 func (w *wallet) SendETH(to types.Address, amount types.Balance) types.WriteInvocation[any] {
 	return &sendImpl{
-		chain:  w.chain,
-		pk:     w.PrivateKey(),
-		to:     to,
-		amount: amount,
+		chain:     w.chain,
+		processor: w,
+		from:      w.address,
+		to:        to,
+		amount:    amount,
 	}
 }
 
 func (w *wallet) Balance() types.Balance {
-	client, err := w.chain.getClient()
+	client, err := w.chain.Client()
 	if err != nil {
 		return types.Balance{}
 	}
@@ -76,7 +82,7 @@ func (w *wallet) Balance() types.Balance {
 }
 
 func (w *wallet) Nonce() uint64 {
-	client, err := w.chain.getClient()
+	client, err := w.chain.Client()
 	if err != nil {
 		return 0
 	}
@@ -89,15 +95,13 @@ func (w *wallet) Nonce() uint64 {
 	return nonce
 }
 
-func (w *wallet) Signer() types.Signer {
-	pk := w.PrivateKey()
-
-	auth, err := bind.NewKeyedTransactorWithChainID(pk, w.chain.ID())
+func (w *wallet) Transactor() *bind.TransactOpts {
+	transactor, err := bind.NewKeyedTransactorWithChainID(w.PrivateKey(), w.chain.ID())
 	if err != nil {
-		panic(err)
+		panic(fmt.Sprintf("could not create transactor for address %s and chainID %s", w.Address(), w.chain.ID()))
 	}
 
-	return auth
+	return transactor
 }
 
 func (w *wallet) Sign(tx Transaction) (Transaction, error) {
@@ -131,7 +135,7 @@ func (w *wallet) Sign(tx Transaction) (Transaction, error) {
 
 func (w *wallet) Send(ctx context.Context, tx Transaction) error {
 	if st, ok := tx.(RawTransaction); ok {
-		client, err := w.chain.getClient()
+		client, err := w.chain.Client()
 		if err != nil {
 			return fmt.Errorf("failed to get client: %w", err)
 		}
@@ -145,22 +149,18 @@ func (w *wallet) Send(ctx context.Context, tx Transaction) error {
 }
 
 type sendImpl struct {
-	chain  internalChain
-	pk     types.Key
-	to     types.Address
-	amount types.Balance
+	chain     internalChain
+	processor TransactionProcessor
+	from      types.Address
+	to        types.Address
+	amount    types.Balance
 }
 
 func (i *sendImpl) Call(ctx context.Context) (any, error) {
-	pk := i.pk
-
-	from := crypto.PubkeyToAddress(pk.PublicKey)
-	toAddr := i.to
-
 	builder := NewTxBuilder(ctx, i.chain)
 	tx, err := builder.BuildTx(
-		WithFrom(from),
-		WithTo(toAddr),
+		WithFrom(i.from),
+		WithTo(i.to),
 		WithValue(i.amount.Int),
 		WithData(nil),
 	)
@@ -168,11 +168,7 @@ func (i *sendImpl) Call(ctx context.Context) (any, error) {
 		return nil, fmt.Errorf("failed to build transaction: %w", err)
 	}
 
-	processor, err := i.chain.TransactionProcessor()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get transaction processor: %w", err)
-	}
-	tx, err = processor.Sign(tx)
+	tx, err = i.processor.Sign(tx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign transaction: %w", err)
 	}
@@ -181,7 +177,24 @@ func (i *sendImpl) Call(ctx context.Context) (any, error) {
 }
 
 func (i *sendImpl) Send(ctx context.Context) types.InvocationResult {
-	tx, err := sendETH(ctx, i.chain, i.pk, i.to, i.amount)
+	builder := NewTxBuilder(ctx, i.chain)
+	tx, err := builder.BuildTx(
+		WithFrom(i.from),
+		WithTo(i.to),
+		WithValue(i.amount.Int),
+		WithData(nil),
+	)
+
+	// Sign the transaction if it's built okay
+	if err != nil {
+		tx, err = i.processor.Sign(tx)
+	}
+
+	// Send the transaction if it's signed okay
+	if err != nil {
+		err = i.processor.Send(ctx, tx)
+	}
+
 	return &sendResult{
 		chain: i.chain,
 		tx:    tx,
@@ -200,7 +213,7 @@ func (r *sendResult) Error() error {
 }
 
 func (r *sendResult) Wait() error {
-	client, err := r.chain.getClient()
+	client, err := r.chain.Client()
 	if err != nil {
 		return fmt.Errorf("failed to get client: %w", err)
 	}
@@ -224,34 +237,4 @@ func (r *sendResult) Wait() error {
 	}
 
 	return nil
-}
-
-func sendETH(ctx context.Context, chain internalChain, pk types.Key, to types.Address, amount types.Balance) (Transaction, error) {
-	from := crypto.PubkeyToAddress(pk.PublicKey)
-
-	builder := NewTxBuilder(ctx, chain)
-	tx, err := builder.BuildTx(
-		WithFrom(from),
-		WithTo(to),
-		WithValue(amount.Int),
-		WithData(nil),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to build transaction: %w", err)
-	}
-
-	processor, err := chain.TransactionProcessor()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get transaction processor: %w", err)
-	}
-	tx, err = processor.Sign(tx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to sign transaction: %w", err)
-	}
-
-	if err := processor.Send(ctx, tx); err != nil {
-		return nil, fmt.Errorf("failed to send transaction: %w", err)
-	}
-
-	return tx, nil
 }

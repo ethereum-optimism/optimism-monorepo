@@ -27,10 +27,10 @@ func walletFundsValidator(chainIdx uint64, minFunds types.Balance, userMarker in
 	}
 }
 
-func AcquireL2WalletWithFunds(chainIdx uint64, minFunds types.Balance) (func(context.Context) types.Wallet, systest.PreconditionValidator) {
+func AcquireL2WalletWithFunds(chainIdx uint64, minFunds types.Balance) (func(context.Context) system.Wallet, systest.PreconditionValidator) {
 	userMarker := &struct{}{}
 	validator := walletFundsValidator(chainIdx, minFunds, userMarker)
-	return func(ctx context.Context) types.Wallet {
-		return ctx.Value(userMarker).(types.Wallet)
+	return func(ctx context.Context) system.Wallet {
+		return ctx.Value(userMarker).(system.Wallet)
 	}, validator
 }
