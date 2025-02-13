@@ -8,6 +8,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/log"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/stretchr/testify/require"
 
 	altda "github.com/ethereum-optimism/optimism/op-alt-da"
@@ -131,7 +132,7 @@ func (is *InteropSetup) CreateActors() *InteropActors {
 type SupervisorActor struct {
 	exec    *event.GlobalSyncExec
 	backend *backend.SupervisorBackend
-	frontend.QueryFrontend
+	Client  *sources.SupervisorClient
 	frontend.AdminFrontend
 }
 
@@ -181,12 +182,20 @@ func NewSupervisor(t helpers.Testing, logger log.Logger, depSet depset.Dependenc
 	b, err := backend.NewSupervisorBackend(t.Ctx(), logger, metrics.NoopMetrics, svCfg, evExec)
 	require.NoError(t, err)
 	b.SetConfDepthL1(0)
+
+	rpcServer := helpers.NewSimpleRPCServer()
+	queryFrontend := frontend.QueryFrontend{Supervisor: b}
+	rpcServer.AddAPI(rpc.API{
+		Namespace:     "supervisor",
+		Service:       &queryFrontend,
+		Authenticated: false,
+	})
+	rpcServer.Start(t)
+	supervisorClient := sources.NewSupervisorClient(rpcServer.Connect(t))
 	return &SupervisorActor{
 		exec:    evExec,
 		backend: b,
-		QueryFrontend: frontend.QueryFrontend{
-			Supervisor: b,
-		},
+		Client:  supervisorClient,
 		AdminFrontend: frontend.AdminFrontend{
 			Supervisor: b,
 		},

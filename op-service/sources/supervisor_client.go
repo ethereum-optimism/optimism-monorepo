@@ -105,6 +105,26 @@ func (cl *SupervisorClient) SafeView(ctx context.Context, chainID eth.ChainID, s
 	return result, nil
 }
 
+func (cl *SupervisorClient) LocalUnsafe(ctx context.Context, chainID eth.ChainID) (eth.BlockID, error) {
+	var result eth.BlockID
+	err := cl.client.CallContext(
+		ctx,
+		&result,
+		"supervisor_localUnsafe",
+		chainID)
+	return result, err
+}
+
+func (cl *SupervisorClient) CrossSafe(ctx context.Context, chainID eth.ChainID) (types.DerivedIDPair, error) {
+	var result types.DerivedIDPair
+	err := cl.client.CallContext(
+		ctx,
+		&result,
+		"supervisor_crossSafe",
+		chainID)
+	return result, err
+}
+
 func (cl *SupervisorClient) Finalized(ctx context.Context, chainID eth.ChainID) (eth.BlockID, error) {
 	var result eth.BlockID
 	err := cl.client.CallContext(
