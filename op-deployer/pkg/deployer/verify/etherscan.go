@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -56,16 +57,21 @@ func (v *Verifier) verifyContract(address common.Address, contractName string) e
 		"module":           {"contract"},
 		"action":           {"verifysourcecode"},
 		"contractaddress":  {address.Hex()},
-		"sourceCode":       {source.SourceCode},
-		"codeformat":       {"solidity-single-file"},
-		"contractname":     {contractName},
+		"codeformat":       {"solidity-standard-json-input"},
+		"sourceCode":       {source.StandardInput},
+		"contractname":     {source.ContractName},
 		"compilerversion":  {fmt.Sprintf("v%s", source.CompilerVersion)},
 		"optimizationUsed": {optimized},
 		"runs":             {fmt.Sprintf("%d", source.OptimizationRuns)},
 		"evmversion":       {source.EVMVersion},
 	}
 
-	resp, err := http.PostForm(v.etherscanUrl, data)
+	req, err := http.NewRequest("POST", v.etherscanUrl, strings.NewReader(data.Encode()))
+	if err != nil {
+		return fmt.Errorf("failed to create verification request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	resp, err := v.sendRateLimitedRequest(req)
 	if err != nil {
 		return fmt.Errorf("failed to submit verification request: %w", err)
 	}
@@ -81,7 +87,6 @@ func (v *Verifier) verifyContract(address common.Address, contractName string) e
 			result.Status, result.Message, result.Result)
 	}
 	v.log.Info("Verification request submitted successfully", "name", contractName, "address", address.Hex())
-
 	return v.checkVerificationStatus(result.Result)
 }
 

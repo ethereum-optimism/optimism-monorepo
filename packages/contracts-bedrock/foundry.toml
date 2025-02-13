@@ -12,6 +12,7 @@ snapshots = 'notarealpath' # workaround for foundry#9477
 
 optimizer = true
 optimizer_runs = 999999
+use_literal_content = true
 
 additional_compiler_profiles = [
   { name = "dispute", optimizer_runs = 5000 },

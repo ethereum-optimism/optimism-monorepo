@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"path"
 	"reflect"
 	"strings"
@@ -63,13 +62,12 @@ func VerifyCLI(cliCtx *cli.Context) error {
 	workdir := cliCtx.String(deployer.WorkdirFlagName)
 	etherscanAPIKey := cliCtx.String(deployer.EtherscanAPIKeyFlagName)
 
-	ctx := ctxinterrupt.WithCancelOnInterrupt(cliCtx.Context)
-
 	client, err := ethclient.Dial(l1RPCUrl)
 	if err != nil {
 		return fmt.Errorf("failed to connect to L1: %w", err)
 	}
 
+	ctx := ctxinterrupt.WithCancelOnInterrupt(cliCtx.Context)
 	chainID, err := client.ChainID(ctx)
 	if err != nil {
 		return err
@@ -80,12 +78,7 @@ func VerifyCLI(cliCtx *cli.Context) error {
 		return fmt.Errorf("failed to read state: %w", err)
 	}
 
-	progressor := func(curr, total int64) {
-		l.Info("artifacts download progress", "current", curr, "total", total)
-	}
-
-	// Get artifacts filesystem (either local or downloaded)
-	artifactsFS, err := artifacts.Download(ctx, st.AppliedIntent.L1ContractsLocator, progressor)
+	artifactsFS, err := artifacts.Download(ctx, st.AppliedIntent.L1ContractsLocator, nil)
 	if err != nil {
 		return fmt.Errorf("failed to get artifacts: %w", err)
 	}
@@ -143,7 +136,6 @@ func (v *Verifier) VerifyAll(ctx context.Context, client *ethclient.Client, work
 	if err := v.verifyContractBundle(l1Contracts.ImplementationsDeployment); err != nil {
 		return err
 	}
-
 	return nil
 }
 
@@ -167,22 +159,46 @@ func (v *Verifier) verifyContractBundle(s interface{}) error {
 }
 
 type ContractArtifact struct {
-	SourceCode       string
 	ContractName     string
 	CompilerVersion  string
 	OptimizationUsed bool
 	OptimizationRuns int
 	EVMVersion       string
+	StandardInput    string
+}
+
+var exceptions = map[string]string{
+	"OptimismPortalImpl":          "OptimismPortal2",
+	"L1StandardBridgeProxy":       "L1ChugSplashProxy",
+	"L1CrossDomainMessengerProxy": "ResolvedDelegateProxy",
+	"Opcm":                        "OPContractsManager",
+}
+
+func getArtifactName(name string) string {
+	lookupName := strings.TrimSuffix(name, "Address")
+
+	if artifactName, exists := exceptions[lookupName]; exists {
+		return artifactName
+	}
+
+	// Handle standard cases
+	lookupName = strings.TrimSuffix(lookupName, "Proxy")
+	lookupName = strings.TrimSuffix(lookupName, "Impl")
+	lookupName = strings.TrimSuffix(lookupName, "Singleton")
+
+	// If it was a proxy and not a special case, return "Proxy"
+	if strings.HasSuffix(name, "ProxyAddress") {
+		return "Proxy"
+	}
+
+	return lookupName
 }
 
 func (v *Verifier) getContractArtifact(name string) (*ContractArtifact, error) {
-	// Remove suffix if present
-	lookupName := strings.TrimSuffix(name, "ProxyAddress")
-	lookupName = strings.TrimSuffix(lookupName, "Address")
+	artifactName := getArtifactName(name)
+	artifactPath := path.Join(artifactName+".sol", artifactName+".json")
 
-	artifactPath := path.Join(lookupName+".sol", lookupName+".json")
-
-	v.log.Info("Opening artifact", "path", artifactPath, "lookupName", lookupName)
+	v.log.Info("Opening artifact", "path", artifactPath, "name", name)
 	f, err := v.artifactsFS.Open(artifactPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open artifact: %w", err)
@@ -194,6 +210,21 @@ func (v *Verifier) getContractArtifact(name string) (*ContractArtifact, error) {
 		return nil, fmt.Errorf("failed to decode artifact: %w", err)
 	}
 
+	// Add all sources (main contract and dependencies)
+	sources := make(map[string]map[string]string)
+	for sourcePath, sourceInfo := range art.Metadata.Sources {
+		key := sourcePath
+		// If the source comes from OpenZeppelin, adjust the key to match the Solidity import.
+		if strings.HasPrefix(sourcePath, "lib/openzeppelin-contracts/contracts/") {
+			key = strings.Replace(sourcePath, "lib/openzeppelin-contracts/contracts/", "@openzeppelin/contracts/", 1)
+		}
+
+		sources[key] = map[string]string{
+			"content": sourceInfo.Content,
+		}
+		v.log.Info("added source", "originalPath", sourcePath, "key", key)
+	}
+
 	var optimizer struct {
 		Enabled bool `json:"enabled"`
 		Runs    int  `json:"runs"`
@@ -202,51 +233,54 @@ func (v *Verifier) getContractArtifact(name string) (*ContractArtifact, error) {
 		return nil, fmt.Errorf("failed to parse optimizer settings: %w", err)
 	}
 
-	// Get compiler version from the main artifact and clean it
-	compilerVersion := art.Metadata.Compiler.Version
-	compilerVersion = strings.Split(compilerVersion, "+")[0] // Remove the "+commit..." part
-	v.log.Info("Using compiler version", "version", compilerVersion)
-
-	// Combine all sources into one flat file
-	var combinedSource strings.Builder
-	for sourcePath := range art.Metadata.Sources {
-		// Extract just the filename from the path
-		baseName := strings.TrimSuffix(path.Base(sourcePath), ".sol")
-		contractDir := baseName + ".sol"
-
-		baseName = strings.TrimPrefix(baseName, "draft-")
-
-		// Try to find the JSON file with matching compiler version
-		sourceArtifactPath := path.Join(contractDir, fmt.Sprintf("%s.%s.json",
-			baseName,
-			compilerVersion))
-
-		f, err := v.artifactsFS.Open(sourceArtifactPath)
-		if err != nil {
-			// Fallback to non-versioned file if version-specific one doesn't exist
-			sourceArtifactPath = path.Join(contractDir, baseName+".json")
-			f, err = v.artifactsFS.Open(sourceArtifactPath)
-			if err != nil {
-				return nil, fmt.Errorf("failed to read source file %s: %w", baseName, err)
-			}
-		}
-		content, err := io.ReadAll(f)
-		f.Close()
-		if err != nil {
-			return nil, fmt.Errorf("failed to read source content %s: %w", sourceArtifactPath, err)
-		}
-		combinedSource.Write(content)
-		combinedSource.WriteString("\n\n")
-
-		v.log.Info("added source", "contract", baseName)
+	standardInput := map[string]interface{}{
+		"language": "Solidity",
+		"sources":  sources,
+		"settings": map[string]interface{}{
+			"optimizer": map[string]interface{}{
+				"enabled": optimizer.Enabled,
+				"runs":    optimizer.Runs,
+			},
+			"evmVersion": art.Metadata.Settings.EVMVersion,
+			"metadata": map[string]interface{}{
+				"useLiteralContent": true,
+				"bytecodeHash":      "none",
+			},
+			"outputSelection": map[string]interface{}{
+				"*": map[string]interface{}{
+					"*": []string{
+						"abi",
+						"evm.bytecode.object",
+						"evm.bytecode.sourceMap",
+						"evm.deployedBytecode.object",
+						"evm.deployedBytecode.sourceMap",
+						"metadata",
+					},
+				},
+			},
+		},
 	}
 
+	standardInputJSON, err := json.Marshal(standardInput)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate standard input: %w", err)
+	}
+
+	// Get the contract name from the compilation target
+	var contractName string
+	for contractFile, name := range art.Metadata.Settings.CompilationTarget {
+		contractName = contractFile + ":" + name
+		break
+	}
+
+	v.log.Info("contractName", "name", contractName)
+
 	return &ContractArtifact{
-		SourceCode:       combinedSource.String(),
-		ContractName:     lookupName,
+		ContractName:     contractName,
 		CompilerVersion:  art.Metadata.Compiler.Version,
 		OptimizationUsed: optimizer.Enabled,
 		OptimizationRuns: optimizer.Runs,
 		EVMVersion:       art.Metadata.Settings.EVMVersion,
+		StandardInput:    string(standardInputJSON),
 	}, nil
 }
