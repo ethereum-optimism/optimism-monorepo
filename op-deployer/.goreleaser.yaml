@@ -35,15 +35,15 @@ builds:
       - -X github.com/ethereum-optimism/optimism/op-chain-ops/deployer/version.Version={{ .Version }}
       - -X github.com/ethereum-optimism/optimism/op-chain-ops/deployer/version.Meta="unstable"
 
-archives:
-  - format: tar.gz
-    # this name template makes the OS and Arch compatible with the results of `uname`.
-    name_template: "{{ .ProjectName }}-{{.Version}}-{{ tolower .Os }}-{{ .Arch }}"
-    # use zip for windows archives
-    wrap_in_directory: true
-    format_overrides:
-      - goos: windows
-        format: zip
+# archives:
+#   - format: tar.gz
+#     # this name template makes the OS and Arch compatible with the results of `uname`.
+#     name_template: "{{ .ProjectName }}-{{.Version}}-{{ tolower .Os }}-{{ .Arch }}"
+#     # use zip for windows archives
+#     wrap_in_directory: true
+#     format_overrides:
+#       - goos: windows
+#         format: zip
 
 # dockers:
 #   - id: default
@@ -59,12 +59,12 @@ archives:
 #     image_templates:
 #       - "us-docker.pkg.dev/oplabs-tools-artifacts/images/op-deployer:{{ .Tag }}-minimal"
 
-changelog:
-  sort: asc
-  filters:
-    exclude:
-      - "^docs:"
-      - "^test:"
+# changelog:
+#   sort: asc
+#   filters:
+#     exclude:
+#       - "^docs:"
+#       - "^test:"
 
 # release:
 #   github:
