@@ -501,10 +501,10 @@ contract OPContractsManager is ISemver {
 
             // Check that all contracts have the correct superchainConfig
             if (
-                IOptimismPortal2(payable(opChainAddrs.optimismPortal)).superchainConfig() != superchainConfig
-                    || IL1CrossDomainMessenger(opChainAddrs.l1CrossDomainMessenger).superchainConfig() != superchainConfig
-                    || IL1ERC721Bridge(opChainAddrs.l1ERC721Bridge).superchainConfig() != superchainConfig
-                    || IL1StandardBridge(payable(opChainAddrs.l1StandardBridge)).superchainConfig() != superchainConfig
+                getSuperchainConfig(opChainAddrs.optimismPortal) != superchainConfig
+                    || getSuperchainConfig(opChainAddrs.l1CrossDomainMessenger) != superchainConfig
+                    || getSuperchainConfig(opChainAddrs.l1ERC721Bridge) != superchainConfig
+                    || getSuperchainConfig(opChainAddrs.l1StandardBridge) != superchainConfig
             ) {
                 revert SuperchainConfigMismatch(_opChainConfigs[i].systemConfigProxy);
             }
@@ -1080,6 +1080,11 @@ contract OPContractsManager is ISemver {
             l2ChainId: getL2ChainId(_disputeGame)
         });
         return params;
+    }
+
+    /// @notice Retrieves the Superchain Config for a bridge contract
+    function getSuperchainConfig(address _hasSuperchainConfig) internal view returns (ISuperchainConfig) {
+        return IOptimismPortal2(payable(_hasSuperchainConfig)).superchainConfig();
     }
 
     /// @notice Retrieves the Anchor State Registry for a given game
