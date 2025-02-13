@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum-optimism/optimism/op-service/dial"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	oplog "github.com/ethereum-optimism/optimism/op-service/log"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
@@ -62,7 +61,7 @@ func TestInterop_IsolatedChains(t *testing.T) {
 
 		// check the balance of Bob
 		bobAddr := s2.Address(chainA, "Bob")
-		clientA := s2.L2GethClient(chainA)
+		clientA := s2.L2GethClient(chainA, "sequencer")
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 		defer cancel()
 		bobBalance, err := clientA.BalanceAt(ctx, bobAddr, nil)
@@ -74,6 +73,7 @@ func TestInterop_IsolatedChains(t *testing.T) {
 		s2.SendL2Tx(
 			chainA,
 			"Alice",
+			"sequencer",
 			func(l2Opts *helpers.TxOpts) {
 				l2Opts.ToAddr = &bobAddr
 				l2Opts.Value = big.NewInt(1000000)
@@ -92,7 +92,7 @@ func TestInterop_IsolatedChains(t *testing.T) {
 
 		// check that the balance of Bob on ChainB hasn't changed
 		bobAddrB := s2.Address(chainB, "Bob")
-		clientB := s2.L2GethClient(chainB)
+		clientB := s2.L2GethClient(chainB, "sequencer")
 		ctx, cancel = context.WithTimeout(context.Background(), 1*time.Second)
 		defer cancel()
 		bobBalance, err = clientB.BalanceAt(ctx, bobAddrB, nil)
@@ -141,7 +141,7 @@ func TestInterop_EmitLogs(t *testing.T) {
 		emitOn := func(chainID string) {
 			for i := 0; i < numEmits; i++ {
 				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-				s2.EmitData(ctx, chainID, "Alice", payload1)
+				s2.EmitData(ctx, chainID, "sequencer", "Alice", payload1)
 				cancel()
 			}
 			emitParallel.Done()
@@ -151,8 +151,8 @@ func TestInterop_EmitLogs(t *testing.T) {
 		go emitOn(chainB)
 		emitParallel.Wait()
 
-		clientA := s2.L2GethClient(chainA)
-		clientB := s2.L2GethClient(chainB)
+		clientA := s2.L2GethClient(chainA, "sequencer")
+		clientB := s2.L2GethClient(chainB, "sequencer")
 		// check that the logs are emitted on chain A
 		qA := ethereum.FilterQuery{
 			Addresses: []common.Address{EmitterA},
@@ -177,7 +177,7 @@ func TestInterop_EmitLogs(t *testing.T) {
 
 		// helper function to turn a log into an identifier and the expected hash of the payload
 		logToIdentifier := func(chainID string, log gethTypes.Log) (types.Identifier, common.Hash) {
-			client := s2.L2GethClient(chainID)
+			client := s2.L2GethClient(chainID, "sequencer")
 			// construct the expected hash of the log's payload
 			// (topics concatenated with data)
 			msgPayload := make([]byte, 0)
@@ -255,8 +255,7 @@ func TestInteropBlockBuilding(t *testing.T) {
 		cancel()
 		t.Logf("Dependency set in L1 block %d", depRec.BlockNumber)
 
-		rollupClA, err := dial.DialRollupClientWithTimeout(context.Background(), time.Second*15, logger, s2.OpNode(chainA).UserRPC().RPC())
-		require.NoError(t, err)
+		rollupClA := s2.L2RollupClient(chainA, "sequencer")
 
 		// Now wait for the dependency to be visible in the L2 (receipt needs to be picked up)
 		require.Eventually(t, func() bool {
@@ -268,7 +267,7 @@ func TestInteropBlockBuilding(t *testing.T) {
 
 		// emit log on chain A
 		ctx, cancel = context.WithTimeout(context.Background(), 30*time.Second)
-		emitRec := s2.EmitData(ctx, chainA, "Alice", "hello world")
+		emitRec := s2.EmitData(ctx, chainA, "sequencer", "Alice", "hello world")
 		cancel()
 		t.Logf("Emitted a log event in block %d", emitRec.BlockNumber.Uint64())
 
@@ -283,7 +282,7 @@ func TestInteropBlockBuilding(t *testing.T) {
 		// Identify the log
 		require.Len(t, emitRec.Logs, 1)
 		ev := emitRec.Logs[0]
-		ethCl := s2.L2GethClient(chainA)
+		ethCl := s2.L2GethClient(chainA, "sequencer")
 		header, err := ethCl.HeaderByHash(context.Background(), emitRec.BlockHash)
 		require.NoError(t, err)
 		identifier := types.Identifier{
