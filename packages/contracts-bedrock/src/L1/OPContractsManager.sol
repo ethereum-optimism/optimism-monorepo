@@ -1084,7 +1084,7 @@ contract OPContractsManager is ISemver {
 
     /// @notice Retrieves the Superchain Config for a bridge contract
     function getSuperchainConfig(address _hasSuperchainConfig) internal view returns (ISuperchainConfig) {
-        return IOptimismPortal2(payable(_hasSuperchainConfig)).superchainConfig();
+        return IHasSuperchainConfig(_hasSuperchainConfig).superchainConfig();
     }
 
     /// @notice Retrieves the Anchor State Registry for a given game
@@ -1195,4 +1195,10 @@ contract OPContractsManager is ISemver {
         }
         setDGFImplementation(IDisputeGameFactory(_opChainAddrs.disputeGameFactory), _gameType, IDisputeGame(newGame));
     }
+}
+
+/// @notice Generic interface for contracts that have a superchain config
+interface IHasSuperchainConfig {
+    /// @notice Retrieves the superchain config for a given contract
+    function superchainConfig() external view returns (ISuperchainConfig);
 }
