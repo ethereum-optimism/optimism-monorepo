@@ -17,13 +17,17 @@ func init() {
 }
 
 func walletFundsValidator(chainIdx uint64, minFunds types.Balance, userMarker interface{}) systest.PreconditionValidator {
+	constraint := constraints.WithBalance(minFunds)
 	return func(t systest.T, sys system.System) (context.Context, error) {
 		chain := sys.L2(chainIdx)
-		user, err := chain.Wallet(t.Context(), constraints.WithBalance(minFunds))
-		if err != nil {
-			return nil, fmt.Errorf("No available wallet with funds: %w", err)
+		for wallet := range chain.Wallets(t.Context()) {
+			if constraint(wallet) {
+				return context.WithValue(t.Context(), userMarker, wallet), nil
+			}
 		}
-		return context.WithValue(t.Context(), userMarker, user), nil
+
+		return nil, fmt.Errorf("No available wallet with balance of at least of %s", minFunds)
+
 	}
 }
 

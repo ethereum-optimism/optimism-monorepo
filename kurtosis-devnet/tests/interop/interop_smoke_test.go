@@ -149,7 +149,7 @@ func TestInteropSystemEventLoggerReference(t *testing.T) {
 		// We'll deploy the EventLogger contract
 		address, tx, instance, err := bindings.DeployEventLogger(transactor, client)
 		require.NoError(t, err)
-		fmt.Println("Deploying EventLogger in transaction %s", tx.Hash().Hex())
+		fmt.Printf("Deploying EventLogger in transaction %s\n", tx.Hash().Hex())
 
 		// And wait for the deployment transaction to mine successfully
 		receipt, err := bind.WaitMined(context.Background(), client, tx)
@@ -157,7 +157,7 @@ func TestInteropSystemEventLoggerReference(t *testing.T) {
 		require.Equal(t, receipt.Status, uint64(1)) // Check transaction succeeded
 
 		// Let the user know
-		fmt.Println("Deployed EventLogger at %s in transaction %s", address.Hex(), tx.Hash().Hex())
+		fmt.Printf("Deployed EventLogger at %s in transaction %s\n", address.Hex(), tx.Hash().Hex())
 
 		// FIXME Check if we need to fill the nonce everytime
 		transactor.Nonce = big.NewInt(int64(nonce + 1))
