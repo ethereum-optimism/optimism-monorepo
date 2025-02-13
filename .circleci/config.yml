@@ -1377,6 +1377,10 @@ jobs:
     resource_class: large
     steps:
       - setup_remote_docker
+      - run:
+          name: Install dependencies
+          command: |
+            apt-get update && apt-get install -y python3-pip
       - gcp-cli/install
       # - gcp-oidc-authenticate:
       #     gcp_cred_config_file_path: /tmp/gcp_cred_config.json
