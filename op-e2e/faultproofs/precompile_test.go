@@ -49,7 +49,7 @@ func testPrecompiles(t *testing.T, allocType e2e_config.AllocType) {
 			op_e2e.InitParallel(t, op_e2e.UsesCannon)
 			ctx := context.Background()
 			genesisTime := hexutil.Uint64(0)
-			cfg := e2esys.EcotoneSystemConfig(t, &genesisTime, e2esys.WithAllocType(allocType))
+			cfg := e2esys.IsthmusSystemConfig(t, &genesisTime, e2esys.WithAllocType(allocType))
 			// We don't need a verifier - just the sequencer is enough
 			delete(cfg.Nodes, "verifier")
 
@@ -107,7 +107,7 @@ func testPrecompiles(t *testing.T, allocType e2e_config.AllocType) {
 				t.Skipf("%v is not accelerated so no preimgae to upload", test.Name)
 			}
 			ctx := context.Background()
-			sys, _ := StartFaultDisputeSystem(t, WithBlobBatches(), WithAllocType(allocType))
+			sys, _ := StartFaultDisputeSystem(t, WithLatestFork(), WithAllocType(allocType))
 
 			l2Seq := sys.NodeClient("sequencer")
 			aliceKey := sys.Cfg.Secrets.Alice

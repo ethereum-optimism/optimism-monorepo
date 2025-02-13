@@ -169,7 +169,7 @@ func TestBadUpdates(t *testing.T) {
 			setupFn: func(t *testing.T, db *DB, m *stubMetrics) {
 				require.ErrorIs(t,
 					db.AddDerived(toRef(fSource, dSource.Hash),
-						toRef(eDerived, dDerived.Hash)), types.ErrOutOfOrder)
+						toRef(eDerived, dDerived.Hash)), types.ErrFuture)
 			},
 			assertFn: noChange,
 		},
@@ -232,7 +232,7 @@ func TestBadUpdates(t *testing.T) {
 			setupFn: func(t *testing.T, db *DB, m *stubMetrics) {
 				require.ErrorIs(t, db.AddDerived(
 					toRef(dSource, cSource.Hash),
-					toRef(fDerived, dDerived.Hash)), types.ErrOutOfOrder)
+					toRef(fDerived, dDerived.Hash)), types.ErrFuture)
 			},
 			assertFn: noChange,
 		},

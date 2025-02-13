@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum-optimism/optimism/op-program/client/boot"
 	"github.com/ethereum-optimism/optimism/op-program/client/interop/types"
 	"github.com/ethereum-optimism/optimism/op-program/client/l1"
@@ -15,6 +16,7 @@ import (
 	supervisortypes "github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
 )
 
@@ -63,13 +65,15 @@ func RunConsolidation(
 	if err != nil {
 		return eth.Bytes32{}, fmt.Errorf("failed to create consolidate check deps: %w", err)
 	}
-
-	var consolidatedChains []eth.ChainIDAndOutput
-
 	agreedBlockHashes, err := fetchAgreedBlockHashes(l2PreimageOracle, superRoot)
 	if err != nil {
 		return eth.Bytes32{}, err
 	}
+	// TODO(#14306): Handle cascading reorgs
+	// invalidChains tracks blocks that need to be replaced with a deposits-only block.
+	// The replacement is done after a first pass on all chains to avoid "contaminating" the caonical block
+	// oracle in a way that alters the result of hazard checks after a reorg.
+	invalidChains := make(map[eth.ChainID]*ethtypes.Block)
 
 	for i, chain := range superRoot.Chains {
 		progress := transitionState.PendingProgress[i]
@@ -80,7 +84,11 @@ func RunConsolidation(
 
 		optimisticBlock, receipts := l2PreimageOracle.ReceiptsByBlockHash(progress.BlockHash, chain.ChainID)
 		execMsgs, _, err := ReceiptsToExecutingMessages(deps.DependencySet(), receipts)
-		if err != nil {
+		switch {
+		case errors.Is(err, supervisortypes.ErrUnknownChain):
+			invalidChains[chain.ChainID] = optimisticBlock
+			continue
+		case err != nil:
 			return eth.Bytes32{}, err
 		}
 
@@ -89,11 +97,21 @@ func RunConsolidation(
 			Number:    optimisticBlock.NumberU64(),
 			Timestamp: optimisticBlock.Time(),
 		}
-		consolidatedOutputRoot := progress.OutputRoot
-		if err := checkHazards(deps, candidate, chain.ChainID, execMsgs); err != nil {
+		rollupCfg, err := bootInfo.Configs.RollupConfig(chain.ChainID)
+		if err != nil {
+			return eth.Bytes32{}, fmt.Errorf("no rollup config available for chain ID %v: %w", chain.ChainID, err)
+		}
+		if err := checkHazards(rollupCfg, deps, candidate, chain.ChainID, execMsgs); err != nil {
 			if !isInvalidMessageError(err) {
 				return eth.Bytes32{}, err
 			}
+			invalidChains[chain.ChainID] = optimisticBlock
+		}
+	}
+
+	var consolidatedChains []eth.ChainIDAndOutput
+	for i, chain := range superRoot.Chains {
+		if optimisticBlock, ok := invalidChains[chain.ChainID]; ok {
 			chainAgreedPrestate := superRoot.Chains[i]
 			_, outputRoot, err := buildDepositOnlyBlock(
 				logger,
@@ -107,12 +125,16 @@ func RunConsolidation(
 			if err != nil {
 				return eth.Bytes32{}, err
 			}
-			consolidatedOutputRoot = outputRoot
+			consolidatedChains = append(consolidatedChains, eth.ChainIDAndOutput{
+				ChainID: chain.ChainID,
+				Output:  outputRoot,
+			})
+		} else {
+			consolidatedChains = append(consolidatedChains, eth.ChainIDAndOutput{
+				ChainID: chain.ChainID,
+				Output:  transitionState.PendingProgress[i].OutputRoot,
+			})
 		}
-		consolidatedChains = append(consolidatedChains, eth.ChainIDAndOutput{
-			ChainID: chain.ChainID,
-			Output:  consolidatedOutputRoot,
-		})
 	}
 	consolidatedSuper := &eth.SuperV1{
 		Timestamp: superRoot.Timestamp + 1,
@@ -126,7 +148,7 @@ func isInvalidMessageError(err error) bool {
 	return errors.Is(err, supervisortypes.ErrConflict) ||
 		errors.Is(err, cross.ErrExecMsgHasInvalidIndex) ||
 		errors.Is(err, cross.ErrExecMsgUnknownChain) ||
-		errors.Is(err, cross.ErrCycle)
+		errors.Is(err, cross.ErrCycle) || errors.Is(err, supervisortypes.ErrUnknownChain)
 }
 
 type ConsolidateCheckDeps interface {
@@ -136,11 +158,23 @@ type ConsolidateCheckDeps interface {
 }
 
 func checkHazards(
+	rollupCfg *rollup.Config,
 	deps ConsolidateCheckDeps,
 	candidate supervisortypes.BlockSeal,
 	chainID eth.ChainID,
 	execMsgs []*supervisortypes.ExecutingMessage,
 ) error {
+	// TODO(#14234): remove this check once the supervisor is updated handle msg expiry
+	messageExpiryTimeSeconds := rollupCfg.GetMessageExpiryTimeInterop()
+	for _, msg := range execMsgs {
+		if msg.Timestamp+messageExpiryTimeSeconds < candidate.Timestamp {
+			return fmt.Errorf(
+				"message timestamp is too old: %d < %d: %w",
+				msg.Timestamp+messageExpiryTimeSeconds, candidate.Timestamp, supervisortypes.ErrConflict,
+			)
+		}
+	}
+
 	hazards, err := cross.CrossUnsafeHazards(deps, chainID, candidate, execMsgs)
 	if err != nil {
 		return err
@@ -203,11 +237,33 @@ func (d *consolidateCheckDeps) Contains(chain eth.ChainID, query supervisortypes
 	if err != nil {
 		return supervisortypes.BlockSeal{}, err
 	}
-	return supervisortypes.BlockSeal{
-		Hash:      block.Hash(),
-		Number:    block.NumberU64(),
-		Timestamp: block.Time(),
-	}, nil
+	_, receipts := d.oracle.ReceiptsByBlockHash(block.Hash(), chain)
+	var current uint32
+	for _, receipt := range receipts {
+		for i, log := range receipt.Logs {
+			if current+uint32(i) == query.LogIdx {
+				msgHash := logToMessageHash(log)
+				if msgHash != query.LogHash {
+					return supervisortypes.BlockSeal{}, fmt.Errorf("payload hash mismatch: %s != %s: %w", msgHash, query.LogHash, supervisortypes.ErrConflict)
+				} else if block.Time() != query.Timestamp {
+					return supervisortypes.BlockSeal{}, fmt.Errorf("block timestamp mismatch: %d != %d: %w", block.Time(), query.Timestamp, supervisortypes.ErrConflict)
+				} else {
+					return supervisortypes.BlockSeal{
+						Hash:      block.Hash(),
+						Number:    block.NumberU64(),
+						Timestamp: block.Time(),
+					}, nil
+				}
+			}
+		}
+		current += uint32(len(receipt.Logs))
+	}
+	return supervisortypes.BlockSeal{}, fmt.Errorf("log not found")
+}
+
+func logToMessageHash(l *ethtypes.Log) common.Hash {
+	payloadHash := crypto.Keccak256Hash(supervisortypes.LogToMessagePayload(l))
+	return supervisortypes.PayloadHashToLogHash(payloadHash, l.Address)
 }
 
 func (d *consolidateCheckDeps) IsCrossUnsafe(chainID eth.ChainID, block eth.BlockID) error {

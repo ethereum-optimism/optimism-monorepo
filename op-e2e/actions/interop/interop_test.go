@@ -34,118 +34,129 @@ func TestFullInterop(gt *testing.T) {
 	actors.ChainA.Sequencer.SyncSupervisor(t)
 	actors.ChainB.Sequencer.SyncSupervisor(t)
 
-	// No blocks yet
-	status := actors.ChainA.Sequencer.SyncStatus()
-	require.Equal(t, uint64(0), status.UnsafeL2.Number)
-
 	// sync initial chain A and B
 	actors.Supervisor.ProcessFull(t)
 
-	// Build L2 block on chain A
-	actors.ChainA.Sequencer.ActL2StartBlock(t)
-	actors.ChainA.Sequencer.ActL2EndBlock(t)
-	status = actors.ChainA.Sequencer.SyncStatus()
-	head := status.UnsafeL2.ID()
-	require.Equal(t, uint64(1), head.Number)
-	require.Equal(t, uint64(0), status.CrossUnsafeL2.Number)
-	require.Equal(t, uint64(0), status.LocalSafeL2.Number)
-	require.Equal(t, uint64(0), status.SafeL2.Number)
-	require.Equal(t, uint64(0), status.FinalizedL2.Number)
+	// full is a helper function to run the full interop flow for a given chain
+	// it will create a block and process it from unsafe to finalized
+	full := func(chain *dsl.Chain, l1BlocksToProcess int) {
+		// No blocks yet
+		status := chain.Sequencer.SyncStatus()
+		require.Equal(t, uint64(0), status.UnsafeL2.Number)
+		chain.Sequencer.ActL2StartBlock(t)
+		chain.Sequencer.ActL2EndBlock(t)
+		status = chain.Sequencer.SyncStatus()
+		head := status.UnsafeL2.ID()
+		require.Equal(t, uint64(1), head.Number)
+		require.Equal(t, uint64(0), status.CrossUnsafeL2.Number)
+		require.Equal(t, uint64(0), status.LocalSafeL2.Number)
+		require.Equal(t, uint64(0), status.SafeL2.Number)
+		require.Equal(t, uint64(0), status.FinalizedL2.Number)
 
-	// Ingest the new unsafe-block event
-	actors.ChainA.Sequencer.SyncSupervisor(t)
+		// Ingest the new unsafe-block event
+		chain.Sequencer.SyncSupervisor(t)
 
-	// Verify as cross-unsafe with supervisor
-	actors.Supervisor.ProcessFull(t)
-	actors.ChainA.Sequencer.ActL2PipelineFull(t)
-	status = actors.ChainA.Sequencer.SyncStatus()
-	require.Equal(t, head, status.UnsafeL2.ID())
-	require.Equal(t, head, status.CrossUnsafeL2.ID())
-	require.Equal(t, uint64(0), status.LocalSafeL2.Number)
-	require.Equal(t, uint64(0), status.SafeL2.Number)
-	require.Equal(t, uint64(0), status.FinalizedL2.Number)
+		// Verify as cross-unsafe with supervisor
+		actors.Supervisor.ProcessFull(t)
+		chain.Sequencer.ActL2PipelineFull(t)
+		status = chain.Sequencer.SyncStatus()
+		require.Equal(t, head, status.UnsafeL2.ID())
+		require.Equal(t, head, status.CrossUnsafeL2.ID())
+		require.Equal(t, uint64(0), status.LocalSafeL2.Number)
+		require.Equal(t, uint64(0), status.SafeL2.Number)
+		require.Equal(t, uint64(0), status.FinalizedL2.Number)
+		supervisorStatus, err := actors.Supervisor.SyncStatus()
+		require.NoError(t, err)
+		require.Equal(t, head, supervisorStatus.Chains[chain.ChainID].LocalUnsafe.ID())
+
+		// Submit the L2 block, sync the local-safe data
+		chain.Batcher.ActSubmitAll(t)
+		actors.L1Miner.ActL1StartBlock(12)(t)
+		actors.L1Miner.ActL1IncludeTx(chain.BatcherAddr)(t)
+		actors.L1Miner.ActL1EndBlock(t)
+
+		// The node will exhaust L1 data,
+		// it needs the supervisor to see the L1 block first,
+		// and provide it to the node.
+		for i := 0; i < l1BlocksToProcess; i++ {
+			chain.Sequencer.ActL2EventsUntil(t, event.Is[derive.ExhaustedL1Event], 100, false)
+			actors.Supervisor.SignalLatestL1(t)  // supervisor will be aware of latest L1
+			chain.Sequencer.SyncSupervisor(t)    // supervisor to react to exhaust-L1
+			chain.Sequencer.ActL2PipelineFull(t) // node to complete syncing to L1 head.
+		}
+
+		// TODO(#13972): two sources of L1 head
+		chain.Sequencer.ActL1HeadSignal(t)
+		status = chain.Sequencer.SyncStatus()
+		require.Equal(t, head, status.UnsafeL2.ID())
+		require.Equal(t, head, status.CrossUnsafeL2.ID())
+		require.Equal(t, head, status.LocalSafeL2.ID())
+		require.Equal(t, uint64(0), status.SafeL2.Number)
+		require.Equal(t, uint64(0), status.FinalizedL2.Number)
+		supervisorStatus, err = actors.Supervisor.SyncStatus()
+		require.NoError(t, err)
+		require.Equal(t, head, supervisorStatus.Chains[chain.ChainID].LocalUnsafe.ID())
+		// Local-safe does not count as "safe" in RPC
+		n := chain.SequencerEngine.L2Chain().CurrentSafeBlock().Number.Uint64()
+		require.Equal(t, uint64(0), n)
+
+		// Make the supervisor aware of the new L1 block
+		actors.Supervisor.SignalLatestL1(t)
+
+		// Ingest the new local-safe event
+		chain.Sequencer.SyncSupervisor(t)
+
+		// Cross-safe verify it
+		actors.Supervisor.ProcessFull(t)
+		chain.Sequencer.ActL2PipelineFull(t)
+		status = chain.Sequencer.SyncStatus()
+		require.Equal(t, head, status.UnsafeL2.ID())
+		require.Equal(t, head, status.CrossUnsafeL2.ID())
+		require.Equal(t, head, status.LocalSafeL2.ID())
+		require.Equal(t, head, status.SafeL2.ID())
+		require.Equal(t, uint64(0), status.FinalizedL2.Number)
+		supervisorStatus, err = actors.Supervisor.SyncStatus()
+		require.NoError(t, err)
+		require.Equal(t, head, supervisorStatus.Chains[chain.ChainID].LocalUnsafe.ID())
+		h := chain.SequencerEngine.L2Chain().CurrentSafeBlock().Hash()
+		require.Equal(t, head.Hash, h)
+
+		// Finalize L1, and see if the supervisor updates the op-node finality accordingly.
+		// The supervisor then determines finality, which the op-node can use.
+		actors.L1Miner.ActL1SafeNext(t)
+		actors.L1Miner.ActL1FinalizeNext(t)
+		chain.Sequencer.ActL1SafeSignal(t) // TODO old source of finality
+		chain.Sequencer.ActL1FinalizedSignal(t)
+		actors.Supervisor.SignalFinalizedL1(t)
+		actors.Supervisor.ProcessFull(t)
+		chain.Sequencer.ActL2PipelineFull(t)
+		finalizedL2BlockID, err := actors.Supervisor.Finalized(t.Ctx(), chain.ChainID)
+		require.NoError(t, err)
+		require.Equal(t, head, finalizedL2BlockID)
+
+		chain.Sequencer.ActL2PipelineFull(t)
+		h = chain.SequencerEngine.L2Chain().CurrentFinalBlock().Hash()
+		require.Equal(t, head.Hash, h)
+		status = chain.Sequencer.SyncStatus()
+		require.Equal(t, head, status.UnsafeL2.ID())
+		require.Equal(t, head, status.CrossUnsafeL2.ID())
+		require.Equal(t, head, status.LocalSafeL2.ID())
+		require.Equal(t, head, status.SafeL2.ID())
+		require.Equal(t, head, status.FinalizedL2.ID())
+		supervisorStatus, err = actors.Supervisor.SyncStatus()
+		require.NoError(t, err)
+		require.Equal(t, head, supervisorStatus.Chains[chain.ChainID].LocalUnsafe.ID())
+	}
+	// first run Chain A, processing 1 L1 block
+	full(actors.ChainA, 1)
 	supervisorStatus, err := actors.Supervisor.SyncStatus()
 	require.NoError(t, err)
-	require.Equal(t, head, supervisorStatus.Chains[actors.ChainA.ChainID].LocalUnsafe.ID())
 	require.Equal(t, uint64(0), supervisorStatus.MinSyncedL1.Number)
 
-	// Submit the L2 block, sync the local-safe data
-	actors.ChainA.Batcher.ActSubmitAll(t)
-	actors.L1Miner.ActL1StartBlock(12)(t)
-	actors.L1Miner.ActL1IncludeTx(actors.ChainA.BatcherAddr)(t)
-	actors.L1Miner.ActL1EndBlock(t)
-
-	// The node will exhaust L1 data,
-	// it needs the supervisor to see the L1 block first,
-	// and provide it to the node.
-	actors.ChainA.Sequencer.ActL2EventsUntil(t, event.Is[derive.ExhaustedL1Event], 100, false)
-	actors.Supervisor.SignalLatestL1(t)          // supervisor will be aware of latest L1
-	actors.ChainA.Sequencer.SyncSupervisor(t)    // supervisor to react to exhaust-L1
-	actors.ChainA.Sequencer.ActL2PipelineFull(t) // node to complete syncing to L1 head.
-
-	// TODO(#13972): two sources of L1 head
-	actors.ChainA.Sequencer.ActL1HeadSignal(t)
-	status = actors.ChainA.Sequencer.SyncStatus()
-	require.Equal(t, head, status.UnsafeL2.ID())
-	require.Equal(t, head, status.CrossUnsafeL2.ID())
-	require.Equal(t, head, status.LocalSafeL2.ID())
-	require.Equal(t, uint64(0), status.SafeL2.Number)
-	require.Equal(t, uint64(0), status.FinalizedL2.Number)
+	// then run Chain B, processing 2 L1 blocks (because L1 is further ahead now)
+	full(actors.ChainB, 2)
 	supervisorStatus, err = actors.Supervisor.SyncStatus()
 	require.NoError(t, err)
-	require.Equal(t, head, supervisorStatus.Chains[actors.ChainA.ChainID].LocalUnsafe.ID())
-	require.Equal(t, uint64(0), supervisorStatus.MinSyncedL1.Number)
-	// Local-safe does not count as "safe" in RPC
-	n := actors.ChainA.SequencerEngine.L2Chain().CurrentSafeBlock().Number.Uint64()
-	require.Equal(t, uint64(0), n)
-
-	// Make the supervisor aware of the new L1 block
-	actors.Supervisor.SignalLatestL1(t)
-
-	// Ingest the new local-safe event
-	actors.ChainA.Sequencer.SyncSupervisor(t)
-
-	// Cross-safe verify it
-	actors.Supervisor.ProcessFull(t)
-	actors.ChainA.Sequencer.ActL2PipelineFull(t)
-	status = actors.ChainA.Sequencer.SyncStatus()
-	require.Equal(t, head, status.UnsafeL2.ID())
-	require.Equal(t, head, status.CrossUnsafeL2.ID())
-	require.Equal(t, head, status.LocalSafeL2.ID())
-	require.Equal(t, head, status.SafeL2.ID())
-	require.Equal(t, uint64(0), status.FinalizedL2.Number)
-	supervisorStatus, err = actors.Supervisor.SyncStatus()
-	require.NoError(t, err)
-	require.Equal(t, head, supervisorStatus.Chains[actors.ChainA.ChainID].LocalUnsafe.ID())
-	require.Equal(t, uint64(1), supervisorStatus.MinSyncedL1.Number)
-	h := actors.ChainA.SequencerEngine.L2Chain().CurrentSafeBlock().Hash()
-	require.Equal(t, head.Hash, h)
-
-	// Finalize L1, and see if the supervisor updates the op-node finality accordingly.
-	// The supervisor then determines finality, which the op-node can use.
-	actors.L1Miner.ActL1SafeNext(t)
-	actors.L1Miner.ActL1FinalizeNext(t)
-	actors.ChainA.Sequencer.ActL1SafeSignal(t) // TODO old source of finality
-	actors.ChainA.Sequencer.ActL1FinalizedSignal(t)
-	actors.Supervisor.SignalFinalizedL1(t)
-	actors.Supervisor.ProcessFull(t)
-	actors.ChainA.Sequencer.ActL2PipelineFull(t)
-	finalizedL2BlockID, err := actors.Supervisor.Finalized(t.Ctx(), actors.ChainA.ChainID)
-	require.NoError(t, err)
-	require.Equal(t, head, finalizedL2BlockID)
-
-	actors.ChainA.Sequencer.ActL2PipelineFull(t)
-	h = actors.ChainA.SequencerEngine.L2Chain().CurrentFinalBlock().Hash()
-	require.Equal(t, head.Hash, h)
-	status = actors.ChainA.Sequencer.SyncStatus()
-	require.Equal(t, head, status.UnsafeL2.ID())
-	require.Equal(t, head, status.CrossUnsafeL2.ID())
-	require.Equal(t, head, status.LocalSafeL2.ID())
-	require.Equal(t, head, status.SafeL2.ID())
-	require.Equal(t, head, status.FinalizedL2.ID())
-	supervisorStatus, err = actors.Supervisor.SyncStatus()
-	require.NoError(t, err)
-	require.Equal(t, head, supervisorStatus.Chains[actors.ChainA.ChainID].LocalUnsafe.ID())
 	require.Equal(t, uint64(1), supervisorStatus.MinSyncedL1.Number)
 }
 

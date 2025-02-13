@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/ethereum-optimism/optimism/devnet-sdk/shell/env"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/system"
 	"github.com/stretchr/testify/require"
 )
@@ -105,7 +106,7 @@ func TestSystemTestHelper(t *testing.T) {
 			t.Run(tc.name, func(t *testing.T) {
 				env := mockEnvGetter{
 					values: map[string]string{
-						EnvVarExpectPreconditionsMet: tc.envValue,
+						env.ExpectPreconditionsMet: tc.envValue,
 					},
 				}
 				helper := newBasicSystemTestHelper(env)

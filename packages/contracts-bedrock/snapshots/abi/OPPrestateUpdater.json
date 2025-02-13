@@ -12,16 +12,6 @@
         "type": "address"
       },
       {
-        "internalType": "contract IProxyAdmin",
-        "name": "_superchainProxyAdmin",
-        "type": "address"
-      },
-      {
-        "internalType": "string",
-        "name": "_l1ContractsRelease",
-        "type": "string"
-      },
-      {
         "components": [
           {
             "internalType": "address",
@@ -72,78 +62,6 @@
         "internalType": "struct OPContractsManager.Blueprints",
         "name": "_blueprints",
         "type": "tuple"
-      },
-      {
-        "components": [
-          {
-            "internalType": "address",
-            "name": "superchainConfigImpl",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "protocolVersionsImpl",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "l1ERC721BridgeImpl",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "optimismPortalImpl",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "systemConfigImpl",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "optimismMintableERC20FactoryImpl",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "l1CrossDomainMessengerImpl",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "l1StandardBridgeImpl",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "disputeGameFactoryImpl",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "anchorStateRegistryImpl",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "delayedWETHImpl",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "mipsImpl",
-            "type": "address"
-          }
-        ],
-        "internalType": "struct OPContractsManager.Implementations",
-        "name": "_implementations",
-        "type": "tuple"
-      },
-      {
-        "internalType": "address",
-        "name": "_upgradeController",
-        "type": "address"
       }
     ],
     "stateMutability": "nonpayable",
@@ -244,7 +162,7 @@
         "type": "tuple[]"
       }
     ],
-    "stateMutability": "nonpayable",
+    "stateMutability": "pure",
     "type": "function"
   },
   {
@@ -513,7 +431,7 @@
         "type": "tuple"
       }
     ],
-    "stateMutability": "nonpayable",
+    "stateMutability": "pure",
     "type": "function"
   },
   {
@@ -614,7 +532,7 @@
         "type": "string"
       }
     ],
-    "stateMutability": "view",
+    "stateMutability": "pure",
     "type": "function"
   },
   {
@@ -690,13 +608,43 @@
           }
         ],
         "internalType": "struct OPContractsManager.OpChainConfig[]",
+        "name": "_prestateUpdateInputs",
+        "type": "tuple[]"
+      }
+    ],
+    "name": "updatePrestate",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "contract ISystemConfig",
+            "name": "systemConfigProxy",
+            "type": "address"
+          },
+          {
+            "internalType": "contract IProxyAdmin",
+            "name": "proxyAdmin",
+            "type": "address"
+          },
+          {
+            "internalType": "Claim",
+            "name": "absolutePrestate",
+            "type": "bytes32"
+          }
+        ],
+        "internalType": "struct OPContractsManager.OpChainConfig[]",
         "name": "_opChainConfigs",
         "type": "tuple[]"
       }
     ],
     "name": "upgrade",
     "outputs": [],
-    "stateMutability": "nonpayable",
+    "stateMutability": "pure",
     "type": "function"
   },
   {
@@ -891,6 +839,11 @@
   },
   {
     "inputs": [],
+    "name": "NotImplemented",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "OnlyDelegatecall",
     "type": "error"
   },
@@ -902,6 +855,11 @@
   {
     "inputs": [],
     "name": "PrestateNotSet",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "PrestateRequired",
     "type": "error"
   },
   {

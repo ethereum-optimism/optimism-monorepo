@@ -1,9 +1,6 @@
 package dsl
 
 import (
-	"context"
-	"time"
-
 	"github.com/ethereum-optimism/optimism/op-e2e/actions/helpers"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/derive"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/event"
@@ -52,10 +49,12 @@ func (c *ChainOpts) AddChain(chain *Chain) {
 // Common options can be extracted to a reusable struct (e.g. ChainOpts above) which may expose helper methods to aid
 // test readability and reduce boilerplate.
 type InteropDSL struct {
-	t               helpers.Testing
-	Actors          *InteropActors
-	SuperRootSource *SuperRootSource
-	setup           *InteropSetup
+	t       helpers.Testing
+	Actors  *InteropActors
+	Outputs *Outputs
+	setup   *InteropSetup
+
+	InboxContract *InboxContract
 
 	// allChains contains all chains in the interop set.
 	// Currently this is always two chains, but as the setup code becomes more flexible it could be more
@@ -86,10 +85,15 @@ func NewInteropDSL(t helpers.Testing) *InteropDSL {
 	require.NoError(t, err)
 
 	return &InteropDSL{
-		t:               t,
-		Actors:          actors,
-		SuperRootSource: superRootSource,
-		setup:           setup,
+		t:      t,
+		Actors: actors,
+		Outputs: &Outputs{
+			t:               t,
+			superRootSource: superRootSource,
+		},
+		setup: setup,
+
+		InboxContract: NewInboxContract(t),
 
 		allChains: allChains,
 	}
@@ -112,33 +116,21 @@ func (d *InteropDSL) CreateUser() *DSLUser {
 	}
 }
 
-func (d *InteropDSL) SuperRoot(timestamp uint64) eth.Super {
-	ctx, cancel := context.WithTimeout(d.t.Ctx(), 30*time.Second)
-	defer cancel()
-	root, err := d.SuperRootSource.CreateSuperRoot(ctx, timestamp)
-	require.NoError(d.t, err)
-	return root
-}
-
-func (d *InteropDSL) OutputRootAtTimestamp(chain *Chain, timestamp uint64) *eth.OutputResponse {
-	ctx, cancel := context.WithTimeout(d.t.Ctx(), 30*time.Second)
-	defer cancel()
-	blockNum, err := chain.RollupCfg.TargetBlockNumber(timestamp)
-	require.NoError(d.t, err)
-	output, err := chain.Sequencer.RollupClient().OutputAtBlock(ctx, blockNum)
-	require.NoError(d.t, err)
-	return output
-}
-
 type TransactionCreator func(chain *Chain) (*types.Transaction, common.Address)
 type AddL2BlockOpts struct {
-	BlockIsNotCrossSafe bool
-	TransactionCreators []TransactionCreator
+	BlockIsNotCrossUnsafe bool
+	TransactionCreators   []TransactionCreator
 }
 
 func WithL2BlockTransactions(mkTxs ...TransactionCreator) func(*AddL2BlockOpts) {
 	return func(o *AddL2BlockOpts) {
 		o.TransactionCreators = mkTxs
+	}
+}
+
+func WithL1BlockCrossUnsafe() func(*AddL2BlockOpts) {
+	return func(o *AddL2BlockOpts) {
+		o.BlockIsNotCrossUnsafe = true
 	}
 }
 
@@ -163,7 +155,7 @@ func (d *InteropDSL) AddL2Block(chain *Chain, optionalArgs ...func(*AddL2BlockOp
 	status := chain.Sequencer.SyncStatus()
 	expectedBlockNum := priorSyncStatus.UnsafeL2.Number + 1
 	require.Equal(d.t, expectedBlockNum, status.UnsafeL2.Number, "Unsafe head did not advance")
-	if opts.BlockIsNotCrossSafe {
+	if opts.BlockIsNotCrossUnsafe {
 		require.Equal(d.t, priorSyncStatus.CrossUnsafeL2.Number, status.CrossUnsafeL2.Number, "CrossUnsafe head advanced unexpectedly")
 	} else {
 		require.Equal(d.t, expectedBlockNum, status.CrossUnsafeL2.Number, "CrossUnsafe head did not advance")

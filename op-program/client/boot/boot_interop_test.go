@@ -137,6 +137,8 @@ func (o *mockInteropBootstrapOracle) Get(key preimage.Key) []byte {
 		}
 		b, _ := json.Marshal(o.rollupCfgs)
 		return b
+	case L2ChainIDLocalIndex.PreimageKey():
+		panic("unexpected oracle request for l2 chain ID preimage key")
 	default:
 		return o.mockBoostrapOracle.Get(key)
 	}

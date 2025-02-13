@@ -84,6 +84,7 @@ optimism_package:
         image: {{ $local_images.op_challenger }}
         cannon_prestate_path: ""
         cannon_prestates_url: {{ $urls.prestate }}
+        cannon_trace_types: ["cannon", "permissioned", "super-cannon"]
         extra_params:
         - {{ $flags.log_level }}
       proposer_params:
@@ -143,6 +144,7 @@ optimism_package:
         image: {{ $local_images.op_challenger }}
         cannon_prestate_path: ""
         cannon_prestates_url: {{ $urls.prestate }}
+        cannon_trace_types: ["cannon", "permissioned", "super-cannon"]
         extra_params:
         - {{ $flags.log_level }}
       proposer_params:
@@ -161,12 +163,15 @@ optimism_package:
     l1_artifacts_locator: {{ $urls.l1_artifacts }}
     l2_artifacts_locator: {{ $urls.l2_artifacts }}
     global_deploy_overrides:
-      faultGameAbsolutePrestate: {{ localPrestate.Hashes.prestate }}
+      faultGameAbsolutePrestate: {{ localPrestate.Hashes.prestate_interop }}
   global_log_level: "info"
   global_node_selectors: {}
   global_tolerations: []
   persistent: false
 ethereum_package:
+  participants:
+    - el_type: geth
+      cl_type: teku
   network_params:
     preset: minimal
     genesis_delay: 5

@@ -10,10 +10,6 @@ import (
 	"github.com/ethereum-optimism/optimism/devnet-sdk/system"
 )
 
-const (
-	EnvVarExpectPreconditionsMet = "DEVNET_EXPECT_PRECONDITIONS_MET"
-)
-
 // envGetter abstracts environment variable access
 type envGetter interface {
 	Getenv(key string) string
@@ -109,7 +105,7 @@ func (h *basicSystemTestHelper) InteropSystemTest(t BasicT, f InteropSystemTestF
 
 // newBasicSystemTestHelper creates a new basicSystemTestHelper using environment variables
 func newBasicSystemTestHelper(envGetter envGetter) *basicSystemTestHelper {
-	val := envGetter.Getenv(EnvVarExpectPreconditionsMet)
+	val := envGetter.Getenv(env.ExpectPreconditionsMet)
 	expectPreconditionsMet, err := strconv.ParseBool(val)
 	if err != nil {
 		expectPreconditionsMet = false // empty string or invalid value returns false

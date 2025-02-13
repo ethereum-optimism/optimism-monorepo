@@ -21,6 +21,115 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestInteropFaultProofs_TraceExtensionActivation(gt *testing.T) {
+	t := helpers.NewDefaultTesting(gt)
+	system := dsl.NewInteropDSL(t)
+
+	system.AddL2Block(system.Actors.ChainA)
+	system.AddL2Block(system.Actors.ChainB)
+
+	// Submit batch data for each chain in separate L1 blocks so tests can have one chain safe and one unsafe
+	system.SubmitBatchData()
+
+	endTimestamp := system.Actors.ChainA.Sequencer.L2Safe().Time
+
+	agreedClaim := system.Outputs.SuperRoot(endTimestamp).Marshal()
+	disputedClaim := system.Outputs.TransitionState(endTimestamp, 1,
+		system.Outputs.OptimisticBlockAtTimestamp(system.Actors.ChainA, endTimestamp+1)).Marshal()
+	disputedTraceIndex := int64(1024)
+	tests := []*transitionTest{
+		{
+			name:               "CorrectlyDidNotActivate",
+			agreedClaim:        agreedClaim,
+			disputedClaim:      disputedClaim,
+			disputedTraceIndex: disputedTraceIndex,
+			// Trace extension does not activate because we have not reached the proposal timestamp yet
+			proposalTimestamp: endTimestamp + 1,
+			expectValid:       true,
+		},
+		{
+			name:               "IncorrectlyDidNotActivate",
+			agreedClaim:        agreedClaim,
+			disputedClaim:      disputedClaim,
+			disputedTraceIndex: disputedTraceIndex,
+			// Trace extension should have activated because we have gone past the proposal timestamp yet, but did not
+			proposalTimestamp: endTimestamp,
+			expectValid:       false,
+		},
+		{
+			name:               "CorrectlyActivated",
+			agreedClaim:        agreedClaim,
+			disputedClaim:      agreedClaim,
+			disputedTraceIndex: disputedTraceIndex,
+			// Trace extension does not activate because we have not reached the proposal timestamp yet
+			proposalTimestamp: endTimestamp,
+			expectValid:       true,
+		},
+		{
+			name:               "IncorrectlyActivated",
+			agreedClaim:        agreedClaim,
+			disputedClaim:      agreedClaim,
+			disputedTraceIndex: disputedTraceIndex,
+			// Trace extension does not activate because we have not reached the proposal timestamp yet
+			proposalTimestamp: endTimestamp + 1,
+			expectValid:       false,
+		},
+	}
+	runFppAndChallengerTests(gt, system, tests)
+}
+
+func TestInteropFaultProofs_ConsolidateValidCrossChainMessage(gt *testing.T) {
+	t := helpers.NewDefaultTesting(gt)
+	system := dsl.NewInteropDSL(t)
+	actors := system.Actors
+
+	alice := system.CreateUser()
+	emitter := dsl.NewEmitterContract(t)
+	system.AddL2Block(actors.ChainA, dsl.WithL2BlockTransactions(emitter.Deploy(alice)))
+	system.AddL2Block(actors.ChainB, dsl.WithL2BlockTransactions(emitter.Deploy(alice)))
+
+	system.AddL2Block(system.Actors.ChainA, dsl.WithL2BlockTransactions(emitter.EmitMessage(alice, "hello")))
+	initMsg := emitter.LastEmittedMessage()
+	system.AddL2Block(system.Actors.ChainB, dsl.WithL2BlockTransactions(system.InboxContract.Execute(alice, initMsg.Identifier(), initMsg.MessagePayload())))
+
+	// Submit batch data for each chain in separate L1 blocks so tests can have one chain safe and one unsafe
+	system.SubmitBatchData(func(opts *dsl.SubmitBatchDataOpts) {
+		opts.SetChains(system.Actors.ChainA)
+	})
+	system.SubmitBatchData(func(opts *dsl.SubmitBatchDataOpts) {
+		opts.SetChains(system.Actors.ChainB)
+	})
+
+	endTimestamp := system.Actors.ChainA.Sequencer.L2Safe().Time
+	startTimestamp := endTimestamp - 1
+	end := system.Outputs.SuperRoot(endTimestamp)
+
+	paddingStep := func(step uint64) []byte {
+		return system.Outputs.TransitionState(startTimestamp, step,
+			system.Outputs.OptimisticBlockAtTimestamp(actors.ChainA, endTimestamp),
+			system.Outputs.OptimisticBlockAtTimestamp(actors.ChainB, endTimestamp),
+		).Marshal()
+	}
+
+	tests := []*transitionTest{
+		{
+			name:               "Consolidate-AllValid",
+			agreedClaim:        paddingStep(1023),
+			disputedClaim:      end.Marshal(),
+			disputedTraceIndex: 1023,
+			expectValid:        true,
+		},
+		{
+			name:               "Consolidate-AllValid-InvalidNoChange",
+			agreedClaim:        paddingStep(1023),
+			disputedClaim:      paddingStep(1023),
+			disputedTraceIndex: 1023,
+			expectValid:        false,
+		},
+	}
+	runFppAndChallengerTests(gt, system, tests)
+}
+
 func TestInteropFaultProofs(gt *testing.T) {
 	t := helpers.NewDefaultTesting(gt)
 	system := dsl.NewInteropDSL(t)
@@ -41,48 +150,26 @@ func TestInteropFaultProofs(gt *testing.T) {
 	endTimestamp := actors.ChainA.RollupCfg.Genesis.L2Time + actors.ChainA.RollupCfg.BlockTime
 	startTimestamp := endTimestamp - 1
 
-	start := system.SuperRoot(startTimestamp)
-	end := system.SuperRoot(endTimestamp)
+	start := system.Outputs.SuperRoot(startTimestamp)
+	end := system.Outputs.SuperRoot(endTimestamp)
 
-	chain1End := system.OutputRootAtTimestamp(actors.ChainA, endTimestamp)
-	chain2End := system.OutputRootAtTimestamp(actors.ChainB, endTimestamp)
+	step1Expected := system.Outputs.TransitionState(startTimestamp, 1,
+		system.Outputs.OptimisticBlockAtTimestamp(actors.ChainA, endTimestamp),
+	).Marshal()
 
-	step1Expected := (&types.TransitionState{
-		SuperRoot: start.Marshal(),
-		PendingProgress: []types.OptimisticBlock{
-			{BlockHash: chain1End.BlockRef.Hash, OutputRoot: chain1End.OutputRoot},
-		},
-		Step: 1,
-	}).Marshal()
-
-	step2Expected := (&types.TransitionState{
-		SuperRoot: start.Marshal(),
-		PendingProgress: []types.OptimisticBlock{
-			{BlockHash: chain1End.BlockRef.Hash, OutputRoot: chain1End.OutputRoot},
-			{BlockHash: chain2End.BlockRef.Hash, OutputRoot: chain2End.OutputRoot},
-		},
-		Step: 2,
-	}).Marshal()
+	step2Expected := system.Outputs.TransitionState(startTimestamp, 2,
+		system.Outputs.OptimisticBlockAtTimestamp(actors.ChainA, endTimestamp),
+		system.Outputs.OptimisticBlockAtTimestamp(actors.ChainB, endTimestamp),
+	).Marshal()
 
 	paddingStep := func(step uint64) []byte {
-		return (&types.TransitionState{
-			SuperRoot: start.Marshal(),
-			PendingProgress: []types.OptimisticBlock{
-				{BlockHash: chain1End.BlockRef.Hash, OutputRoot: chain1End.OutputRoot},
-				{BlockHash: chain2End.BlockRef.Hash, OutputRoot: chain2End.OutputRoot},
-			},
-			Step: step,
-		}).Marshal()
+		return system.Outputs.TransitionState(startTimestamp, step,
+			system.Outputs.OptimisticBlockAtTimestamp(actors.ChainA, endTimestamp),
+			system.Outputs.OptimisticBlockAtTimestamp(actors.ChainB, endTimestamp),
+		).Marshal()
 	}
 
 	tests := []*transitionTest{
-		{
-			name:               "ClaimNoChange",
-			agreedClaim:        start.Marshal(),
-			disputedClaim:      start.Marshal(),
-			disputedTraceIndex: 0,
-			expectValid:        false,
-		},
 		{
 			name:               "ClaimDirectToNextTimestamp",
 			agreedClaim:        start.Marshal(),
@@ -98,11 +185,25 @@ func TestInteropFaultProofs(gt *testing.T) {
 			expectValid:        true,
 		},
 		{
+			name:               "FirstChainOptimisticBlock-InvalidNoChange",
+			agreedClaim:        start.Marshal(),
+			disputedClaim:      start.Marshal(),
+			disputedTraceIndex: 0,
+			expectValid:        false,
+		},
+		{
 			name:               "SecondChainOptimisticBlock",
 			agreedClaim:        step1Expected,
 			disputedClaim:      step2Expected,
 			disputedTraceIndex: 1,
 			expectValid:        true,
+		},
+		{
+			name:               "SecondChainOptimisticBlock-InvalidNoChange",
+			agreedClaim:        step1Expected,
+			disputedClaim:      step1Expected,
+			disputedTraceIndex: 1,
+			expectValid:        false,
 		},
 		{
 			name:               "FirstPaddingStep",
@@ -112,11 +213,25 @@ func TestInteropFaultProofs(gt *testing.T) {
 			expectValid:        true,
 		},
 		{
+			name:               "FirstPaddingStep-InvalidNoChange",
+			agreedClaim:        step2Expected,
+			disputedClaim:      step2Expected,
+			disputedTraceIndex: 2,
+			expectValid:        false,
+		},
+		{
 			name:               "SecondPaddingStep",
 			agreedClaim:        paddingStep(3),
 			disputedClaim:      paddingStep(4),
 			disputedTraceIndex: 3,
 			expectValid:        true,
+		},
+		{
+			name:               "SecondPaddingStep-InvalidNoChange",
+			agreedClaim:        paddingStep(3),
+			disputedClaim:      paddingStep(3),
+			disputedTraceIndex: 3,
+			expectValid:        false,
 		},
 		{
 			name:               "LastPaddingStep",
@@ -126,17 +241,80 @@ func TestInteropFaultProofs(gt *testing.T) {
 			expectValid:        true,
 		},
 		{
-			name:               "Consolidate-AllValid",
-			agreedClaim:        paddingStep(1023),
-			disputedClaim:      end.Marshal(),
-			disputedTraceIndex: 1023,
+			// The proposed block timestamp is after the unsafe head block timestamp.
+			// Expect to transition to invalid because the unsafe head is reached but challenger needs to handle
+			// not having any data at the next timestamp because the chain doesn't extend that far.
+			name:        "DisputeTimestampAfterChainHeadChainA",
+			agreedClaim: end.Marshal(),
+			// With 2 second block times, we haven't yet reached the next block on the first chain so it's still valid
+			disputedClaim: system.Outputs.TransitionState(endTimestamp, 1,
+				system.Outputs.OptimisticBlockAtTimestamp(actors.ChainA, endTimestamp+1),
+			).Marshal(),
+			proposalTimestamp:  endTimestamp + 100,
+			disputedTraceIndex: 1024,
 			expectValid:        true,
 		},
 		{
-			name:               "AlreadyAtClaimedTimestamp",
-			agreedClaim:        end.Marshal(),
-			disputedClaim:      end.Marshal(),
-			disputedTraceIndex: 5000,
+			// The proposed block timestamp is after the unsafe head block timestamp.
+			// Expect to transition to invalid because the unsafe head is reached but challenger needs to handle
+			// not having any data at the next timestamp because the chain doesn't extend that far.
+			name: "DisputeTimestampAfterChainHeadChainB",
+			agreedClaim: system.Outputs.TransitionState(endTimestamp, 1,
+				system.Outputs.OptimisticBlockAtTimestamp(actors.ChainA, endTimestamp+1),
+			).Marshal(),
+			// With 2 second block times, we haven't yet reached the next block on the second chain so it's still valid
+			disputedClaim: system.Outputs.TransitionState(endTimestamp, 2,
+				system.Outputs.OptimisticBlockAtTimestamp(actors.ChainA, endTimestamp+1),
+				system.Outputs.OptimisticBlockAtTimestamp(actors.ChainB, endTimestamp+1),
+			).Marshal(),
+			proposalTimestamp:  endTimestamp + 100,
+			disputedTraceIndex: 1025,
+			expectValid:        true,
+		},
+		{
+			// The proposed block timestamp is after the unsafe head block timestamp.
+			// Expect to transition to invalid because the unsafe head is reached but challenger needs to handle
+			// not having any data at the next timestamp because the chain doesn't extend that far.
+			name: "DisputeTimestampAfterChainHeadConsolidate",
+			agreedClaim: system.Outputs.TransitionState(endTimestamp, 1023,
+				system.Outputs.OptimisticBlockAtTimestamp(actors.ChainA, endTimestamp+1),
+				system.Outputs.OptimisticBlockAtTimestamp(actors.ChainB, endTimestamp+1),
+			).Marshal(),
+			// With 2 second block times, we haven't yet reached the next block on either chain so it's still valid
+			// It will have an incremented timestamp but the same chain output roots
+			disputedClaim:      system.Outputs.SuperRoot(endTimestamp + 1).Marshal(),
+			proposalTimestamp:  endTimestamp + 100,
+			disputedTraceIndex: 2047,
+			expectValid:        true,
+		},
+		{
+			// The proposed block timestamp is after the unsafe head block timestamp.
+			// Expect to transition to invalid because the unsafe head is reached but challenger needs to handle
+			// not having any data at the next timestamp because the chain doesn't extend that far.
+			name:        "DisputeBlockAfterChainHead-FirstChain",
+			agreedClaim: system.Outputs.SuperRoot(endTimestamp + 1).Marshal(),
+			// Timestamp has advanced enough to expect the next block now, but it doesn't exit so transition to invalid
+			disputedClaim:      interop.InvalidTransition,
+			proposalTimestamp:  endTimestamp + 100,
+			disputedTraceIndex: 2048,
+			expectValid:        true,
+		},
+		{
+			// The agreed and disputed claim are both after the current chain head
+			name:               "AgreedBlockAfterChainHead-Consolidate",
+			agreedClaim:        interop.InvalidTransition,
+			disputedClaim:      interop.InvalidTransition,
+			proposalTimestamp:  endTimestamp + 100,
+			disputedTraceIndex: 3071,
+			expectValid:        true,
+		},
+		{
+			// The agreed and disputed claim are both after the current chain head and disputing an optimistic block
+			name:               "AgreedBlockAfterChainHead-Optimistic",
+			agreedClaim:        interop.InvalidTransition,
+			disputedClaim:      interop.InvalidTransition,
+			proposalTimestamp:  endTimestamp + 100,
+			disputedTraceIndex: 3072,
 			expectValid:        true,
 		},
 
@@ -178,71 +356,98 @@ func TestInteropFaultProofs(gt *testing.T) {
 		},
 	}
 
-	for _, test := range tests {
-		test := test
-		gt.Run(fmt.Sprintf("%s-fpp", test.name), func(gt *testing.T) {
-			t := helpers.NewDefaultTesting(gt)
-			if test.skipProgram {
-				t.Skip("Not yet implemented")
-				return
-			}
-			logger := testlog.Logger(t, slog.LevelInfo)
-			checkResult := fpHelpers.ExpectNoError()
-			if !test.expectValid {
-				checkResult = fpHelpers.ExpectError(claim.ErrClaimNotValid)
-			}
-			l1Head := test.l1Head
-			if l1Head == (common.Hash{}) {
-				l1Head = actors.L1Miner.L1Chain().CurrentBlock().Hash()
-			}
-			fpHelpers.RunFaultProofProgram(
-				t,
-				logger,
-				actors.L1Miner,
-				checkResult,
-				WithInteropEnabled(actors, test.agreedClaim, crypto.Keccak256Hash(test.disputedClaim), endTimestamp),
-				fpHelpers.WithL1Head(l1Head),
-			)
-		})
+	runFppAndChallengerTests(gt, system, tests)
+}
 
-		gt.Run(fmt.Sprintf("%s-challenger", test.name), func(gt *testing.T) {
-			t := helpers.NewDefaultTesting(gt)
-			if test.skipChallenger {
-				t.Skip("Not yet implemented")
-				return
-			}
-			logger := testlog.Logger(t, slog.LevelInfo)
-			prestateProvider := super.NewSuperRootPrestateProvider(&actors.Supervisor.QueryFrontend, startTimestamp)
-			var l1Head eth.BlockID
-			if test.l1Head == (common.Hash{}) {
-				l1Head = eth.ToBlockID(eth.HeaderBlockInfo(actors.L1Miner.L1Chain().CurrentBlock()))
-			} else {
-				l1Head = eth.ToBlockID(actors.L1Miner.L1Chain().GetBlockByHash(test.l1Head))
-			}
-			gameDepth := challengerTypes.Depth(30)
-			rollupCfgs, err := super.NewRollupConfigsFromParsed(actors.ChainA.RollupCfg, actors.ChainB.RollupCfg)
-			require.NoError(t, err)
-			provider := super.NewSuperTraceProvider(logger, rollupCfgs, prestateProvider, &actors.Supervisor.QueryFrontend, l1Head, gameDepth, startTimestamp, endTimestamp)
-			var agreedPrestate []byte
-			if test.disputedTraceIndex > 0 {
-				agreedPrestate, err = provider.GetPreimageBytes(t.Ctx(), challengerTypes.NewPosition(gameDepth, big.NewInt(test.disputedTraceIndex-1)))
-				require.NoError(t, err)
-			} else {
-				superRoot, err := provider.AbsolutePreState(t.Ctx())
-				require.NoError(t, err)
-				agreedPrestate = superRoot.Marshal()
-			}
-			require.Equal(t, test.agreedClaim, agreedPrestate)
+func TestInteropFaultProofs_CascadeInvalidBlock(gt *testing.T) {
+	t := helpers.NewDefaultTesting(gt)
+	// TODO(#14307): Support cascading invalidation in op-supervisor
+	t.Skip("Cascading invalidation not yet working")
 
-			disputedClaim, err := provider.GetPreimageBytes(t.Ctx(), challengerTypes.NewPosition(gameDepth, big.NewInt(test.disputedTraceIndex)))
-			require.NoError(t, err)
-			if test.expectValid {
-				require.Equal(t, test.disputedClaim, disputedClaim, "Claim is correct so should match challenger's opinion")
-			} else {
-				require.NotEqual(t, test.disputedClaim, disputedClaim, "Claim is incorrect so should not match challenger's opinion")
-			}
-		})
+	system := dsl.NewInteropDSL(t)
+
+	actors := system.Actors
+	alice := system.CreateUser()
+	emitterContract := dsl.NewEmitterContract(t)
+	// Deploy emitter contract to both chains
+	system.AddL2Block(actors.ChainA, dsl.WithL2BlockTransactions(
+		emitterContract.Deploy(alice),
+	))
+	system.AddL2Block(actors.ChainB, dsl.WithL2BlockTransactions(
+		emitterContract.Deploy(alice),
+	))
+
+	// Initiating messages on chain A
+	system.AddL2Block(actors.ChainA, dsl.WithL2BlockTransactions(
+		emitterContract.EmitMessage(alice, "chainA message"),
+	))
+	chainAInitTx := emitterContract.LastEmittedMessage()
+	system.AddL2Block(actors.ChainB)
+	system.SubmitBatchData()
+
+	// Create a message with a conflicting payload on chain B, that also emits an initiating message
+	system.AddL2Block(actors.ChainB, dsl.WithL2BlockTransactions(
+		system.InboxContract.Execute(alice, chainAInitTx.Identifier(), []byte("this message was never emitted")),
+		emitterContract.EmitMessage(alice, "chainB message"),
+	), dsl.WithL1BlockCrossUnsafe())
+	chainBExecTx := system.InboxContract.LastTransaction()
+	chainBExecTx.CheckIncluded()
+	chainBInitTx := emitterContract.LastEmittedMessage()
+
+	// Create a message with a valid message on chain A, pointing to the initiating message on B from the same block
+	// as an invalid message.
+	system.AddL2Block(actors.ChainA,
+		dsl.WithL2BlockTransactions(system.InboxContract.Execute(alice, chainBInitTx.Identifier(), chainBInitTx.MessagePayload())),
+		// Block becomes cross-unsafe because the init msg is currently present, but it should not become cross-safe.
+	)
+	chainAExecTx := system.InboxContract.LastTransaction()
+	chainAExecTx.CheckIncluded()
+
+	system.SubmitBatchData(func(opts *dsl.SubmitBatchDataOpts) {
+		opts.SkipCrossSafeUpdate = true
+	})
+
+	endTimestamp := actors.ChainB.Sequencer.L2Unsafe().Time
+	startTimestamp := endTimestamp - 1
+	optimisticEnd := system.Outputs.SuperRoot(endTimestamp)
+
+	preConsolidation := system.Outputs.TransitionState(startTimestamp, 1023,
+		system.Outputs.OptimisticBlockAtTimestamp(actors.ChainA, endTimestamp),
+		system.Outputs.OptimisticBlockAtTimestamp(actors.ChainB, endTimestamp),
+	).Marshal()
+
+	// Induce block replacement
+	system.ProcessCrossSafe()
+	// assert that the invalid message txs were reorged out
+	chainBExecTx.CheckNotIncluded()
+	chainBInitTx.CheckNotIncluded() // Should have been reorged out with chainBExecTx
+	chainAExecTx.CheckNotIncluded() // Reorged out because chainBInitTx was reorged out
+
+	crossSafeEnd := system.Outputs.SuperRoot(endTimestamp)
+
+	tests := []*transitionTest{
+		{
+			name:               "Consolidate-ExpectInvalidPendingBlock",
+			agreedClaim:        preConsolidation,
+			disputedClaim:      optimisticEnd.Marshal(),
+			disputedTraceIndex: 1023,
+			expectValid:        false,
+			// TODO(#14306): Support cascading re-orgs in op-program
+			skipProgram:    true,
+			skipChallenger: true,
+		},
+		{
+			name:               "Consolidate-ReplaceInvalidBlocks",
+			agreedClaim:        preConsolidation,
+			disputedClaim:      crossSafeEnd.Marshal(),
+			disputedTraceIndex: 1023,
+			expectValid:        true,
+			// TODO(#14306): Support cascading re-orgs in op-program
+			skipProgram:    true,
+			skipChallenger: true,
+		},
 	}
+	runFppAndChallengerTests(gt, system, tests)
 }
 
 func TestInteropFaultProofsInvalidBlock(gt *testing.T) {
@@ -268,23 +473,17 @@ func TestInteropFaultProofsInvalidBlock(gt *testing.T) {
 
 	// Create a message with a conflicting payload
 	fakeMessage := []byte("this message was never emitted")
-	inboxContract := dsl.NewInboxContract(t)
 	system.AddL2Block(actors.ChainB, func(opts *dsl.AddL2BlockOpts) {
-		opts.TransactionCreators = []dsl.TransactionCreator{inboxContract.Execute(alice, emitTx.Identifier(), fakeMessage)}
-		opts.BlockIsNotCrossSafe = true
+		opts.TransactionCreators = []dsl.TransactionCreator{system.InboxContract.Execute(alice, emitTx.Identifier(), fakeMessage)}
+		opts.BlockIsNotCrossUnsafe = true
 	})
 	system.AddL2Block(actors.ChainA)
 
-	// TODO: I wonder if it would be better to have `opts.ExpectInvalid` that specifies the invalid tx
-	// then the DSL can assert that it becomes local safe and is then reorged out automatically
-	// We could still grab the superroot and output roots for the invalid block while it is unsafe
-	// Other tests may still want to have SkipCrossUnsafeUpdate but generally nicer to be more declarative and
-	// high level to avoid leaking the details of when supervisor will trigger the reorg if possible.
 	system.SubmitBatchData(func(opts *dsl.SubmitBatchDataOpts) {
 		opts.SkipCrossSafeUpdate = true
 	})
 
-	execTx := inboxContract.LastTransaction()
+	execTx := system.InboxContract.LastTransaction()
 	execTx.CheckIncluded()
 
 	// safe head is still behind until we verify cross-safe
@@ -293,38 +492,25 @@ func TestInteropFaultProofsInvalidBlock(gt *testing.T) {
 	endTimestamp := actors.ChainB.Sequencer.L2Unsafe().Time
 
 	startTimestamp := endTimestamp - 1
-	start := system.SuperRoot(startTimestamp)
-	end := system.SuperRoot(endTimestamp)
+	start := system.Outputs.SuperRoot(startTimestamp)
+	end := system.Outputs.SuperRoot(endTimestamp)
 
-	chain1End := system.OutputRootAtTimestamp(actors.ChainA, endTimestamp)
-	chain2End := system.OutputRootAtTimestamp(actors.ChainB, endTimestamp)
+	step1Expected := system.Outputs.TransitionState(startTimestamp, 1,
+		system.Outputs.OptimisticBlockAtTimestamp(actors.ChainA, endTimestamp),
+	).Marshal()
 
-	step1Expected := (&types.TransitionState{
-		SuperRoot: start.Marshal(),
-		PendingProgress: []types.OptimisticBlock{
-			{BlockHash: chain1End.BlockRef.Hash, OutputRoot: chain1End.OutputRoot},
-		},
-		Step: 1,
-	}).Marshal()
-
-	step2Expected := (&types.TransitionState{
-		SuperRoot: start.Marshal(),
-		PendingProgress: []types.OptimisticBlock{
-			{BlockHash: chain1End.BlockRef.Hash, OutputRoot: chain1End.OutputRoot},
-			{BlockHash: chain2End.BlockRef.Hash, OutputRoot: chain2End.OutputRoot},
-		},
-		Step: 2,
-	}).Marshal()
+	// Capture optimistic blocks now before the invalid block is reorg'd out
+	// Otherwise later calls to paddingStep would incorrectly use the deposit-only block
+	allOptimisticBlocks := []types.OptimisticBlock{
+		system.Outputs.OptimisticBlockAtTimestamp(actors.ChainA, endTimestamp),
+		system.Outputs.OptimisticBlockAtTimestamp(actors.ChainB, endTimestamp),
+	}
+	step2Expected := system.Outputs.TransitionState(startTimestamp, 2,
+		allOptimisticBlocks...,
+	).Marshal()
 
 	paddingStep := func(step uint64) []byte {
-		return (&types.TransitionState{
-			SuperRoot: start.Marshal(),
-			PendingProgress: []types.OptimisticBlock{
-				{BlockHash: chain1End.BlockRef.Hash, OutputRoot: chain1End.OutputRoot},
-				{BlockHash: chain2End.BlockRef.Hash, OutputRoot: chain2End.OutputRoot},
-			},
-			Step: step,
-		}).Marshal()
+		return system.Outputs.TransitionState(startTimestamp, step, allOptimisticBlocks...).Marshal()
 	}
 
 	// Induce block replacement
@@ -334,7 +520,7 @@ func TestInteropFaultProofsInvalidBlock(gt *testing.T) {
 	assertHeads(t, actors.ChainA, 3, 3, 3, 3)
 	assertHeads(t, actors.ChainB, 3, 3, 3, 3)
 
-	crossSafeSuperRootEnd := system.SuperRoot(endTimestamp)
+	crossSafeSuperRootEnd := system.Outputs.SuperRoot(endTimestamp)
 
 	tests := []*transitionTest{
 		{
@@ -386,7 +572,6 @@ func TestInteropFaultProofsInvalidBlock(gt *testing.T) {
 			disputedClaim:      end.Marshal(),
 			disputedTraceIndex: 1023,
 			expectValid:        false,
-			skipProgram:        true,
 			skipChallenger:     true,
 		},
 		{
@@ -395,16 +580,7 @@ func TestInteropFaultProofsInvalidBlock(gt *testing.T) {
 			disputedClaim:      crossSafeSuperRootEnd.Marshal(),
 			disputedTraceIndex: 1023,
 			expectValid:        true,
-			skipProgram:        true,
 			skipChallenger:     true,
-		},
-		{
-			name: "Consolidate-ReplaceBlockInvalidatedByFirstInvalidatedBlock",
-			// Will need to generate an invalid block before this can be enabled
-			// Check that if a block B depends on a log in block A, and block A is found to have an invalid message
-			// that block B is also replaced with a deposit only block because A no longer contains the log it needs
-			skipProgram:    true,
-			skipChallenger: true,
 		},
 		{
 			name:               "AlreadyAtClaimedTimestamp",
@@ -443,70 +619,91 @@ func TestInteropFaultProofsInvalidBlock(gt *testing.T) {
 		},
 	}
 
+	runFppAndChallengerTests(gt, system, tests)
+}
+
+func runFppAndChallengerTests(gt *testing.T, system *dsl.InteropDSL, tests []*transitionTest) {
 	for _, test := range tests {
 		test := test
 		gt.Run(fmt.Sprintf("%s-fpp", test.name), func(gt *testing.T) {
-			t := helpers.NewDefaultTesting(gt)
-			if test.skipProgram {
-				t.Skip("Not yet implemented")
-				return
-			}
-			logger := testlog.Logger(t, slog.LevelInfo)
-			checkResult := fpHelpers.ExpectNoError()
-			if !test.expectValid {
-				checkResult = fpHelpers.ExpectError(claim.ErrClaimNotValid)
-			}
-			l1Head := test.l1Head
-			if l1Head == (common.Hash{}) {
-				l1Head = actors.L1Miner.L1Chain().CurrentBlock().Hash()
-			}
-			fpHelpers.RunFaultProofProgram(
-				t,
-				logger,
-				actors.L1Miner,
-				checkResult,
-				WithInteropEnabled(actors, test.agreedClaim, crypto.Keccak256Hash(test.disputedClaim), endTimestamp),
-				fpHelpers.WithL1Head(l1Head),
-			)
+			runFppTest(gt, test, system.Actors)
 		})
 
 		gt.Run(fmt.Sprintf("%s-challenger", test.name), func(gt *testing.T) {
-			t := helpers.NewDefaultTesting(gt)
-			if test.skipChallenger {
-				t.Skip("Not yet implemented")
-				return
-			}
-			logger := testlog.Logger(t, slog.LevelInfo)
-			prestateProvider := super.NewSuperRootPrestateProvider(&actors.Supervisor.QueryFrontend, startTimestamp)
-			var l1Head eth.BlockID
-			if test.l1Head == (common.Hash{}) {
-				l1Head = eth.ToBlockID(eth.HeaderBlockInfo(actors.L1Miner.L1Chain().CurrentBlock()))
-			} else {
-				l1Head = eth.ToBlockID(actors.L1Miner.L1Chain().GetBlockByHash(test.l1Head))
-			}
-			gameDepth := challengerTypes.Depth(30)
-			rollupCfgs, err := super.NewRollupConfigsFromParsed(actors.ChainA.RollupCfg, actors.ChainB.RollupCfg)
-			require.NoError(t, err)
-			provider := super.NewSuperTraceProvider(logger, rollupCfgs, prestateProvider, &actors.Supervisor.QueryFrontend, l1Head, gameDepth, startTimestamp, endTimestamp)
-			var agreedPrestate []byte
-			if test.disputedTraceIndex > 0 {
-				agreedPrestate, err = provider.GetPreimageBytes(t.Ctx(), challengerTypes.NewPosition(gameDepth, big.NewInt(test.disputedTraceIndex-1)))
-				require.NoError(t, err)
-			} else {
-				superRoot, err := provider.AbsolutePreState(t.Ctx())
-				require.NoError(t, err)
-				agreedPrestate = superRoot.Marshal()
-			}
-			require.Equal(t, test.agreedClaim, agreedPrestate, "agreed prestate mismatch")
-
-			disputedClaim, err := provider.GetPreimageBytes(t.Ctx(), challengerTypes.NewPosition(gameDepth, big.NewInt(test.disputedTraceIndex)))
-			require.NoError(t, err)
-			if test.expectValid {
-				require.Equal(t, test.disputedClaim, disputedClaim, "Claim is correct so should match challenger's opinion")
-			} else {
-				require.NotEqual(t, test.disputedClaim, disputedClaim, "Claim is incorrect so should not match challenger's opinion")
-			}
+			runChallengerTest(gt, test, system.Actors)
 		})
+	}
+}
+
+func runFppTest(gt *testing.T, test *transitionTest, actors *dsl.InteropActors) {
+	t := helpers.NewDefaultTesting(gt)
+	if test.skipProgram {
+		t.Skip("Not yet implemented")
+		return
+	}
+	logger := testlog.Logger(t, slog.LevelInfo)
+	checkResult := fpHelpers.ExpectNoError()
+	if !test.expectValid {
+		checkResult = fpHelpers.ExpectError(claim.ErrClaimNotValid)
+	}
+	l1Head := test.l1Head
+	if l1Head == (common.Hash{}) {
+		l1Head = actors.L1Miner.L1Chain().CurrentBlock().Hash()
+	}
+	proposalTimestamp := test.proposalTimestamp
+	if proposalTimestamp == 0 {
+		proposalTimestamp = actors.ChainA.Sequencer.L2Unsafe().Time
+	}
+	fpHelpers.RunFaultProofProgram(
+		t,
+		logger,
+		actors.L1Miner,
+		checkResult,
+		WithInteropEnabled(actors, test.agreedClaim, crypto.Keccak256Hash(test.disputedClaim), proposalTimestamp),
+		fpHelpers.WithL1Head(l1Head),
+	)
+}
+
+func runChallengerTest(gt *testing.T, test *transitionTest, actors *dsl.InteropActors) {
+	t := helpers.NewDefaultTesting(gt)
+	if test.skipChallenger {
+		t.Skip("Not yet implemented")
+		return
+	}
+	logger := testlog.Logger(t, slog.LevelInfo)
+	endTimestamp := test.proposalTimestamp
+	if endTimestamp == 0 {
+		endTimestamp = actors.ChainA.Sequencer.L2Unsafe().Time
+	}
+	startTimestamp := actors.ChainA.Sequencer.L2Unsafe().Time - 1
+	prestateProvider := super.NewSuperRootPrestateProvider(&actors.Supervisor.QueryFrontend, startTimestamp)
+	var l1Head eth.BlockID
+	if test.l1Head == (common.Hash{}) {
+		l1Head = eth.ToBlockID(eth.HeaderBlockInfo(actors.L1Miner.L1Chain().CurrentBlock()))
+	} else {
+		l1Head = eth.ToBlockID(actors.L1Miner.L1Chain().GetBlockByHash(test.l1Head))
+	}
+	gameDepth := challengerTypes.Depth(30)
+	rollupCfgs, err := super.NewRollupConfigsFromParsed(actors.ChainA.RollupCfg, actors.ChainB.RollupCfg)
+	require.NoError(t, err)
+	provider := super.NewSuperTraceProvider(logger, rollupCfgs, prestateProvider, &actors.Supervisor.QueryFrontend, l1Head, gameDepth, startTimestamp, endTimestamp)
+	var agreedPrestate []byte
+	if test.disputedTraceIndex > 0 {
+		agreedPrestate, err = provider.GetPreimageBytes(t.Ctx(), challengerTypes.NewPosition(gameDepth, big.NewInt(test.disputedTraceIndex-1)))
+		require.NoError(t, err)
+	} else {
+		superRoot, err := provider.AbsolutePreState(t.Ctx())
+		require.NoError(t, err)
+		agreedPrestate = superRoot.Marshal()
+	}
+	require.Equal(t, test.agreedClaim, agreedPrestate, "agreed prestate mismatch")
+
+	disputedClaim, err := provider.GetPreimageBytes(t.Ctx(), challengerTypes.NewPosition(gameDepth, big.NewInt(test.disputedTraceIndex)))
+	require.NoError(t, err)
+	if test.expectValid {
+		require.Equal(t, test.disputedClaim, disputedClaim, "Claim is correct so should match challenger's opinion")
+	} else {
+		require.NotEqual(t, test.disputedClaim, disputedClaim, "Claim is incorrect so should not match challenger's opinion")
 	}
 }
 
@@ -534,6 +731,7 @@ type transitionTest struct {
 	disputedClaim      []byte
 	disputedTraceIndex int64
 	l1Head             common.Hash // Defaults to current L1 head if not set
+	proposalTimestamp  uint64      // Defaults to latest L2 block timestamp if 0
 	expectValid        bool
 	skipProgram        bool
 	skipChallenger     bool

@@ -592,7 +592,7 @@ func (su *SupervisorBackend) SuperRootAtTimestamp(ctx context.Context, timestamp
 }
 
 func (su *SupervisorBackend) SyncStatus() (eth.SupervisorSyncStatus, error) {
-	return su.statusTracker.SyncStatus(), nil
+	return su.statusTracker.SyncStatus()
 }
 
 // PullLatestL1 makes the supervisor aware of the latest L1 block. Exposed for testing purposes.

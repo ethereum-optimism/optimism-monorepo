@@ -115,6 +115,11 @@ contract PreinstallsTest is CommonTest {
         assertEq(vm.getNonce(Preinstalls.BeaconBlockRootsSender), 1, "4788 sender must have nonce=1");
     }
 
+    function test_preinstall_historyStorage_succeeds() external view {
+        assertPreinstall(Preinstalls.HistoryStorage, Preinstalls.HistoryStorageCode);
+        assertEq(vm.getNonce(Preinstalls.HistoryStorageSender), 1, "2935 sender must have nonce=1");
+    }
+
     function test_preinstall_createX_succeeds() external view {
         assertPreinstall(Preinstalls.CreateX, Preinstalls.CreateXCode);
     }
