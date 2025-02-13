@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/ethereum-optimism/optimism/op-service/eth"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/stretchr/testify/require"
 
 	altda "github.com/ethereum-optimism/optimism/op-alt-da"
@@ -27,7 +27,6 @@ import (
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/syncnode"
-	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/frontend"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -105,9 +104,9 @@ func (is *InteropSetup) CreateActors() *InteropActors {
 	l1Miner := helpers.NewL1Miner(is.T, is.Log.New("role", "l1Miner"), is.Out.L1.Genesis)
 	supervisorAPI := NewSupervisor(is.T, is.Log, is.DepSet)
 	supervisorAPI.backend.AttachL1Source(l1Miner.L1ClientSimple(is.T))
-	require.NoError(is.T, supervisorAPI.Start(is.T.Ctx()))
+	require.NoError(is.T, supervisorAPI.backend.Start(is.T.Ctx()))
 	is.T.Cleanup(func() {
-		require.NoError(is.T, supervisorAPI.Stop(context.Background()))
+		require.NoError(is.T, supervisorAPI.backend.Stop(context.Background()))
 	})
 	chainA := createL2Services(is.T, is.Log, l1Miner, is.Keys, is.Out.L2s["900200"])
 	chainB := createL2Services(is.T, is.Log, l1Miner, is.Keys, is.Out.L2s["900201"])
@@ -133,7 +132,6 @@ type SupervisorActor struct {
 	exec    *event.GlobalSyncExec
 	backend *backend.SupervisorBackend
 	Client  *sources.SupervisorClient
-	frontend.AdminFrontend
 }
 
 func (sa *SupervisorActor) ProcessFull(t helpers.Testing) {
@@ -184,21 +182,13 @@ func NewSupervisor(t helpers.Testing, logger log.Logger, depSet depset.Dependenc
 	b.SetConfDepthL1(0)
 
 	rpcServer := helpers.NewSimpleRPCServer()
-	queryFrontend := frontend.QueryFrontend{Supervisor: b}
-	rpcServer.AddAPI(rpc.API{
-		Namespace:     "supervisor",
-		Service:       &queryFrontend,
-		Authenticated: false,
-	})
+	supervisor.RegisterRPCs(logger, svCfg, rpcServer, b)
 	rpcServer.Start(t)
 	supervisorClient := sources.NewSupervisorClient(rpcServer.Connect(t))
 	return &SupervisorActor{
 		exec:    evExec,
 		backend: b,
 		Client:  supervisorClient,
-		AdminFrontend: frontend.AdminFrontend{
-			Supervisor: b,
-		},
 	}
 }
 
