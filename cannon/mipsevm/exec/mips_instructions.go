@@ -314,12 +314,12 @@ func ExecuteMipsInstruction(insn uint32, opcode uint32, fun uint32, rs, rt, mem 
 			return rs ^ rt
 		case 0x27: // nor
 			return ^(rs | rt)
-		case 0x2a: // slti
+		case 0x2a: // slti, slt(SPECIAL)
 			if arch.SignedInteger(rs) < arch.SignedInteger(rt) {
 				return 1
 			}
 			return 0
-		case 0x2b: // sltiu
+		case 0x2b: // sltiu, sltu(SPECIAL)
 			if rs < rt {
 				return 1
 			}
@@ -383,6 +383,9 @@ func ExecuteMipsInstruction(insn uint32, opcode uint32, fun uint32, rs, rt, mem 
 					rs <<= 1
 				}
 				return Word(i)
+			case 0x24: // dclz
+				assertMips64(insn)
+				return Word(bits.LeadingZeros64(uint64(rt)))
 			}
 		case 0x0F: // lui
 			return SignExtend(rt<<16, 32)
@@ -493,7 +496,6 @@ func ExecuteMipsInstruction(insn uint32, opcode uint32, fun uint32, rs, rt, mem 
 			assertMips64(insn)
 			return rt
 		case 0x1f: // SPECIAL3
-			assertMips64(insn)
 			switch fun {
 			case 0x20: // bshfl
 				switch (insn >> 6) & 0x1f {
@@ -501,38 +503,57 @@ func ExecuteMipsInstruction(insn uint32, opcode uint32, fun uint32, rs, rt, mem 
 					return SignExtend(rt&0xFF, 8)
 				case 0x18: // seh
 					return SignExtend(rt&0xFFFF, 16)
+				case 0x2: // wsbh
+					return SignExtend(((rt&0xFF00FF00)>>8)|((rt&0x00FF00FF)<<8), 32)
 				}
 			case 0x3: // dext
+				assertMips64(insn)
 				lsb := (insn >> 6) & 0x1F
 				size := ((insn >> 11) & 0x1F) + 1
 				mask := ((Word(1) << size) - 1) << lsb
 				return Word((rs & mask) >> lsb)
 			case 0x1: // dextm
+				assertMips64(insn)
 				lsb := (insn >> 6) & 0x1F
 				size := ((insn >> 11) & 0x1F) + 1 + 32
 				mask := ((Word(1) << size) - 1) << lsb
 				return Word((rs & mask) >> lsb)
 			case 0x2: // dextu
+				assertMips64(insn)
 				lsb := (insn>>6)&0x1F + 32
 				size := ((insn >> 11) & 0x1F) + 1
 				mask := ((Word(1) << size) - 1) << lsb
 				return Word((rs & mask) >> lsb)
 			case 0x7: // dins
+				assertMips64(insn)
 				lsb := (insn >> 6) & 0x1F
 				size := ((insn >> 11) & 0x1F) + 1 - lsb
 				mask := (Word(1) << size) - 1
 				return (rt & ^(mask << lsb)) | ((rs & mask) << lsb)
 			case 0x5: // dinsm
+				assertMips64(insn)
 				lsb := (insn >> 6) & 0x1F
 				size := ((insn >> 11) & 0x1F) + 1 + 32 - lsb
 				mask := (Word(1) << size) - 1
 				return (rt & ^(mask << lsb)) | ((rs & mask) << lsb)
 			case 0x6: // dinsu
+				assertMips64(insn)
 				lsb := (insn>>6)&0x1F + 32
 				size := ((insn >> 11) & 0x1F) + 1 + 32 - lsb
 				mask := (Word(1) << size) - 1
 				return (rt & ^(mask << lsb)) | ((rs & mask) << lsb)
+			case 0x4: // ins
+				lsb := (insn >> 6) & 0x1F
+				size := ((insn >> 11) & 0x1F) + 1 - lsb
+				mask := (Word(1) << size) - 1
+				return SignExtend(((rt & ^(mask << lsb)) | ((rs & mask) << lsb)), 32)
+			case 0x0: // ext
+				lsb := (insn >> 6) & 0x1F
+				size := ((insn >> 11) & 0x1F) + 1
+				mask := (Word(1) << size) - 1
+				return SignExtend((rt & ^(mask<<lsb))>>lsb, 32)
 			case 0x24: // dbshfl
+				assertMips64(insn)
 				switch (insn >> 6) & 0x1f {
 				case 0x2: // dsbh
 					return Word(((uint64(rt) & 0xFF00FF00FF00FF00) >> 8) | ((uint64(rt) & 0x00FF00FF00FF00FF) << 8))
