@@ -112,6 +112,9 @@ func (bs *BatcherService) initFromCLIConfig(ctx context.Context, version string,
 	bs.ThrottleBlockSize = cfg.ThrottleBlockSize
 	bs.ThrottleAlwaysBlockSize = cfg.ThrottleAlwaysBlockSize
 
+	if err := bs.initRPCClients(ctx, cfg); err != nil {
+		return err
+	}
 	if err := bs.initRollupConfig(ctx); err != nil {
 		return fmt.Errorf("failed to load rollup config: %w", err)
 	}
@@ -134,9 +137,6 @@ func (bs *BatcherService) initFromCLIConfig(ctx context.Context, version string,
 	}
 	if err := bs.initRPCServer(cfg); err != nil {
 		return fmt.Errorf("failed to start RPC server: %w", err)
-	}
-	if err := bs.initRPCClients(ctx, cfg); err != nil {
-		return err
 	}
 	bs.initDriver(opts...)
 
