@@ -709,7 +709,9 @@ contract OPContractsManager is ISemver {
                                 gameConfig.disputeMaxClockDuration,
                                 gameConfig.vm,
                                 outputs[i].delayedWETH,
-                                getAnchorStateRegistry(fdg),
+                                // We can't assume that there is an existing fault dispute game,
+                                // so get the Anchor State Registry from the permissioned game.
+                                getAnchorStateRegistry(pdg),
                                 l2ChainId
                             )
                         )
