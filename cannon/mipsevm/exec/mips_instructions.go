@@ -391,7 +391,7 @@ func ExecuteMipsInstruction(insn uint32, opcode uint32, fun uint32, rs, rt, mem 
 				return Word(i)
 			case 0x24: // dclz
 				assertMips64(insn)
-				return Word(bits.LeadingZeros64(uint64(rt)))
+				return Word(bits.LeadingZeros64(uint64(rs)))
 			}
 		case 0x0F: // lui
 			return SignExtend(rt<<16, 32)
