@@ -70,6 +70,17 @@ func ExecMipsCoreStepLogic(cpu *mipsevm.CpuScalars, registers *[32]Word, memory 
 		// R-type (stores rd)
 		rt = registers[rtReg]
 		rdReg = Word((insn >> 11) & 0x1F)
+	} else if opcode == 0x2f { // SPECIAL3
+		// SPECIAL3 is generally R-type with exceptions
+		assertMips64(insn)
+		if fun == 0x20 || fun == 0x24 { // seb, seh, dsbh, dshd
+			// R-type (stores rd)
+			rdReg = Word((insn >> 11) & 0x1F)
+		} else if fun == 0x3 || fun == 0x1 || fun == 0x2 || fun == 0x7 || fun == 0x5 || fun == 0x6 {
+			// dext, dextm, dextu, dins, dinsm, dinsu
+			// Exception (stores rt)
+			rdReg = Word((insn >> 16) & 0x1F)
+		}
 	} else if opcode < 0x20 {
 		// rt is SignExtImm
 		// don't sign extend for andi, ori, xori
