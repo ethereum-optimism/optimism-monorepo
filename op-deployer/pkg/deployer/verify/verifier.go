@@ -58,6 +58,7 @@ func VerifyCLI(cliCtx *cli.Context) error {
 	l1RPCUrl := cliCtx.String(deployer.L1RPCURLFlagName)
 	workdir := cliCtx.String(deployer.WorkdirFlagName)
 	etherscanAPIKey := cliCtx.String(deployer.EtherscanAPIKeyFlagName)
+	l2ChainIndex := cliCtx.Int(deployer.L2ChainIndexFlagName)
 
 	client, err := ethclient.Dial(l1RPCUrl)
 	if err != nil {
@@ -83,7 +84,7 @@ func VerifyCLI(cliCtx *cli.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to get artifacts: %w", err)
 	}
-	l.Info("Downloaded artifacts", "artifacts", artifactsFS)
+	l.Info("Downloaded artifacts", "path", artifactsFS)
 
 	v, err := NewVerifier(etherscanAPIKey, l1ChainId.Uint64(), st, artifactsFS, l)
 	if err != nil {
@@ -95,15 +96,15 @@ func VerifyCLI(cliCtx *cli.Context) error {
 	contractName := cliCtx.String(deployer.ContractNameFlagName)
 
 	if bundleName == "" && contractName == "" {
-		if err := v.verifyAll(ctx); err != nil {
+		if err := v.verifyAll(ctx, l2ChainIndex); err != nil {
 			return err
 		}
 	} else if bundleName != "" && contractName == "" {
-		if err := v.verifyContractBundle(bundleName); err != nil {
+		if err := v.verifyContractBundle(bundleName, l2ChainIndex); err != nil {
 			return err
 		}
 	} else if bundleName != "" && contractName != "" {
-		if err := v.verifySingleContract(ctx, contractName, bundleName); err != nil {
+		if err := v.verifySingleContract(ctx, contractName, bundleName, l2ChainIndex); err != nil {
 			return err
 		}
 	} else {
@@ -115,18 +116,18 @@ func VerifyCLI(cliCtx *cli.Context) error {
 	return nil
 }
 
-func (v *Verifier) verifyAll(ctx context.Context) error {
+func (v *Verifier) verifyAll(ctx context.Context, l2ChainIndex int) error {
 	for _, bundleName := range inspect.ContractBundles {
-		if err := v.verifyContractBundle(bundleName); err != nil {
+		if err := v.verifyContractBundle(bundleName, l2ChainIndex); err != nil {
 			return fmt.Errorf("failed to verify bundle %s: %w", bundleName, err)
 		}
 	}
 	return nil
 }
 
-func (v *Verifier) verifyContractBundle(bundleName string) error {
+func (v *Verifier) verifyContractBundle(bundleName string, l2ChainIndex int) error {
 	// Retrieve the L1 contracts from state.
-	l1Contracts, err := inspect.L1(v.st, v.st.AppliedIntent.Chains[0].ID)
+	l1Contracts, err := inspect.L1(v.st, v.st.AppliedIntent.Chains[l2ChainIndex].ID)
 	if err != nil {
 		return fmt.Errorf("failed to extract L1 contracts from state: %w", err)
 	}
@@ -162,8 +163,8 @@ func (v *Verifier) verifyContractBundle(bundleName string) error {
 	return nil
 }
 
-func (v *Verifier) verifySingleContract(ctx context.Context, contractName string, bundleName string) error {
-	l1Contracts, err := inspect.L1(v.st, v.st.AppliedIntent.Chains[0].ID)
+func (v *Verifier) verifySingleContract(ctx context.Context, contractName string, bundleName string, l2ChainIndex int) error {
+	l1Contracts, err := inspect.L1(v.st, v.st.AppliedIntent.Chains[l2ChainIndex].ID)
 	if err != nil {
 		return fmt.Errorf("failed to extract L1 contracts from state: %w", err)
 	}
