@@ -28,6 +28,7 @@ import { IL1CrossDomainMessenger } from "interfaces/L1/IL1CrossDomainMessenger.s
 import { IL1ERC721Bridge } from "interfaces/L1/IL1ERC721Bridge.sol";
 import { IL1StandardBridge } from "interfaces/L1/IL1StandardBridge.sol";
 import { IOptimismMintableERC20Factory } from "interfaces/universal/IOptimismMintableERC20Factory.sol";
+import { IHasSuperchainConfig } from "interfaces/L1/IHasSuperchainConfig.sol";
 
 contract OPContractsManager is ISemver {
     // -------- Structs --------
@@ -1195,10 +1196,4 @@ contract OPContractsManager is ISemver {
         }
         setDGFImplementation(IDisputeGameFactory(_opChainAddrs.disputeGameFactory), _gameType, IDisputeGame(newGame));
     }
-}
-
-/// @notice Generic interface for contracts that have a superchain config
-interface IHasSuperchainConfig {
-    /// @notice Retrieves the superchain config for a given contract
-    function superchainConfig() external view returns (ISuperchainConfig);
 }
