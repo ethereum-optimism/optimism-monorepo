@@ -45,19 +45,19 @@ archives:
       - goos: windows
         format: zip
 
-dockers:
-  - id: default
-    goos: linux
-    goarch: amd64
-    dockerfile: Dockerfile.default
-    image_templates:
-      - "us-docker.pkg.dev/oplabs-tools-artifacts/images/op-deployer:{{ .Tag }}"
-  - id: minimal
-    goos: linux
-    goarch: amd64
-    dockerfile: Dockerfile.minimal
-    image_templates:
-      - "us-docker.pkg.dev/oplabs-tools-artifacts/images/op-deployer:{{ .Tag }}-minimal"
+# dockers:
+#   - id: default
+#     goos: linux
+#     goarch: amd64
+#     dockerfile: Dockerfile.default
+#     image_templates:
+#       - "us-docker.pkg.dev/oplabs-tools-artifacts/images/op-deployer:{{ .Tag }}"
+#   - id: minimal
+#     goos: linux
+#     goarch: amd64
+#     dockerfile: Dockerfile.minimal
+#     image_templates:
+#       - "us-docker.pkg.dev/oplabs-tools-artifacts/images/op-deployer:{{ .Tag }}-minimal"
 
 changelog:
   sort: asc
@@ -66,11 +66,11 @@ changelog:
       - "^docs:"
       - "^test:"
 
-release:
-  github:
-    owner: ethereum-optimism
-    name: optimism
-  make_latest: false
+# release:
+#   github:
+#     owner: ethereum-optimism
+#     name: optimism
+#   make_latest: false
 
 monorepo:
   tag_prefix: op-deployer/

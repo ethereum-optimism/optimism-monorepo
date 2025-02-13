@@ -1585,7 +1585,7 @@ workflows:
             tags:
               only: /^op-deployer.*/
             branches:
-              ignore: /.*/
+              only: yash/homebrew-builds-for-op-deployer
           module: op-deployer
           brew_release: true
           context:
