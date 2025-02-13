@@ -72,8 +72,8 @@ func TestInterop_IsolatedChains(t *testing.T) {
 		// send a tx from Alice to Bob
 		s2.SendL2Tx(
 			chainA,
-			"Alice",
 			"sequencer",
+			"Alice",
 			func(l2Opts *helpers.TxOpts) {
 				l2Opts.ToAddr = &bobAddr
 				l2Opts.Value = big.NewInt(1000000)

@@ -266,5 +266,5 @@ func (m *MockProcessorSource) BlockRefByNumber(ctx context.Context, num uint64) 
 }
 
 func (m *MockProcessorSource) ExpectBlockRefByNumber(num uint64, ref eth.BlockRef, err error) {
-	m.Mock.On("BlockRefByNumber", num).Once().Return(ref, err)
+	m.Mock.On("BlockRefByNumber", num).Return(ref, err)
 }
