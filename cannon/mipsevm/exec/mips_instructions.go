@@ -509,51 +509,51 @@ func ExecuteMipsInstruction(insn uint32, opcode uint32, fun uint32, rs, rt, mem 
 					return SignExtend(rt&0xFF, 8)
 				case 0x18: // seh
 					return SignExtend(rt&0xFFFF, 16)
-				case 0x2: // wsbh
+				case 0x02: // wsbh
 					return SignExtend(((rt&0xFF00FF00)>>8)|((rt&0x00FF00FF)<<8), 32)
 				}
-			case 0x3: // dext
+			case 0x03: // dext
 				assertMips64(insn)
 				lsb := (insn >> 6) & 0x1F
 				size := ((insn >> 11) & 0x1F) + 1
 				mask := ((Word(1) << size) - 1) << lsb
 				return Word((rs & mask) >> lsb)
-			case 0x1: // dextm
+			case 0x01: // dextm
 				assertMips64(insn)
 				lsb := (insn >> 6) & 0x1F
 				size := ((insn >> 11) & 0x1F) + 1 + 32
 				mask := ((Word(1) << size) - 1) << lsb
 				return Word((rs & mask) >> lsb)
-			case 0x2: // dextu
+			case 0x02: // dextu
 				assertMips64(insn)
 				lsb := (insn>>6)&0x1F + 32
 				size := ((insn >> 11) & 0x1F) + 1
 				mask := ((Word(1) << size) - 1) << lsb
 				return Word((rs & mask) >> lsb)
-			case 0x7: // dins
+			case 0x07: // dins
 				assertMips64(insn)
 				lsb := (insn >> 6) & 0x1F
 				size := ((insn >> 11) & 0x1F) + 1 - lsb
 				mask := (Word(1) << size) - 1
 				return (rt & ^(mask << lsb)) | ((rs & mask) << lsb)
-			case 0x5: // dinsm
+			case 0x05: // dinsm
 				assertMips64(insn)
 				lsb := (insn >> 6) & 0x1F
 				size := ((insn >> 11) & 0x1F) + 1 + 32 - lsb
 				mask := (Word(1) << size) - 1
 				return (rt & ^(mask << lsb)) | ((rs & mask) << lsb)
-			case 0x6: // dinsu
+			case 0x06: // dinsu
 				assertMips64(insn)
 				lsb := (insn>>6)&0x1F + 32
 				size := ((insn >> 11) & 0x1F) + 1 + 32 - lsb
 				mask := (Word(1) << size) - 1
 				return (rt & ^(mask << lsb)) | ((rs & mask) << lsb)
-			case 0x4: // ins
+			case 0x04: // ins
 				lsb := (insn >> 6) & 0x1F
 				size := ((insn >> 11) & 0x1F) + 1 - lsb
 				mask := (Word(1) << size) - 1
 				return SignExtend(((rt & ^(mask << lsb)) | ((rs & mask) << lsb)), 32)
-			case 0x0: // ext
+			case 0x00: // ext
 				lsb := (insn >> 6) & 0x1F
 				size := ((insn >> 11) & 0x1F) + 1
 				mask := (Word(1) << size) - 1
@@ -561,9 +561,9 @@ func ExecuteMipsInstruction(insn uint32, opcode uint32, fun uint32, rs, rt, mem 
 			case 0x24: // dbshfl
 				assertMips64(insn)
 				switch (insn >> 6) & 0x1f {
-				case 0x2: // dsbh
+				case 0x02: // dsbh
 					return Word(((uint64(rt) & 0xFF00FF00FF00FF00) >> 8) | ((uint64(rt) & 0x00FF00FF00FF00FF) << 8))
-				case 0x5: // dshd
+				case 0x05: // dshd
 					return Word(((uint64(rt) & 0xFFFF) << 48) | (((uint64(rt) >> 16) & 0xFFFF) << 32) | (((uint64(rt) >> 32) & 0xFFFF) << 16) | ((uint64(rt) >> 48) & 0xFFFF))
 				}
 			}
@@ -634,7 +634,7 @@ func HandleBranch(cpu *mipsevm.CpuScalars, registers *[32]Word, opcode uint32, i
 }
 
 // HandleHiLo handles instructions that modify HI and LO registers. It also additionally handles doubleword variable shift operations
-func HandleHiLo(cpu *mipsevm.CpuScalars, registers *[32]Word, insn uint32, fun uint32, rs Word, rt Word, storeReg Word) error {
+func HandleHiLo(cpu *mipsevm.CpuScalars, registers *[32]Word, insn, fun uint32, rs Word, rt Word, storeReg Word) error {
 	val := Word(0)
 	switch fun {
 	case 0x10: // mfhi
