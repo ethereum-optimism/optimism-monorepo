@@ -12,6 +12,7 @@ snapshots = 'notarealpath' # workaround for foundry#9477
 
 optimizer = true
 optimizer_runs = 999999
+use_literal_content = true
 
 # IMPORTANT:
 # When adding any new compiler profiles or compilation restrictions, you must
