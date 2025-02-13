@@ -53,17 +53,18 @@ func (v *Verifier) verifyContract(address common.Address, contractName string) e
 	}
 
 	data := url.Values{
-		"apikey":           {v.apiKey},
-		"module":           {"contract"},
-		"action":           {"verifysourcecode"},
-		"contractaddress":  {address.Hex()},
-		"codeformat":       {"solidity-standard-json-input"},
-		"sourceCode":       {source.StandardInput},
-		"contractname":     {source.ContractName},
-		"compilerversion":  {fmt.Sprintf("v%s", source.CompilerVersion)},
-		"optimizationUsed": {optimized},
-		"runs":             {fmt.Sprintf("%d", source.OptimizationRuns)},
-		"evmversion":       {source.EVMVersion},
+		"apikey":                {v.apiKey},
+		"module":                {"contract"},
+		"action":                {"verifysourcecode"},
+		"contractaddress":       {address.Hex()},
+		"codeformat":            {"solidity-standard-json-input"},
+		"sourceCode":            {source.StandardInput},
+		"contractname":          {source.ContractName},
+		"compilerversion":       {fmt.Sprintf("v%s", source.CompilerVersion)},
+		"optimizationUsed":      {optimized},
+		"runs":                  {fmt.Sprintf("%d", source.OptimizationRuns)},
+		"evmversion":            {source.EVMVersion},
+		"constructorArguements": {source.ConstructorArgs},
 	}
 
 	req, err := http.NewRequest("POST", v.etherscanUrl, strings.NewReader(data.Encode()))

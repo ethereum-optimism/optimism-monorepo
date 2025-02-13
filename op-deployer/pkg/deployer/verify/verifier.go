@@ -2,11 +2,8 @@ package verify
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"path"
 	"reflect"
-	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -68,7 +65,7 @@ func VerifyCLI(cliCtx *cli.Context) error {
 	}
 
 	ctx := ctxinterrupt.WithCancelOnInterrupt(cliCtx.Context)
-	chainID, err := client.ChainID(ctx)
+	l1ChainId, err := client.ChainID(ctx)
 	if err != nil {
 		return err
 	}
@@ -78,71 +75,78 @@ func VerifyCLI(cliCtx *cli.Context) error {
 		return fmt.Errorf("failed to read state: %w", err)
 	}
 
+	if l1ChainId.Uint64() != st.AppliedIntent.L1ChainID {
+		return fmt.Errorf("rpc l1 chain ID does not match state l1 chain ID: %d != %d", l1ChainId, st.AppliedIntent.L1ChainID)
+	}
+
 	artifactsFS, err := artifacts.Download(ctx, st.AppliedIntent.L1ContractsLocator, nil)
 	if err != nil {
 		return fmt.Errorf("failed to get artifacts: %w", err)
 	}
 	l.Info("Downloaded artifacts", "artifacts", artifactsFS)
 
-	v, err := NewVerifier(etherscanAPIKey, chainID.Uint64(), st, artifactsFS, l)
+	v, err := NewVerifier(etherscanAPIKey, l1ChainId.Uint64(), st, artifactsFS, l)
 	if err != nil {
 		return fmt.Errorf("failed to create verifier: %w", err)
 	}
 
-	if cliCtx.Args().Len() > 0 {
-		// If a contract name is provided, verify just that contract
-		bundleName := cliCtx.String(deployer.ContractBundleFlagName)
-		contractName := cliCtx.Args().First()
-		if err := v.VerifySingleContract(ctx, contractName, bundleName); err != nil {
+	// Retrieve the CLI flags for the contract bundle and contract name.
+	bundleName := cliCtx.String(deployer.ContractBundleFlagName)
+	contractName := cliCtx.String(deployer.ContractNameFlagName)
+
+	if bundleName == "" && contractName == "" {
+		if err := v.verifyAll(ctx); err != nil {
+			return err
+		}
+	} else if bundleName != "" && contractName == "" {
+		if err := v.verifyContractBundle(bundleName); err != nil {
+			return err
+		}
+	} else if bundleName != "" && contractName != "" {
+		if err := v.verifySingleContract(ctx, contractName, bundleName); err != nil {
 			return err
 		}
 	} else {
-		if err := v.VerifyAll(ctx, client, workdir); err != nil {
-			return err
+		// If a contract name is provided without a contract bundle, report an error.
+		return fmt.Errorf("contract-name flag provided without contract-bundle flag")
+	}
+
+	v.log.Info("--- SUCCESS ---")
+	return nil
+}
+
+func (v *Verifier) verifyAll(ctx context.Context) error {
+	for _, bundleName := range inspect.ContractBundles {
+		if err := v.verifyContractBundle(bundleName); err != nil {
+			return fmt.Errorf("failed to verify bundle %s: %w", bundleName, err)
 		}
 	}
-
-	v.log.Info("--- SUCCESS --- all requested contracts verified")
 	return nil
 }
 
-func (v *Verifier) VerifySingleContract(ctx context.Context, contractName string, bundleName string) error {
+func (v *Verifier) verifyContractBundle(bundleName string) error {
+	// Retrieve the L1 contracts from state.
 	l1Contracts, err := inspect.L1(v.st, v.st.AppliedIntent.Chains[0].ID)
 	if err != nil {
 		return fmt.Errorf("failed to extract L1 contracts from state: %w", err)
 	}
 
-	v.log.Info("Looking up contract address", "name", contractName, "bundle", bundleName)
-	addr, err := l1Contracts.GetContractAddress(contractName, bundleName)
-	if err != nil {
-		return fmt.Errorf("failed to find address for contract %s: %w", contractName, err)
+	// Select the appropriate bundle based on the input bundleName.
+	var bundle interface{}
+	switch bundleName {
+	case "superchain":
+		bundle = l1Contracts.SuperchainDeployment
+	case "opchain":
+		bundle = l1Contracts.OpChainDeployment
+	case "implementations":
+		bundle = l1Contracts.ImplementationsDeployment
+	default:
+		return fmt.Errorf("invalid contract bundle: %s", bundleName)
 	}
 
-	return v.verifyContract(addr, contractName)
-}
-
-func (v *Verifier) VerifyAll(ctx context.Context, client *ethclient.Client, workdir string) error {
-	l1Contracts, err := inspect.L1(v.st, v.st.AppliedIntent.Chains[0].ID)
-	if err != nil {
-		return fmt.Errorf("failed to extract L1 contracts from state: %w", err)
-	}
-
-	if err := v.verifyContractBundle(l1Contracts.SuperchainDeployment); err != nil {
-		return err
-	}
-	if err := v.verifyContractBundle(l1Contracts.OpChainDeployment); err != nil {
-		return err
-	}
-	if err := v.verifyContractBundle(l1Contracts.ImplementationsDeployment); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (v *Verifier) verifyContractBundle(s interface{}) error {
-	val := reflect.ValueOf(s)
+	// Use reflection to iterate over fields of the bundle.
+	val := reflect.ValueOf(bundle)
 	typ := val.Type()
-
 	for i := 0; i < val.NumField(); i++ {
 		field := val.Field(i)
 		if field.Type() == reflect.TypeOf(common.Address{}) {
@@ -158,129 +162,17 @@ func (v *Verifier) verifyContractBundle(s interface{}) error {
 	return nil
 }
 
-type ContractArtifact struct {
-	ContractName     string
-	CompilerVersion  string
-	OptimizationUsed bool
-	OptimizationRuns int
-	EVMVersion       string
-	StandardInput    string
-}
-
-var exceptions = map[string]string{
-	"OptimismPortalImpl":          "OptimismPortal2",
-	"L1StandardBridgeProxy":       "L1ChugSplashProxy",
-	"L1CrossDomainMessengerProxy": "ResolvedDelegateProxy",
-	"Opcm":                        "OPContractsManager",
-}
-
-func getArtifactName(name string) string {
-	lookupName := strings.TrimSuffix(name, "Address")
-
-	if artifactName, exists := exceptions[lookupName]; exists {
-		return artifactName
-	}
-
-	// Handle standard cases
-	lookupName = strings.TrimSuffix(lookupName, "Proxy")
-	lookupName = strings.TrimSuffix(lookupName, "Impl")
-	lookupName = strings.TrimSuffix(lookupName, "Singleton")
-
-	// If it was a proxy and not a special case, return "Proxy"
-	if strings.HasSuffix(name, "ProxyAddress") {
-		return "Proxy"
-	}
-
-	return lookupName
-}
-
-func (v *Verifier) getContractArtifact(name string) (*ContractArtifact, error) {
-	artifactName := getArtifactName(name)
-	artifactPath := path.Join(artifactName+".sol", artifactName+".json")
-
-	v.log.Info("Opening artifact", "path", artifactPath, "name", name)
-	f, err := v.artifactsFS.Open(artifactPath)
+func (v *Verifier) verifySingleContract(ctx context.Context, contractName string, bundleName string) error {
+	l1Contracts, err := inspect.L1(v.st, v.st.AppliedIntent.Chains[0].ID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open artifact: %w", err)
-	}
-	defer f.Close()
-
-	var art foundry.Artifact
-	if err := json.NewDecoder(f).Decode(&art); err != nil {
-		return nil, fmt.Errorf("failed to decode artifact: %w", err)
+		return fmt.Errorf("failed to extract L1 contracts from state: %w", err)
 	}
 
-	// Add all sources (main contract and dependencies)
-	sources := make(map[string]map[string]string)
-	for sourcePath, sourceInfo := range art.Metadata.Sources {
-		key := sourcePath
-		// If the source comes from OpenZeppelin, adjust the key to match the Solidity import.
-		if strings.HasPrefix(sourcePath, "lib/openzeppelin-contracts/contracts/") {
-			key = strings.Replace(sourcePath, "lib/openzeppelin-contracts/contracts/", "@openzeppelin/contracts/", 1)
-		}
-
-		sources[key] = map[string]string{
-			"content": sourceInfo.Content,
-		}
-		v.log.Info("added source", "originalPath", sourcePath, "key", key)
-	}
-
-	var optimizer struct {
-		Enabled bool `json:"enabled"`
-		Runs    int  `json:"runs"`
-	}
-	if err := json.Unmarshal(art.Metadata.Settings.Optimizer, &optimizer); err != nil {
-		return nil, fmt.Errorf("failed to parse optimizer settings: %w", err)
-	}
-
-	standardInput := map[string]interface{}{
-		"language": "Solidity",
-		"sources":  sources,
-		"settings": map[string]interface{}{
-			"optimizer": map[string]interface{}{
-				"enabled": optimizer.Enabled,
-				"runs":    optimizer.Runs,
-			},
-			"evmVersion": art.Metadata.Settings.EVMVersion,
-			"metadata": map[string]interface{}{
-				"useLiteralContent": true,
-				"bytecodeHash":      "none",
-			},
-			"outputSelection": map[string]interface{}{
-				"*": map[string]interface{}{
-					"*": []string{
-						"abi",
-						"evm.bytecode.object",
-						"evm.bytecode.sourceMap",
-						"evm.deployedBytecode.object",
-						"evm.deployedBytecode.sourceMap",
-						"metadata",
-					},
-				},
-			},
-		},
-	}
-
-	standardInputJSON, err := json.Marshal(standardInput)
+	v.log.Info("Looking up contract address", "name", contractName, "bundle", bundleName)
+	addr, err := l1Contracts.GetContractAddress(contractName, bundleName)
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate standard input: %w", err)
+		return fmt.Errorf("failed to find address for contract %s: %w", contractName, err)
 	}
 
-	// Get the contract name from the compilation target
-	var contractName string
-	for contractFile, name := range art.Metadata.Settings.CompilationTarget {
-		contractName = contractFile + ":" + name
-		break
-	}
-
-	v.log.Info("contractName", "name", contractName)
-
-	return &ContractArtifact{
-		ContractName:     contractName,
-		CompilerVersion:  art.Metadata.Compiler.Version,
-		OptimizationUsed: optimizer.Enabled,
-		OptimizationRuns: optimizer.Runs,
-		EVMVersion:       art.Metadata.Settings.EVMVersion,
-		StandardInput:    string(standardInputJSON),
-	}, nil
+	return v.verifyContract(addr, contractName)
 }

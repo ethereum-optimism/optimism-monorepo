@@ -27,6 +27,12 @@ const (
 	OpChainBundle         = "opchain"
 )
 
+var ContractBundles = []string{
+	SuperchainBundle,
+	ImplementationsBundle,
+	OpChainBundle,
+}
+
 func (l L1Contracts) GetContractAddress(name string, bundleName string) (common.Address, error) {
 	var bundle interface{}
 	switch bundleName {
