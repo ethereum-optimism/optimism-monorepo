@@ -46,8 +46,8 @@ Versioning for individual contracts works as follows:
 - New contracts start at `1.0.0`.
 
 Versioning is enforced by CI checks:
- - Any contract that differs from its version in the `develop` branch must be bumped to a new semver value, or the build will fail.
-  - Any branch with at least one modified contract must have its `semver-lock.json` file updated, or the build will fail. You can use the `semver-lock` or `semver-lock-no-build` just commands to do so.
+  - Any contract that differs from its version in the `develop` branch must be bumped to a new semver value, or the build will fail.
+  - Any branch with at least one modified contract must have its `semver-lock.json` file updated, or the build will fail. You can use the `semver-lock` or `pre-commit` just commands to do so.
 
 Note: Previously, the versioning scheme included `-beta.n` and `-rc.n` qualifiers. These are no longer used to reduce the amount of work required to execute this versioning system.
 
