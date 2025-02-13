@@ -112,10 +112,6 @@ func (bs *BatcherService) initFromCLIConfig(ctx context.Context, version string,
 	bs.ThrottleBlockSize = cfg.ThrottleBlockSize
 	bs.ThrottleAlwaysBlockSize = cfg.ThrottleAlwaysBlockSize
 
-	bs.initDriver(opts...)
-	if err := bs.initRPCClients(ctx, cfg, bs.driver.activeSequencerChanged); err != nil {
-		return err
-	}
 	if err := bs.initRollupConfig(ctx); err != nil {
 		return fmt.Errorf("failed to load rollup config: %w", err)
 	}
@@ -136,9 +132,25 @@ func (bs *BatcherService) initFromCLIConfig(ctx context.Context, version string,
 	if err := bs.initPProf(cfg); err != nil {
 		return fmt.Errorf("failed to init profiling: %w", err)
 	}
-
 	if err := bs.initRPCServer(cfg); err != nil {
 		return fmt.Errorf("failed to start RPC server: %w", err)
+	}
+	if err := bs.initRPCClients(ctx, cfg); err != nil {
+		return err
+	}
+	bs.initDriver(opts...)
+
+	// If we use an active endpoint provider, we need to set up the callback to notify the driver any time we
+	// get a new active sequencer
+	if provider, ok := bs.EndpointProvider.(*dial.ActiveL2EndpointProvider); ok {
+		// callback to notify the driver of a new active sequencer
+		cb := func() {
+			select {
+			case bs.driver.activeSequencerChanged <- struct{}{}:
+			default:
+			}
+		}
+		provider.ActiveL2RollupProvider.SetOnActiveProviderChanged(cb)
 	}
 
 	bs.Metrics.RecordInfo(bs.Version)
@@ -146,7 +158,7 @@ func (bs *BatcherService) initFromCLIConfig(ctx context.Context, version string,
 	return nil
 }
 
-func (bs *BatcherService) initRPCClients(ctx context.Context, cfg *CLIConfig, activeSequencerChanged chan struct{}) error {
+func (bs *BatcherService) initRPCClients(ctx context.Context, cfg *CLIConfig) error {
 	l1Client, err := dial.DialEthClientWithTimeout(ctx, dial.DefaultDialTimeout, bs.Log, cfg.L1EthRpc)
 	if err != nil {
 		return fmt.Errorf("failed to dial L1 RPC: %w", err)
@@ -158,15 +170,7 @@ func (bs *BatcherService) initRPCClients(ctx context.Context, cfg *CLIConfig, ac
 		rollupUrls := strings.Split(cfg.RollupRpc, ",")
 		ethUrls := strings.Split(cfg.L2EthRpc, ",")
 
-		// callback to notify the driver of a new active sequencer
-		cb := func() {
-			select {
-			case bs.driver.activeSequencerChanged <- struct{}{}:
-			default:
-			}
-		}
-
-		endpointProvider, err = dial.NewActiveL2EndpointProvider(ctx, ethUrls, rollupUrls, cfg.ActiveSequencerCheckDuration, dial.DefaultDialTimeout, bs.Log, cb)
+		endpointProvider, err = dial.NewActiveL2EndpointProvider(ctx, ethUrls, rollupUrls, cfg.ActiveSequencerCheckDuration, dial.DefaultDialTimeout, bs.Log, nil)
 	} else {
 		endpointProvider, err = dial.NewStaticL2EndpointProvider(ctx, bs.Log, cfg.L2EthRpc, cfg.RollupRpc)
 	}

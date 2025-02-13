@@ -34,6 +34,10 @@ type ActiveL2RollupProvider struct {
 	onActiveProviderChanged func()
 }
 
+func (a *ActiveL2RollupProvider) SetOnActiveProviderChanged(onActiveProviderChanged func()) {
+	a.onActiveProviderChanged = onActiveProviderChanged
+}
+
 // NewActiveL2RollupProvider creates a new ActiveL2RollupProvider
 // the checkDuration is the duration between checks to see if the current rollup client is active
 // provide a checkDuration of 0 to check every time
