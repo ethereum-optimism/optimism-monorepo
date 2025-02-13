@@ -1378,14 +1378,14 @@ jobs:
     steps:
       - setup_remote_docker
       - gcp-cli/install
-      - gcp-oidc-authenticate:
-          gcp_cred_config_file_path: /tmp/gcp_cred_config.json
-          oidc_token_file_path: /tmp/oidc_token.json
+      # - gcp-oidc-authenticate:
+      #     gcp_cred_config_file_path: /tmp/gcp_cred_config.json
+      #     oidc_token_file_path: /tmp/oidc_token.json
       - utils/checkout-with-mise
-      - run:
-          name: Configure Docker
-          command: |
-            gcloud auth configure-docker us-docker.pkg.dev
+      # - run:
+      #     name: Configure Docker
+      #     command: |
+      #       gcloud auth configure-docker us-docker.pkg.dev
       - when:
           condition: << parameters.brew_release >>
           steps:
