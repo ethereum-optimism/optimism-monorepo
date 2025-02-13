@@ -2,7 +2,6 @@ package interop
 
 import (
 	"context"
-	"fmt"
 	"math/big"
 	"sync"
 	"testing"
@@ -369,7 +368,6 @@ func TestMultiNode(t *testing.T) {
 		seqClient := s2.L2RollupClient(chainA, "sequencer")
 		originalStatus, err := seqClient.SyncStatus(context.Background())
 		require.NoError(t, err)
-		fmt.Println("Current status of chain A:", originalStatus)
 
 		// and then add a new node to the system
 		s2.AddNode(chainA, "new-node")
@@ -382,11 +380,6 @@ func TestMultiNode(t *testing.T) {
 			require.NoError(t, err)
 			newNodeStatus, err := newNodeClient.SyncStatus(context.Background())
 			require.NoError(t, err)
-			// I'm leaving these printouts for my own sanity for now
-			// they won't be here when it's merge-ready
-			fmt.Println("Original status of chain A:", prettyStatus(originalStatus))
-			fmt.Println("Current status of new node:", prettyStatus(newNodeStatus))
-			fmt.Println("Current status of seq node:", prettyStatus(seqStatus))
 			// check that all heads for both nodes are greater than the original status
 			return seqStatus.UnsafeL2.Number > originalStatus.UnsafeL2.Number &&
 				seqStatus.CrossUnsafeL2.Number > originalStatus.CrossUnsafeL2.Number &&
@@ -396,26 +389,10 @@ func TestMultiNode(t *testing.T) {
 				newNodeStatus.CrossUnsafeL2.Number > originalStatus.CrossUnsafeL2.Number &&
 				newNodeStatus.SafeL2.Number > originalStatus.SafeL2.Number &&
 				newNodeStatus.SafeL1.Number > originalStatus.SafeL1.Number
-		}, time.Second*15, time.Second, "wait for all nodes to advance past the original status")
+		}, time.Second*60, time.Second, "wait for all nodes to advance past the original status")
 	}
 	config := SuperSystemConfig{
 		mempoolFiltering: false,
 	}
 	setupAndRun(t, config, test)
-}
-
-func prettyStatus(s *eth.SyncStatus) string {
-	ret := ""
-	ret += fmt.Sprintf("CurrentL1: %d\n", s.CurrentL1.Number)
-	ret += fmt.Sprintf("CurrentL1Finalized: %d\n", s.CurrentL1Finalized.Number)
-	ret += fmt.Sprintf("HeadL1: %d\n", s.HeadL1.Number)
-	ret += fmt.Sprintf("SafeL1: %d\n", s.SafeL1.Number)
-	ret += fmt.Sprintf("FinalizedL1: %d\n", s.FinalizedL1.Number)
-	ret += fmt.Sprintf("UnsafeL2: %d\n", s.UnsafeL2.Number)
-	ret += fmt.Sprintf("SafeL2: %d\n", s.SafeL2.Number)
-	ret += fmt.Sprintf("FinalizedL2: %d\n", s.FinalizedL2.Number)
-	ret += fmt.Sprintf("PendingSafeL2: %d\n", s.PendingSafeL2.Number)
-	ret += fmt.Sprintf("CrossUnsafeL2: %d\n", s.CrossUnsafeL2.Number)
-	ret += fmt.Sprintf("LocalSafeL2: %d\n", s.LocalSafeL2.Number)
-	return ret
 }

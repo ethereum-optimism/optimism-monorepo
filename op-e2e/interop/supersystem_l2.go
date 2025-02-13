@@ -3,7 +3,6 @@ package interop
 import (
 	"context"
 	"crypto/ecdsa"
-	"fmt"
 	"math/big"
 	"time"
 
@@ -59,10 +58,6 @@ type l2Net struct {
 func (s *interopE2ESystem) L2GethClient(id string, name string) *ethclient.Client {
 	net := s.l2s[id]
 	node := net.nodes[name]
-	fmt.Println("id", id)
-	fmt.Println("net", net)
-	fmt.Println("name", name)
-	fmt.Println("node", node)
 	if node.gethClient != nil {
 		return node.gethClient
 	}
@@ -103,8 +98,8 @@ func (s *interopE2ESystem) L2RollupClient(id string, name string) *sources.Rollu
 // it returns a l2Set with the resources for the L2
 func (s *interopE2ESystem) newL2(id string, l2Out *interopgen.L2Output) l2Net {
 	operatorKeys := s.newOperatorKeysForL2(l2Out)
-	l2Geth := s.newGethForL2(id, l2Out)
-	opNode := s.newNodeForL2(id, l2Out, operatorKeys, l2Geth, true, "sequencer")
+	l2Geth := s.newGethForL2(id, "sequencer", l2Out)
+	opNode := s.newNodeForL2(id, "sequencer", l2Out, operatorKeys, l2Geth, true)
 	// TODO(#11886): proposer does not work with the generated world as there is no DisputeGameFactoryProxy
 	//proposer := s.newProposerForL2(id, operatorKeys, opNode)
 	batcher := s.newBatcherForL2(id, operatorKeys, l2Geth, opNode)
@@ -123,23 +118,23 @@ func (s *interopE2ESystem) newL2(id string, l2Out *interopgen.L2Output) l2Net {
 
 func (s *interopE2ESystem) AddNode(id string, name string) {
 	l2 := s.l2s[id]
-	l2Geth := s.newGethForL2(id, l2.l2Out)
-	opNode := s.newNodeForL2(id, l2.l2Out, l2.operatorKeys, l2Geth, false, name)
+	l2Geth := s.newGethForL2(id, name, l2.l2Out)
+	opNode := s.newNodeForL2(id, name, l2.l2Out, l2.operatorKeys, l2Geth, false)
 	l2.nodes[name] = &l2Node{name: name, opNode: opNode, l2Geth: l2Geth}
 
-	// add the node to the supervisor
 	endpoint, secret := l2.nodes[name].opNode.InteropRPC()
-	s.SupervisorClient().AddL2RPC(context.Background(), endpoint, secret)
+	err := s.SupervisorClient().AddL2RPC(context.Background(), endpoint, secret)
+	require.NoError(s.t, err, "failed to add L2 RPC to supervisor")
 }
 
 // newNodeForL2 creates a new Opnode for an L2 chain
 func (s *interopE2ESystem) newNodeForL2(
 	id string,
+	name string,
 	l2Out *interopgen.L2Output,
 	operatorKeys map[devkeys.ChainOperatorRole]ecdsa.PrivateKey,
 	l2Geth *geth.GethInstance,
 	isSequencer bool,
-	name string,
 ) *opnode.Opnode {
 	logger := s.logger.New("role", "op-node-"+id+"-"+name)
 	p2pKey := operatorKeys[devkeys.SequencerP2PRole]
@@ -201,9 +196,9 @@ func (s *interopE2ESystem) newNodeForL2(
 }
 
 // newGethForL2 creates a new Geth instance for an L2 chain
-func (s *interopE2ESystem) newGethForL2(id string, l2Out *interopgen.L2Output) *geth.GethInstance {
+func (s *interopE2ESystem) newGethForL2(id string, node string, l2Out *interopgen.L2Output) *geth.GethInstance {
 	jwtPath := writeDefaultJWT(s.t)
-	name := "l2-" + id
+	name := "l2-" + id + "-" + node
 	l2Geth, err := geth.InitL2(name, l2Out.Genesis, jwtPath,
 		func(ethCfg *ethconfig.Config, nodeCfg *gn.Config) error {
 			ethCfg.InteropMessageRPC = s.supervisor.RPC()
