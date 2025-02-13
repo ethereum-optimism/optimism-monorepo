@@ -440,6 +440,16 @@ contract OPContractsManager is ISemver {
         return output;
     }
 
+    /// @notice Verifies that all OpChainConfig inputs are valid and reverts if any are invalid.
+    function assertValidOpChainConfig(OpChainConfig memory _config) internal view {
+        if (address(_config.systemConfigProxy) == address(0)) {
+            revert AddressNotFound(address(_config.systemConfigProxy));
+        }
+        if (address(_config.proxyAdmin) == address(0)) revert AddressNotFound(address(_config.proxyAdmin));
+        assertValidContractAddress(address(_config.systemConfigProxy));
+        assertValidContractAddress(address(_config.proxyAdmin));
+    }
+
     /// @notice Upgrades a set of chains to the latest implementation contracts
     /// @param _opChainConfigs Array of OpChain structs, one per chain to upgrade
     /// @dev This function is intended to be called via DELEGATECALL from the Upgrade Controller Safe
@@ -468,6 +478,8 @@ contract OPContractsManager is ISemver {
         }
 
         for (uint256 i = 0; i < _opChainConfigs.length; i++) {
+            assertValidOpChainConfig(_opChainConfigs[i]);
+
             // After Upgrade 13, we will be able to use systemConfigProxy.getAddresses() here.
             ISystemConfig.Addresses memory opChainAddrs = ISystemConfig.Addresses({
                 l1CrossDomainMessenger: _opChainConfigs[i].systemConfigProxy.l1CrossDomainMessenger(),
