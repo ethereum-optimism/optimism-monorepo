@@ -1,8 +1,8 @@
 optimism_package:
   chains:
     - participants:
-      - el_type: op-reth
-        el_image: ""
+      - el_type: op-geth
+        el_image: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-geth:v1.101500.0-rc.3
         el_log_level: ""
         el_extra_env_vars: {}
         el_extra_labels: {}
@@ -28,8 +28,8 @@ optimism_package:
         node_selectors: {}
         tolerations: []
         count: 1
-      - el_type: op-geth
-        el_image: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-geth:v1.101500.0-rc.3
+      - el_type: op-reth
+        el_image: ""
         el_log_level: ""
         el_extra_env_vars: {}
         el_extra_labels: {}
