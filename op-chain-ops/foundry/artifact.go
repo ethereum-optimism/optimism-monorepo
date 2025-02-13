@@ -88,7 +88,7 @@ type Metadata struct {
 
 	Settings struct {
 		// Remappings of the contract imports
-		Remappings json.RawMessage `json:"remappings"`
+		Remappings []string `json:"remappings"`
 		// Optimizer settings affect the compiler output, but can be arbitrary.
 		// We load them opaquely, to include it in the hash of what we run.
 		Optimizer json.RawMessage `json:"optimizer"`
@@ -164,4 +164,27 @@ func ReadArtifact(path string) (*Artifact, error) {
 		return nil, err
 	}
 	return &artifact, nil
+}
+
+// SearchRemappings applies the configured remappings to a given source path.
+// It assumes that each remapping is of the form "alias/=actualPath".
+func (a Artifact) SearchRemappings(sourcePath string) string {
+	for _, mapping := range a.Metadata.Settings.Remappings {
+		parts := strings.Split(mapping, "/=")
+		if len(parts) != 2 {
+			continue
+		}
+		alias := parts[0]
+		if !strings.HasSuffix(alias, "/") {
+			alias += "/"
+		}
+		actualPath := parts[1]
+		if !strings.HasSuffix(actualPath, "/") {
+			actualPath += "/"
+		}
+		if strings.HasPrefix(sourcePath, actualPath) {
+			return alias + sourcePath[len(actualPath):]
+		}
+	}
+	return sourcePath
 }

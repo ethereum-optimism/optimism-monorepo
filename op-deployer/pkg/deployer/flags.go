@@ -121,14 +121,19 @@ var (
 	}
 	EtherscanAPIKeyFlag = &cli.StringFlag{
 		Name:     EtherscanAPIKeyFlagName,
-		Usage:    "Etherscan API key for contract verification.",
+		Usage:    "etherscan API key for contract verification.",
 		EnvVars:  PrefixEnvVar("ETHERSCAN_API_KEY"),
 		Required: true,
 	}
 	ContractBundleFlag = &cli.StringFlag{
 		Name:    ContractBundleFlagName,
-		Usage:   "Which contract bundle/grouping to use (superchain, opchain, or implementations)",
+		Usage:   "contract bundle/grouping to verify (superchain, opchain, or implementations)",
 		EnvVars: PrefixEnvVar("CONTRACT_BUNDLE"),
+	}
+	ContractNameFlag = &cli.StringFlag{
+		Name:    ContractNameFlagName,
+		Usage:   "contract name (mathcing a field within state.json) to verify",
+		EnvVars: PrefixEnvVar("CONTRACT_NAME"),
 	}
 )
 
@@ -159,6 +164,7 @@ var VerifyFlags = []cli.Flag{
 	WorkdirFlag,
 	EtherscanAPIKeyFlag,
 	ContractBundleFlag,
+	ContractNameFlag,
 }
 
 func PrefixEnvVar(name string) []string {
