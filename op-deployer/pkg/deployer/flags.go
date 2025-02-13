@@ -135,6 +135,12 @@ var (
 		Usage:   "contract name (mathcing a field within state.json) to verify",
 		EnvVars: PrefixEnvVar("CONTRACT_NAME"),
 	}
+	L2ChainIndexFlag = &cli.IntFlag{
+		Name:    "l2-chain-index",
+		Usage:   "index of the L2 chain within the state.AppliedIntent.Chains array",
+		EnvVars: PrefixEnvVar("L2_CHAIN_INDEX"),
+		Value:   0,
+	}
 )
 
 var GlobalFlags = append([]cli.Flag{CacheDirFlag}, oplog.CLIFlags(EnvVarPrefix)...)
@@ -165,6 +171,7 @@ var VerifyFlags = []cli.Flag{
 	EtherscanAPIKeyFlag,
 	ContractBundleFlag,
 	ContractNameFlag,
+	L2ChainIndexFlag,
 }
 
 func PrefixEnvVar(name string) []string {

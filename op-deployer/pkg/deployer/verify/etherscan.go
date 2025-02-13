@@ -30,8 +30,6 @@ func getAPIEndpoint(chainID uint64) string {
 }
 
 func (v *Verifier) verifyContract(address common.Address, contractName string) error {
-	v.log.Info("Preparing contract verification", "name", contractName, "address", address.Hex())
-
 	verified, err := v.isVerified(address)
 	if err != nil {
 		return fmt.Errorf("failed to check verification status: %w", err)
@@ -40,8 +38,8 @@ func (v *Verifier) verifyContract(address common.Address, contractName string) e
 		v.log.Info("Contract is already verified", "name", contractName, "address", address.Hex())
 		return nil
 	}
-	v.log.Info("Formatting etherscan verification request", "name", contractName, "address", address.Hex())
 
+	v.log.Info("Formatting etherscan verification request", "name", contractName, "address", address.Hex())
 	source, err := v.getContractArtifact(contractName)
 	if err != nil {
 		return fmt.Errorf("failed to get contract source: %w", err)
