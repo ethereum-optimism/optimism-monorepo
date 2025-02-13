@@ -1368,6 +1368,10 @@ jobs:
         description: Goreleaser config file
         default: .goreleaser.yaml
         type: string
+      brew_release:
+        description: Whether to setup GitHub token for brew release
+        type: boolean
+        default: false
     docker:
       - image: <<pipeline.parameters.default_docker_image>>
     resource_class: large
@@ -1382,6 +1386,13 @@ jobs:
           name: Configure Docker
           command: |
             gcloud auth configure-docker us-docker.pkg.dev
+      - when:
+          condition: << parameters.brew_release >>
+          steps:
+            - utils/setup-circleci-utils-and-github-token:
+                # GoReleaser uses the GITHUB_TOKEN environment variable to authenticate with GitHub
+                github-app-repo: ethereum-optimism/homebrew-tap
+                github-token: GITHUB_TOKEN
       - run:
           name: Run goreleaser
           command: |
@@ -1576,6 +1587,7 @@ workflows:
             branches:
               ignore: /.*/
           module: op-deployer
+          brew_release: true
           context:
             - oplabs-gcr-release
 
