@@ -174,41 +174,42 @@ func TestWallet(t *testing.T) {
 		wantPrivKey types.Key
 	}{
 		{
-			name:        "valid wallet",
-			privateKey:  "0xabc",
-			address:     common.HexToAddress("0x123"),
-			wantAddr:    common.HexToAddress("0x123"),
-			wantPrivKey: "abc",
+			name:       "valid wallet",
+			privateKey: "0xabc",
+			address:    common.HexToAddress("0x123"),
+			wantAddr:   common.HexToAddress("0x123"),
 		},
 		{
-			name:        "empty wallet",
-			privateKey:  "",
-			address:     common.HexToAddress("0x123"),
-			wantAddr:    common.HexToAddress("0x123"),
-			wantPrivKey: "",
+			name:       "empty wallet",
+			privateKey: "",
+			address:    common.HexToAddress("0x123"),
+			wantAddr:   common.HexToAddress("0x123"),
 		},
 		{
-			name:        "only address",
-			privateKey:  "",
-			address:     common.HexToAddress("0x456"),
-			wantAddr:    common.HexToAddress("0x456"),
-			wantPrivKey: "",
+			name:       "only address",
+			privateKey: "",
+			address:    common.HexToAddress("0x456"),
+			wantAddr:   common.HexToAddress("0x456"),
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			w := newWallet(tt.privateKey, tt.address, chain)
+			w, err := newWallet(tt.privateKey, tt.address, chain)
+			assert.Nil(t, err)
+
 			assert.Equal(t, tt.wantAddr, w.Address())
-			assert.Equal(t, tt.wantPrivKey, w.PrivateKey())
 		})
 	}
 }
 
 func TestChainUser(t *testing.T) {
 	chain := newChain("1", "http://localhost:8545", nil)
-	testWallet := newWallet("0xabc", common.HexToAddress("0x123"), chain)
-	chain.users = map[string]types.Wallet{
+
+	testWallet, err := newWallet("0xabc", common.HexToAddress("0x123"), chain)
+	assert.Nil(t, err)
+
+	chain.users = map[string]Wallet{
 		"l2Faucet": testWallet,
 	}
 

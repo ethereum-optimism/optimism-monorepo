@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/ethereum-optimism/optimism/devnet-sdk/descriptors"
-	"github.com/ethereum-optimism/optimism/devnet-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
 )
@@ -15,7 +14,7 @@ func TestClientManager(t *testing.T) {
 	manager := newClientManager()
 
 	t.Run("returns error for invalid URL", func(t *testing.T) {
-		_, err := manager.getClient("invalid://url")
+		_, err := manager.Client("invalid://url")
 		assert.Error(t, err)
 	})
 
@@ -24,9 +23,9 @@ func TestClientManager(t *testing.T) {
 		url := "http://this.domain.definitely.does.not.exist:8545"
 
 		// First call should create new client
-		client1, err1 := manager.getClient(url)
+		client1, err1 := manager.Client(url)
 		// Second call should return cached client
-		client2, err2 := manager.getClient(url)
+		client2, err2 := manager.Client(url)
 
 		// Both calls should succeed in creating a client
 		assert.NoError(t, err1)
@@ -69,7 +68,8 @@ func TestChainFromDescriptor(t *testing.T) {
 		},
 	}
 
-	chain := chainFromDescriptor(descriptor)
+	chain, err := chainFromDescriptor(descriptor)
+	assert.Nil(t, err)
 	assert.NotNil(t, chain)
 	assert.Equal(t, "http://localhost:8545", chain.RPCURL())
 
@@ -83,8 +83,11 @@ func TestChainWallet(t *testing.T) {
 	ctx := context.Background()
 	testAddr := common.HexToAddress("0x1234567890123456789012345678901234567890")
 
-	chain := newChain("1", "http://localhost:8545", map[string]types.Wallet{
-		"user1": newWallet("1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef", testAddr, nil),
+	wallet, err := newWallet("1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef", testAddr, nil)
+	assert.Nil(t, err)
+
+	chain := newChain("1", "http://localhost:8545", map[string]Wallet{
+		"user1": wallet,
 	})
 
 	t.Run("finds wallet meeting constraints", func(t *testing.T) {
@@ -107,7 +110,7 @@ type addressConstraint struct {
 	addr common.Address
 }
 
-func (c *addressConstraint) CheckWallet(w types.Wallet) bool {
+func (c *addressConstraint) CheckWallet(w Wallet) bool {
 	return w.Address() == c.addr
 }
 

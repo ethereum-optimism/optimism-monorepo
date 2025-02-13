@@ -21,7 +21,7 @@ type testWallet struct {
 }
 
 func (w *testWallet) Balance() types.Balance {
-	// Use the mock client directly instead of going through getClient()
+	// Use the mock client directly instead of going through Client()
 	balance, err := w.chain.client.BalanceAt(context.Background(), w.address, nil)
 	if err != nil {
 		return types.NewBalance(new(big.Int))
@@ -98,7 +98,7 @@ type internalMockChain struct {
 	*mockChain
 }
 
-func (m *internalMockChain) getClient() (*ethclient.Client, error) {
+func (m *internalMockChain) Client() (*ethclient.Client, error) {
 	args := m.Called()
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -194,7 +194,7 @@ func TestWallet_Balance(t *testing.T) {
 	}
 
 	// Test error case when client is not available
-	mockChain.On("getClient").Return(nil, assert.AnError).Once()
+	mockChain.On("Client").Return(nil, assert.AnError).Once()
 	balance := w.Balance()
 	assert.Equal(t, types.Balance{}, balance)
 }
@@ -207,7 +207,7 @@ func TestWallet_Nonce(t *testing.T) {
 	}
 
 	// Test error case when client is not available
-	mockChain.On("getClient").Return(nil, assert.AnError).Once()
+	mockChain.On("Client").Return(nil, assert.AnError).Once()
 	nonce := w.Nonce()
 	assert.Equal(t, uint64(0), nonce)
 }

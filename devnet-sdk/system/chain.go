@@ -17,6 +17,11 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
+var (
+	// This will make sure that we implement the Chain interface
+	_ Chain = (*chain)(nil)
+)
+
 // clientManager handles ethclient connections
 type clientManager struct {
 	mu      sync.RWMutex
@@ -29,7 +34,7 @@ func newClientManager() *clientManager {
 	}
 }
 
-func (m *clientManager) getClient(rpcURL string) (*ethclient.Client, error) {
+func (m *clientManager) Client(rpcURL string) (*ethclient.Client, error) {
 	m.mu.RLock()
 	if client, ok := m.clients[rpcURL]; ok {
 		m.mu.RUnlock()
@@ -63,8 +68,8 @@ type chain struct {
 	mu       sync.Mutex
 }
 
-func (c *chain) getClient() (*ethclient.Client, error) {
-	return c.clients.getClient(c.rpcUrl)
+func (c *chain) Client() (*ethclient.Client, error) {
+	return c.clients.Client(c.rpcUrl)
 }
 
 func newChain(chainID string, rpcUrl string, users map[string]Wallet) *chain {
@@ -84,7 +89,7 @@ func (c *chain) ContractsRegistry() interfaces.ContractsRegistry {
 		return c.registry
 	}
 
-	client, err := c.getClient()
+	client, err := c.Client()
 	if err != nil {
 		return contracts.NewEmptyRegistry()
 	}
@@ -132,7 +137,7 @@ func (c *chain) ID() types.ChainID {
 }
 
 func (c *chain) GasPrice(ctx context.Context) (*big.Int, error) {
-	client, err := c.getClient()
+	client, err := c.Client()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get client: %w", err)
 	}
@@ -140,7 +145,7 @@ func (c *chain) GasPrice(ctx context.Context) (*big.Int, error) {
 }
 
 func (c *chain) GasLimit(ctx context.Context, tx TransactionData) (uint64, error) {
-	client, err := c.getClient()
+	client, err := c.Client()
 	if err != nil {
 		return 0, fmt.Errorf("failed to get client: %w", err)
 	}
@@ -160,23 +165,11 @@ func (c *chain) GasLimit(ctx context.Context, tx TransactionData) (uint64, error
 }
 
 func (c *chain) PendingNonceAt(ctx context.Context, address common.Address) (uint64, error) {
-	client, err := c.getClient()
+	client, err := c.Client()
 	if err != nil {
 		return 0, fmt.Errorf("failed to get client: %w", err)
 	}
 	return client.PendingNonceAt(ctx, address)
-}
-
-func (c *chain) TransactionProcessor() (TransactionProcessor, error) {
-	client, err := c.getClient()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get client: %w", err)
-	}
-	return &transactionProcessor{
-		client:     client,
-		chainID:    c.ID(),
-		privateKey: nil,
-	}, nil
 }
 
 func checkHeader(ctx context.Context, client *ethclient.Client, check func(*coreTypes.Header) bool) bool {
@@ -188,7 +181,7 @@ func checkHeader(ctx context.Context, client *ethclient.Client, check func(*core
 }
 
 func (c *chain) SupportsEIP(ctx context.Context, eip uint64) bool {
-	client, err := c.getClient()
+	client, err := c.Client()
 	if err != nil {
 		return false
 	}

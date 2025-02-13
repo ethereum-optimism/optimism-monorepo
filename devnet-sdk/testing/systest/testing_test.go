@@ -89,9 +89,6 @@ func (m *mockChain) GasLimit(ctx context.Context, tx system.TransactionData) (ui
 func (m *mockChain) PendingNonceAt(ctx context.Context, address common.Address) (uint64, error) {
 	return 0, nil
 }
-func (m *mockChain) TransactionProcessor() (system.TransactionProcessor, error) {
-	return &mockTransactionProcessor{}, nil
-}
 func (m *mockChain) SupportsEIP(ctx context.Context, eip uint64) bool {
 	return true
 }
