@@ -135,6 +135,8 @@ contract PermissionedDisputeGame_Test is PermissionedDisputeGame_Init {
     bytes internal absolutePrestateData;
     /// @dev The absolute prestate of the trace.
     Claim internal absolutePrestate;
+    /// @dev A valid l2BlockNumber that comes after the current anchor root block.
+    uint256 validL2BlockNumber;
 
     function setUp() public override {
         absolutePrestateData = abi.encode(0);
@@ -144,8 +146,9 @@ contract PermissionedDisputeGame_Test is PermissionedDisputeGame_Init {
 
         // Get the actual anchor roots
         (Hash root, uint256 l2BlockNumber) = anchorStateRegistry.getAnchorRoot();
+        validL2BlockNumber = l2BlockNumber + 1;
         rootClaim = Claim.wrap(Hash.unwrap(root));
-        super.init({ rootClaim: rootClaim, absolutePrestate: absolutePrestate, l2BlockNumber: l2BlockNumber + 1 });
+        super.init({ rootClaim: rootClaim, absolutePrestate: absolutePrestate, l2BlockNumber: validL2BlockNumber });
     }
 
     /// @dev Tests that the game's version function returns a string.
@@ -155,22 +158,20 @@ contract PermissionedDisputeGame_Test is PermissionedDisputeGame_Init {
 
     /// @dev Tests that the proposer can create a permissioned dispute game.
     function test_createGame_proposer_succeeds() public {
-        (, uint256 l2BlockNumber) = anchorStateRegistry.getAnchorRoot();
         uint256 bondAmount = disputeGameFactory.initBonds(GAME_TYPE);
         vm.prank(PROPOSER, PROPOSER);
-        disputeGameFactory.create{ value: bondAmount }(GAME_TYPE, rootClaim, abi.encode(l2BlockNumber + 2));
+        disputeGameFactory.create{ value: bondAmount }(GAME_TYPE, rootClaim, abi.encode(validL2BlockNumber + 1));
     }
 
     /// @dev Tests that the permissioned game cannot be created by any address other than the proposer.
     function testFuzz_createGame_notProposer_reverts(address _p) public {
         vm.assume(_p != PROPOSER);
 
-        (, uint256 l2BlockNumber) = anchorStateRegistry.getAnchorRoot();
         uint256 bondAmount = disputeGameFactory.initBonds(GAME_TYPE);
         vm.deal(_p, bondAmount);
         vm.prank(_p, _p);
         vm.expectRevert(BadAuth.selector);
-        disputeGameFactory.create{ value: bondAmount }(GAME_TYPE, rootClaim, abi.encode(l2BlockNumber + 2));
+        disputeGameFactory.create{ value: bondAmount }(GAME_TYPE, rootClaim, abi.encode(validL2BlockNumber + 1));
     }
 
     /// @dev Tests that the challenger can participate in a permissioned dispute game.

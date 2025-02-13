@@ -129,7 +129,7 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
     bytes internal absolutePrestateData;
     /// @dev The absolute prestate of the trace.
     Claim internal absolutePrestate;
-    /// @dev The l2BlockNumber of the current anchor root during setup.
+    /// @dev A valid l2BlockNumber that comes after the current anchor root block.
     uint256 validL2BlockNumber;
 
     function setUp() public override {

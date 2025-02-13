@@ -12,9 +12,6 @@ import { IFaultDisputeGame } from "interfaces/dispute/IFaultDisputeGame.sol";
 import { IAnchorStateRegistry } from "interfaces/dispute/IAnchorStateRegistry.sol";
 
 contract AnchorStateRegistry_Init is FaultDisputeGame_Init {
-    /// @dev The root claim of the game.
-    Claim internal rootClaim;
-
     event AnchorNotUpdated(IFaultDisputeGame indexed game);
     event AnchorUpdated(IFaultDisputeGame indexed game);
 
@@ -27,7 +24,7 @@ contract AnchorStateRegistry_Init is FaultDisputeGame_Init {
 
         // Get the actual anchor roots
         (Hash root, uint256 l2BlockNumber) = anchorStateRegistry.getAnchorRoot();
-        rootClaim = Claim.wrap(Hash.unwrap(root));
+        Claim rootClaim = Claim.wrap(Hash.unwrap(root));
         super.init({ rootClaim: rootClaim, absolutePrestate: absolutePrestate, l2BlockNumber: l2BlockNumber + 1 });
     }
 }
