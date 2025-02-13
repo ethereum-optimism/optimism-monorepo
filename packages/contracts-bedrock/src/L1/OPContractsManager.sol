@@ -458,7 +458,7 @@ contract OPContractsManager is ISemver {
         // If this is delegatecalled by the upgrade controller, set isRC to false first, else, continue execution.
         if (address(this) == upgradeController) {
             // Set isRC to false.
-            // This function asserts that the caller is the upgrade controller.
+            // This function asserts that the caller is the upgrade controller
             thisOPCM.setRC(false);
         }
 
