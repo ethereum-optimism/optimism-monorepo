@@ -452,10 +452,6 @@ contract OPContractsManager is ISemver {
 
     /// @notice Verifies that all OpChainConfig inputs are valid and reverts if any are invalid.
     function assertValidOpChainConfig(OpChainConfig memory _config) internal view {
-        if (address(_config.systemConfigProxy) == address(0)) {
-            revert AddressNotFound(address(_config.systemConfigProxy));
-        }
-        if (address(_config.proxyAdmin) == address(0)) revert AddressNotFound(address(_config.proxyAdmin));
         assertValidContractAddress(address(_config.systemConfigProxy));
         assertValidContractAddress(address(_config.proxyAdmin));
     }
@@ -644,11 +640,6 @@ contract OPContractsManager is ISemver {
 
         for (uint256 i = 0; i < _gameConfigs.length; i++) {
             AddGameInput memory gameConfig = _gameConfigs[i];
-
-            // Game config depth must be greater than 73 and split depth must be greater than 30
-            if (gameConfig.disputeMaxGameDepth < 73 || gameConfig.disputeSplitDepth < 30) {
-                revert InvalidGameConfigs();
-            }
 
             // This conversion is safe because the GameType is a uint32, which will always fit in an int256.
             int256 gameTypeInt = int256(uint256(gameConfig.disputeGameType.raw()));
