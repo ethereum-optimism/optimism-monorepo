@@ -72,10 +72,6 @@ changelog:
 #     name: optimism
 #   make_latest: false
 
-monorepo:
-  tag_prefix: op-deployer/
-  dir: op-deployer
-
 brews:
   - name: op-deployer
     homepage: "https://github.com/ethereum-optimism/optimism/op-deployer"
