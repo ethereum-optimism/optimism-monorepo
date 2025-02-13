@@ -37,7 +37,7 @@ func NewVerifier(apiKey string, l1ChainID uint64, st *state.State, artifactsFS f
 		return nil, fmt.Errorf("unsupported L1 chain ID: %d", l1ChainID)
 	}
 
-	v := &Verifier{
+	return &Verifier{
 		apiKey:       apiKey,
 		l1ChainID:    l1ChainID,
 		st:           st,
@@ -45,9 +45,7 @@ func NewVerifier(apiKey string, l1ChainID uint64, st *state.State, artifactsFS f
 		log:          l,
 		etherscanUrl: etherscanUrl,
 		rateLimiter:  rate.NewLimiter(rate.Limit(3), 2),
-	}
-
-	return v, nil
+	}, nil
 }
 
 func VerifyCLI(cliCtx *cli.Context) error {
@@ -135,12 +133,12 @@ func (v *Verifier) verifyContractBundle(bundleName string, l2ChainIndex int) err
 	// Select the appropriate bundle based on the input bundleName.
 	var bundle interface{}
 	switch bundleName {
-	case "superchain":
+	case inspect.SuperchainBundle:
 		bundle = l1Contracts.SuperchainDeployment
-	case "opchain":
-		bundle = l1Contracts.OpChainDeployment
-	case "implementations":
+	case inspect.ImplementationsBundle:
 		bundle = l1Contracts.ImplementationsDeployment
+	case inspect.OpChainBundle:
+		bundle = l1Contracts.OpChainDeployment
 	default:
 		return fmt.Errorf("invalid contract bundle: %s", bundleName)
 	}

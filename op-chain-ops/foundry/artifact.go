@@ -18,20 +18,12 @@ import (
 // JSON marshaling logic is implemented to maintain the ability
 // to roundtrip serialize an artifact
 type Artifact struct {
-	ABI               abi.ABI
-	abi               json.RawMessage
-	StorageLayout     solc.StorageLayout
-	DeployedBytecode  DeployedBytecode
-	Bytecode          Bytecode
-	Metadata          Metadata
-	ContractName      string            `json:"contractName"`
-	Version           string            `json:"version"`
-	Source            string            `json:"source"`
-	Language          string            `json:"language"`
-	CompilerVersion   string            `json:"compiler"`
-	License           string            `json:"license"`
-	MethodIdentifiers map[string]string `json:"methodIdentifiers"`
-	GasEstimates      json.RawMessage   `json:"gasEstimates"`
+	ABI              abi.ABI
+	abi              json.RawMessage
+	StorageLayout    solc.StorageLayout
+	DeployedBytecode DeployedBytecode
+	Bytecode         Bytecode
+	Metadata         Metadata
 }
 
 func (a *Artifact) UnmarshalJSON(data []byte) error {
@@ -49,7 +41,6 @@ func (a *Artifact) UnmarshalJSON(data []byte) error {
 	a.DeployedBytecode = artifact.DeployedBytecode
 	a.Bytecode = artifact.Bytecode
 	a.Metadata = artifact.Metadata
-	a.Source = artifact.Source
 	return nil
 }
 
@@ -60,7 +51,6 @@ func (a Artifact) MarshalJSON() ([]byte, error) {
 		DeployedBytecode: a.DeployedBytecode,
 		Bytecode:         a.Bytecode,
 		Metadata:         a.Metadata,
-		Source:           a.Source,
 	}
 	return json.Marshal(artifact)
 }
