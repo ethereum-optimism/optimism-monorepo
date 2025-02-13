@@ -115,8 +115,7 @@ contract OPPrestateUpdater is OPContractsManager {
                 getGameConstructorParams(IFaultDisputeGame(address(pdg)));
             uint256 initBond = dgf.initBonds(GameTypes.PERMISSIONED_CANNON);
 
-            string memory saltMixer =
-                string.concat("prestate_update", string(abi.encode(_prestateUpdateInputs[i].systemConfigProxy)));
+            string memory saltMixer = reusableSaltMixer(_prestateUpdateInputs[i]);
             // Create game input with updated prestate but same other params
             pdgInput = AddGameInput({
                 disputeAbsolutePrestate: _prestateUpdateInputs[i].absolutePrestate,
