@@ -2,17 +2,22 @@ package system
 
 import (
 	"context"
+	"iter"
 	"math/big"
 	"testing"
 
-	"github.com/ethereum-optimism/optimism/devnet-sdk/constraints"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/interfaces"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+)
+
+var (
+	_ Chain = (*mockChain)(nil)
 )
 
 // mockWallet implements types.Wallet for testing
@@ -22,7 +27,7 @@ type mockWallet struct {
 
 func (m *mockWallet) PrivateKey() types.Key {
 	args := m.Called()
-	return args.String(0)
+	return args.Get(0).(types.Key)
 }
 
 func (m *mockWallet) Address() types.Address {
@@ -63,14 +68,12 @@ func (m *mockTransactionProcessor) Send(ctx context.Context, tx Transaction) err
 // mockChain implements the Chain interface for testing
 type mockChain struct {
 	mock.Mock
-	txProcessor *mockTransactionProcessor
-	wallet      *mockWallet
+	wallet *mockWallet
 }
 
 func newMockChain() *mockChain {
 	return &mockChain{
-		txProcessor: new(mockTransactionProcessor),
-		wallet:      new(mockWallet),
+		wallet: new(mockWallet),
 	}
 }
 
@@ -109,20 +112,13 @@ func (m *mockChain) RPCURL() string {
 	return args.String(0)
 }
 
-func (m *mockChain) TransactionProcessor() (TransactionProcessor, error) {
+func (m *mockChain) Client() (*ethclient.Client, error) {
 	args := m.Called()
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return m.txProcessor, args.Error(1)
+	return args.Get(0).(*ethclient.Client), nil
 }
 
-func (m *mockChain) Wallet(ctx context.Context, constraints ...constraints.WalletConstraint) (types.Wallet, error) {
-	args := m.Called(ctx, constraints)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return m.wallet, args.Error(1)
+func (m *mockChain) Wallets(ctx context.Context) iter.Seq[Wallet] {
+	return nil
 }
 
 func TestNewTxBuilder(t *testing.T) {

@@ -6,7 +6,6 @@ import (
 	"math/big"
 
 	"github.com/ethereum-optimism/optimism/devnet-sdk/contracts/bindings"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -27,8 +26,6 @@ type InvocationResult interface {
 	Error() error
 	Wait() error
 }
-
-type Signer = *bind.TransactOpts
 
 type Key = *ecdsa.PrivateKey
 

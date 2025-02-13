@@ -19,7 +19,7 @@ func (m *mockEthClient) SendTransaction(ctx context.Context, tx *types.Transacti
 func TestTransactionProcessor_Sign(t *testing.T) {
 	// Test private key and corresponding address
 	// DO NOT use this key for anything other than testing
-	testKey := "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+	// testKey := "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
 	testAddr := common.HexToAddress("0x96216849c49358B10257cb55b28eA603c874b05E")
 
 	chainID := big.NewInt(1)
@@ -90,12 +90,7 @@ func TestTransactionProcessor_Sign(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			key := testKey
-			if tt.wantErr {
-				key = "invalid"
-			}
-
-			signedTx, err := processor.Sign(tt.tx, key)
+			signedTx, err := processor.Sign(tt.tx)
 			if tt.wantErr {
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), tt.errMessage)

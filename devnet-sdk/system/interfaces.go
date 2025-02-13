@@ -2,13 +2,15 @@ package system
 
 import (
 	"context"
+	"iter"
 	"math/big"
 
-	"github.com/ethereum-optimism/optimism/devnet-sdk/constraints"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/interfaces"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/types"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	coreTypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/ethclient"
 )
 
 // System represents a complete Optimism system with L1 and L2 chains
@@ -23,11 +25,10 @@ type System interface {
 type Chain interface {
 	RPCURL() string
 	ID() types.ChainID
-	Wallet(ctx context.Context, constraints ...constraints.WalletConstraint) (Wallet, error)
+	Client() (*ethclient.Client, error)
+	Wallets(ctx context.Context) iter.Seq[Wallet]
 	ContractsRegistry() interfaces.ContractsRegistry
 	SupportsEIP(ctx context.Context, eip uint64) bool
-
-	TransactionProcessor() (TransactionProcessor, error)
 
 	GasPrice(ctx context.Context) (*big.Int, error)
 	GasLimit(ctx context.Context, tx TransactionData) (uint64, error)
@@ -80,8 +81,8 @@ type Wallet interface {
 	Balance() types.Balance
 	Nonce() uint64
 
-	Signer() types.Signer
-
 	Sign(tx Transaction) (Transaction, error)
 	Send(ctx context.Context, tx Transaction) error
+
+	Transactor() *bind.TransactOpts
 }
