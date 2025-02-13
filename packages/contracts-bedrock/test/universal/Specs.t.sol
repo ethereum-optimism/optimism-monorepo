@@ -237,7 +237,7 @@ contract Specification_Test is CommonTest {
         _addSpec({
             _name: "OptimismPortalInterop",
             _sel: _getSel(
-                "proveWithdrawalTransaction((uint256,address,address,uint256,uint256,bytes),uint256,uint256,bytes,(bytes32,bytes32,bytes32,bytes32),bytes[])"
+                "proveWithdrawalTransaction((uint256,address,address,uint256,uint256,bytes),uint256,(bytes,uint256,uint256),(bytes32,bytes32,bytes32,bytes32),bytes[])"
             ),
             _pausable: true
         });

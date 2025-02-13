@@ -8,7 +8,7 @@ import { CommonTest } from "test/setup/CommonTest.sol";
 import { Constants } from "src/libraries/Constants.sol";
 import { Predeploys } from "src/libraries/Predeploys.sol";
 import { Types } from "src/libraries/Types.sol";
-import { OutputRootWithChainId, SUPER_ROOT_VERSION } from "src/libraries/SuperRoot.sol";
+import { OutputRootWithChainId, SuperRootProof, SUPER_ROOT_VERSION } from "src/libraries/SuperRoot.sol";
 import "src/dispute/lib/Types.sol";
 import "src/libraries/PortalErrors.sol";
 
@@ -125,8 +125,7 @@ contract OptimismPortalInterop_Test is CommonTest {
         _optimismPortalInterop().proveWithdrawalTransaction({
             _tx: defaultTx,
             _disputeGameIndex: disputeGameFactory.gameCount() - 1,
-            _l2ChainId: 10,
-            _rawSuperRoot: rawSuperRoot,
+            _superRootProof: SuperRootProof({ rawSuperRoot: rawSuperRoot, l2ChainId: 10, index: 0 }),
             _outputRootProof: _outputRootProof,
             _withdrawalProof: withdrawalProof
         });

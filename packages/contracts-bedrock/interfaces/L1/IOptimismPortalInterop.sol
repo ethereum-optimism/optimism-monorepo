@@ -8,6 +8,7 @@ import { IDisputeGameFactory } from "interfaces/dispute/IDisputeGameFactory.sol"
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 import { ConfigType } from "interfaces/L2/IL1BlockInterop.sol";
+import { SuperRootProof } from "src/libraries/SuperRoot.sol";
 
 interface IOptimismPortalInterop {
     error AlreadyFinalized();
@@ -33,7 +34,6 @@ interface IOptimismPortalInterop {
     error UnexpectedString();
     error Unproven();
     error LegacyGame();
-    error OutputRootNotFound();
     error InvalidVersion();
     error UnexpectedLength();
 
@@ -87,8 +87,7 @@ interface IOptimismPortalInterop {
     function proveWithdrawalTransaction(
         Types.WithdrawalTransaction memory _tx,
         uint256 _disputeGameIndex,
-        uint256 _l2ChainId,
-        bytes memory _rawSuperRoot,
+        SuperRootProof memory _superRootProof,
         Types.OutputRootProof memory _outputRootProof,
         bytes[] memory _withdrawalProof
     ) external;

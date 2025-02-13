@@ -10,7 +10,7 @@ import { Constants } from "src/libraries/Constants.sol";
 import { Unauthorized } from "src/libraries/PortalErrors.sol";
 import { SecureMerkleTrie } from "src/libraries/trie/SecureMerkleTrie.sol";
 import { Hashing } from "src/libraries/Hashing.sol";
-import { LibSuperRoot, SuperRoot } from "src/libraries/SuperRoot.sol";
+import { LibSuperRoot, SuperRoot, OutputRootWithChainId, SuperRootProof } from "src/libraries/SuperRoot.sol";
 import { Types } from "src/libraries/Types.sol";
 import {
     BadTarget,
@@ -72,15 +72,13 @@ contract OptimismPortalInterop is OptimismPortal2 {
     /// @notice Proves a withdrawal transaction.
     /// @param _tx               Withdrawal transaction to finalize.
     /// @param _disputeGameIndex Index of the dispute game to prove the withdrawal against.
-    /// @param _l2ChainId        Chain ID of the L2 chain that the withdrawal was made on.
-    /// @param _rawSuperRoot     Pre-image of the SuperRoot commitment proposed in the passed dispute game.
+    /// @param _superRootProof   Proof of the super root's preimage, the relevant L2 chain ID, and index of output root.
     /// @param _outputRootProof  Proof of the output root's preimage.
     /// @param _withdrawalProof  Inclusion proof of the withdrawal in L2ToL1MessagePasser contract.
     function proveWithdrawalTransaction(
         Types.WithdrawalTransaction memory _tx,
         uint256 _disputeGameIndex,
-        uint256 _l2ChainId,
-        bytes calldata _rawSuperRoot,
+        SuperRootProof calldata _superRootProof,
         Types.OutputRootProof memory _outputRootProof,
         bytes[] calldata _withdrawalProof
     )
@@ -122,17 +120,20 @@ contract OptimismPortalInterop is OptimismPortal2 {
         if (gameProxy.status() == GameStatus.CHALLENGER_WINS) revert InvalidDisputeGame();
 
         // Verify that the super root committed to in the dispute game is the raw super root that was passed.
-        if (superRootCommitment.raw() != keccak256(_rawSuperRoot)) revert InvalidProof();
+        if (superRootCommitment.raw() != keccak256(_superRootProof.rawSuperRoot)) revert InvalidProof();
 
         // Decode the SuperRoot type from the raw bytes. This function also verifies that the encoding
         // of the SuperRoot is correct, and will revert if it is malformatted.
-        SuperRoot memory superRoot = LibSuperRoot.decode(_rawSuperRoot);
+        SuperRoot memory superRoot = LibSuperRoot.decode(_superRootProof.rawSuperRoot);
 
-        // Find the output root within the super root that corresponds to the L2 chain ID passed.
-        bytes32 outputRoot = LibSuperRoot.findOutputRoot(superRoot, _l2ChainId);
+        // Find the output root within the super root that corresponds to the index passed.
+        OutputRootWithChainId memory root = superRoot.outputRoots[_superRootProof.index];
+
+        // Verify that the output root claims to be associated with the L2 chain ID passed.
+        if (root.l2ChainId != _superRootProof.l2ChainId) revert InvalidProof();
 
         // Verify that the output root can be generated with the elements in the proof.
-        if (outputRoot != Hashing.hashOutputRootProof(_outputRootProof)) revert InvalidProof();
+        if (root.outputRoot != Hashing.hashOutputRootProof(_outputRootProof)) revert InvalidProof();
 
         // Load the ProvenWithdrawal into memory, using the withdrawal hash as a unique identifier.
         bytes32 withdrawalHash = Hashing.hashWithdrawal(_tx);

@@ -10,10 +10,8 @@ import {
     SuperRoot,
     UnexpectedLength,
     InvalidVersion,
-    OutputRootNotFound,
     OutputRootsNotSorted,
-    SUPER_ROOT_VERSION,
-    OutputRootWithChainId
+    SUPER_ROOT_VERSION
 } from "src/libraries/SuperRoot.sol";
 
 /// @title LibSuperRoot_Test
@@ -102,43 +100,6 @@ contract LibSuperRoot_Test is CommonTest {
 
         vm.expectRevert(OutputRootsNotSorted.selector);
         harness.decode(exampleCase);
-    }
-
-    /// @notice Tests that `LibSuperRoot.findOutputRoot` can find an output root in a super root by chain ID.
-    function test_findOutputRoot_succeeds(bytes32[] calldata _outputRoots, uint256 _index) external pure {
-        vm.assume(_outputRoots.length > 0);
-
-        // Create a sorted array of output roots.
-        OutputRootWithChainId[] memory sortedOutputRoots = new OutputRootWithChainId[](_outputRoots.length);
-        for (uint256 i = 0; i < _outputRoots.length; i++) {
-            sortedOutputRoots[i] = OutputRootWithChainId({ l2ChainId: i, outputRoot: _outputRoots[i] });
-        }
-
-        _index = bound(_index, 0, sortedOutputRoots.length - 1);
-        bytes32 expectedOutputRoot = sortedOutputRoots[_index].outputRoot;
-        uint256 expectedChainId = sortedOutputRoots[_index].l2ChainId;
-
-        SuperRoot memory superRoot = SuperRoot({ timestamp: 0, outputRoots: sortedOutputRoots });
-
-        bytes32 outputRoot = LibSuperRoot.findOutputRoot(superRoot, expectedChainId);
-        assertEq(outputRoot, expectedOutputRoot);
-    }
-
-    /// @notice Tests that `LibSuperRoot.findOutputRoot` reverts when the chain ID being searched for is not
-    ///         present in the super root.
-    function test_findOutputRoot_notFound_reverts(bytes32[] calldata _outputRoots) external {
-        vm.assume(_outputRoots.length > 0);
-
-        // Create a sorted array of output roots.
-        OutputRootWithChainId[] memory sortedOutputRoots = new OutputRootWithChainId[](_outputRoots.length);
-        for (uint256 i = 0; i < _outputRoots.length; i++) {
-            sortedOutputRoots[i] = OutputRootWithChainId({ l2ChainId: i, outputRoot: _outputRoots[i] });
-        }
-
-        SuperRoot memory superRoot = SuperRoot({ timestamp: 0, outputRoots: sortedOutputRoots });
-
-        vm.expectRevert(OutputRootNotFound.selector);
-        LibSuperRoot.findOutputRoot(superRoot, sortedOutputRoots.length);
     }
 }
 

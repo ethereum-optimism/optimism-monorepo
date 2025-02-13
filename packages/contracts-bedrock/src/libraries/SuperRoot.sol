@@ -9,9 +9,6 @@ error InvalidVersion();
 /// @notice Error thrown when the length of the encoded SuperRoot is unexpected.
 error UnexpectedLength();
 
-/// @notice Error thrown when the output root with the given chain ID is not found.
-error OutputRootNotFound();
-
 /// @notice Error thrown when the output roots are not sorted in ascending order.
 error OutputRootsNotSorted();
 
@@ -29,6 +26,18 @@ struct OutputRootWithChainId {
     uint256 l2ChainId;
     /// @notice The output root.
     bytes32 outputRoot;
+}
+
+/// @notice The SuperRootProof type defines the metadata required to prove the inclusion of an output root
+///         within a SuperRoot.
+struct SuperRootProof {
+    /// @notice The pre-image of the super root commitment.
+    bytes rawSuperRoot;
+    /// @notice The L2 chain ID that the output root commits to.
+    uint256 l2ChainId;
+    /// @notice The index of the `OutputRootWithChainId` tuple in the `outputRoots` array of the super root
+    ///         that commits to the output root @ `l2ChainId`.
+    uint256 index;
 }
 
 /// @title LibSuperRoot
@@ -124,42 +133,5 @@ library LibSuperRoot {
         }
 
         superRoot_ = SuperRoot({ timestamp: rootTimestamp, outputRoots: outputRoots });
-    }
-
-    /// @notice Finds the output root with the given chain ID in the SuperRoot.
-    /// @param _superRoot The SuperRoot to search.
-    /// @param _chainId The chain ID to search for.
-    /// @return outputRoot_ The output root committing to the given chain ID at the timestamp
-    ///                     of the super root.
-    function findOutputRoot(
-        SuperRoot memory _superRoot,
-        uint256 _chainId
-    )
-        internal
-        pure
-        returns (bytes32 outputRoot_)
-    {
-        // Perform a binary search to find the output root with the given chain ID.
-        uint256 low = 0;
-        uint256 high = _superRoot.outputRoots.length;
-        while (low < high) {
-            // (low + high) / 2 can overflow, so we use this alternative calculation.
-            uint256 mid = (low & high) + (low ^ high) / 2;
-
-            if (_superRoot.outputRoots[mid].l2ChainId > _chainId) {
-                high = mid;
-            } else {
-                low = mid + 1;
-            }
-        }
-
-        // Ensure the output root with the given chain ID exists before returning it.
-        uint256 idx = low > 0 ? low - 1 : low;
-        OutputRootWithChainId memory outputRoot = _superRoot.outputRoots[idx];
-        if (outputRoot.l2ChainId == _chainId) {
-            outputRoot_ = outputRoot.outputRoot;
-        } else {
-            revert OutputRootNotFound();
-        }
     }
 }
