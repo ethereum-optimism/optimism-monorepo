@@ -315,9 +315,15 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
         // then reset its code to the original code.
         bytes memory delegateCallerCode = address(_delegateCaller).code;
         vm.etch(_delegateCaller, vm.getDeployedCode("test/mocks/Callers.sol:DelegateCaller"));
+
+        // Measure gas usage of the upgrade call
+        uint256 gasStart = gasleft();
         DelegateCaller(_delegateCaller).dcForward(
             address(opcm), abi.encodeCall(IOPContractsManager.upgrade, (opChainConfigs))
         );
+        uint256 gasUsed = gasStart - gasleft();
+        require(gasUsed < 15_000_000, "Upgrade exceeds gas target of 15M");
+
         vm.etch(_delegateCaller, delegateCallerCode);
 
         // Check the implementations of the core addresses
