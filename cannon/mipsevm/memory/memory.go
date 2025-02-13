@@ -112,26 +112,6 @@ func (m *Memory) PageLookup(pageIndex Word) (*CachedPage, bool) {
 	return p, ok
 }
 
-func (m *Memory) Invalidate(addr Word) {
-	// addr must be aligned
-	if addr&arch.ExtMask != 0 {
-		panic(fmt.Errorf("unaligned memory access: %x", addr))
-	}
-
-	// find page, and invalidate addr within it
-	if p, ok := m.PageLookup(addr >> PageAddrSize); ok {
-		prevValid := p.Ok[1]
-		p.invalidate(addr & PageAddrMask)
-		if !prevValid { // if the page was already invalid before, then nodes to mem-root will also still be.
-			return
-		}
-	} else { // no page? nothing to invalidate
-		return
-	}
-	// invalidate the path to the page in the table
-	m.merkleIndex.Invalidate(addr)
-}
-
 func (m *Memory) SetMemoryRange(addr Word, r io.Reader) error {
 	for {
 		pageIndex := addr >> PageAddrSize
@@ -171,7 +151,11 @@ func (m *Memory) SetWord(addr Word, v Word) {
 		// Go may mmap relatively large ranges, but we only allocate the pages just in time.
 		p = m.AllocPage(pageIndex)
 	} else {
-		m.Invalidate(addr) // invalidate this branch of memory, now that the value changed
+		prevValid := p.Ok[1]
+		p.invalidate(pageAddr)
+		if prevValid {
+			m.merkleIndex.Invalidate(addr) // invalidate this branch of memory, now that the value changed
+		}
 	}
 	arch.ByteOrderWord.PutWord(p.Data[pageAddr:pageAddr+arch.WordSizeBytes], v)
 }
