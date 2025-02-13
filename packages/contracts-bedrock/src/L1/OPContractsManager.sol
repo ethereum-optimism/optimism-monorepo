@@ -450,7 +450,7 @@ contract OPContractsManager is ISemver {
         return output;
     }
 
-    /// @notice Verifies that all OpChainConfig inputs are valid and reverts if any are invalid.
+    /// @notice Verifies that all OpChainConfig inputs are valid and reverts if any are invalid
     function assertValidOpChainConfig(OpChainConfig memory _config) internal view {
         assertValidContractAddress(address(_config.systemConfigProxy));
         assertValidContractAddress(address(_config.proxyAdmin));
