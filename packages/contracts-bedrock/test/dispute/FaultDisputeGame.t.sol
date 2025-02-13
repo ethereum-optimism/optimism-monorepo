@@ -124,6 +124,8 @@ contract FaultDisputeGame_Init is DisputeGameFactory_Init {
 contract FaultDisputeGame_Test is FaultDisputeGame_Init {
     /// @dev The root claim of the game.
     Claim internal ROOT_CLAIM;
+    /// @dev An arbitrary root claim for testing.
+    Claim internal arbitaryRootClaim = Claim.wrap(bytes32(uint256(123)));
 
     /// @dev The preimage of the absolute prestate claim
     bytes internal absolutePrestateData;
@@ -464,7 +466,7 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
             payable(
                 address(
                     disputeGameFactory.create{ value: _value }(
-                        GAME_TYPE, ROOT_CLAIM, abi.encode(validL2BlockNumber + 1)
+                        GAME_TYPE, arbitaryRootClaim, abi.encode(validL2BlockNumber)
                     )
                 )
             )
@@ -1023,9 +1025,9 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
         // Create the dispute game with the output root at the wrong L2 block number.
         disputeGameFactory.setInitBond(GAME_TYPE, 0.1 ether);
         uint256 balanceBefore = address(this).balance;
-        IDisputeGame game = disputeGameFactory.create{ value: 0.1 ether }(
-            GAME_TYPE, Claim.wrap(outputRoot), abi.encode(_l2BlockNumber + 1)
-        );
+        _l2BlockNumber = bound(vm.randomUint(), _l2BlockNumber + 1, type(uint256).max);
+        IDisputeGame game =
+            disputeGameFactory.create{ value: 0.1 ether }(GAME_TYPE, Claim.wrap(outputRoot), abi.encode(_l2BlockNumber));
         IFaultDisputeGame fdg = IFaultDisputeGame(address(game));
 
         // Attack the root as 0xb0b

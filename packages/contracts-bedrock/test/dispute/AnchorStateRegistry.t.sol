@@ -12,6 +12,9 @@ import { IFaultDisputeGame } from "interfaces/dispute/IFaultDisputeGame.sol";
 import { IAnchorStateRegistry } from "interfaces/dispute/IAnchorStateRegistry.sol";
 
 contract AnchorStateRegistry_Init is FaultDisputeGame_Init {
+    /// @dev A valid l2BlockNumber that comes after the current anchor root block.
+    uint256 validL2BlockNumber;
+
     event AnchorNotUpdated(IFaultDisputeGame indexed game);
     event AnchorUpdated(IFaultDisputeGame indexed game);
 
@@ -24,8 +27,9 @@ contract AnchorStateRegistry_Init is FaultDisputeGame_Init {
 
         // Get the actual anchor roots
         (Hash root, uint256 l2BlockNumber) = anchorStateRegistry.getAnchorRoot();
+        validL2BlockNumber = l2BlockNumber + 1;
         Claim rootClaim = Claim.wrap(Hash.unwrap(root));
-        super.init({ rootClaim: rootClaim, absolutePrestate: absolutePrestate, l2BlockNumber: l2BlockNumber + 1 });
+        super.init({ rootClaim: rootClaim, absolutePrestate: absolutePrestate, l2BlockNumber: validL2BlockNumber });
     }
 }
 
@@ -519,7 +523,7 @@ contract AnchorStateRegistry_SetAnchorState_Test is AnchorStateRegistry_Init {
         (Hash root, uint256 l2BlockNumber) = anchorStateRegistry.getAnchorRoot();
 
         // Bound the new block number.
-        _l2BlockNumber = bound(_l2BlockNumber, l2BlockNumber + 1, type(uint256).max);
+        _l2BlockNumber = bound(_l2BlockNumber, validL2BlockNumber, type(uint256).max);
 
         // Mock the l2BlockNumber call.
         vm.mockCall(address(gameProxy), abi.encodeCall(gameProxy.l2BlockNumber, ()), abi.encode(_l2BlockNumber));
@@ -735,7 +739,7 @@ contract AnchorStateRegistry_SetAnchorState_TestFail is AnchorStateRegistry_Init
         (Hash root, uint256 l2BlockNumber) = anchorStateRegistry.getAnchorRoot();
 
         // Bound the new block number.
-        _l2BlockNumber = bound(_l2BlockNumber, l2BlockNumber + 1, type(uint256).max);
+        _l2BlockNumber = bound(_l2BlockNumber, validL2BlockNumber, type(uint256).max);
 
         // Mock the DEFENDER_WINS state.
         vm.mockCall(address(gameProxy), abi.encodeCall(gameProxy.status, ()), abi.encode(GameStatus.DEFENDER_WINS));
@@ -773,7 +777,7 @@ contract AnchorStateRegistry_SetAnchorState_TestFail is AnchorStateRegistry_Init
         (Hash root, uint256 l2BlockNumber) = anchorStateRegistry.getAnchorRoot();
 
         // Bound the new block number.
-        _l2BlockNumber = bound(_l2BlockNumber, l2BlockNumber + 1, type(uint256).max);
+        _l2BlockNumber = bound(_l2BlockNumber, validL2BlockNumber, type(uint256).max);
 
         // Mock the DEFENDER_WINS state.
         vm.mockCall(address(gameProxy), abi.encodeCall(gameProxy.status, ()), abi.encode(GameStatus.DEFENDER_WINS));

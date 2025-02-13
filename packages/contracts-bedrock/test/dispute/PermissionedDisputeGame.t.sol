@@ -128,6 +128,8 @@ contract PermissionedDisputeGame_Init is DisputeGameFactory_Init {
 contract PermissionedDisputeGame_Test is PermissionedDisputeGame_Init {
     /// @dev The root claim of the game.
     Claim internal rootClaim;
+    /// @dev An arbitrary root claim for testing.
+    Claim internal arbitaryRootClaim = Claim.wrap(bytes32(uint256(123)));
     /// @dev Minimum bond value that covers all possible moves.
     uint256 internal constant MIN_BOND = 50 ether;
 
@@ -160,7 +162,7 @@ contract PermissionedDisputeGame_Test is PermissionedDisputeGame_Init {
     function test_createGame_proposer_succeeds() public {
         uint256 bondAmount = disputeGameFactory.initBonds(GAME_TYPE);
         vm.prank(PROPOSER, PROPOSER);
-        disputeGameFactory.create{ value: bondAmount }(GAME_TYPE, rootClaim, abi.encode(validL2BlockNumber + 1));
+        disputeGameFactory.create{ value: bondAmount }(GAME_TYPE, arbitaryRootClaim, abi.encode(validL2BlockNumber));
     }
 
     /// @dev Tests that the permissioned game cannot be created by any address other than the proposer.
@@ -171,7 +173,7 @@ contract PermissionedDisputeGame_Test is PermissionedDisputeGame_Init {
         vm.deal(_p, bondAmount);
         vm.prank(_p, _p);
         vm.expectRevert(BadAuth.selector);
-        disputeGameFactory.create{ value: bondAmount }(GAME_TYPE, rootClaim, abi.encode(validL2BlockNumber + 1));
+        disputeGameFactory.create{ value: bondAmount }(GAME_TYPE, arbitaryRootClaim, abi.encode(validL2BlockNumber));
     }
 
     /// @dev Tests that the challenger can participate in a permissioned dispute game.
