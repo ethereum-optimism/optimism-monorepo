@@ -1372,12 +1372,10 @@ jobs:
         description: Whether to setup GitHub token for brew release
         type: boolean
         default: false
-    docker:
-      - image: <<pipeline.parameters.default_docker_image>>
+    machine:
+      image: ubuntu-2204:2024.08.1
     resource_class: large
     steps:
-      - machine:
-          image: ubuntu-2204:2024.08.1
       - gcp-cli/install
       # - gcp-oidc-authenticate:
       #     gcp_cred_config_file_path: /tmp/gcp_cred_config.json
