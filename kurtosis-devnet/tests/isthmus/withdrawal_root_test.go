@@ -40,7 +40,7 @@ func withdrawalRootTestScenario(chainIdx uint64, userSentinel interface{}) syste
 		rpcCl, err := client.NewRPC(ctx, logger, chain.RPCURL())
 		require.NoError(t, err)
 		t.Cleanup(rpcCl.Close)
-		ethCl, err := sources.NewEthClient(rpcCl, logger, nil, &sources.EthClientConfig{})
+		ethCl, err := sources.NewEthClient(rpcCl, logger, nil, sources.DefaultEthClientConfig(10))
 		require.NoError(t, err)
 
 		gethCl, err := ethclient.DialContext(ctx, chain.RPCURL())
