@@ -322,7 +322,9 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
             address(opcm), abi.encodeCall(IOPContractsManager.upgrade, (opChainConfigs))
         );
         uint256 gasUsed = gasStart - gasleft();
-        require(gasUsed < 15_000_000, "Upgrade exceeds gas target of 15M");
+
+        // The upgrade should cost less than 15M gas.
+        assertLt(gasUsed, 15_000_000, "Upgrade exceeds gas target of 15M");
 
         vm.etch(_delegateCaller, delegateCallerCode);
 
