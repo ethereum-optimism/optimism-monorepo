@@ -131,7 +131,7 @@ func (is *InteropSetup) CreateActors() *InteropActors {
 type SupervisorActor struct {
 	exec    *event.GlobalSyncExec
 	backend *backend.SupervisorBackend
-	Client  *sources.SupervisorClient
+	sources.SupervisorClient
 }
 
 func (sa *SupervisorActor) ProcessFull(t helpers.Testing) {
@@ -186,9 +186,9 @@ func NewSupervisor(t helpers.Testing, logger log.Logger, depSet depset.Dependenc
 	rpcServer.Start(t)
 	supervisorClient := sources.NewSupervisorClient(rpcServer.Connect(t))
 	return &SupervisorActor{
-		exec:    evExec,
-		backend: b,
-		Client:  supervisorClient,
+		exec:             evExec,
+		backend:          b,
+		SupervisorClient: *supervisorClient,
 	}
 }
 

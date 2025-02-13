@@ -678,7 +678,7 @@ func runChallengerTest(gt *testing.T, test *transitionTest, actors *dsl.InteropA
 		endTimestamp = actors.ChainA.Sequencer.L2Unsafe().Time
 	}
 	startTimestamp := actors.ChainA.Sequencer.L2Unsafe().Time - 1
-	prestateProvider := super.NewSuperRootPrestateProvider(actors.Supervisor.Client, startTimestamp)
+	prestateProvider := super.NewSuperRootPrestateProvider(actors.Supervisor, startTimestamp)
 	var l1Head eth.BlockID
 	if test.l1Head == (common.Hash{}) {
 		l1Head = eth.ToBlockID(eth.HeaderBlockInfo(actors.L1Miner.L1Chain().CurrentBlock()))
@@ -688,7 +688,7 @@ func runChallengerTest(gt *testing.T, test *transitionTest, actors *dsl.InteropA
 	gameDepth := challengerTypes.Depth(30)
 	rollupCfgs, err := super.NewRollupConfigsFromParsed(actors.ChainA.RollupCfg, actors.ChainB.RollupCfg)
 	require.NoError(t, err)
-	provider := super.NewSuperTraceProvider(logger, rollupCfgs, prestateProvider, actors.Supervisor.Client, l1Head, gameDepth, startTimestamp, endTimestamp)
+	provider := super.NewSuperTraceProvider(logger, rollupCfgs, prestateProvider, actors.Supervisor, l1Head, gameDepth, startTimestamp, endTimestamp)
 	var agreedPrestate []byte
 	if test.disputedTraceIndex > 0 {
 		agreedPrestate, err = provider.GetPreimageBytes(t.Ctx(), challengerTypes.NewPosition(gameDepth, big.NewInt(test.disputedTraceIndex-1)))

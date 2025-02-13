@@ -125,7 +125,7 @@ func TestReset(gt *testing.T) {
 			actors.Supervisor.SignalFinalizedL1(t)
 			actors.Supervisor.ProcessFull(t)
 			actors.ChainA.Sequencer.ActL2PipelineFull(t)
-			finalizedL2BlockID, err := actors.Supervisor.Client.Finalized(t.Ctx(), actors.ChainA.ChainID)
+			finalizedL2BlockID, err := actors.Supervisor.Finalized(t.Ctx(), actors.ChainA.ChainID)
 			require.NoError(t, err)
 			require.Equal(t, blocksAdded[0], finalizedL2BlockID)
 		}
