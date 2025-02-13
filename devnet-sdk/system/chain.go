@@ -3,10 +3,10 @@ package system
 import (
 	"context"
 	"fmt"
+	"iter"
 	"math/big"
 	"sync"
 
-	"github.com/ethereum-optimism/optimism/devnet-sdk/constraints"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/contracts"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/descriptors"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/interfaces"
@@ -102,27 +102,14 @@ func (c *chain) RPCURL() string {
 	return c.rpcUrl
 }
 
-// Wallet returns the first wallet which meets all provided constraints, or an
-// error.
-// Typically this will be one of the pre-funded wallets associated with
-// the deployed system.
-func (c *chain) Wallet(ctx context.Context, constraints ...constraints.WalletConstraint) (Wallet, error) {
-	// Try each user
-	for _, user := range c.users {
-		// Check all constraints
-		meetsAll := true
-		for _, constraint := range constraints {
-			if !constraint.CheckWallet(user) {
-				meetsAll = false
-				break
+func (c *chain) Wallets(context.Context) iter.Seq[Wallet] {
+	return func(yield func(Wallet) bool) {
+		for _, v := range c.users {
+			if !yield(v) {
+				return
 			}
 		}
-		if meetsAll {
-			return user, nil
-		}
 	}
-
-	return nil, fmt.Errorf("no user found meeting all constraints")
 }
 
 func (c *chain) ID() types.ChainID {

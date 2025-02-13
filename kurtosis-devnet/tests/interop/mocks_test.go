@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"iter"
 	"math/big"
 	"os"
 	"runtime"
 	"time"
 
-	"github.com/ethereum-optimism/optimism/devnet-sdk/constraints"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/interfaces"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/system"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/testing/systest"
@@ -102,8 +102,8 @@ type mockFailingChain struct {
 func (m *mockFailingChain) RPCURL() string                     { return "mock://failing" }
 func (m *mockFailingChain) Client() (*ethclient.Client, error) { return ethclient.Dial(m.RPCURL()) }
 func (m *mockFailingChain) ID() types.ChainID                  { return m.id }
-func (m *mockFailingChain) Wallet(ctx context.Context, constraints ...constraints.WalletConstraint) (system.Wallet, error) {
-	return m.wallet, nil
+func (m *mockFailingChain) Wallets(ctx context.Context) iter.Seq[system.Wallet] {
+	return nil
 }
 func (m *mockFailingChain) ContractsRegistry() interfaces.ContractsRegistry { return m.reg }
 func (m *mockFailingChain) GasPrice(ctx context.Context) (*big.Int, error) {

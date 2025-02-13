@@ -2,9 +2,9 @@ package system
 
 import (
 	"context"
+	"iter"
 	"math/big"
 
-	"github.com/ethereum-optimism/optimism/devnet-sdk/constraints"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/interfaces"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/types"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -26,7 +26,7 @@ type Chain interface {
 	RPCURL() string
 	ID() types.ChainID
 	Client() (*ethclient.Client, error)
-	Wallet(ctx context.Context, constraints ...constraints.WalletConstraint) (Wallet, error)
+	Wallets(ctx context.Context) iter.Seq[Wallet]
 	ContractsRegistry() interfaces.ContractsRegistry
 	SupportsEIP(ctx context.Context, eip uint64) bool
 
