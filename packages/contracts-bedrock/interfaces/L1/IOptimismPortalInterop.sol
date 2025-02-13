@@ -33,6 +33,9 @@ interface IOptimismPortalInterop {
     error UnexpectedString();
     error Unproven();
     error LegacyGame();
+    error OutputRootNotFound();
+    error InvalidVersion();
+    error UnexpectedLength();
 
     event DisputeGameBlacklisted(IDisputeGame indexed disputeGame);
     event Initialized(uint8 version);
@@ -84,8 +87,16 @@ interface IOptimismPortalInterop {
     function proveWithdrawalTransaction(
         Types.WithdrawalTransaction memory _tx,
         uint256 _disputeGameIndex,
+        uint256 _l2ChainId,
+        bytes memory _rawSuperRoot,
         Types.OutputRootProof memory _outputRootProof,
         bytes[] memory _withdrawalProof
+    ) external;
+    function proveWithdrawalTransaction(
+        Types.WithdrawalTransaction memory,
+        uint256,
+        Types.OutputRootProof memory,
+        bytes[] memory
     )
         external;
     function provenWithdrawals(

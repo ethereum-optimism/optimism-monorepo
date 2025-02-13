@@ -459,6 +459,16 @@
         "type": "uint256"
       },
       {
+        "internalType": "uint256",
+        "name": "_l2ChainId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bytes",
+        "name": "_rawSuperRoot",
+        "type": "bytes"
+      },
+      {
         "components": [
           {
             "internalType": "bytes32",
@@ -494,6 +504,88 @@
     "name": "proveWithdrawalTransaction",
     "outputs": [],
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "nonce",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "sender",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "target",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "value",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "gasLimit",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bytes",
+            "name": "data",
+            "type": "bytes"
+          }
+        ],
+        "internalType": "struct Types.WithdrawalTransaction",
+        "name": "",
+        "type": "tuple"
+      },
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "components": [
+          {
+            "internalType": "bytes32",
+            "name": "version",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "stateRoot",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "messagePasserStorageRoot",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "latestBlockhash",
+            "type": "bytes32"
+          }
+        ],
+        "internalType": "struct Types.OutputRootProof",
+        "name": "",
+        "type": "tuple"
+      },
+      {
+        "internalType": "bytes[]",
+        "name": "",
+        "type": "bytes[]"
+      }
+    ],
+    "name": "proveWithdrawalTransaction",
+    "outputs": [],
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -827,6 +919,11 @@
   },
   {
     "inputs": [],
+    "name": "InvalidVersion",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "LargeCalldata",
     "type": "error"
   },
@@ -847,6 +944,11 @@
   },
   {
     "inputs": [],
+    "name": "OutputRootNotFound",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "ProposalNotValidated",
     "type": "error"
   },
@@ -858,6 +960,11 @@
   {
     "inputs": [],
     "name": "Unauthorized",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "UnexpectedLength",
     "type": "error"
   },
   {
