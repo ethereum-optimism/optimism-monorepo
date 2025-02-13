@@ -21,7 +21,7 @@ func walletFundsValidator(chainIdx uint64, minFunds types.Balance, userMarker in
 	return func(t systest.T, sys system.System) (context.Context, error) {
 		chain := sys.L2(chainIdx)
 		for wallet := range chain.Wallets(t.Context()) {
-			if constraint(wallet) {
+			if constraint.CheckWallet(wallet) {
 				return context.WithValue(t.Context(), userMarker, wallet), nil
 			}
 		}

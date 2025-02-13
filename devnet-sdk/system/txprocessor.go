@@ -38,6 +38,9 @@ func NewEthTransactionProcessor(client *ethclient.Client, chainID *big.Int) Tran
 // Sign signs a transaction with the given private key
 func (p *transactionProcessor) Sign(tx Transaction) (Transaction, error) {
 	pk := p.privateKey
+	if pk == nil {
+		return nil, fmt.Errorf("private key is nil")
+	}
 
 	var signer types.Signer
 	switch tx.Type() {

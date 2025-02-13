@@ -91,17 +91,26 @@ func TestChainWallet(t *testing.T) {
 	})
 
 	t.Run("finds wallet meeting constraints", func(t *testing.T) {
-		wallet, err := chain.Wallet(ctx, &addressConstraint{addr: testAddr})
-		assert.NoError(t, err)
-		assert.NotNil(t, wallet)
-		assert.Equal(t, testAddr, wallet.Address())
+		constraint := &addressConstraint{addr: testAddr}
+
+		for w := range chain.Wallets(ctx) {
+			if constraint.CheckWallet(w) {
+				assert.NotNil(t, w)
+				assert.Equal(t, testAddr, w.Address())
+				return
+			}
+		}
+		t.Fatalf("wallet not found")
 	})
 
 	t.Run("returns error when no wallet meets constraints", func(t *testing.T) {
 		wrongAddr := common.HexToAddress("0x0987654321098765432109876543210987654321")
-		wallet, err := chain.Wallet(ctx, &addressConstraint{addr: wrongAddr})
-		assert.Error(t, err)
-		assert.Nil(t, wallet)
+		constraint := &addressConstraint{addr: wrongAddr}
+		for w := range chain.Wallets(ctx) {
+			if constraint.CheckWallet(w) {
+				t.Fatalf("wallet found")
+			}
+		}
 	})
 }
 

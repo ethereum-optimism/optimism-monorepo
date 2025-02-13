@@ -79,7 +79,7 @@ func newMockChain() *mockChain {
 
 func (m *mockChain) ID() types.ChainID {
 	args := m.Called()
-	return types.ChainID(args.Get(0).(*big.Int))
+	return args.Get(0).(types.ChainID)
 }
 
 func (m *mockChain) GasPrice(ctx context.Context) (*big.Int, error) {

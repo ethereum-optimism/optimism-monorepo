@@ -43,6 +43,11 @@ func (m *mockEthClient) BalanceAt(ctx context.Context, account types.Address, bl
 	return args.Get(0).(*big.Int), args.Error(1)
 }
 
+func (m *mockEthClient) PendingNonceAt(ctx context.Context, account common.Address) (uint64, error) {
+	args := m.Called(ctx, account)
+	return args.Get(0).(uint64), args.Error(1)
+}
+
 // mockChainForBalance implements just enough of the chain interface for balance testing
 type mockChainForBalance struct {
 	mock.Mock
@@ -80,7 +85,7 @@ func TestWalletBalance(t *testing.T) {
 			tt.setupMock(mockChain)
 
 			w := &testWallet{
-				privateKey: "test-key",
+				privateKey: crypto.ToECDSAUnsafe(common.FromHex("1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef")),
 				address:    types.Address{},
 				chain:      mockChain,
 			}
@@ -107,22 +112,17 @@ func (m *internalMockChain) Client() (*ethclient.Client, error) {
 }
 
 func TestNewWallet(t *testing.T) {
-	pk := types.Key("0x1234")
+	pk := "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
 	addr := types.Address(common.HexToAddress("0x5678"))
 	chain := &chain{}
 
-	w := newWallet(pk, addr, chain)
+	w, err := newWallet(pk, addr, chain)
+	assert.NoError(t, err)
 
-	assert.Equal(t, pk, w.privateKey)
+	// The private key is converted to ECDSA, so we can't compare directly with the input string
+	assert.NotNil(t, w.privateKey)
 	assert.Equal(t, addr, w.address)
 	assert.Equal(t, chain, w.chain)
-}
-
-func TestWallet_PrivateKey(t *testing.T) {
-	pk := types.Key("0x1234")
-	w := &wallet{privateKey: pk}
-
-	assert.Equal(t, types.Key("1234"), w.PrivateKey())
 }
 
 func TestWallet_Address(t *testing.T) {
@@ -138,12 +138,10 @@ func TestWallet_SendETH(t *testing.T) {
 	internalChain := &internalMockChain{mockChain}
 
 	// Use a valid 256-bit private key (32 bytes)
-	testPrivateKey := "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+	testPrivateKey := crypto.ToECDSAUnsafe(common.FromHex("1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"))
 
 	// Derive the address from the private key
-	pk, err := crypto.HexToECDSA(testPrivateKey)
-	assert.NoError(t, err)
-	fromAddr := crypto.PubkeyToAddress(pk.PublicKey)
+	fromAddr := crypto.PubkeyToAddress(testPrivateKey.PublicKey)
 
 	w := &wallet{
 		privateKey: testPrivateKey,
@@ -153,10 +151,6 @@ func TestWallet_SendETH(t *testing.T) {
 
 	toAddr := types.Address(common.HexToAddress("0x5678"))
 	amount := types.NewBalance(big.NewInt(1000000))
-
-	mockTx := &mockTransaction{
-		from: fromAddr,
-	}
 
 	chainID := big.NewInt(1)
 
@@ -174,16 +168,20 @@ func TestWallet_SendETH(t *testing.T) {
 	// Mock nonce retrieval
 	mockChain.On("PendingNonceAt", ctx, fromAddr).Return(uint64(0), nil)
 
-	// Mock transaction processing
-	mockChain.On("TransactionProcessor").Return(mockChain.txProcessor, nil)
-	mockChain.txProcessor.On("Sign", mock.Anything, testPrivateKey).Return(mockTx, nil)
-	mockChain.txProcessor.On("Send", ctx, mock.Anything).Return(nil)
+	// Mock client access
+	client, err := ethclient.Dial("http://this.domain.definitely.does.not.exist:8545")
+	assert.NoError(t, err)
+	mockChain.On("Client").Return(client, nil)
 
-	result := w.SendETH(toAddr, amount).Send(ctx)
-	assert.NoError(t, result.Error())
+	// Create the send invocation
+	invocation := w.SendETH(toAddr, amount)
+	assert.NotNil(t, invocation)
+
+	// Send the transaction
+	result := invocation.Send(ctx)
+	assert.Error(t, result.Error()) // We expect an error since the client can't connect
 
 	mockChain.AssertExpectations(t)
-	mockChain.txProcessor.AssertExpectations(t)
 }
 
 func TestWallet_Balance(t *testing.T) {

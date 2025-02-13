@@ -32,14 +32,21 @@ type wallet struct {
 }
 
 func newWallet(pk string, addr types.Address, chain *chain) (*wallet, error) {
-	pk = strings.TrimPrefix(pk, "0x")
-	pkBytes, err := hex.DecodeString(pk)
-	if err != nil {
-		return nil, fmt.Errorf("failed to decode private key: %w", err)
-	}
-	privateKey, err := crypto.ToECDSA(pkBytes)
-	if err != nil {
-		return nil, fmt.Errorf("failed to convert private key to ECDSA: %w", err)
+	var privateKey types.Key
+	if pk != "" {
+		pk = strings.TrimPrefix(pk, "0x")
+		if len(pk)%2 == 1 {
+			pk = "0" + pk
+		}
+		pkBytes, err := hex.DecodeString(pk)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode private key: %w", err)
+		}
+		key, err := crypto.ToECDSA(pkBytes)
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert private key to ECDSA: %w", err)
+		}
+		privateKey = key
 	}
 
 	return &wallet{
@@ -98,7 +105,7 @@ func (w *wallet) Nonce() uint64 {
 func (w *wallet) Transactor() *bind.TransactOpts {
 	transactor, err := bind.NewKeyedTransactorWithChainID(w.PrivateKey(), w.chain.ID())
 	if err != nil {
-		panic(fmt.Sprintf("could not create transactor for address %s and chainID %s", w.Address(), w.chain.ID()))
+		panic(fmt.Sprintf("could not create transactor for address %s and chainID %v", w.Address(), w.chain.ID()))
 	}
 
 	return transactor
@@ -186,12 +193,12 @@ func (i *sendImpl) Send(ctx context.Context) types.InvocationResult {
 	)
 
 	// Sign the transaction if it's built okay
-	if err != nil {
+	if err == nil {
 		tx, err = i.processor.Sign(tx)
 	}
 
 	// Send the transaction if it's signed okay
-	if err != nil {
+	if err == nil {
 		err = i.processor.Send(ctx, tx)
 	}
 

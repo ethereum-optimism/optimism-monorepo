@@ -149,6 +149,9 @@ func (d *Deployer) deployEnvironment(ctx context.Context, r io.Reader) (*kurtosi
 		return nil, fmt.Errorf("error getting environment info: %w", err)
 	}
 
+	if d.dryRun {
+		return env, nil
+	}
 	// Upload the environment info to the enclave.
 	fs, err := artifact.NewEnclaveFS(ctx, d.enclave)
 	if err != nil {

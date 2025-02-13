@@ -11,7 +11,7 @@ import (
 
 type Address = common.Address
 
-type ChainID *big.Int
+type ChainID = *big.Int
 
 type ReadInvocation[T any] interface {
 	Call(ctx context.Context) (T, error)

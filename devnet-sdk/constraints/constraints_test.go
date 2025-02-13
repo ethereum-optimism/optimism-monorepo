@@ -1,11 +1,15 @@
 package constraints
 
 import (
+	"context"
 	"math/big"
 	"testing"
 
+	"github.com/ethereum-optimism/optimism/devnet-sdk/system"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/types"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -23,7 +27,8 @@ func (m mockWallet) Address() types.Address {
 }
 
 func (m mockWallet) PrivateKey() types.Key {
-	return "0x123"
+	key, _ := crypto.HexToECDSA("123")
+	return types.Key(key)
 }
 
 func (m mockWallet) SendETH(to types.Address, amount types.Balance) types.WriteInvocation[any] {
@@ -33,6 +38,20 @@ func (m mockWallet) SendETH(to types.Address, amount types.Balance) types.WriteI
 func (m mockWallet) Nonce() uint64 {
 	return 0
 }
+
+func (m mockWallet) Sign(tx system.Transaction) (system.Transaction, error) {
+	return tx, nil
+}
+
+func (m mockWallet) Send(ctx context.Context, tx system.Transaction) error {
+	return nil
+}
+
+func (m mockWallet) Transactor() *bind.TransactOpts {
+	return nil
+}
+
+var _ system.Wallet = (*mockWallet)(nil)
 
 func newBigInt(x int64) *big.Int {
 	return big.NewInt(x)
@@ -80,7 +99,7 @@ func TestWithBalance(t *testing.T) {
 
 func TestWalletConstraintFunc(t *testing.T) {
 	called := false
-	testFunc := WalletConstraintFunc(func(wallet types.Wallet) bool {
+	testFunc := WalletConstraintFunc(func(wallet system.Wallet) bool {
 		called = true
 		return true
 	})
