@@ -111,7 +111,6 @@ func (bs *BatcherService) initFromCLIConfig(ctx context.Context, version string,
 	bs.ThrottleTxSize = cfg.ThrottleTxSize
 	bs.ThrottleBlockSize = cfg.ThrottleBlockSize
 	bs.ThrottleAlwaysBlockSize = cfg.ThrottleAlwaysBlockSize
-	bs.ThrottleInterval = cfg.ThrottleInterval
 
 	if err := bs.initRPCClients(ctx, cfg); err != nil {
 		return err
