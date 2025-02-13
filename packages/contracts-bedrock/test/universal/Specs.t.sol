@@ -891,6 +891,9 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "LivenessModule", _sel: _getSel("safe()") });
         _addSpec({ _name: "LivenessModule", _sel: _getSel("thresholdPercentage()") });
         _addSpec({ _name: "LivenessModule", _sel: _getSel("version()") });
+
+        _addSpec({ _name: "StandardValidator", _sel: _getSel("validate((address,address,bytes32,uint256),bool)") });
+        _addSpec({ _name: "StandardValidator", _sel: _getSel("implementations()") });
     }
 
     /// @dev Computes the selector from a function signature.

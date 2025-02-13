@@ -17,7 +17,8 @@ import { IProxyAdmin } from "interfaces/universal/IProxyAdmin.sol";
 import { Claim, GameTypes } from "src/dispute/lib/Types.sol";
 
 ///  @title OPPrestateUpdater
-///  @notice A custom implementation of OPContractsManager that allows for modified deployment parameters
+///  @notice A custom implementation of OPContractsManager that enables updating the prestate hash
+///          for the permissioned and fault dispute games on a set of chains.
 contract OPPrestateUpdater is OPContractsManager {
     /// @notice Thrown when a function from the parent (OPCM) is not implemented.
     error NotImplemented();
@@ -26,12 +27,12 @@ contract OPPrestateUpdater is OPContractsManager {
     error PrestateRequired();
 
     // @return Version string
-    /// @custom:semver 1.1.0
+    /// @custom:semver 1.4.0
     function version() public pure override returns (string memory) {
-        return "1.1.0";
+        return "1.4.0";
     }
 
-    // @notice Constructs the CustomOPContractsManager contract
+    // @notice Constructs the OPPrestateUpdater contract
     // @param _superchainConfig Address of the SuperchainConfig contract
     // @param _protocolVersions Address of the ProtocolVersions contract
     // @param _blueprints Addresses of Blueprint contracts
@@ -94,26 +95,25 @@ contract OPPrestateUpdater is OPContractsManager {
                 revert PrestateRequired();
             }
 
+            // Get the DisputeGameFactory and existing game implementations
             IDisputeGameFactory dgf =
                 IDisputeGameFactory(_prestateUpdateInputs[i].systemConfigProxy.disputeGameFactory());
-
             IFaultDisputeGame fdg = IFaultDisputeGame(address(getGameImplementation(dgf, GameTypes.CANNON)));
-
             IPermissionedDisputeGame pdg =
                 IPermissionedDisputeGame(address(getGameImplementation(dgf, GameTypes.PERMISSIONED_CANNON)));
 
+            // All chains must have a permissioned game, but not all chains must have a fault dispute game.
+            // Whether a chain has a fault dispute game determines how many AddGameInput objects are needed.
             bool hasFDG = address(fdg) != address(0);
 
             AddGameInput[] memory inputs = new AddGameInput[](hasFDG ? 2 : 1);
             AddGameInput memory pdgInput;
             AddGameInput memory fdgInput;
 
-            // Get the current game implementation to copy parameters from
-            uint256 initBond = dgf.initBonds(GameTypes.PERMISSIONED_CANNON);
-
-            // Get the existing game parameters
+            // Get the existing game parameters and init bond for the permissioned game
             IFaultDisputeGame.GameConstructorParams memory pdgParams =
                 getGameConstructorParams(IFaultDisputeGame(address(pdg)));
+            uint256 initBond = dgf.initBonds(GameTypes.PERMISSIONED_CANNON);
 
             string memory saltMixer =
                 string.concat("prestate_update", string(abi.encode(_prestateUpdateInputs[i].systemConfigProxy)));
@@ -134,13 +134,12 @@ contract OPPrestateUpdater is OPContractsManager {
                 permissioned: true
             });
 
-            // If fault dispute prestate is provided, create a new game with the same parameters but updated prestate
+            // If a fault dispute game exists, create a new game with the same parameters but updated prestate.
             if (hasFDG) {
-                // Get the current game implementation to copy parameters from
-                initBond = dgf.initBonds(GameTypes.CANNON);
-                // Get the existing game parameters
+                // Get the existing game parameters and init bond for the fault dispute game
                 IFaultDisputeGame.GameConstructorParams memory fdgParams =
                     getGameConstructorParams(IFaultDisputeGame(address(fdg)));
+                initBond = dgf.initBonds(GameTypes.CANNON);
 
                 // Create game input with updated prestate but same other params
                 fdgInput = AddGameInput({

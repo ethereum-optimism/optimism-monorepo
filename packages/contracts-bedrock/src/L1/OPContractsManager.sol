@@ -198,6 +198,15 @@ contract OPContractsManager is ISemver {
     /// @param upgrader Address that initiated the upgrade
     event Upgraded(uint256 indexed l2ChainId, ISystemConfig indexed systemConfig, address indexed upgrader);
 
+    /// @notice Emitted when a new game type is added to a chain
+    /// @param l2ChainId Chain ID of the chain
+    /// @param gameType Type of the game being
+    /// @param newDisputeGame Address of the deployed dispute game
+    /// @param oldDisputeGame Address of the old dispute game
+    event GameTypeAdded(
+        uint256 indexed l2ChainId, GameType indexed gameType, IDisputeGame newDisputeGame, IDisputeGame oldDisputeGame
+    );
+
     // -------- Errors --------
 
     /// @notice Thrown when an address other than the upgrade controller calls the setRC function.
@@ -646,14 +655,15 @@ contract OPContractsManager is ISemver {
             if (lastGameConfig >= gameTypeInt) revert InvalidGameConfigs();
             lastGameConfig = gameTypeInt;
 
-            // Grab the FDG from the SystemConfig.
-            IFaultDisputeGame fdg = IFaultDisputeGame(
+            // Grab the permissioned and fault dispute games from the SystemConfig.
+            // We keep the FDG type as it reduces casting below.
+            IFaultDisputeGame pdg = IFaultDisputeGame(
                 address(
                     getGameImplementation(getDisputeGameFactory(gameConfig.systemConfig), GameTypes.PERMISSIONED_CANNON)
                 )
             );
             // Pull out the chain ID.
-            uint256 l2ChainId = getL2ChainId(fdg);
+            uint256 l2ChainId = getL2ChainId(pdg);
 
             // Deploy a new DelayedWETH proxy for this game if one hasn't already been specified. Leaving
             /// gameConfig.delayedWETH as the zero address will cause a new DelayedWETH to be deployed for this game.
@@ -673,10 +683,13 @@ contract OPContractsManager is ISemver {
                 outputs[i].delayedWETH = gameConfig.delayedWETH;
             }
 
+            // The FDG is only used for the event below, and only if it is being replaced,
+            // so we declare it here, but only assign it below if needed.
+            IFaultDisputeGame fdg;
+
             // The below sections are functionally the same. Both deploy a new dispute game. The dispute game type is
             // either permissioned or permissionless depending on game config.
             if (gameConfig.permissioned) {
-                IPermissionedDisputeGame pdg = IPermissionedDisputeGame(address(fdg));
                 outputs[i].faultDisputeGame = IFaultDisputeGame(
                     Blueprint.deployFrom(
                         bps.permissionedDisputeGame1,
@@ -692,15 +705,18 @@ contract OPContractsManager is ISemver {
                                 gameConfig.disputeMaxClockDuration,
                                 gameConfig.vm,
                                 outputs[i].delayedWETH,
-                                getAnchorStateRegistry(IFaultDisputeGame(address(pdg))),
+                                getAnchorStateRegistry(pdg),
                                 l2ChainId
                             ),
-                            getProposer(pdg),
-                            getChallenger(pdg)
+                            getProposer(IPermissionedDisputeGame(address(pdg))),
+                            getChallenger(IPermissionedDisputeGame(address(pdg)))
                         )
                     )
                 );
             } else {
+                fdg = IFaultDisputeGame(
+                    address(getGameImplementation(getDisputeGameFactory(gameConfig.systemConfig), GameTypes.CANNON))
+                );
                 outputs[i].faultDisputeGame = IFaultDisputeGame(
                     Blueprint.deployFrom(
                         bps.permissionlessDisputeGame1,
@@ -716,7 +732,9 @@ contract OPContractsManager is ISemver {
                                 gameConfig.disputeMaxClockDuration,
                                 gameConfig.vm,
                                 outputs[i].delayedWETH,
-                                getAnchorStateRegistry(fdg),
+                                // We can't assume that there is an existing fault dispute game,
+                                // so get the Anchor State Registry from the permissioned game.
+                                getAnchorStateRegistry(pdg),
                                 l2ChainId
                             )
                         )
@@ -729,6 +747,18 @@ contract OPContractsManager is ISemver {
             IDisputeGameFactory dgf = getDisputeGameFactory(gameConfig.systemConfig);
             setDGFImplementation(dgf, gameConfig.disputeGameType, IDisputeGame(address(outputs[i].faultDisputeGame)));
             dgf.setInitBond(gameConfig.disputeGameType, gameConfig.initialBond);
+
+            if (gameConfig.permissioned) {
+                // Emit event for the newly added game type with the old permissioned dispute game
+                emit GameTypeAdded(
+                    l2ChainId, gameConfig.disputeGameType, outputs[i].faultDisputeGame, IDisputeGame(address(pdg))
+                );
+            } else {
+                // Emit event for the newly added game type with the old fault dispute game
+                emit GameTypeAdded(
+                    l2ChainId, gameConfig.disputeGameType, outputs[i].faultDisputeGame, IDisputeGame(address(fdg))
+                );
+            }
         }
 
         return outputs;

@@ -25,6 +25,8 @@ import { IProtocolVersions } from "interfaces/L1/IProtocolVersions.sol";
 import { IPreimageOracle } from "interfaces/cannon/IPreimageOracle.sol";
 import { IPermissionedDisputeGame } from "interfaces/dispute/IPermissionedDisputeGame.sol";
 import { IDelayedWETH } from "interfaces/dispute/IDelayedWETH.sol";
+import { IDisputeGame } from "interfaces/dispute/IDisputeGame.sol";
+import { IDisputeGameFactory } from "interfaces/dispute/IDisputeGameFactory.sol";
 import { IFaultDisputeGame } from "interfaces/dispute/IFaultDisputeGame.sol";
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 import { IOPContractsManager } from "interfaces/L1/IOPContractsManager.sol";
@@ -529,6 +531,10 @@ contract OPContractsManager_AddGameType_Test is Test {
 
     IOPContractsManager.DeployOutput internal chainDeployOutput;
 
+    event GameTypeAdded(
+        uint256 indexed l2ChainId, GameType indexed gameType, IDisputeGame newDisputeGame, IDisputeGame oldDisputeGame
+    );
+
     function setUp() public {
         ISuperchainConfig superchainConfigProxy = ISuperchainConfig(makeAddr("superchainConfig"));
         IProtocolVersions protocolVersionsProxy = IProtocolVersions(makeAddr("protocolVersions"));
@@ -700,6 +706,15 @@ contract OPContractsManager_AddGameType_Test is Test {
         IOPContractsManager.AddGameInput[] memory inputs = new IOPContractsManager.AddGameInput[](1);
         inputs[0] = input;
 
+        uint256 l2ChainId = IFaultDisputeGame(
+            address(IDisputeGameFactory(input.systemConfig.disputeGameFactory()).gameImpls(GameType.wrap(1)))
+        ).l2ChainId();
+
+        // Expect the GameTypeAdded event to be emitted.
+        vm.expectEmit(true, true, false, false, address(this));
+        emit GameTypeAdded(
+            l2ChainId, input.disputeGameType, IDisputeGame(payable(address(0))), IDisputeGame(payable(address(0)))
+        );
         (bool success, bytes memory rawGameOut) =
             address(opcm).delegatecall(abi.encodeCall(IOPContractsManager.addGameType, (inputs)));
         assertTrue(success, "addGameType failed");
