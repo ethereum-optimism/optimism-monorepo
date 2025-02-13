@@ -29,6 +29,9 @@ type ActiveL2RollupProvider struct {
 	currentRollupClient RollupClientInterface
 	rollupIndex         int
 	clientLock          *sync.Mutex
+
+	// callback function to be called when the active provider changes
+	onActiveProviderChanged func()
 }
 
 // NewActiveL2RollupProvider creates a new ActiveL2RollupProvider
@@ -40,6 +43,7 @@ func NewActiveL2RollupProvider(
 	checkDuration time.Duration,
 	networkTimeout time.Duration,
 	logger log.Logger,
+	onActiveSequencerChanged func(),
 ) (*ActiveL2RollupProvider, error) {
 	rollupDialer := func(ctx context.Context, log log.Logger, url string,
 	) (RollupClientInterface, error) {
@@ -50,7 +54,7 @@ func NewActiveL2RollupProvider(
 
 		return sources.NewRollupClient(client.NewBaseRPCClient(rpcCl)), nil
 	}
-	return newActiveL2RollupProvider(ctx, rollupUrls, checkDuration, networkTimeout, logger, rollupDialer)
+	return newActiveL2RollupProvider(ctx, rollupUrls, checkDuration, networkTimeout, logger, rollupDialer, onActiveSequencerChanged)
 }
 
 func newActiveL2RollupProvider(
@@ -60,6 +64,7 @@ func newActiveL2RollupProvider(
 	networkTimeout time.Duration,
 	logger log.Logger,
 	dialer rollupDialer,
+	onActiveProviderChanged func(),
 ) (*ActiveL2RollupProvider, error) {
 	if len(rollupUrls) == 0 {
 		return nil, errors.New("empty rollup urls list")
@@ -78,6 +83,11 @@ func newActiveL2RollupProvider(
 	if _, err := p.RollupClient(cctx); err != nil {
 		return nil, fmt.Errorf("setting provider rollup client: %w", err)
 	}
+
+	if onActiveProviderChanged != nil {
+		p.onActiveProviderChanged = onActiveProviderChanged
+	}
+
 	return p, nil
 }
 
@@ -128,6 +138,7 @@ func (p *ActiveL2RollupProvider) findActiveEndpoints(ctx context.Context) error 
 				p.log.Debug("Current sequencer active.", "index", idx, "url", ep)
 			} else {
 				p.log.Info("Found new active sequencer.", "index", idx, "url", ep)
+				p.onActiveProviderChanged()
 			}
 			return nil
 		} else {

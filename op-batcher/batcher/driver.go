@@ -112,6 +112,8 @@ type BatchSubmitter struct {
 	channelMgrMutex sync.Mutex // guards channelMgr and prevCurrentL1
 	channelMgr      *channelManager
 	prevCurrentL1   eth.L1BlockRef // cached CurrentL1 from the last syncStatus
+
+	activeSequencerChanged chan struct{}
 }
 
 // NewBatchSubmitter initializes the BatchSubmitter driver from a preconfigured DriverSetup
@@ -120,9 +122,11 @@ func NewBatchSubmitter(setup DriverSetup) *BatchSubmitter {
 	if setup.ChannelOutFactory != nil {
 		state.SetChannelOutFactory(setup.ChannelOutFactory)
 	}
+
 	return &BatchSubmitter{
-		DriverSetup: setup,
-		channelMgr:  state,
+		DriverSetup:            setup,
+		channelMgr:             state,
+		activeSequencerChanged: make(chan struct{}),
 	}
 }
 
@@ -178,6 +182,7 @@ func (l *BatchSubmitter) StartBatchSubmitting() error {
 
 	l.Log.Info("Batch Submitter started")
 	return nil
+
 }
 
 // waitForL2Genesis waits for the L2 genesis time to be reached.
@@ -468,6 +473,7 @@ func (l *BatchSubmitter) writeLoop(ctx context.Context, wg *sync.WaitGroup, rece
 		l.publishStateToL1(ctx, txQueue, receiptsCh, daGroup)
 	}
 
+	// We _must_ wait for all senders on receiptsCh to finish before we can close it.
 	if err := txQueue.Wait(); err != nil {
 		if !errors.Is(err, context.Canceled) {
 			l.Log.Error("error waiting for transactions to complete", "err", err)
@@ -595,10 +601,23 @@ func (l *BatchSubmitter) throttlingLoop(wg *sync.WaitGroup, pendingBytesUpdated 
 		}
 	}
 
-	for pendingBytes := range pendingBytesUpdated {
-		updateParams(pendingBytes)
+	cachedPendingBytes := int64(0)
+
+	for {
+		select {
+		case pendingBytes, ok := <-pendingBytesUpdated:
+			if !ok {
+				// If the channel was closed, this is our signal to exit
+				l.Log.Info("throttlingLoop returning")
+				return
+			}
+			updateParams(pendingBytes)
+			cachedPendingBytes = pendingBytes
+		case <-l.activeSequencerChanged:
+			updateParams(cachedPendingBytes)
+		}
 	}
-	l.Log.Info("throttlingLoop returning")
+
 }
 
 func (l *BatchSubmitter) waitNodeSyncAndClearState() {

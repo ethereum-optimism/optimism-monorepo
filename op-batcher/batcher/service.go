@@ -112,7 +112,8 @@ func (bs *BatcherService) initFromCLIConfig(ctx context.Context, version string,
 	bs.ThrottleBlockSize = cfg.ThrottleBlockSize
 	bs.ThrottleAlwaysBlockSize = cfg.ThrottleAlwaysBlockSize
 
-	if err := bs.initRPCClients(ctx, cfg); err != nil {
+	bs.initDriver(opts...)
+	if err := bs.initRPCClients(ctx, cfg, bs.driver.activeSequencerChanged); err != nil {
 		return err
 	}
 	if err := bs.initRollupConfig(ctx); err != nil {
@@ -135,7 +136,7 @@ func (bs *BatcherService) initFromCLIConfig(ctx context.Context, version string,
 	if err := bs.initPProf(cfg); err != nil {
 		return fmt.Errorf("failed to init profiling: %w", err)
 	}
-	bs.initDriver(opts...)
+
 	if err := bs.initRPCServer(cfg); err != nil {
 		return fmt.Errorf("failed to start RPC server: %w", err)
 	}
@@ -145,7 +146,7 @@ func (bs *BatcherService) initFromCLIConfig(ctx context.Context, version string,
 	return nil
 }
 
-func (bs *BatcherService) initRPCClients(ctx context.Context, cfg *CLIConfig) error {
+func (bs *BatcherService) initRPCClients(ctx context.Context, cfg *CLIConfig, activeSequencerChanged chan struct{}) error {
 	l1Client, err := dial.DialEthClientWithTimeout(ctx, dial.DefaultDialTimeout, bs.Log, cfg.L1EthRpc)
 	if err != nil {
 		return fmt.Errorf("failed to dial L1 RPC: %w", err)
@@ -156,7 +157,16 @@ func (bs *BatcherService) initRPCClients(ctx context.Context, cfg *CLIConfig) er
 	if strings.Contains(cfg.RollupRpc, ",") && strings.Contains(cfg.L2EthRpc, ",") {
 		rollupUrls := strings.Split(cfg.RollupRpc, ",")
 		ethUrls := strings.Split(cfg.L2EthRpc, ",")
-		endpointProvider, err = dial.NewActiveL2EndpointProvider(ctx, ethUrls, rollupUrls, cfg.ActiveSequencerCheckDuration, dial.DefaultDialTimeout, bs.Log)
+
+		// callback to notify the driver of a new active sequencer
+		cb := func() {
+			select {
+			case bs.driver.activeSequencerChanged <- struct{}{}:
+			default:
+			}
+		}
+
+		endpointProvider, err = dial.NewActiveL2EndpointProvider(ctx, ethUrls, rollupUrls, cfg.ActiveSequencerCheckDuration, dial.DefaultDialTimeout, bs.Log, cb)
 	} else {
 		endpointProvider, err = dial.NewStaticL2EndpointProvider(ctx, bs.Log, cfg.L2EthRpc, cfg.RollupRpc)
 	}

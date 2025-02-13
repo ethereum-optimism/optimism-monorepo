@@ -35,6 +35,7 @@ func NewActiveL2EndpointProvider(ctx context.Context,
 	checkDuration time.Duration,
 	networkTimeout time.Duration,
 	logger log.Logger,
+	onActiveSequencerChanged func(),
 ) (*ActiveL2EndpointProvider, error) {
 	ethDialer := func(ctx context.Context, log log.Logger, url string) (EthClientInterface, error) {
 		rpcCl, err := dialRPCClient(ctx, log, url)
@@ -52,7 +53,7 @@ func NewActiveL2EndpointProvider(ctx context.Context,
 
 		return sources.NewRollupClient(client.NewBaseRPCClient(rpcCl)), nil
 	}
-	return newActiveL2EndpointProvider(ctx, ethUrls, rollupUrls, checkDuration, networkTimeout, logger, ethDialer, rollupDialer)
+	return newActiveL2EndpointProvider(ctx, ethUrls, rollupUrls, checkDuration, networkTimeout, logger, ethDialer, rollupDialer, onActiveSequencerChanged)
 }
 
 func newActiveL2EndpointProvider(
@@ -63,6 +64,7 @@ func newActiveL2EndpointProvider(
 	logger log.Logger,
 	ethDialer ethDialer,
 	rollupDialer rollupDialer,
+	onActiveSequencerChanged func(),
 ) (*ActiveL2EndpointProvider, error) {
 	if len(rollupUrls) == 0 {
 		return nil, errors.New("empty rollup urls list, expected at least one URL")
@@ -71,7 +73,7 @@ func newActiveL2EndpointProvider(
 		return nil, fmt.Errorf("number of eth urls (%d) and rollup urls (%d) mismatch", len(ethUrls), len(rollupUrls))
 	}
 
-	rollupProvider, err := newActiveL2RollupProvider(ctx, rollupUrls, checkDuration, networkTimeout, logger, rollupDialer)
+	rollupProvider, err := newActiveL2RollupProvider(ctx, rollupUrls, checkDuration, networkTimeout, logger, rollupDialer, onActiveSequencerChanged)
 	if err != nil {
 		return nil, err
 	}
