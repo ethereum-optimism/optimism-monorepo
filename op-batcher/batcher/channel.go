@@ -125,8 +125,8 @@ func (c *channel) ID() derive.ChannelID {
 }
 
 // NextTxData dequeues the next frames from the channel and returns them encoded in a tx data packet.
-// If cfg.UseBlobs is false, it returns txData with a single frame.
-// If cfg.UseBlobs is true, it will read frames from its channel builder
+// If cfg.DaType == DaTypeCalldata, it returns txData with a single frame.
+// Else when cfg.DaType == DaTypeBlob or DaTypeAltDA, it will read frames from its channel builder
 // until it either doesn't have more frames or the target number of frames is reached.
 //
 // NextTxData should only be called after HasTxData returned true.
