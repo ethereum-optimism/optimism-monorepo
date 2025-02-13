@@ -234,6 +234,13 @@ contract Specification_Test is CommonTest {
             _sel: IOptimismPortal2.proveWithdrawalTransaction.selector,
             _pausable: true
         });
+        _addSpec({
+            _name: "OptimismPortalInterop",
+            _sel: _getSel(
+                "proveWithdrawalTransaction((uint256,address,address,uint256,uint256,bytes),uint256,uint256,bytes,(bytes32,bytes32,bytes32,bytes32),bytes[])"
+            ),
+            _pausable: true
+        });
         _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("provenWithdrawals(bytes32,address)") });
         _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("superchainConfig()") });
         _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("systemConfig()") });
