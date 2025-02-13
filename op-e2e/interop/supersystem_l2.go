@@ -45,6 +45,7 @@ type l2Node struct {
 }
 
 type l2Net struct {
+	l2Out        *interopgen.L2Output
 	chainID      *big.Int
 	operatorKeys map[devkeys.ChainOperatorRole]ecdsa.PrivateKey
 	contracts    map[string]interface{}
@@ -109,6 +110,7 @@ func (s *interopE2ESystem) newL2(id string, l2Out *interopgen.L2Output) l2Net {
 	batcher := s.newBatcherForL2(id, operatorKeys, l2Geth, opNode)
 
 	return l2Net{
+		l2Out:        l2Out,
 		chainID:      l2Out.Genesis.Config.ChainID,
 		nodes:        map[string]*l2Node{"sequencer": {name: "sequencer", opNode: opNode, l2Geth: l2Geth}},
 		proposer:     nil,
@@ -119,11 +121,15 @@ func (s *interopE2ESystem) newL2(id string, l2Out *interopgen.L2Output) l2Net {
 	}
 }
 
-func (s *interopE2ESystem) addNode(id string, name string, l2Out *interopgen.L2Output) {
+func (s *interopE2ESystem) AddNode(id string, name string) {
 	l2 := s.l2s[id]
-	l2Geth := s.newGethForL2(id, l2Out)
-	opNode := s.newNodeForL2(id, l2Out, l2.operatorKeys, l2Geth, false, name)
+	l2Geth := s.newGethForL2(id, l2.l2Out)
+	opNode := s.newNodeForL2(id, l2.l2Out, l2.operatorKeys, l2Geth, false, name)
 	l2.nodes[name] = &l2Node{name: name, opNode: opNode, l2Geth: l2Geth}
+
+	// add the node to the supervisor
+	endpoint, secret := l2.nodes[name].opNode.InteropRPC()
+	s.SupervisorClient().AddL2RPC(context.Background(), endpoint, secret)
 }
 
 // newNodeForL2 creates a new Opnode for an L2 chain

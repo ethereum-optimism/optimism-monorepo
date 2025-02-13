@@ -74,6 +74,7 @@ type SuperSystem interface {
 	L2RollupClient(network string, node string) *sources.RollupClient
 	SendL2Tx(network string, node string, username string, applyTxOpts helpers.TxOptsFn) *types.Receipt
 	EmitData(ctx context.Context, network string, node string, username string, data string) *types.Receipt
+	AddNode(network string, nodeName string)
 
 	// L2 level
 	ChainID(network string) *big.Int
