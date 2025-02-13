@@ -5,6 +5,16 @@
         "components": [
           {
             "internalType": "address",
+            "name": "superchainConfigImpl",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "protocolVersionsImpl",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
             "name": "l1ERC721BridgeImpl",
             "type": "address"
           },
@@ -54,7 +64,7 @@
             "type": "address"
           }
         ],
-        "internalType": "struct StandardValidatorBase.ImplementationsBase",
+        "internalType": "struct StandardValidatorV200.ImplementationsV200",
         "name": "_implementations",
         "type": "tuple"
       },
@@ -383,6 +393,32 @@
   },
   {
     "inputs": [],
+    "name": "protocolVersionsImpl",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "protocolVersionsVersion",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "pure",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "superchainConfig",
     "outputs": [
       {
@@ -392,6 +428,32 @@
       }
     ],
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "superchainConfigImpl",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "superchainConfigVersion",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "pure",
     "type": "function"
   },
   {
@@ -435,6 +497,11 @@
             "type": "address"
           },
           {
+            "internalType": "contract IProtocolVersions",
+            "name": "protocolVersions",
+            "type": "address"
+          },
+          {
             "internalType": "bytes32",
             "name": "absolutePrestate",
             "type": "bytes32"
@@ -445,7 +512,7 @@
             "type": "uint256"
           }
         ],
-        "internalType": "struct StandardValidatorV180.InputV180",
+        "internalType": "struct StandardValidatorV200.InputV200",
         "name": "_input",
         "type": "tuple"
       },

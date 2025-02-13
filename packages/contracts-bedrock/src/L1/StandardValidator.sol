@@ -23,29 +23,27 @@ import { ISemver } from "interfaces/universal/ISemver.sol";
 import { IResourceMetering } from "interfaces/L1/IResourceMetering.sol";
 import { IOptimismPortal2 } from "interfaces/L1/IOptimismPortal2.sol";
 import { IPreimageOracle } from "interfaces/cannon/IPreimageOracle.sol";
+import { IProtocolVersions } from "interfaces/L1/IProtocolVersions.sol";
 
-contract StandardValidatorV180 {
-    Implementations internal impls;
-    ISuperchainConfig internal superchainConfig;
-    address internal l1PAOMultisig;
-    address internal mips;
-    address internal challenger;
+contract StandardValidatorBase {
+    ISuperchainConfig public superchainConfig;
+    address public l1PAOMultisig;
+    address public mips;
+    address public challenger;
 
-    // Semver strings for our contracts. Pulled from the Superchain Registry.
-    string internal constant systemConfigVersion = "2.3.0";
-    string internal constant permissionedDisputeGameVersion = "1.3.1";
-    string internal constant mipsVersion = "1.2.1";
-    string internal constant optimismPortalVersion = "3.10.0";
-    string internal constant anchorStateRegistryVersion = "2.0.0";
-    string internal constant delayedWETHVersion = "1.1.0";
-    string internal constant disputeGameFactoryVersion = "1.0.0";
-    string internal constant l1CrossDomainMessengerVersion = "2.3.0";
-    string internal constant l1ERC721BridgeVersion = "2.1.0";
-    string internal constant l1StandardBridgeVersion = "2.1.0";
-    string internal constant optimismMintableERC20FactoryVersion = "1.9.0";
-    string internal constant preimageOracleVersion = "1.1.2";
+    // Implementation addresses as state variables
+    address public l1ERC721BridgeImpl;
+    address public optimismPortalImpl;
+    address public systemConfigImpl;
+    address public optimismMintableERC20FactoryImpl;
+    address public l1CrossDomainMessengerImpl;
+    address public l1StandardBridgeImpl;
+    address public disputeGameFactoryImpl;
+    address public anchorStateRegistryImpl;
+    address public delayedWETHImpl;
+    address public mipsImpl;
 
-    struct Implementations {
+    struct ImplementationsBase {
         address l1ERC721BridgeImpl;
         address optimismPortalImpl;
         address systemConfigImpl;
@@ -58,65 +56,104 @@ contract StandardValidatorV180 {
         address mipsImpl;
     }
 
-    struct Input {
-        IProxyAdmin proxyAdmin;
-        ISystemConfig sysCfg;
-        bytes32 absolutePrestate;
-        uint256 l2ChainID;
-    }
-
     constructor(
-        Implementations memory _implementations,
+        ImplementationsBase memory _implementations,
         ISuperchainConfig _superchainConfig,
         address _l1PAOMultisig,
         address _mips,
         address _challenger
     ) {
-        impls = _implementations;
         superchainConfig = _superchainConfig;
         l1PAOMultisig = _l1PAOMultisig;
         mips = _mips;
         challenger = _challenger;
+
+        // Set implementation addresses from struct
+        l1ERC721BridgeImpl = _implementations.l1ERC721BridgeImpl;
+        optimismPortalImpl = _implementations.optimismPortalImpl;
+        systemConfigImpl = _implementations.systemConfigImpl;
+        optimismMintableERC20FactoryImpl = _implementations.optimismMintableERC20FactoryImpl;
+        l1CrossDomainMessengerImpl = _implementations.l1CrossDomainMessengerImpl;
+        l1StandardBridgeImpl = _implementations.l1StandardBridgeImpl;
+        disputeGameFactoryImpl = _implementations.disputeGameFactoryImpl;
+        anchorStateRegistryImpl = _implementations.anchorStateRegistryImpl;
+        delayedWETHImpl = _implementations.delayedWETHImpl;
+        mipsImpl = _implementations.mipsImpl;
     }
 
     function validate(
-        StandardValidatorV180.Input memory _input,
-        bool _allowFailure
+        string memory _errors,
+        ISystemConfig _sysCfg,
+        IProxyAdmin _admin,
+        bytes32 _absolutePrestate,
+        uint256 _l2ChainID
     )
-        public
+        internal
         view
         returns (string memory)
     {
-        string memory _errors = "";
-
         _errors = assertValidSuperchainConfig(_errors);
-        _errors = assertValidProxyAdmin(_errors, _input.proxyAdmin);
-        address _l1PAO = _input.proxyAdmin.owner();
+        _errors = assertValidProxyAdmin(_errors, _admin);
+        address _l1PAO = _admin.owner();
 
-        ISystemConfig _sysCfg = _input.sysCfg;
-        _errors = assertValidSystemConfig(_errors, _sysCfg, _input.proxyAdmin);
-        _errors = assertValidL1CrossDomainMessenger(_errors, _sysCfg, _input.proxyAdmin);
-        _errors = assertValidL1StandardBridge(_errors, _sysCfg, _input.proxyAdmin);
-        _errors = assertValidOptimismMintableERC20Factory(_errors, _sysCfg, _input.proxyAdmin);
-        _errors = assertValidL1ERC721Bridge(_errors, _sysCfg, _input.proxyAdmin);
-        _errors = assertValidOptimismPortal(_errors, _sysCfg, _input.proxyAdmin);
-        _errors = assertValidDisputeGameFactory(_errors, _sysCfg, _l1PAO, _input.proxyAdmin);
-        _errors = assertValidPermissionedDisputeGame(
-            _errors, _sysCfg, _input.absolutePrestate, _input.l2ChainID, _input.proxyAdmin
-        );
-        _errors = assertValidPermissionlessDisputeGame(
-            _errors, _sysCfg, _input.absolutePrestate, _input.l2ChainID, _input.proxyAdmin
-        );
-
-        if (bytes(_errors).length > 0 && !_allowFailure) {
-            revert(string.concat("StandardValidatorV180: ", _errors));
-        }
-
+        _errors = assertValidSystemConfig(_errors, _sysCfg, _admin);
+        _errors = assertValidL1CrossDomainMessenger(_errors, _sysCfg, _admin);
+        _errors = assertValidL1StandardBridge(_errors, _sysCfg, _admin);
+        _errors = assertValidOptimismMintableERC20Factory(_errors, _sysCfg, _admin);
+        _errors = assertValidL1ERC721Bridge(_errors, _sysCfg, _admin);
+        _errors = assertValidOptimismPortal(_errors, _sysCfg, _admin);
+        _errors = assertValidDisputeGameFactory(_errors, _sysCfg, _l1PAO, _admin);
+        _errors = assertValidPermissionedDisputeGame(_errors, _sysCfg, _absolutePrestate, _l2ChainID, _admin);
+        _errors = assertValidPermissionlessDisputeGame(_errors, _sysCfg, _absolutePrestate, _l2ChainID, _admin);
         return _errors;
     }
 
-    function implementations() public view returns (Implementations memory) {
-        return impls;
+    function systemConfigVersion() public pure virtual returns (string memory) {
+        return "2.3.0";
+    }
+
+    function permissionedDisputeGameVersion() public pure virtual returns (string memory) {
+        return "1.3.1";
+    }
+
+    function mipsVersion() public pure virtual returns (string memory) {
+        return "1.2.1";
+    }
+
+    function optimismPortalVersion() public pure virtual returns (string memory) {
+        return "3.10.0";
+    }
+
+    function anchorStateRegistryVersion() public pure virtual returns (string memory) {
+        return "2.0.0";
+    }
+
+    function delayedWETHVersion() public pure virtual returns (string memory) {
+        return "1.1.0";
+    }
+
+    function disputeGameFactoryVersion() public pure virtual returns (string memory) {
+        return "1.0.0";
+    }
+
+    function l1CrossDomainMessengerVersion() public pure virtual returns (string memory) {
+        return "2.3.0";
+    }
+
+    function l1ERC721BridgeVersion() public pure virtual returns (string memory) {
+        return "2.1.0";
+    }
+
+    function l1StandardBridgeVersion() public pure virtual returns (string memory) {
+        return "2.1.0";
+    }
+
+    function optimismMintableERC20FactoryVersion() public pure virtual returns (string memory) {
+        return "1.9.0";
+    }
+
+    function preimageOracleVersion() public pure virtual returns (string memory) {
+        return "1.1.2";
     }
 
     function assertValidSuperchainConfig(string memory _errors) internal view returns (string memory) {
@@ -139,12 +176,11 @@ contract StandardValidatorV180 {
         returns (string memory)
     {
         ISemver _semver = ISemver(address(_sysCfg));
-        _errors = internalRequire(stringEq(_semver.version(), systemConfigVersion), "SYSCON-10", _errors);
+        _errors = internalRequire(stringEq(_semver.version(), systemConfigVersion()), "SYSCON-10", _errors);
         _errors = internalRequire(_sysCfg.gasLimit() == uint64(60_000_000), "SYSCON-20", _errors);
         _errors = internalRequire(_sysCfg.scalar() >> 248 == 1, "SYSCON-30", _errors);
-        _errors = internalRequire(
-            _admin.getProxyImplementation(address(_sysCfg)) == impls.systemConfigImpl, "SYSCON-40", _errors
-        );
+        _errors =
+            internalRequire(_admin.getProxyImplementation(address(_sysCfg)) == systemConfigImpl, "SYSCON-40", _errors);
 
         IResourceMetering.ResourceConfig memory outputConfig = _sysCfg.resourceConfig();
         _errors = internalRequire(outputConfig.maxResourceLimit == 20_000_000, "SYSCON-50", _errors);
@@ -166,11 +202,9 @@ contract StandardValidatorV180 {
         returns (string memory)
     {
         IL1CrossDomainMessenger _messenger = IL1CrossDomainMessenger(_sysCfg.l1CrossDomainMessenger());
-        _errors = internalRequire(stringEq(_messenger.version(), l1CrossDomainMessengerVersion), "L1xDM-10", _errors);
+        _errors = internalRequire(stringEq(_messenger.version(), l1CrossDomainMessengerVersion()), "L1xDM-10", _errors);
         _errors = internalRequire(
-            _admin.getProxyImplementation(address(_messenger)) == address(impls.l1CrossDomainMessengerImpl),
-            "L1xDM-20",
-            _errors
+            _admin.getProxyImplementation(address(_messenger)) == l1CrossDomainMessengerImpl, "L1xDM-20", _errors
         );
 
         IOptimismPortal2 _portal = IOptimismPortal2(payable(_sysCfg.optimismPortal()));
@@ -198,10 +232,9 @@ contract StandardValidatorV180 {
         returns (string memory)
     {
         IL1StandardBridge _bridge = IL1StandardBridge(payable(_sysCfg.l1StandardBridge()));
-        _errors = internalRequire(stringEq(_bridge.version(), l1StandardBridgeVersion), "L1SB-10", _errors);
-        _errors = internalRequire(
-            _admin.getProxyImplementation(address(_bridge)) == address(impls.l1StandardBridgeImpl), "L1SB-20", _errors
-        );
+        _errors = internalRequire(stringEq(_bridge.version(), l1StandardBridgeVersion()), "L1SB-10", _errors);
+        _errors =
+            internalRequire(_admin.getProxyImplementation(address(_bridge)) == l1StandardBridgeImpl, "L1SB-20", _errors);
 
         IL1CrossDomainMessenger _messenger = IL1CrossDomainMessenger(_sysCfg.l1CrossDomainMessenger());
 
@@ -224,11 +257,9 @@ contract StandardValidatorV180 {
     {
         IOptimismMintableERC20Factory _factory = IOptimismMintableERC20Factory(_sysCfg.optimismMintableERC20Factory());
         _errors =
-            internalRequire(stringEq(_factory.version(), optimismMintableERC20FactoryVersion), "MERC20F-10", _errors);
+            internalRequire(stringEq(_factory.version(), optimismMintableERC20FactoryVersion()), "MERC20F-10", _errors);
         _errors = internalRequire(
-            _admin.getProxyImplementation(address(_factory)) == address(impls.optimismMintableERC20FactoryImpl),
-            "MERC20F-20",
-            _errors
+            _admin.getProxyImplementation(address(_factory)) == optimismMintableERC20FactoryImpl, "MERC20F-20", _errors
         );
 
         IL1StandardBridge _bridge = IL1StandardBridge(payable(_sysCfg.l1StandardBridge()));
@@ -247,10 +278,9 @@ contract StandardValidatorV180 {
         returns (string memory)
     {
         IL1ERC721Bridge _bridge = IL1ERC721Bridge(_sysCfg.l1ERC721Bridge());
-        _errors = internalRequire(stringEq(_bridge.version(), l1ERC721BridgeVersion), "L721B-10", _errors);
-        _errors = internalRequire(
-            _admin.getProxyImplementation(address(_bridge)) == address(impls.l1ERC721BridgeImpl), "L721B-20", _errors
-        );
+        _errors = internalRequire(stringEq(_bridge.version(), l1ERC721BridgeVersion()), "L721B-10", _errors);
+        _errors =
+            internalRequire(_admin.getProxyImplementation(address(_bridge)) == l1ERC721BridgeImpl, "L721B-20", _errors);
 
         IL1CrossDomainMessenger _l1XDM = IL1CrossDomainMessenger(_sysCfg.l1CrossDomainMessenger());
         _errors = internalRequire(address(_bridge.OTHER_BRIDGE()) == Predeploys.L2_ERC721_BRIDGE, "L721B-30", _errors);
@@ -271,10 +301,9 @@ contract StandardValidatorV180 {
         returns (string memory)
     {
         IOptimismPortal2 _portal = IOptimismPortal2(payable(_sysCfg.optimismPortal()));
-        _errors = internalRequire(stringEq(_portal.version(), optimismPortalVersion), "PORTAL-10", _errors);
-        _errors = internalRequire(
-            _admin.getProxyImplementation(address(_portal)) == address(impls.optimismPortalImpl), "PORTAL-20", _errors
-        );
+        _errors = internalRequire(stringEq(_portal.version(), optimismPortalVersion()), "PORTAL-10", _errors);
+        _errors =
+            internalRequire(_admin.getProxyImplementation(address(_portal)) == optimismPortalImpl, "PORTAL-20", _errors);
 
         IDisputeGameFactory _dgf = IDisputeGameFactory(_sysCfg.disputeGameFactory());
         _errors = internalRequire(address(_portal.disputeGameFactory()) == address(_dgf), "PORTAL-30", _errors);
@@ -298,9 +327,9 @@ contract StandardValidatorV180 {
         returns (string memory)
     {
         IDisputeGameFactory _factory = IDisputeGameFactory(_sysCfg.disputeGameFactory());
-        _errors = internalRequire(stringEq(_factory.version(), disputeGameFactoryVersion), "DF-10", _errors);
+        _errors = internalRequire(stringEq(_factory.version(), disputeGameFactoryVersion()), "DF-10", _errors);
         _errors = internalRequire(
-            _admin.getProxyImplementation(address(_factory)) == address(impls.disputeGameFactoryImpl), "DF-20", _errors
+            _admin.getProxyImplementation(address(_factory)) == disputeGameFactoryImpl, "DF-20", _errors
         );
         _errors = internalRequire(_factory.owner() == address(_l1PAO), "DF-30", _errors);
         return _errors;
@@ -381,7 +410,7 @@ contract StandardValidatorV180 {
         bool validGameVM = address(_game.vm()) == address(mips);
 
         _errors = internalRequire(
-            stringEq(_game.version(), permissionedDisputeGameVersion), string.concat(_errorPrefix, "-20"), _errors
+            stringEq(_game.version(), permissionedDisputeGameVersion()), string.concat(_errorPrefix, "-20"), _errors
         );
         IAnchorStateRegistry _asr = _game.anchorStateRegistry();
         _errors = internalRequire(
@@ -425,10 +454,11 @@ contract StandardValidatorV180 {
         returns (string memory)
     {
         _errorPrefix = string.concat(_errorPrefix, "-DWETH");
-        _errors =
-            internalRequire(stringEq(_weth.version(), delayedWETHVersion), string.concat(_errorPrefix, "-10"), _errors);
         _errors = internalRequire(
-            _admin.getProxyImplementation(address(_weth)) == address(impls.delayedWETHImpl),
+            stringEq(_weth.version(), delayedWETHVersion()), string.concat(_errorPrefix, "-10"), _errors
+        );
+        _errors = internalRequire(
+            _admin.getProxyImplementation(address(_weth)) == delayedWETHImpl,
             string.concat(_errorPrefix, "-20"),
             _errors
         );
@@ -451,10 +481,10 @@ contract StandardValidatorV180 {
     {
         _errorPrefix = string.concat(_errorPrefix, "-ANCHORP");
         _errors = internalRequire(
-            stringEq(_asr.version(), anchorStateRegistryVersion), string.concat(_errorPrefix, "-10"), _errors
+            stringEq(_asr.version(), anchorStateRegistryVersion()), string.concat(_errorPrefix, "-10"), _errors
         );
         _errors = internalRequire(
-            _admin.getProxyImplementation(address(_asr)) == address(impls.anchorStateRegistryImpl),
+            _admin.getProxyImplementation(address(_asr)) == anchorStateRegistryImpl,
             string.concat(_errorPrefix, "-20"),
             _errors
         );
@@ -483,7 +513,7 @@ contract StandardValidatorV180 {
         _errorPrefix = string.concat(_errorPrefix, "-PIMGO");
         // The preimage oracle's address is correct if the MIPS address is correct.
         _errors = internalRequire(
-            stringEq(_oracle.version(), preimageOracleVersion), string.concat(_errorPrefix, "-10"), _errors
+            stringEq(_oracle.version(), preimageOracleVersion()), string.concat(_errorPrefix, "-10"), _errors
         );
         _errors = internalRequire(_oracle.challengePeriod() == 86400, string.concat(_errorPrefix, "-20"), _errors);
         _errors = internalRequire(_oracle.minProposalSize() == 126000, string.concat(_errorPrefix, "-30"), _errors);
@@ -512,5 +542,205 @@ contract StandardValidatorV180 {
 
     function stringEq(string memory _a, string memory _b) internal pure returns (bool) {
         return keccak256(bytes(_a)) == keccak256(bytes(_b));
+    }
+}
+
+contract StandardValidatorV180 is StandardValidatorBase {
+    struct InputV180 {
+        IProxyAdmin proxyAdmin;
+        ISystemConfig sysCfg;
+        bytes32 absolutePrestate;
+        uint256 l2ChainID;
+    }
+
+    constructor(
+        ImplementationsBase memory _implementations,
+        ISuperchainConfig _superchainConfig,
+        address _l1PAOMultisig,
+        address _mips,
+        address _challenger
+    )
+        StandardValidatorBase(_implementations, _superchainConfig, _l1PAOMultisig, _mips, _challenger)
+    { }
+
+    function validate(InputV180 memory _input, bool _allowFailure) public view returns (string memory) {
+        string memory _errors = "";
+
+        _errors = super.validate(_errors, _input.sysCfg, _input.proxyAdmin, _input.absolutePrestate, _input.l2ChainID);
+
+        if (bytes(_errors).length > 0 && !_allowFailure) {
+            revert(string.concat("StandardValidatorV180: ", _errors));
+        }
+
+        return _errors;
+    }
+}
+
+contract StandardValidatorV200 is StandardValidatorBase {
+    address public superchainConfigImpl;
+    address public protocolVersionsImpl;
+
+    struct ImplementationsV200 {
+        address superchainConfigImpl;
+        address protocolVersionsImpl;
+        address l1ERC721BridgeImpl;
+        address optimismPortalImpl;
+        address systemConfigImpl;
+        address optimismMintableERC20FactoryImpl;
+        address l1CrossDomainMessengerImpl;
+        address l1StandardBridgeImpl;
+        address disputeGameFactoryImpl;
+        address anchorStateRegistryImpl;
+        address delayedWETHImpl;
+        address mipsImpl;
+    }
+
+    struct InputV200 {
+        IProxyAdmin proxyAdmin;
+        ISystemConfig sysCfg;
+        IProtocolVersions protocolVersions;
+        bytes32 absolutePrestate;
+        uint256 l2ChainID;
+    }
+
+    constructor(
+        ImplementationsV200 memory _implementations,
+        ISuperchainConfig _superchainConfig,
+        address _l1PAOMultisig,
+        address _mips,
+        address _challenger
+    )
+        StandardValidatorBase(
+            StandardValidatorBase.ImplementationsBase({
+                l1ERC721BridgeImpl: _implementations.l1ERC721BridgeImpl,
+                optimismPortalImpl: _implementations.optimismPortalImpl,
+                systemConfigImpl: _implementations.systemConfigImpl,
+                optimismMintableERC20FactoryImpl: _implementations.optimismMintableERC20FactoryImpl,
+                l1CrossDomainMessengerImpl: _implementations.l1CrossDomainMessengerImpl,
+                l1StandardBridgeImpl: _implementations.l1StandardBridgeImpl,
+                disputeGameFactoryImpl: _implementations.disputeGameFactoryImpl,
+                anchorStateRegistryImpl: _implementations.anchorStateRegistryImpl,
+                delayedWETHImpl: _implementations.delayedWETHImpl,
+                mipsImpl: _implementations.mipsImpl
+            }),
+            _superchainConfig,
+            _l1PAOMultisig,
+            _mips,
+            _challenger
+        )
+    {
+        superchainConfigImpl = _implementations.superchainConfigImpl;
+        protocolVersionsImpl = _implementations.protocolVersionsImpl;
+    }
+
+    function validate(InputV200 memory _input, bool _allowFailure) public view returns (string memory) {
+        string memory _errors = "";
+
+        ISuperchainConfig _superchainConfig =
+            IOptimismPortal2(payable(_input.sysCfg.optimismPortal())).superchainConfig();
+
+        _errors = validate(
+            _errors,
+            _input.sysCfg,
+            _input.proxyAdmin,
+            _superchainConfig,
+            _input.protocolVersions,
+            _input.absolutePrestate,
+            _input.l2ChainID
+        );
+
+        if (bytes(_errors).length > 0 && !_allowFailure) {
+            revert(string.concat("StandardValidatorV200: ", _errors));
+        }
+
+        return _errors;
+    }
+
+    function validate(
+        string memory _errors,
+        ISystemConfig _sysCfg,
+        IProxyAdmin _admin,
+        ISuperchainConfig _superchainConfig,
+        IProtocolVersions _protocolVersions,
+        bytes32 _absolutePrestate,
+        uint256 _l2ChainID
+    )
+        internal
+        view
+        returns (string memory)
+    {
+        _errors = assertValidSuperchainConfig(_errors, _superchainConfig, _admin);
+        _errors = assertValidProtocolVersions(_errors, _protocolVersions, _admin);
+        _errors = super.validate(_errors, _sysCfg, _admin, _absolutePrestate, _l2ChainID);
+        return _errors;
+    }
+
+    function assertValidProtocolVersions(
+        string memory _errors,
+        IProtocolVersions _protocolVersions,
+        IProxyAdmin _admin
+    )
+        internal
+        view
+        returns (string memory)
+    {
+        _errors = internalRequire(stringEq(_protocolVersions.version(), protocolVersionsVersion()), "PVER-10", _errors);
+        _errors = internalRequire(
+            _admin.getProxyImplementation(address(_protocolVersions)) == protocolVersionsImpl, "PVER-20", _errors
+        );
+
+        return _errors;
+    }
+
+    function assertValidSuperchainConfig(
+        string memory _errors,
+        ISuperchainConfig _superchainConfig,
+        IProxyAdmin _admin
+    )
+        internal
+        view
+        returns (string memory)
+    {
+        _errors = internalRequire(stringEq(_superchainConfig.version(), superchainConfigVersion()), "SPA-10", _errors);
+        _errors = internalRequire(
+            _admin.getProxyImplementation(address(superchainConfig)) == superchainConfigImpl, "SPA-20", _errors
+        );
+        return _errors;
+    }
+
+    function superchainConfigVersion() public pure returns (string memory) {
+        return "1.2.0";
+    }
+
+    function protocolVersionsVersion() public pure returns (string memory) {
+        return "1.1.0";
+    }
+
+    function systemConfigVersion() public pure override returns (string memory) {
+        return "2.4.0";
+    }
+
+    function l1CrossDomainMessengerVersion() public pure override returns (string memory) {
+        return "2.5.0";
+    }
+
+    function l1StandardBridgeVersion() public pure override returns (string memory) {
+        return "2.2.1";
+    }
+
+    function l1ERC721BridgeVersion() public pure override returns (string memory) {
+        return "2.3.0";
+    }
+
+    function disputeGameFactoryVersion() public pure override returns (string memory) {
+        return "1.0.1";
+    }
+
+    function optimismPortalVersion() public pure override returns (string memory) {
+        return "3.12.0";
+    }
+
+    function optimismMintableERC20FactoryVersion() public pure override returns (string memory) {
+        return "1.10.1";
     }
 }

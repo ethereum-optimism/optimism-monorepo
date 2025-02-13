@@ -96,5 +96,19 @@
     "offset": 0,
     "slot": "13",
     "type": "address"
+  },
+  {
+    "bytes": "20",
+    "label": "superchainConfigImpl",
+    "offset": 0,
+    "slot": "14",
+    "type": "address"
+  },
+  {
+    "bytes": "20",
+    "label": "protocolVersionsImpl",
+    "offset": 0,
+    "slot": "15",
+    "type": "address"
   }
 ]
