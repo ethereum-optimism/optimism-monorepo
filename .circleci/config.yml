@@ -1376,11 +1376,12 @@ jobs:
       image: ubuntu-2204:2024.08.1
     resource_class: large
     steps:
+      - checkout
       - gcp-cli/install
       # - gcp-oidc-authenticate:
       #     gcp_cred_config_file_path: /tmp/gcp_cred_config.json
       #     oidc_token_file_path: /tmp/oidc_token.json
-      # - utils/checkout-with-mise
+
       # - run:
       #     name: Configure Docker
       #     command: |
