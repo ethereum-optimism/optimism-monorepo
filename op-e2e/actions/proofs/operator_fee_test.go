@@ -52,10 +52,6 @@ func Test_Operator_Fee_Constistency(gt *testing.T) {
 			BalanceAt(context.Background(), env.Alice.Address(), nil)
 		require.NoError(t, err)
 
-		l1BaseFeeVaultInitialBalance, err := env.Engine.EthClient().
-			BalanceAt(context.Background(), env.Dp.DeployConfig.BaseFeeVaultRecipient, nil)
-		require.NoError(t, err)
-
 		env.Sequencer.ActL2StartBlock(t)
 		// Send an L2 tx
 		env.Alice.L2.ActResetTxOpts(t)
@@ -73,11 +69,15 @@ func Test_Operator_Fee_Constistency(gt *testing.T) {
 		l1FeeVaultBalance, err := env.Engine.EthClient().BalanceAt(context.Background(), predeploys.L1FeeVaultAddr, nil)
 		require.NoError(t, err)
 
-		BaseFeeVaultFinalBalance, err := env.Engine.EthClient().
+		baseFeeVaultBalance, err := env.Engine.EthClient().
 			BalanceAt(context.Background(), predeploys.BaseFeeVaultAddr, nil)
 		require.NoError(t, err)
 
-		OperatorFeeVaultBalance, err := env.Engine.EthClient().BalanceAt(context.Background(), predeploys.OperatorFeeVaultAddr, nil)
+		sequencerFeeVaultBalance, err := env.Engine.EthClient().BalanceAt(context.Background(), predeploys.SequencerFeeVaultAddr, nil)
+		require.NoError(t, err)
+
+		operatorFeeVaultBalance, err := env.Engine.EthClient().BalanceAt(context.Background(), predeploys.OperatorFeeVaultAddr, nil)
+		require.NoError(t, err)
 
 		aliceFinalBalance, err := env.Engine.EthClient().BalanceAt(context.Background(), env.Alice.Address(), nil)
 		require.NoError(t, err)
@@ -95,27 +95,28 @@ func Test_Operator_Fee_Constistency(gt *testing.T) {
 				),
 				new(big.Int).SetUint64(OperatorFeeConstant),
 			),
-			OperatorFeeVaultBalance,
+			operatorFeeVaultBalance,
 		)
 
 		// Check that no Ether has been minted or burned
-		initialTotalBalance := new(big.Int).Add(
-			aliceInitialBalance,
-			l1BaseFeeVaultInitialBalance,
-		)
+		// All vault balances are 0 at the beginning of the test
 		finalTotalBalance := new(big.Int).Add(
 			aliceFinalBalance,
-			new(big.Int).Add(l1FeeVaultBalance, new(big.Int).Add(OperatorFeeVaultBalance, BaseFeeVaultFinalBalance)),
+			new(big.Int).Add(
+				new(big.Int).Add(l1FeeVaultBalance, sequencerFeeVaultBalance),
+				new(big.Int).Add(operatorFeeVaultBalance, baseFeeVaultBalance),
+			),
 		)
-		require.Equal(t, initialTotalBalance, finalTotalBalance)
+
+		require.Equal(t, aliceInitialBalance, finalTotalBalance)
 
 		// Check that the difference in alice's balance is equal to the total fee
-		aliceBalanceDiff := new(big.Int).Sub(aliceFinalBalance, aliceInitialBalance)
+		aliceBalanceDiff := new(big.Int).Sub(aliceInitialBalance, aliceFinalBalance)
 		require.Equal(t,
 			aliceBalanceDiff,
 			new(big.Int).Add(
-				new(big.Int).Add(l1FeeVaultBalance, OperatorFeeVaultBalance),
-				BaseFeeVaultFinalBalance,
+				new(big.Int).Add(l1FeeVaultBalance, operatorFeeVaultBalance),
+				new(big.Int).Add(sequencerFeeVaultBalance, baseFeeVaultBalance),
 			),
 		)
 
