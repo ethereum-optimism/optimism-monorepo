@@ -169,6 +169,9 @@ contract OPPrestateUpdater_Test is Test {
         );
 
         assertEq(pdg.absolutePrestate().raw(), inputs[0].absolutePrestate.raw(), "pdg prestate mismatch");
+
+        // Ensure that the WETH contract is not reverting
+        pdg.weth().balanceOf(address(0));
     }
 
     function test_updatePrestate_bothGamesWithValidInput_succeeds() public {
@@ -195,8 +198,20 @@ contract OPPrestateUpdater_Test is Test {
                 )
             )
         );
+        IPermissionedDisputeGame fdg = IPermissionedDisputeGame(
+            address(
+                IDisputeGameFactory(chainDeployOutput.systemConfigProxy.disputeGameFactory()).gameImpls(
+                    GameTypes.CANNON
+                )
+            )
+        );
 
         assertEq(pdg.absolutePrestate().raw(), inputs[0].absolutePrestate.raw(), "pdg prestate mismatch");
+        assertEq(fdg.absolutePrestate().raw(), inputs[0].absolutePrestate.raw(), "fdg prestate mismatch");
+
+        // Ensure that the WETH contracts are not reverting
+        pdg.weth().balanceOf(address(0));
+        fdg.weth().balanceOf(address(0));
     }
 
     function test_updatePrestate_whenPDGPrestateIsZero_reverts() public {
