@@ -159,9 +159,7 @@ func (l *BatchSubmitter) StartBatchSubmitting() error {
 
 	receiptsCh := make(chan txmgr.TxReceipt[txRef])
 
-	l.txpoolMutex.Lock()
-	l.txpoolState = TxpoolGood
-	l.txpoolMutex.Unlock()
+	l.txpoolState = TxpoolGood // no need to lock mutex as no other routines yet exist
 
 	// Channels used to signal between the loops
 	pendingBytesUpdated := make(chan int64, 1)
