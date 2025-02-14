@@ -67,7 +67,7 @@ func (v *Verifier) getContractArtifact(name string) (*contractArtifact, error) {
 	for sourcePath, sourceInfo := range art.Metadata.Sources {
 		remappedKey := art.SearchRemappings(sourcePath)
 		sources[remappedKey] = map[string]string{"content": sourceInfo.Content}
-		v.log.Info("added source contract", "originalPath", sourcePath, "remappedKey", remappedKey)
+		v.log.Debug("added source contract", "originalPath", sourcePath, "remappedKey", remappedKey)
 	}
 
 	var optimizer struct {
@@ -119,8 +119,11 @@ func (v *Verifier) getContractArtifact(name string) (*contractArtifact, error) {
 	}
 	v.log.Info("contractName", "name", contractName)
 
-	constructorArgs := GetConstructorArgs(name, v.st)
-	v.log.Info("constructorArgs", "args", constructorArgs)
+	constructorArgs, err := v.getEncodedConstructorArgs(name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get constructor args: %w", err)
+	}
+	v.log.Debug("constructorArgs", "args", constructorArgs)
 
 	return &contractArtifact{
 		ContractName:     contractName,
