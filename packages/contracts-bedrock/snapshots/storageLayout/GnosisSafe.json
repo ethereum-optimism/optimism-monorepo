@@ -1,0 +1,65 @@
+[
+  {
+    "bytes": "20",
+    "label": "singleton",
+    "offset": 0,
+    "slot": "0",
+    "type": "address"
+  },
+  {
+    "bytes": "32",
+    "label": "modules",
+    "offset": 0,
+    "slot": "1",
+    "type": "mapping(address => address)"
+  },
+  {
+    "bytes": "32",
+    "label": "owners",
+    "offset": 0,
+    "slot": "2",
+    "type": "mapping(address => address)"
+  },
+  {
+    "bytes": "32",
+    "label": "ownerCount",
+    "offset": 0,
+    "slot": "3",
+    "type": "uint256"
+  },
+  {
+    "bytes": "32",
+    "label": "threshold",
+    "offset": 0,
+    "slot": "4",
+    "type": "uint256"
+  },
+  {
+    "bytes": "32",
+    "label": "nonce",
+    "offset": 0,
+    "slot": "5",
+    "type": "uint256"
+  },
+  {
+    "bytes": "32",
+    "label": "_deprecatedDomainSeparator",
+    "offset": 0,
+    "slot": "6",
+    "type": "bytes32"
+  },
+  {
+    "bytes": "32",
+    "label": "signedMessages",
+    "offset": 0,
+    "slot": "7",
+    "type": "mapping(bytes32 => uint256)"
+  },
+  {
+    "bytes": "32",
+    "label": "approvedHashes",
+    "offset": 0,
+    "slot": "8",
+    "type": "mapping(address => mapping(bytes32 => uint256))"
+  }
+]
