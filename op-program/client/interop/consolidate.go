@@ -61,7 +61,12 @@ func RunConsolidation(
 	superRoot *eth.SuperV1,
 	tasks taskExecutor,
 ) (eth.Bytes32, error) {
-	deps, err := newConsolidateCheckDeps(transitionState, superRoot.Chains, l2PreimageOracle)
+	// The depset is the same for all chains. So it suffices to use any chain ID
+	depset, err := bootInfo.Configs.DependencySet(superRoot.Chains[0].ChainID)
+	if err != nil {
+		return eth.Bytes32{}, fmt.Errorf("failed to get dependency set: %w", err)
+	}
+	deps, err := newConsolidateCheckDeps(depset, transitionState, superRoot.Chains, l2PreimageOracle)
 	if err != nil {
 		return eth.Bytes32{}, fmt.Errorf("failed to create consolidate check deps: %w", err)
 	}
@@ -194,18 +199,13 @@ type consolidateCheckDeps struct {
 	canonBlocks map[eth.ChainID]*l2.CanonicalBlockHeaderOracle
 }
 
-func newConsolidateCheckDeps(transitionState *types.TransitionState, chains []eth.ChainIDAndOutput, oracle l2.Oracle) (*consolidateCheckDeps, error) {
+func newConsolidateCheckDeps(
+	depset depset.DependencySet,
+	transitionState *types.TransitionState,
+	chains []eth.ChainIDAndOutput,
+	oracle l2.Oracle,
+) (*consolidateCheckDeps, error) {
 	// TODO: handle case where dep set changes in a given timestamp
-	// TODO: Also replace dep set stubs with the actual dependency set in the RollupConfig.
-	deps := make(map[eth.ChainID]*depset.StaticConfigDependency)
-	for i, chain := range chains {
-		deps[chain.ChainID] = &depset.StaticConfigDependency{
-			ChainIndex:     supervisortypes.ChainIndex(i),
-			ActivationTime: 0,
-			HistoryMinTime: 0,
-		}
-	}
-
 	canonBlocks := make(map[eth.ChainID]*l2.CanonicalBlockHeaderOracle)
 	for i, chain := range chains {
 		progress := transitionState.PendingProgress[i]
@@ -217,11 +217,6 @@ func newConsolidateCheckDeps(transitionState *types.TransitionState, chains []et
 			return oracle.BlockByHash(hash, chain.ChainID)
 		}
 		canonBlocks[chain.ChainID] = l2.NewCanonicalBlockHeaderOracle(head.Header(), blockByHash)
-	}
-
-	depset, err := depset.NewStaticConfigDependencySet(deps)
-	if err != nil {
-		return nil, fmt.Errorf("unexpected error: failed to create dependency set: %w", err)
 	}
 
 	return &consolidateCheckDeps{
