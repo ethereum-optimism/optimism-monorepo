@@ -134,10 +134,10 @@ func (bs *BatcherService) initFromCLIConfig(ctx context.Context, version string,
 	if err := bs.initPProf(cfg); err != nil {
 		return fmt.Errorf("failed to init profiling: %w", err)
 	}
+	bs.initDriver(opts...)
 	if err := bs.initRPCServer(cfg); err != nil {
 		return fmt.Errorf("failed to start RPC server: %w", err)
 	}
-	bs.initDriver(opts...)
 
 	// If we use an active endpoint provider, we need to set up the callback to notify the driver any time we
 	// get a new active sequencer
@@ -168,7 +168,7 @@ func (bs *BatcherService) initRPCClients(ctx context.Context, cfg *CLIConfig) er
 	if strings.Contains(cfg.RollupRpc, ",") && strings.Contains(cfg.L2EthRpc, ",") {
 		rollupUrls := strings.Split(cfg.RollupRpc, ",")
 		ethUrls := strings.Split(cfg.L2EthRpc, ",")
-		endpointProvider, err = dial.NewActiveL2EndpointProvider(ctx, ethUrls, rollupUrls, cfg.ActiveSequencerCheckDuration, dial.DefaultDialTimeout, bs.Log, nil)
+		endpointProvider, err = dial.NewActiveL2EndpointProvider(ctx, ethUrls, rollupUrls, cfg.ActiveSequencerCheckDuration, dial.DefaultDialTimeout, bs.Log)
 	} else {
 		endpointProvider, err = dial.NewStaticL2EndpointProvider(ctx, bs.Log, cfg.L2EthRpc, cfg.RollupRpc)
 	}
