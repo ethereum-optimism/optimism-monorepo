@@ -20,6 +20,10 @@ const (
 	OutdirFlagName           = "outdir"
 	PrivateKeyFlagName       = "private-key"
 	IntentConfigTypeFlagName = "intent-config-type"
+	EtherscanAPIKeyFlagName  = "etherscan-api-key"
+	ContractBundleFlagName   = "contract-bundle"
+	ContractNameFlagName     = "contract-name"
+	L2ChainIndexFlagName     = "l2-chain-index"
 )
 
 type DeploymentTarget string
@@ -97,6 +101,28 @@ var (
 		EnvVars: PrefixEnvVar("INTENT_CONFIG_TYPE"),
 		Value:   string(state.IntentConfigTypeStandard),
 	}
+	EtherscanAPIKeyFlag = &cli.StringFlag{
+		Name:     EtherscanAPIKeyFlagName,
+		Usage:    "etherscan API key for contract verification.",
+		EnvVars:  PrefixEnvVar("ETHERSCAN_API_KEY"),
+		Required: true,
+	}
+	ContractBundleFlag = &cli.StringFlag{
+		Name:    ContractBundleFlagName,
+		Usage:   "contract bundle/grouping to verify (superchain, opchain, or implementations)",
+		EnvVars: PrefixEnvVar("CONTRACT_BUNDLE"),
+	}
+	ContractNameFlag = &cli.StringFlag{
+		Name:    ContractNameFlagName,
+		Usage:   "contract name (mathcing a field within state.json) to verify",
+		EnvVars: PrefixEnvVar("CONTRACT_NAME"),
+	}
+	L2ChainIndexFlag = &cli.IntFlag{
+		Name:    "l2-chain-index",
+		Usage:   "index of the L2 chain within the state.AppliedIntent.Chains array",
+		EnvVars: PrefixEnvVar("L2_CHAIN_INDEX"),
+		Value:   0,
+	}
 )
 
 var GlobalFlags = append([]cli.Flag{}, oplog.CLIFlags(EnvVarPrefix)...)
@@ -119,6 +145,15 @@ var UpgradeFlags = []cli.Flag{
 	L1RPCURLFlag,
 	PrivateKeyFlag,
 	DeploymentTargetFlag,
+}
+
+var VerifyFlags = []cli.Flag{
+	L1RPCURLFlag,
+	WorkdirFlag,
+	EtherscanAPIKeyFlag,
+	ContractBundleFlag,
+	ContractNameFlag,
+	L2ChainIndexFlag,
 }
 
 func PrefixEnvVar(name string) []string {

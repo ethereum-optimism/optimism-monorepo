@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/upgrade"
+	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/verify"
 
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer"
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/bootstrap"
@@ -59,6 +60,12 @@ func main() {
 			Name:        "inspect",
 			Usage:       "inspects the state of a deployment",
 			Subcommands: inspect.Commands,
+		},
+		{
+			Name:   "verify",
+			Usage:  "verifies deployed contracts on Etherscan",
+			Flags:  cliapp.ProtectFlags(deployer.VerifyFlags),
+			Action: verify.VerifyCLI,
 		},
 	}
 	app.Writer = os.Stdout
