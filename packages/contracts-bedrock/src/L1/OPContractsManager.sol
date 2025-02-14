@@ -799,7 +799,7 @@ contract OPContractsManager is ISemver {
     }
 
     /// @notice Helper method for computing a reusable salt mixer
-    /// This method should be used as the salt mixer when deploying contracts when there is not user
+    /// This method should be used as the salt mixer when deploying contracts when there is no user
     /// provided salt mixer. This protects against a situation where multiple chains with the same
     /// L2 chain ID exist, which would otherwise result in address collisions.
     function reusableSaltMixer(OpChainConfig memory _opChainConfig) internal pure returns (string memory) {
