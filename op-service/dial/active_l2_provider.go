@@ -62,7 +62,7 @@ func newActiveL2EndpointProvider(
 	networkTimeout time.Duration,
 	logger log.Logger,
 	ethDialer ethDialer,
-	rollupDialer rollupDialer
+	rollupDialer rollupDialer,
 ) (*ActiveL2EndpointProvider, error) {
 	if len(rollupUrls) == 0 {
 		return nil, errors.New("empty rollup urls list, expected at least one URL")

@@ -70,7 +70,6 @@ func (et *endpointProviderTest) newActiveL2RollupProvider(checkDuration time.Dur
 		1*time.Minute,
 		testlog.Logger(et.t, log.LevelDebug),
 		mockRollupDialer,
-		nil,
 	)
 }
 
@@ -121,7 +120,6 @@ func (et *endpointProviderTest) newActiveL2EndpointProvider(checkDuration time.D
 		testlog.Logger(et.t, log.LevelDebug),
 		mockEthDialer,
 		mockRollupDialer,
-		nil,
 	)
 }
 
