@@ -164,7 +164,7 @@ func (l *BatchSubmitter) StartBatchSubmitting() error {
 	l.txpoolMutex.Unlock()
 
 	// Channels used to signal between the loops
-	pendingBytesUpdated := make(chan int64)
+	pendingBytesUpdated := make(chan int64, 1)
 	blocksLoaded := make(chan struct{})
 
 	// DA throttling loop should always be started except for testing (indicated by ThrottleThreshold == 0)
