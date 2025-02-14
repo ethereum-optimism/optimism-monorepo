@@ -25,7 +25,6 @@ contract Faucet {
         address payable recipient;
         bytes data;
         bytes32 nonce;
-        uint32 gasLimit;
     }
 
     /// @notice Parameters for authentication.
