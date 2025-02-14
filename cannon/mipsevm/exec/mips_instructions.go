@@ -691,9 +691,8 @@ func calculateSubWordMaskAndOffset(vaddr Word, byteLength Word) (dataMask, bitOf
 	dataMask = ^Word(0) >> (arch.WordSize - bitLength)
 
 	// Figure out sub-word index based on the low-order bits in vaddr
-	byteIndexMask := vaddr & arch.ExtMask & ^(byteLength - 1)
+	byteIndex := vaddr & arch.ExtMask & ^(byteLength - 1)
 	maxByteShift := arch.WordSizeBytes - byteLength
-	byteIndex := vaddr & byteIndexMask
 	bitOffset = (maxByteShift - byteIndex) << 3
 
 	return dataMask, bitOffset, bitLength
