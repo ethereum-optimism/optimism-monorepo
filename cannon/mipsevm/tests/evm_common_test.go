@@ -1155,3 +1155,98 @@ func TestEVM_SingleStep_Branch32(t *testing.T) {
 
 	testBranch(t, cases)
 }
+
+func TestEVM_SingleStep_Rot(t *testing.T) {
+	rsReg := uint32(7)
+	rdReg := uint32(8)
+	rtReg := uint32(9)
+	versions := GetMipsVersionTestCases(t)
+	cases := []struct {
+		name      string
+		rs        Word
+		rt        Word
+		sa        uint32
+		funct     uint32
+		expectVal Word
+	}{
+		// rotr
+		// No rotation (should return the same number)
+		{name: "rotr no shift", rt: Word(0x12345678), sa: 0, funct: 0b000010, expectVal: Word(0x12345678)},
+		// Rotate by 1 bit
+		{name: "rotr by 1", rt: Word(0x12345678), sa: 1, funct: 0b000010, expectVal: Word(0x091A2B3C)},
+		// Rotate by 4 bits (nibble rotation)
+		{name: "rotr by 4", rt: Word(0x12345678), sa: 4, funct: 0b000010, expectVal: Word(0x81234567)},
+		// Rotate by 8 bits (byte rotation)
+		{name: "rotr by 8", rt: Word(0x12345678), sa: 8, funct: 0b000010, expectVal: Word(0x78123456)},
+		// Rotate by 16 bits (half-word rotation)
+		{name: "rotr by 16", rt: Word(0x12345678), sa: 16, funct: 0b000010, expectVal: Word(0x56781234)},
+		// Rotate by 24 bits
+		{name: "rotr by 24", rt: Word(0x12345678), sa: 24, funct: 0b000010, expectVal: Word(0x34567812)},
+		// Rotate by 31 bits (almost a full cycle)
+		{name: "rotr by 31", rt: Word(0x12345678), sa: 31, funct: 0b000010, expectVal: Word(0x2468ACF0)},
+		// Rotate with MSB set
+		{name: "rotr MSB set", rt: Word(0x80000000), sa: 4, funct: 0b000010, expectVal: Word(0x08000000)},
+		// Rotate all ones (0xFFFFFFFF) should remain unchanged
+		{name: "rotr all ones", rt: Word(0xFFFFFFFF), sa: 8, funct: 0b000010, expectVal: Word(0xFFFFFFFF)},
+		// Rotate zero (should remain zero)
+		{name: "rotr zero", rt: Word(0x00000000), sa: 5, funct: 0b000010, expectVal: Word(0x00000000)},
+
+		// rotrv
+		// No rotation (should return the same number)
+		{name: "rotrv no shift", rt: Word(0x12345678), rs: Word(0), funct: 0b000110, expectVal: Word(0x12345678)},
+		// Rotate by 1 bit
+		{name: "rotrv by 1", rt: Word(0x12345678), rs: Word(1), funct: 0b000110, expectVal: Word(0x091A2B3C)},
+		// Rotate by 4 bits (nibble rotation)
+		{name: "rotrv by 4", rt: Word(0x12345678), rs: Word(4), funct: 0b000110, expectVal: Word(0x81234567)},
+		// Rotate by 8 bits (byte rotation)
+		{name: "rotrv by 8", rt: Word(0x12345678), rs: Word(8), funct: 0b000110, expectVal: Word(0x78123456)},
+		// Rotate by 16 bits (half-word rotation)
+		{name: "rotrv by 16", rt: Word(0x12345678), rs: Word(16), funct: 0b000110, expectVal: Word(0x56781234)},
+		// Rotate by 24 bits
+		{name: "rotrv by 24", rt: Word(0x12345678), rs: Word(24), funct: 0b000110, expectVal: Word(0x34567812)},
+		// Rotate by 31 bits (almost a full cycle)
+		{name: "rotrv by 31", rt: Word(0x12345678), rs: Word(31), funct: 0b000110, expectVal: Word(0x2468ACF0)},
+		// Rotate with MSB set
+		{name: "rotrv MSB set", rt: Word(0x80000000), rs: Word(4), funct: 0b000110, expectVal: Word(0x08000000)},
+		// Rotate all ones (0xFFFFFFFF) should remain unchanged
+		{name: "rotrv all ones", rt: Word(0xFFFFFFFF), rs: Word(8), funct: 0b000110, expectVal: Word(0xFFFFFFFF)},
+		// Rotate zero (should remain zero)
+		{name: "rotrv zero", rt: Word(0x00000000), rs: Word(5), funct: 0b000110, expectVal: Word(0x00000000)},
+	}
+
+	for _, v := range versions {
+		for i, tt := range cases {
+			testName := fmt.Sprintf("%v (%v)", tt.name, v.Name)
+			t.Run(testName, func(t *testing.T) {
+				goVm := v.VMFactory(nil, os.Stdout, os.Stderr, testutil.CreateLogger(), testutil.WithRandomization(int64(i)), testutil.WithPC(0), testutil.WithNextPC(4))
+				state := goVm.GetState()
+				var insn uint32
+				if tt.funct == 0b00_0010 { // rotr
+					insn = 1<<21 | rtReg<<16 | rdReg<<11 | tt.sa<<6 | tt.funct
+				} else if tt.funct == 0b00_0110 { // rotrv
+					insn = rsReg<<21 | rtReg<<16 | rdReg<<11 | 1<<6 | tt.funct
+				}
+				state.GetRegistersRef()[rtReg] = tt.rt
+				if tt.funct == 0b00_0110 { // rotrv
+					state.GetRegistersRef()[rsReg] = tt.rs
+				}
+				testutil.StoreInstruction(state.GetMemory(), state.GetPC(), insn)
+				//step := state.GetStep()
+
+				// Setup expectations
+				expected := testutil.NewExpectedState(state)
+				expected.ExpectStep()
+
+				expected.Registers[rdReg] = tt.expectVal
+
+				// stepWitness, err := goVm.Step(true)
+				_, err := goVm.Step(true)
+				require.NoError(t, err)
+
+				// Check expectations
+				expected.Validate(t, state)
+				// testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
+			})
+		}
+	}
+}
