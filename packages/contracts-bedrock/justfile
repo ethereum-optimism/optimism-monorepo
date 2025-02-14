@@ -79,12 +79,10 @@ prepare-upgrade-env *ARGS : build-go-ffi
   #!/bin/bash
   echo "Running upgrade tests at block $pinnedBlockNumber"
   export FORK_BLOCK_NUMBER=$pinnedBlockNumber
-  export NO_MATCH_CONTRACTS="OptimismPortal2WithMockERC20_Test|OptimismPortal2_FinalizeWithdrawal_Test|AnchorStateRegistry_*|FaultDisputeGame_Test|PermissionedDisputeGame_Test|FaultDispute_1v1_Actors_Test|DelayedWETH_Hold_Test"
   export FORK_RPC_URL=$ETH_RPC_URL
   export FORK_TEST=true
   {{ARGS}} \
-  --match-path "test/{L1,dispute,cannon}/**" \
-  --no-match-contract "$NO_MATCH_CONTRACTS"
+  --match-path "test/{L1,dispute,cannon}/**"
 
 # Runs upgrade path variant of contract tests.
 test-upgrade *ARGS:
@@ -104,12 +102,10 @@ test-upgrade-against-anvil *ARGS: build-go-ffi
   #!/bin/bash
   echo "Running upgrade tests at block $pinnedBlockNumber"
   export FORK_BLOCK_NUMBER=$pinnedBlockNumber
-  export NO_MATCH_CONTRACTS="OptimismPortal2WithMockERC20_Test|OptimismPortal2_FinalizeWithdrawal_Test|AnchorStateRegistry_*|FaultDisputeGame_Test|PermissionedDisputeGame_Test|FaultDispute_1v1_Actors_Test|DelayedWETH_Hold_Test"
   export FORK_RPC_URL=http://127.0.0.1:8545
   export FORK_TEST=true
   forge test {{ARGS}} \
-  --match-path "test/{L1,dispute,cannon}/**" \
-  --no-match-contract "$NO_MATCH_CONTRACTS"
+  --match-path "test/{L1,dispute,cannon}/**"
 
 # Runs standard contract tests with rerun flag.
 test-rerun: build-go-ffi
