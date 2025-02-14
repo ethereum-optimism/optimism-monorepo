@@ -87,6 +87,7 @@ func ExecMipsCoreStepLogic(cpu *mipsevm.CpuScalars, registers *[32]Word, memory 
 			// dext, dextm, dextu, dins, dinsm, dinsu, ins, ext
 			// Exception (stores rt)
 			assertMips64(insn)
+			rt = registers[rtReg]
 			rdReg = Word((insn >> 16) & 0x1F)
 		}
 	} else if opcode < 0x20 {
