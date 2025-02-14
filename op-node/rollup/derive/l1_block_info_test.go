@@ -204,7 +204,7 @@ func TestParseL1InfoDepositTxData(t *testing.T) {
 		require.NoError(t, err)
 		require.False(t, depTx.IsSystemTransaction)
 		require.Equal(t, depTx.Gas, uint64(RegolithSystemTxGas))
-		require.Equal(t, L1InfoEcotoneLen, len(depTx.Data), "the length is same in interop")
+		require.Equal(t, L1InfoIsthmusLen, len(depTx.Data), "the length is same in interop")
 		require.Equal(t, L1InfoFuncInteropBytes4, depTx.Data[:4], "upgrade is active, need interop signature")
 	})
 	t.Run("activation-block interop", func(t *testing.T) {
@@ -231,7 +231,7 @@ func TestParseL1InfoDepositTxData(t *testing.T) {
 		require.NoError(t, err)
 		require.False(t, depTx.IsSystemTransaction)
 		require.Equal(t, depTx.Gas, uint64(RegolithSystemTxGas))
-		require.Equal(t, L1InfoEcotoneLen, len(depTx.Data))
+		require.Equal(t, L1InfoIsthmusLen, len(depTx.Data))
 	})
 }
 
