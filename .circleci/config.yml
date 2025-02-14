@@ -1466,7 +1466,7 @@ workflows:
           fork_op_chain: op
           fork_base_chain: mainnet
           fork_base_rpc: https://ci-mainnet-l1-archive.optimism.io
-          fork_block_number: 21840436
+          fork_block_number: 21387830
       - contracts-bedrock-tests-upgrade:
           name: contracts-bedrock-tests-upgrade op-sepolia
           fork_op_chain: op
