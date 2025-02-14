@@ -802,11 +802,8 @@ contract OPContractsManager is ISemver {
     /// This method should be used as the salt mixer when deploying contracts when there is not user
     /// provided salt mixer. This protects against a situation where multiple chains with the same
     /// L2 chain ID exist, which would otherwise result in address collisions.
-    function reusableSaltMixer(OpChainConfig memory _opChainConfig) internal view returns (string memory) {
-        return string.concat(
-            L1_CONTRACTS_RELEASE,
-            string(bytes.concat(bytes32(uint256(uint160(address(_opChainConfig.systemConfigProxy))))))
-        );
+    function reusableSaltMixer(OpChainConfig memory _opChainConfig) internal pure returns (string memory) {
+        return string(bytes.concat(bytes32(uint256(uint160(address(_opChainConfig.systemConfigProxy))))));
     }
 
     /// @notice Deterministically deploys a new proxy contract owned by the provided ProxyAdmin.
