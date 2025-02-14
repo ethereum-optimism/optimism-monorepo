@@ -401,12 +401,11 @@ func (l *BatchSubmitter) sendToThrottlingLoop(pendingBytesUpdated chan int64) {
 	}
 }
 
-// signalPublishingLoop sends the current pending bytes to the throttling loop.
+// trySignal trys to send an emptry struct  on the provided channel.
 // It is not blocking, no signal will be sent if the channel is full.
-func (l *BatchSubmitter) signalPublishingLoop(blocksLoaded chan struct{}) {
-	// notify the publishingLoop in a non blocking way
+func trySignal(c chan struct{}) {
 	select {
-	case blocksLoaded <- struct{}{}:
+	case c <- struct{}{}:
 	default:
 	}
 }
@@ -510,7 +509,7 @@ func (l *BatchSubmitter) blockLoadingLoop(ctx context.Context, wg *sync.WaitGrou
 					l.sendToThrottlingLoop(pendingBytesUpdated) // we have increased the pending data. Signal the throttling loop to check if it should throttle.
 				}
 			}
-			l.signalPublishingLoop(blocksLoadedCh) // always signal the write loop to ensure we periodically publish even if we aren't loading blocks
+			trySignal(blocksLoadedCh) // always signal the write loop to ensure we periodically publish even if we aren't loading blocks
 		case <-ctx.Done():
 			l.Log.Info("blockLoadingLoop returning")
 			return
