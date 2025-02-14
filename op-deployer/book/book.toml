@@ -9,4 +9,5 @@ title = "OP Deployer Book"
 site-url = "/op-deployer/"
 git-repository-url = "https://github.com/ethereum-optimism/optimism/tree/develop/op-deployer/book"
 edit-url-template = "https://github.com/ethereum-optimism/optimism/tree/develop/op-deployer/book/{path}"
-additional-css = ["custom.css"]
+additional-css = ["custom.css", "theme/css/footer.css"]
+additional-js = ["theme/js/footer.js"]
