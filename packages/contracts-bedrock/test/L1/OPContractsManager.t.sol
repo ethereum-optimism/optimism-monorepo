@@ -273,7 +273,6 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
             abi.encode(
                 l2ChainId,
                 string.concat(
-                    "v2.0.0-",
                     string(bytes.concat(bytes32(uint256(uint160(address(opChainConfigs[0].systemConfigProxy))))))
                 ),
                 "AnchorStateRegistry"

@@ -27,9 +27,9 @@ contract OPPrestateUpdater is OPContractsManager {
     error PrestateRequired();
 
     // @return Version string
-    /// @custom:semver 1.4.0
+    /// @custom:semver 1.5.0
     function version() public pure override returns (string memory) {
-        return "1.4.0";
+        return "1.5.0";
     }
 
     // @notice Constructs the OPPrestateUpdater contract
@@ -115,8 +115,7 @@ contract OPPrestateUpdater is OPContractsManager {
                 getGameConstructorParams(IFaultDisputeGame(address(pdg)));
             uint256 initBond = dgf.initBonds(GameTypes.PERMISSIONED_CANNON);
 
-            string memory saltMixer =
-                string.concat("prestate_update", string(abi.encode(_prestateUpdateInputs[i].systemConfigProxy)));
+            string memory saltMixer = reusableSaltMixer(_prestateUpdateInputs[i]);
             // Create game input with updated prestate but same other params
             pdgInput = AddGameInput({
                 disputeAbsolutePrestate: _prestateUpdateInputs[i].absolutePrestate,
