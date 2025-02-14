@@ -285,6 +285,11 @@ func (su *SupervisorBackend) AttachSyncNode(ctx context.Context, src syncnode.Sy
 	if !su.depSet.HasChain(chainID) {
 		return nil, fmt.Errorf("chain %s is not part of the interop dependency set: %w", chainID, types.ErrUnknownChain)
 	}
+	// before attaching the sync source to the backend at all,
+	// query the anchor point to initialize the database
+	if err := su.QueryAnchorpoint(chainID, src); err != nil {
+		return nil, fmt.Errorf("failed to query anchor point: %w", err)
+	}
 	err = su.AttachProcessorSource(chainID, src)
 	if err != nil {
 		return nil, fmt.Errorf("failed to attach sync source to processor: %w", err)
@@ -294,6 +299,18 @@ func (su *SupervisorBackend) AttachSyncNode(ctx context.Context, src syncnode.Sy
 		return nil, fmt.Errorf("failed to attach sync source to node: %w", err)
 	}
 	return su.syncNodesController.AttachNodeController(chainID, src, noSubscribe)
+}
+
+func (su *SupervisorBackend) QueryAnchorpoint(chainID eth.ChainID, src syncnode.SyncNode) error {
+	anchor, err := src.AnchorPoint(context.Background())
+	if err != nil {
+		return fmt.Errorf("failed to get anchor point: %w", err)
+	}
+	su.emitter.Emit(superevents.AnchorEvent{
+		ChainID: chainID,
+		Anchor:  anchor,
+	})
+	return nil
 }
 
 func (su *SupervisorBackend) AttachProcessorSource(chainID eth.ChainID, src processors.Source) error {

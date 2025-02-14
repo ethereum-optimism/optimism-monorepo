@@ -8,12 +8,17 @@ import (
 )
 
 // maybeInitSafeDB initializes the chain database if it is not already initialized
-// it checks if the Local Safe database is empty, and loads it with the Anchor Point if so
+// it checks if the Local Safe database is empty, and loads both the Local and Cross Safe databases
+// with the anchor point if they are empty.
 func (db *ChainsDB) maybeInitSafeDB(id eth.ChainID, anchor types.DerivedBlockRefPair) {
 	logger := db.logger.New("chain", id, "derived", anchor.Derived, "source", anchor.Source)
-	_, err := db.LocalSafe(id)
+	localDB, ok := db.localDBs.Get(id)
+	if !ok {
+		logger.Error("failed to get local database", "chain", id)
+	}
+	first, err := localDB.First()
 	if errors.Is(err, types.ErrFuture) {
-		logger.Info("initializing chain database")
+		logger.Info("local database is empty, initializing")
 		if err := db.UpdateCrossSafe(id, anchor.Source, anchor.Derived); err != nil {
 			logger.Warn("failed to initialize cross safe", "err", err)
 		}
@@ -22,12 +27,18 @@ func (db *ChainsDB) maybeInitSafeDB(id eth.ChainID, anchor types.DerivedBlockRef
 		logger.Warn("failed to check if chain database is initialized", "err", err)
 	} else {
 		logger.Debug("chain database already initialized")
+		if first.Derived.Hash != anchor.Derived.Hash ||
+			first.Source.Hash != anchor.Source.Hash {
+			logger.Warn("local database does not match anchor point",
+				"anchor", anchor,
+				"database", first)
+		}
 	}
 }
 
 func (db *ChainsDB) maybeInitEventsDB(id eth.ChainID, anchor types.DerivedBlockRefPair) {
 	logger := db.logger.New("chain", id, "derived", anchor.Derived, "source", anchor.Source)
-	_, _, _, err := db.OpenBlock(id, 0)
+	seal, _, _, err := db.OpenBlock(id, 0)
 	if errors.Is(err, types.ErrFuture) {
 		logger.Debug("initializing events database")
 		err := db.SealBlock(id, anchor.Derived)
@@ -39,5 +50,10 @@ func (db *ChainsDB) maybeInitEventsDB(id eth.ChainID, anchor types.DerivedBlockR
 		logger.Warn("Failed to check if logDB is initialized", "err", err)
 	} else {
 		logger.Debug("Events database already initialized")
+		if seal.Hash != anchor.Derived.Hash {
+			logger.Warn("events database does not match anchor point",
+				"anchor", anchor,
+				"database", seal)
+		}
 	}
 }
