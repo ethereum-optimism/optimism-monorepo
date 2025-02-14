@@ -526,12 +526,12 @@ func TestEVM_SingleStep_Clz64(t *testing.T) {
 		expectedResult Word
 	}{
 		// dclz
-		{name: "dclz", rs: 0x0, expectedResult: 64, funct: 0b10_0100},
-		{name: "dclz", rs: 0x1, expectedResult: 63, funct: 0b10_0100},
-		{name: "dclz", rs: 0x10_00_00_00, expectedResult: 35, funct: 0b10_0100},
-		{name: "dclz", rs: 0x80_00_00_00, expectedResult: 32, funct: 0b10_0100},
-		{name: "dclz", rs: 0x80_00_00_00_00_00_00_00, expectedResult: 0, funct: 0b10_0100},
-		{name: "dclz, sign-extended", rs: 0x80_00_00_00_00_00_00_00, expectedResult: 0, funct: 0b10_0100},
+		{name: "dclz", rs: Word(0x0), expectedResult: Word(64), funct: 0b10_0100},
+		{name: "dclz", rs: Word(0x1), expectedResult: Word(63), funct: 0b10_0100},
+		{name: "dclz", rs: Word(0x10_00_00_00), expectedResult: Word(35), funct: 0b10_0100},
+		{name: "dclz", rs: Word(0x80_00_00_00), expectedResult: Word(32), funct: 0b10_0100},
+		{name: "dclz", rs: Word(0x80_00_00_00_00_00_00_00), expectedResult: Word(0), funct: 0b10_0100},
+		{name: "dclz, sign-extended", rs: Word(0x80_00_00_00_00_00_00_00), expectedResult: Word(0), funct: 0b10_0100},
 	}
 
 	versions := GetMipsVersionTestCases(t)
@@ -560,6 +560,62 @@ func TestEVM_SingleStep_Clz64(t *testing.T) {
 
 				// testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
 			})
+		}
+	}
+}
+
+func TestEVM_SingleStep_Rot64(t *testing.T) {
+	t.Parallel()
+	// rsReg := uint32(7)
+	rdReg := uint32(8)
+	rtReg := uint32(9)
+	{
+		cases := []struct {
+			name           string
+			rt             Word
+			sa             uint32
+			funct          uint32
+			expectedResult Word
+		}{
+			// 0x2 rotated right by 1 -> 0x1
+			{name: "drotr", sa: 1, rt: Word(0x2), expectedResult: Word(0x1), funct: 0b11_1010},
+			// 0x1 rotated right by 1 -> MSB set
+			{name: "drotr MSB set", sa: 1, rt: Word(0x1), expectedResult: Word(0x80_00_00_00_00_00_00_00), funct: 0b11_1010},
+			// Rotate right by 8 (byte-level rotation)
+			{name: "drotr byte shift", sa: 8, rt: Word(0x123456789ABCDEF0), expectedResult: Word(0xF0123456789ABCDE), funct: 0b11_1010},
+			// Rotate right by 16 (halfword-level rotation)
+			{name: "drotr halfword shift", sa: 16, rt: Word(0x123456789ABCDEF0), expectedResult: Word(0xDEF0123456789ABC), funct: 0b11_1010},
+			// Edge case: rotating zero
+			{name: "drotr zero", sa: 5, rt: Word(0x0), expectedResult: Word(0x0), funct: 0b11_1010},
+		}
+
+		versions := GetMipsVersionTestCases(t)
+		for _, v := range versions {
+			for i, tt := range cases {
+				testName := fmt.Sprintf("%v (%v)", tt.name, v.Name)
+				t.Run(testName, func(t *testing.T) {
+					// Set up state
+					goVm := v.VMFactory(nil, os.Stdout, os.Stderr, testutil.CreateLogger(), testutil.WithRandomization(int64(i)))
+					state := goVm.GetState()
+					insn := 1<<21 | rtReg<<16 | rdReg<<11 | tt.sa<<6 | tt.funct
+					testutil.StoreInstruction(state.GetMemory(), state.GetPC(), insn)
+					state.GetRegistersRef()[rtReg] = tt.rt
+					// step := state.GetStep()
+
+					// Setup expectations
+					expected := testutil.NewExpectedState(state)
+					expected.ExpectStep()
+					expected.Registers[rdReg] = tt.expectedResult
+					// stepWitness, err := goVm.Step(true)
+					_, err := goVm.Step(true)
+					require.NoError(t, err)
+
+					// Check expectations
+					expected.Validate(t, state)
+
+					// testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
+				})
+			}
 		}
 	}
 }
