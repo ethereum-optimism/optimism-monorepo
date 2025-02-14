@@ -307,7 +307,9 @@ contract Specification_Test is CommonTest {
 
         // ProtocolVersions
         _addSpec({ _name: "ProtocolVersions", _sel: _getSel("RECOMMENDED_SLOT()") });
+        _addSpec({ _name: "ProtocolVersions", _sel: _getSel("recommendedVersion()") });
         _addSpec({ _name: "ProtocolVersions", _sel: _getSel("REQUIRED_SLOT()") });
+        _addSpec({ _name: "ProtocolVersions", _sel: _getSel("requiredVersion()") });
         _addSpec({ _name: "ProtocolVersions", _sel: _getSel("VERSION()") });
         _addSpec({ _name: "ProtocolVersions", _sel: IProtocolVersions.initialize.selector });
         _addSpec({ _name: "ProtocolVersions", _sel: _getSel("owner()") });

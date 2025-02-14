@@ -216,4 +216,84 @@ library Encoding {
             _batcherHash
         );
     }
+
+    /// @notice Encodes a protocol version into bytes32
+    /// @param _build The build identifier (8 bytes)
+    /// @param _major The major version
+    /// @param _minor The minor version
+    /// @param _patch The patch version
+    /// @param _preRelease The pre-release version
+    /// @return The encoded protocol version
+    function encodeProtocolVersion(
+        bytes8 _build,
+        uint32 _major,
+        uint32 _minor,
+        uint32 _patch,
+        uint32 _preRelease
+    )
+        internal
+        pure
+        returns (bytes32)
+    {
+        return bytes32(
+            (uint256(uint64(_build)) << 128) | (uint256(_major) << 96) | (uint256(_minor) << 64)
+                | (uint256(_patch) << 32) | uint256(_preRelease)
+        );
+    }
+
+    /// @notice Decodes a protocol version from bytes32
+    /// @param _versionBytes The protocol version to decode
+    /// @return The decoded protocol version as a string
+    function decodeProtocolVersion(bytes32 _versionBytes) internal pure returns (string memory) {
+        uint256 version = uint256(_versionBytes);
+        bytes8 build = bytes8(uint64(version >> 128));
+        uint32 major = uint32(version >> 96);
+        uint32 minor = uint32(version >> 64);
+        uint32 patch = uint32(version >> 32);
+        uint32 preRelease = uint32(version);
+
+        // Base version string
+        string memory result =
+            string(abi.encodePacked("v", uint2str(major), ".", uint2str(minor), ".", uint2str(patch)));
+
+        // Add prerelease if non-zero
+        if (preRelease != 0) {
+            result = string(abi.encodePacked(result, "-", uint2str(preRelease)));
+        }
+
+        // Add build if not all zeros
+        if (uint64(build) != 0) {
+            result = string(abi.encodePacked(result, "+0x", bytes2hex(build)));
+        }
+
+        return result;
+    }
+
+    function bytes2hex(bytes8 _data) internal pure returns (bytes memory) {
+        bytes memory alphabet = "0123456789abcdef";
+        bytes memory str = new bytes(16);
+        for (uint256 i = 0; i < 8; i++) {
+            uint8 b = uint8(_data[i]);
+            str[i * 2] = alphabet[b >> 4];
+            str[i * 2 + 1] = alphabet[b & 0x0f];
+        }
+        return str;
+    }
+
+    function uint2str(uint32 _i) internal pure returns (string memory) {
+        if (_i == 0) return "0";
+        uint256 j = _i;
+        uint256 len;
+        while (j != 0) {
+            len++;
+            j /= 10;
+        }
+        bytes memory bstr = new bytes(len);
+        while (_i != 0) {
+            len -= 1;
+            bstr[len] = bytes1(uint8(48 + _i % 10));
+            _i /= 10;
+        }
+        return string(bstr);
+    }
 }

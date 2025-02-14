@@ -454,4 +454,46 @@ contract FFIInterface {
         bytes memory result = Process.run(cmds);
         return abi.decode(result, (bytes));
     }
+
+    /// @notice Encodes a protocol version using the Go implementation
+    function encodeProtocolVersion(
+        bytes memory build,
+        uint32 major,
+        uint32 minor,
+        uint32 patch,
+        uint32 preRelease
+    )
+        external
+        returns (bytes memory)
+    {
+        string[] memory cmds = new string[](8);
+        cmds[0] = "scripts/go-ffi/go-ffi";
+        cmds[1] = "diff";
+        cmds[2] = "encodeProtocolVersion";
+        cmds[3] = vm.toString(build);
+        cmds[4] = vm.toString(major);
+        cmds[5] = vm.toString(minor);
+        cmds[6] = vm.toString(patch);
+        cmds[7] = vm.toString(preRelease);
+
+        bytes memory result = Process.run(cmds);
+        return abi.decode(result, (bytes));
+    }
+
+    /// @notice Decodes a protocol version using the Go implementation
+    function decodeProtocolVersion(bytes32 version) external returns (string memory) {
+        string[] memory cmds = new string[](4);
+        cmds[0] = "scripts/go-ffi/go-ffi";
+        cmds[1] = "diff";
+        cmds[2] = "decodeProtocolVersion";
+        cmds[3] = Strings.toHexString(uint256(version));
+
+        bytes memory result = Process.run(cmds);
+        if (result.length == 0) {
+            revert("FFI call returned empty result");
+        }
+
+        string memory decoded = abi.decode(result, (string));
+        return decoded;
+    }
 }
