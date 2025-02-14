@@ -3,7 +3,6 @@ package syncnode
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"strings"
 	"sync"
@@ -57,6 +56,19 @@ type ManagedNode struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 	wg     sync.WaitGroup
+
+	// We remember the last unsafe values.
+	// Whenever we see a new value that isn't the same or the next,
+	// then we know a reorg may have occurred.
+	// If so, then we do the recovery routine over again, to find where the node may safely continue from.
+	lastSupervisorUnsafe    eth.BlockID
+	lastSupervisorLocalSafe eth.BlockID
+	lastLocalUnsafe         eth.BlockID
+	lastLocalSafe           eth.BlockID
+
+	// These are reset to empty values whenever we detect a reorg
+	lastCommonBlock      eth.BlockID
+	lastConflictingBlock eth.BlockID
 }
 
 var _ event.AttachEmitter = (*ManagedNode)(nil)
@@ -105,16 +117,11 @@ func (m *ManagedNode) OnEvent(ev event.Event) bool {
 			return false
 		}
 		m.onFinalizedL2(x.FinalizedL2)
-	case superevents.LocalSafeOutOfSyncEvent:
-		if x.ChainID != m.chainID {
-			return false
-		}
-		m.resetFromError(x.Err, x.L1Ref)
 	case superevents.ChainRewoundEvent:
 		if x.ChainID != m.chainID {
 			return false
 		}
-		m.sendReset()
+		m.recovery()
 	default:
 		return false
 	}
@@ -232,9 +239,8 @@ func (m *ManagedNode) onResetEvent(errStr string) {
 		// TODO
 		return
 	}
-	// Try and restore the safe head of the op-supervisor.
-	// The node will abort the reset until we find a block that is known.
-	m.sendReset()
+
+	m.recovery()
 }
 
 func (m *ManagedNode) onCrossUnsafeUpdate(seal types.BlockSeal) {
@@ -298,162 +304,77 @@ func (m *ManagedNode) onDerivationOriginUpdate(origin eth.BlockRef) {
 	})
 }
 
-// resetFromError considers an incoming error signal, and an optional L1 block reference,
-// and calls specific reset handling, or passes the call along to the default reset.
-func (m *ManagedNode) resetFromError(errSignal error, l1Ref eth.BlockRef) {
-	switch {
-	case errors.Is(errSignal, types.ErrConflict):
-		// conflicts must be resolved via walkback
-		if err := m.walkback(l1Ref); err != nil {
-			m.log.Warn("Failed to walkback", "l1Ref", l1Ref, "err", err)
-		}
-	case errors.Is(errSignal, types.ErrOutOfOrder):
-		// if the out of order signal shows the node is far enough behind,
-		// push a reset to attempt to get the node to tip more quickly.
-		if m.farBehind(l1Ref.ID()) {
-			m.log.Warn("Node is far behind and should be reset", "l1Ref", l1Ref, "err", errSignal)
-			// m.sendReset()
-		} else {
-			// otherwise, ignore the out of order signal, the node is near enough to the tip.
-			m.log.Warn("Node is behind, ignoring", "l1Ref", l1Ref, "err", errSignal)
-		}
-	case errors.Is(errSignal, types.ErrFuture):
-		// if the node is in the future, we need to reset it back to the tip of the supervisor
-		m.sendReset()
+func (m *ManagedNode) recovery() {
+	m.lastConflictingBlock = eth.BlockID{}
+	m.lastCommonBlock = eth.BlockID{}
+	// TODO: trigger event to continue reducing of search space,
+	//  which then triggers eventual reset.
+}
+
+func (m *ManagedNode) onNodeLocalSafeUpdate(update eth.BlockRef) {
+	// TODO  like below
+
+	// TODO also check DB
+	// if mismatch, start recovery
+}
+
+func (m *ManagedNode) onNodeLocalUnsafeUpdate(update eth.BlockRef) {
+	// TODO  like below
+
+	// TODO also check DB
+	// if mismatch, start recovery
+}
+func (m *ManagedNode) onSupervisorLocalSafeUpdate(update eth.BlockRef) {
+	if m.lastSupervisorLocalSafe.Hash != update.Hash && m.lastSupervisorLocalSafe.Hash != update.ParentHash {
+		// reorg may have continued!
+		m.recovery()
 	}
 }
 
-// farBehindThreshold is the heuristic threshold for determining if the node is far behind.
-var farBehindThreshold = uint64(20)
-
-// farBehind checks if the node is far behind the given reference block.
-// it a heuristic to determine if the node is far behind and should be reset.
-func (m *ManagedNode) farBehind(ref eth.BlockID) bool {
-	ctx, cancel := context.WithTimeout(m.ctx, internalTimeout)
-	defer cancel()
-	latest, err := m.backend.LocalSafe(ctx, m.chainID)
-	if err != nil {
-		m.log.Warn("Failed to retrieve local-safe", "err", err)
-		return false
+func (m *ManagedNode) onSupervisorLocalUnsafeUpdate(update eth.BlockRef) {
+	if m.lastSupervisorUnsafe.Hash != update.Hash && m.lastSupervisorUnsafe.Hash != update.ParentHash {
+		// reorg may have continued!
+		m.recovery()
 	}
-	// can't be far behind if the latest is lower than the threshold already
-	if latest.Source.Number < uint64(farBehindThreshold) {
-		return false
-	}
-	// if even after pushing the latest back by the threshold,
-	// the ref is still behind, then we are far behind.
-	return ref.Number < latest.Source.Number-farBehindThreshold
 }
 
-func (m *ManagedNode) walkback(l1Ref eth.L1BlockRef) error {
-	ctx, cancel := context.WithTimeout(m.ctx, internalTimeout)
-	defer cancel()
-
-	u, err := m.backend.LocalUnsafe(ctx, m.chainID)
-	if err != nil {
-		return fmt.Errorf("failed to retrieve local-unsafe: %w", err)
+func (m *ManagedNode) reduceSearchSpace() {
+	hi := m.lastConflictingBlock.Number
+	lo := m.lastCommonBlock.Number
+	if hi == lo {
+		// found the matching tip of the chain, time to reset
+		m.resetTo(hi)
 	}
-	f, err := m.backend.Finalized(ctx, m.chainID)
-	if err != nil {
-		if errors.Is(err, types.ErrFuture) {
-			f = eth.BlockID{Number: 0}
-		} else {
-			return fmt.Errorf("failed to retrieve finalized: %w", err)
-		}
-	}
-	if err := m.resolveConflict(ctx, l1Ref, u, f); err != nil {
-		return fmt.Errorf("failed to resolve conflict: %w", err)
-	}
-	return nil
-}
-
-func (m *ManagedNode) sendReset() {
-	ctx, cancel := context.WithTimeout(m.ctx, internalTimeout)
-	defer cancel()
-
-	u, err := m.backend.LocalUnsafe(ctx, m.chainID)
-	if err != nil {
-		m.log.Warn("Failed to retrieve local-unsafe", "err", err)
+	if hi < lo {
+		// abort
 		return
 	}
-	s, err := m.backend.CrossSafe(ctx, m.chainID)
-	if err != nil {
-		m.log.Warn("Failed to retrieve cross-safe", "err", err)
-		return
-	}
-	f, err := m.backend.Finalized(ctx, m.chainID)
-	if err != nil {
-		if errors.Is(err, types.ErrFuture) {
-			f = eth.BlockID{Number: 0}
-		} else {
-			m.log.Warn("Failed to retrieve finalized", "err", err)
-			return
-		}
-	}
+	pivot := (lo + hi) / 2
+	// TODO load pivot from both op-node and supervisor
 
-	if err := m.Node.Reset(ctx, u, s.Derived, f); err != nil {
-		m.log.Warn("Node failed to reset", "err", err)
-		return
-	}
+	// TODO check if pivot matches
+	// if it matches, set lastCommonBlock to pivot
+	// if it does not, set lastConflictingBlock to pivot
+
+	// TODO: trigger event to continue reducing of search space
 }
 
-// resolveConflict attempts to reset the node to a valid state when a conflict is detected.
-// It first tries using the latest safe block, and if that fails, walks back block by block
-// until it finds a common ancestor or reaches the finalized block.
-func (m *ManagedNode) resolveConflict(ctx context.Context, l1Ref eth.BlockRef, u eth.BlockID, f eth.BlockID) error {
-	// First try to reset to the last known safe block
-	s, err := m.backend.SafeDerivedAt(ctx, m.chainID, l1Ref.ID())
-	if err != nil {
-		return fmt.Errorf("failed to retrieve safe block for %v: %w", l1Ref.ID(), err)
-	}
+// resetTo prepares a reset to the given block,
+// with safety levels adjusted to match the supervisor
+func (m *ManagedNode) resetTo(blockNum uint64) {
+	var unsafe, safe, finalized eth.BlockID
+	// TODO: determine safety levels, given the part of the chain that matches
 
-	// Helper to attempt a reset and classify the error
-	tryReset := func(safe eth.BlockID) (resolved bool, needsWalkback bool, err error) {
-		m.log.Debug("Attempting reset", "unsafe", u, "safe", safe, "finalized", f)
-		if err := m.Node.Reset(ctx, u, safe, f); err == nil {
-			return true, false, nil
-		} else {
-			var rpcErr *gethrpc.JsonError
-			if errors.As(err, &rpcErr) && (rpcErr.Code == blockNotFoundRPCErrCode || rpcErr.Code == conflictingBlockRPCErrCode) {
-				return false, true, err
-			}
-			return false, false, err
-		}
-	}
+	// if supervisor has conflicting data after common point:
+	//  limit the unsafe block
+	// if supervisor has no conflicting data after common point:
+	//  no-op the unsafe block, we don't want to rewind the node.
 
-	// Try initial reset
-	resolved, needsWalkback, err := tryReset(s)
-	if resolved {
-		return nil
-	}
-	if !needsWalkback {
-		return fmt.Errorf("error during reset: %w", err)
-	}
+	ctx, cancel := context.WithTimeout(m.ctx, nodeTimeout)
+	defer cancel()
+	if err := m.Node.Reset(ctx, unsafe, safe, finalized); err != nil {
 
-	// Walk back one block at a time looking for a common ancestor
-	currentBlock := s.Number
-	for i := 0; i < maxWalkBackAttempts; i++ {
-		currentBlock--
-		if currentBlock <= f.Number {
-			return fmt.Errorf("reached finalized block %d without finding common ancestor", f.Number)
-		}
-
-		safe, err := m.backend.SafeDerivedAt(ctx, m.chainID, eth.BlockID{Number: currentBlock})
-		if err != nil {
-			return fmt.Errorf("failed to retrieve safe block %d: %w", currentBlock, err)
-		}
-
-		resolved, _, err := tryReset(safe)
-		if resolved {
-			return nil
-		}
-		// Continue walking back on walkable errors, otherwise return the error
-		var rpcErr *gethrpc.JsonError
-		if !errors.As(err, &rpcErr) || (rpcErr.Code != blockNotFoundRPCErrCode && rpcErr.Code != conflictingBlockRPCErrCode) {
-			return fmt.Errorf("error during reset at block %d: %w", currentBlock, err)
-		}
 	}
-	return fmt.Errorf("exceeded maximum walk-back attempts (%d)", maxWalkBackAttempts)
 }
 
 func (m *ManagedNode) onExhaustL1Event(completed types.DerivedBlockRefPair) {
