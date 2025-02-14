@@ -86,7 +86,9 @@ func ExecMipsCoreStepLogic(cpu *mipsevm.CpuScalars, registers *[32]Word, memory 
 		} else if fun == 0x3 || fun == 0x1 || fun == 0x2 || fun == 0x7 || fun == 0x5 || fun == 0x6 || fun == 0x4 || fun == 0x0 {
 			// dext, dextm, dextu, dins, dinsm, dinsu, ins, ext
 			// Exception (stores rt)
-			assertMips64(insn)
+			if !(fun == 0x4 || fun == 0x0) {
+				assertMips64(insn)
+			}
 			rt = registers[rtReg]
 			rdReg = Word((insn >> 16) & 0x1F)
 		}
@@ -560,7 +562,7 @@ func ExecuteMipsInstruction(insn uint32, opcode uint32, fun uint32, rs, rt, mem 
 				lsb := (insn >> 6) & 0x1F
 				size := ((insn >> 11) & 0x1F) + 1
 				mask := (Word(1) << size) - 1
-				return SignExtend((rt & ^(mask<<lsb))>>lsb, 32)
+				return SignExtend((rs&(mask<<lsb))>>lsb, 32)
 			case 0x24: // dbshfl
 				assertMips64(insn)
 				switch (insn >> 6) & 0x1f {
