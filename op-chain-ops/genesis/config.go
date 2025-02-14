@@ -233,6 +233,10 @@ type GasPriceOracleDeployConfig struct {
 	GasPriceOracleBaseFeeScalar uint32 `json:"gasPriceOracleBaseFeeScalar" evm:"basefeeScalar"`
 	// GasPriceOracleBlobBaseFeeScalar represents the value of the blob base fee scalar used for fee calculations.
 	GasPriceOracleBlobBaseFeeScalar uint32 `json:"gasPriceOracleBlobBaseFeeScalar" evm:"blobbasefeeScalar"`
+	// GasPriceOracleOperatorFeeScalar represents the value of the operator fee scalar used for fee calculations.
+	GasPriceOracleOperatorFeeScalar uint32 `json:"gasPriceOracleOperatorFeeScalar" evm:"operatorfeeScalar"`
+	// GasPriceOracleOperatorFeeConstant represents the value of the operator fee constant used for fee calculations.
+	GasPriceOracleOperatorFeeConstant uint64 `json:"gasPriceOracleOperatorFeeConstant" evm:"operatorfeeConstant"`
 }
 
 var _ ConfigChecker = (*GasPriceOracleDeployConfig)(nil)
@@ -256,6 +260,14 @@ func (d *GasPriceOracleDeployConfig) FeeScalar() [32]byte {
 	return eth.EncodeScalar(eth.EcotoneScalars{
 		BlobBaseFeeScalar: d.GasPriceOracleBlobBaseFeeScalar,
 		BaseFeeScalar:     d.GasPriceOracleBaseFeeScalar,
+	})
+}
+
+// OperatorFeeParams returns the raw serialized operator fee params.
+func (d *GasPriceOracleDeployConfig) OperatorFeeParams() [32]byte {
+	return eth.EncodeOperatorFeeParams(eth.OperatorFeeParams{
+		Scalar:   d.GasPriceOracleOperatorFeeScalar,
+		Constant: d.GasPriceOracleOperatorFeeConstant,
 	})
 }
 
@@ -1036,10 +1048,11 @@ func (d *DeployConfig) RollupConfig(l1StartBlock *types.Header, l2GenesisBlockHa
 // Overhead value is considered a noop.
 func (d *DeployConfig) GenesisSystemConfig() eth.SystemConfig {
 	return eth.SystemConfig{
-		BatcherAddr: d.BatchSenderAddress,
-		Overhead:    eth.Bytes32(common.BigToHash(new(big.Int).SetUint64(d.GasPriceOracleOverhead))),
-		Scalar:      d.FeeScalar(),
-		GasLimit:    uint64(d.L2GenesisBlockGasLimit),
+		BatcherAddr:       d.BatchSenderAddress,
+		Overhead:          eth.Bytes32(common.BigToHash(new(big.Int).SetUint64(d.GasPriceOracleOverhead))),
+		Scalar:            d.FeeScalar(),
+		GasLimit:          uint64(d.L2GenesisBlockGasLimit),
+		OperatorFeeParams: eth.Bytes32(d.OperatorFeeParams()),
 	}
 }
 

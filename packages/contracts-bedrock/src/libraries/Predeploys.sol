@@ -68,6 +68,9 @@ library Predeploys {
     /// @notice Address of the L1FeeVault predeploy.
     address internal constant L1_FEE_VAULT = 0x420000000000000000000000000000000000001A;
 
+    /// @notice Address of the OperatorFeeVault predeploy.
+    address internal constant OPERATOR_FEE_VAULT = 0x420000000000000000000000000000000000001b;
+
     /// @notice Address of the SchemaRegistry predeploy.
     address internal constant SCHEMA_REGISTRY = 0x4200000000000000000000000000000000000020;
 
@@ -128,6 +131,7 @@ library Predeploys {
         if (_addr == PROXY_ADMIN) return "ProxyAdmin";
         if (_addr == BASE_FEE_VAULT) return "BaseFeeVault";
         if (_addr == L1_FEE_VAULT) return "L1FeeVault";
+        if (_addr == OPERATOR_FEE_VAULT) return "OperatorFeeVault";
         if (_addr == SCHEMA_REGISTRY) return "SchemaRegistry";
         if (_addr == EAS) return "EAS";
         if (_addr == GOVERNANCE_TOKEN) return "GovernanceToken";
@@ -154,10 +158,10 @@ library Predeploys {
             || _addr == SEQUENCER_FEE_WALLET || _addr == OPTIMISM_MINTABLE_ERC20_FACTORY || _addr == L1_BLOCK_NUMBER
             || _addr == L2_ERC721_BRIDGE || _addr == L1_BLOCK_ATTRIBUTES || _addr == L2_TO_L1_MESSAGE_PASSER
             || _addr == OPTIMISM_MINTABLE_ERC721_FACTORY || _addr == PROXY_ADMIN || _addr == BASE_FEE_VAULT
-            || _addr == L1_FEE_VAULT || _addr == SCHEMA_REGISTRY || _addr == EAS || _addr == GOVERNANCE_TOKEN
-            || (_useInterop && _addr == CROSS_L2_INBOX) || (_useInterop && _addr == L2_TO_L2_CROSS_DOMAIN_MESSENGER)
-            || (_useInterop && _addr == SUPERCHAIN_WETH) || (_useInterop && _addr == ETH_LIQUIDITY)
-            || (_useInterop && _addr == SUPERCHAIN_TOKEN_BRIDGE);
+            || _addr == L1_FEE_VAULT || _addr == OPERATOR_FEE_VAULT || _addr == SCHEMA_REGISTRY || _addr == EAS
+            || _addr == GOVERNANCE_TOKEN || (_useInterop && _addr == CROSS_L2_INBOX)
+            || (_useInterop && _addr == L2_TO_L2_CROSS_DOMAIN_MESSENGER) || (_useInterop && _addr == SUPERCHAIN_WETH)
+            || (_useInterop && _addr == ETH_LIQUIDITY) || (_useInterop && _addr == SUPERCHAIN_TOKEN_BRIDGE);
     }
 
     function isPredeployNamespace(address _addr) internal pure returns (bool) {

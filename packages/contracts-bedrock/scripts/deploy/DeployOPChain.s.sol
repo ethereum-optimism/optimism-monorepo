@@ -59,6 +59,9 @@ contract DeployOPChainInput is BaseDeployIO {
     Duration internal _disputeMaxClockDuration;
     bool internal _allowCustomDisputeParameters;
 
+    uint32 internal _operatorFeeScalar;
+    uint64 internal _operatorFeeConstant;
+
     function set(bytes4 _sel, address _addr) public {
         require(_addr != address(0), "DeployOPChainInput: cannot set zero address");
         if (_sel == this.opChainProxyAdminOwner.selector) _opChainProxyAdminOwner = _addr;
@@ -91,6 +94,10 @@ contract DeployOPChainInput is BaseDeployIO {
             _disputeClockExtension = Duration.wrap(SafeCast.toUint64(_value));
         } else if (_sel == this.disputeMaxClockDuration.selector) {
             _disputeMaxClockDuration = Duration.wrap(SafeCast.toUint64(_value));
+        } else if (_sel == this.operatorFeeScalar.selector) {
+            _operatorFeeScalar = SafeCast.toUint32(_value);
+        } else if (_sel == this.operatorFeeConstant.selector) {
+            _operatorFeeConstant = SafeCast.toUint64(_value);
         } else {
             revert("DeployOPChainInput: unknown selector");
         }
@@ -213,6 +220,14 @@ contract DeployOPChainInput is BaseDeployIO {
 
     function allowCustomDisputeParameters() public view returns (bool) {
         return _allowCustomDisputeParameters;
+    }
+
+    function operatorFeeScalar() public view returns (uint32) {
+        return _operatorFeeScalar;
+    }
+
+    function operatorFeeConstant() public view returns (uint64) {
+        return _operatorFeeConstant;
     }
 }
 

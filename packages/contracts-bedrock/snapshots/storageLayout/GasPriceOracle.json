@@ -12,5 +12,12 @@
     "offset": 1,
     "slot": "0",
     "type": "bool"
+  },
+  {
+    "bytes": "1",
+    "label": "isIsthmus",
+    "offset": 2,
+    "slot": "0",
+    "type": "bool"
   }
 ]
