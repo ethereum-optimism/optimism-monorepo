@@ -148,6 +148,12 @@ func TestRollupProvider_FailoverOnInactiveSequencer(t *testing.T) {
 	rollupProvider, err := ept.newActiveL2RollupProvider(0)
 	require.NoError(t, err)
 
+	numInvocations := 0
+	mockCallback := func() {
+		numInvocations++
+	}
+	rollupProvider.SetOnActiveProviderChanged(mockCallback)
+
 	firstSequencerUsed, err := rollupProvider.RollupClient(context.Background())
 	require.NoError(t, err)
 	require.Same(t, primarySequencer, firstSequencerUsed)
@@ -159,6 +165,7 @@ func TestRollupProvider_FailoverOnInactiveSequencer(t *testing.T) {
 	require.NoError(t, err)
 	require.Same(t, secondarySequencer, secondSequencerUsed)
 	ept.assertAllExpectations(t)
+	require.Equal(t, 1, numInvocations)
 }
 
 // TestEndpointProvider_FailoverOnInactiveSequencer verifies that the ActiveL2EndpointProvider

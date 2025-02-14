@@ -95,10 +95,10 @@ func (q *Queue[T]) Send(id T, candidate TxCandidate, receiptCh chan TxReceipt[T]
 func (q *Queue[T]) TrySend(id T, candidate TxCandidate, receiptCh chan TxReceipt[T]) bool {
 	group, ctx := q.groupContext()
 	responseChan := make(chan SendResponse, 1)
-	handleResponse := func() error {
+	handler := func() error {
 		return handleResponse(ctx, responseChan, receiptCh, id)
 	}
-	ok := group.TryGo(handleResponse)
+	ok := group.TryGo(handler)
 	if !ok {
 		return false
 	} else {

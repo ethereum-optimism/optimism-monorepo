@@ -48,7 +48,6 @@ type BatcherConfig struct {
 	// For throttling DA. See CLIConfig in config.go for details on these parameters.
 	ThrottleThreshold, ThrottleTxSize          uint64
 	ThrottleBlockSize, ThrottleAlwaysBlockSize uint64
-	ThrottleInterval                           time.Duration
 }
 
 // BatcherService represents a full batch-submitter instance and its resources,
@@ -111,7 +110,6 @@ func (bs *BatcherService) initFromCLIConfig(ctx context.Context, version string,
 	bs.ThrottleTxSize = cfg.ThrottleTxSize
 	bs.ThrottleBlockSize = cfg.ThrottleBlockSize
 	bs.ThrottleAlwaysBlockSize = cfg.ThrottleAlwaysBlockSize
-	bs.ThrottleInterval = cfg.ThrottleInterval
 
 	if err := bs.initRPCClients(ctx, cfg); err != nil {
 		return err
@@ -139,6 +137,22 @@ func (bs *BatcherService) initFromCLIConfig(ctx context.Context, version string,
 	bs.initDriver(opts...)
 	if err := bs.initRPCServer(cfg); err != nil {
 		return fmt.Errorf("failed to start RPC server: %w", err)
+	}
+
+	// If we use an active endpoint provider AND throttling is enabled,
+	// we need to set up the callback to notify the driver any time we
+	// get a new active sequencer
+	if provider, ok := bs.EndpointProvider.(*dial.ActiveL2EndpointProvider); ok {
+		if cfg.ThrottleThreshold > 0 {
+			// callback to notify the driver of a new active sequencer
+			cb := func() {
+				select {
+				case bs.driver.activeSequencerChanged <- struct{}{}:
+				default:
+				}
+			}
+			provider.ActiveL2RollupProvider.SetOnActiveProviderChanged(cb)
+		}
 	}
 
 	bs.Metrics.RecordInfo(bs.Version)
