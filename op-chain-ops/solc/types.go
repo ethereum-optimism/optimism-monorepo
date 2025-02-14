@@ -180,6 +180,9 @@ type AstNode struct {
 	Virtual          bool              `json:"virtual,omitempty"`
 	Visibility       string            `json:"visibility,omitempty"`
 
+	// Struct & Enum specific
+	Members []AstVariableOrEnumValue `json:"members,omitempty"`
+
 	// Variable specific
 	Constant         bool                 `json:"constant,omitempty"`
 	Mutability       string               `json:"mutability,omitempty"`
@@ -200,6 +203,21 @@ type AstNode struct {
 	Kind     string      `json:"kind,omitempty"`
 	Value    interface{} `json:"value,omitempty"`
 
+	// Type specifics
+	UnderlyingType *AstTypeName `json:"underlyingType,omitempty"`
+
+	// Import specifics
+	File          string           `json:"file,omitempty"`
+	AbsolutePath  string           `json:"absolutePath,omitempty"`
+	SourceUnit    int              `json:"sourceUnit,omitempty"`
+	SymbolAliases []AstSymbolAlias `json:"symbolAliases,omitempty"`
+	UnitAlias     string           `json:"unitAlias,omitempty"`
+
+	// Pragma specific
+	Literals []string `json:"literals,omitempty"`
+
+	// Event Specific
+	Indexed bool `json:"indexed,omitempty"`
 	// Other fields
 	Arguments []Expression `json:"arguments,omitempty"`
 	Condition *Expression  `json:"condition,omitempty"`
@@ -248,6 +266,36 @@ type AstTypeName struct {
 	Src              string               `json:"src"`
 	StateMutability  string               `json:"stateMutability,omitempty"`
 	TypeDescriptions *AstTypeDescriptions `json:"typeDescriptions,omitempty"`
+}
+
+type AstVariableOrEnumValue struct {
+	// Common Fields
+	Id           int     `json:"id"`
+	Name         string  `json:"name"`
+	NameLocation *string `json:"nameLocation,omitempty"`
+	NodeType     string  `json:"nodeType"`
+	Src          string  `json:"src"`
+
+	// VariableDeclaration-Specific Fields
+	BaseFunctions    *[]int               `json:"baseFunctions,omitempty"`
+	Constant         *bool                `json:"constant,omitempty"`
+	Documentation    *AstDocumentation    `json:"documentation,omitempty"`
+	FunctionSelector *string              `json:"functionSelector,omitempty"`
+	Indexed          *bool                `json:"indexed,omitempty"`
+	Mutability       *string              `json:"mutability,omitempty"`
+	Scope            *int                 `json:"scope,omitempty"`
+	StateVariable    *bool                `json:"stateVariable,omitempty"`
+	StorageLocation  *string              `json:"storageLocation,omitempty"`
+	TypeDescriptions *AstTypeDescriptions `json:"typeDescriptions,omitempty"`
+	TypeName         *AstTypeName         `json:"typeName,omitempty"`
+	Value            *Expression          `json:"value,omitempty"`
+	Visibility       *string              `json:"visibility,omitempty"`
+}
+
+type AstSymbolAlias struct {
+	Foreign      Expression `json:"foreign"`
+	Local        string     `json:"local,omitempty"`
+	NameLocation string     `json:"nameLocation,omitempty"`
 }
 
 type Expression struct {
