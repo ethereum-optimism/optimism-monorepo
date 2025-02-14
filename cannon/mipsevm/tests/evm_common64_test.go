@@ -755,7 +755,7 @@ func TestEVM_SingleStep_Ext64(t *testing.T) {
 				state := goVm.GetState()
 
 				var insn uint32
-				if tt.funct == 0b00_0011 { // dext
+				if tt.funct == 0b00_0011 || tt.funct == 0b00_0000 { // dext, ext
 					insn = 0b011111<<26 | rsReg<<21 | rtReg<<16 | tt.msbd<<11 | tt.lsb<<6 | tt.funct
 				} else if tt.funct == 0b00_0001 { // dextm
 					require.GreaterOrEqual(t, tt.msbd, uint32(32), "msbd should be >= 32 for dextm")
@@ -763,8 +763,6 @@ func TestEVM_SingleStep_Ext64(t *testing.T) {
 				} else if tt.funct == 0b00_0010 { // dextu
 					require.GreaterOrEqual(t, tt.lsb, uint32(32), "lsb should be >= 32 for dextu")
 					insn = 0b011111<<26 | rsReg<<21 | rtReg<<16 | tt.msbd<<11 | (tt.lsb-32)<<6 | tt.funct
-				} else if tt.funct == 0b00_0000 { // ext
-					insn = 0b011111<<26 | rsReg<<21 | rtReg<<16 | tt.msbd<<11 | tt.lsb<<6 | tt.funct
 				}
 
 				testutil.StoreInstruction(state.GetMemory(), state.GetPC(), insn)
