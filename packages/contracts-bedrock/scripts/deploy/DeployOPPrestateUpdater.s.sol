@@ -65,7 +65,9 @@ contract DeployOPPrestateUpdater is Script {
         blueprints.permissionedDisputeGame1 = blueprints180.permissionedDisputeGame1;
         blueprints.permissionedDisputeGame2 = blueprints180.permissionedDisputeGame2;
 
-        // (blueprints.permissionlessDisputeGame1, blueprints.permissionlessDisputeGame2) = DeployUtils.createDeterministicBlueprint(vm.getCode("FaultDisputeGame"), _salt);
+        // TODO: checkout op-contracts/v1.8.0, get the initcode, paste it in here.
+        // bytes memory faultDisputeGameInitcode = 0x.....;
+        // (blueprints.permissionlessDisputeGame1, blueprints.permissionlessDisputeGame2) = DeployUtils.createDeterministicBlueprint(faultDisputeGameInitcode, _salt);
         // forgefmt: disable-end
 
         oppu = OPPrestateUpdater(
