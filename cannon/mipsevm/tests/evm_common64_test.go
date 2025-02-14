@@ -577,6 +577,7 @@ func TestEVM_SingleStep_Rot64(t *testing.T) {
 			funct          uint32
 			expectedResult Word
 		}{
+			// drotr
 			// 0x2 rotated right by 1 -> 0x1
 			{name: "drotr", sa: 1, rt: Word(0x2), expectedResult: Word(0x1), funct: 0b11_1010},
 			// 0x1 rotated right by 1 -> MSB set
@@ -587,6 +588,24 @@ func TestEVM_SingleStep_Rot64(t *testing.T) {
 			{name: "drotr halfword shift", sa: 16, rt: Word(0x123456789ABCDEF0), expectedResult: Word(0xDEF0123456789ABC), funct: 0b11_1010},
 			// Edge case: rotating zero
 			{name: "drotr zero", sa: 5, rt: Word(0x0), expectedResult: Word(0x0), funct: 0b11_1010},
+
+			// drotr32
+			// Rotate by exactly 32 bits (should swap halves)
+			{name: "drotr32", sa: 32 + 0, rt: Word(0x123456789ABCDEF0), expectedResult: Word(0x9ABCDEF012345678), funct: 0b11_1110},
+			// Rotate by 33 bits (should shift one more bit beyond simple case)
+			{name: "drotr32 by 1", sa: 32 + 1, rt: Word(0x123456789ABCDEF0), expectedResult: Word(0x4d5e6f78091a2b3c), funct: 0b11_1110},
+			// Rotate by 40 bits (byte-level rotation)
+			{name: "drotr32 by 8 (byte shift)", sa: 32 + 8, rt: Word(0x123456789ABCDEF0), expectedResult: Word(0x789abcdef0123456), funct: 0b11_1110},
+			// Rotate by 48 bits (halfword-level rotation)
+			{name: "drotr32 by 16 (halfword shift)", sa: 32 + 16, rt: Word(0x123456789ABCDEF0), expectedResult: Word(0x56789abcdef01234), funct: 0b11_1110},
+			// Rotate by 63 bits (one less than full 64-bit cycle)
+			{name: "drotr32 by 31", sa: 32 + 31, rt: Word(0x123456789ABCDEF0), expectedResult: Word(0x2468acf13579bde0), funct: 0b11_1110},
+			// Rotate with MSB set, shifting it down into the lower bits
+			{name: "drotr32 with MSB set", sa: 32 + 4, rt: Word(0x8000000000000000), expectedResult: Word(0x0000000008000000), funct: 0b11_1110},
+			// Rotate all ones (0xFFFFFFFFFFFFFFFF) should remain unchanged
+			{name: "drotr32 all ones", sa: 32 + 8, rt: Word(0xFFFFFFFFFFFFFFFF), expectedResult: Word(0xFFFFFFFFFFFFFFFF), funct: 0b11_1110},
+			// Rotate zero (should remain zero)
+			{name: "drotr32 zero", sa: 32 + 5, rt: Word(0x0000000000000000), expectedResult: Word(0x0000000000000000), funct: 0b11_1110},
 		}
 
 		versions := GetMipsVersionTestCases(t)
@@ -597,7 +616,14 @@ func TestEVM_SingleStep_Rot64(t *testing.T) {
 					// Set up state
 					goVm := v.VMFactory(nil, os.Stdout, os.Stderr, testutil.CreateLogger(), testutil.WithRandomization(int64(i)))
 					state := goVm.GetState()
-					insn := 1<<21 | rtReg<<16 | rdReg<<11 | tt.sa<<6 | tt.funct
+
+					var insn uint32
+					if tt.funct == 0b11_1010 { // drotr
+						insn = 1<<21 | rtReg<<16 | rdReg<<11 | tt.sa<<6 | tt.funct
+					} else { // drotr32
+						require.GreaterOrEqual(t, tt.sa, uint32(32), "sa should be >= 32 for drotr32")
+						insn = 1<<21 | rtReg<<16 | rdReg<<11 | (tt.sa-32)<<6 | tt.funct
+					}
 					testutil.StoreInstruction(state.GetMemory(), state.GetPC(), insn)
 					state.GetRegistersRef()[rtReg] = tt.rt
 					// step := state.GetStep()
