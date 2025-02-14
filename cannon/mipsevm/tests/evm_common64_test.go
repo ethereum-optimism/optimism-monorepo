@@ -569,111 +569,110 @@ func TestEVM_SingleStep_Rot64(t *testing.T) {
 	rsReg := uint32(7)
 	rdReg := uint32(8)
 	rtReg := uint32(9)
-	{
-		cases := []struct {
-			name           string
-			rs             Word
-			rt             Word
-			sa             uint32
-			funct          uint32
-			expectedResult Word
-		}{
-			// drotr
-			// 0x2 rotated right by 1 -> 0x1
-			{name: "drotr", sa: 1, rt: Word(0x2), expectedResult: Word(0x1), funct: 0b11_1010},
-			// 0x1 rotated right by 1 -> MSB set
-			{name: "drotr MSB set", sa: 1, rt: Word(0x1), expectedResult: Word(0x80_00_00_00_00_00_00_00), funct: 0b11_1010},
-			// Rotate right by 8 (byte-level rotation)
-			{name: "drotr byte shift", sa: 8, rt: Word(0x123456789ABCDEF0), expectedResult: Word(0xF0123456789ABCDE), funct: 0b11_1010},
-			// Rotate right by 16 (halfword-level rotation)
-			{name: "drotr halfword shift", sa: 16, rt: Word(0x123456789ABCDEF0), expectedResult: Word(0xDEF0123456789ABC), funct: 0b11_1010},
-			// Edge case: rotating zero
-			{name: "drotr zero", sa: 5, rt: Word(0x0), expectedResult: Word(0x0), funct: 0b11_1010},
 
-			// drotr32
-			// Rotate by exactly 32 bits (should swap halves)
-			{name: "drotr32", sa: 32 + 0, rt: Word(0x123456789ABCDEF0), expectedResult: Word(0x9ABCDEF012345678), funct: 0b11_1110},
-			// Rotate by 33 bits (should shift one more bit beyond simple case)
-			{name: "drotr32 by 1", sa: 32 + 1, rt: Word(0x123456789ABCDEF0), expectedResult: Word(0x4d5e6f78091a2b3c), funct: 0b11_1110},
-			// Rotate by 40 bits (byte-level rotation)
-			{name: "drotr32 by 8 (byte shift)", sa: 32 + 8, rt: Word(0x123456789ABCDEF0), expectedResult: Word(0x789abcdef0123456), funct: 0b11_1110},
-			// Rotate by 48 bits (halfword-level rotation)
-			{name: "drotr32 by 16 (halfword shift)", sa: 32 + 16, rt: Word(0x123456789ABCDEF0), expectedResult: Word(0x56789abcdef01234), funct: 0b11_1110},
-			// Rotate by 63 bits (one less than full 64-bit cycle)
-			{name: "drotr32 by 31", sa: 32 + 31, rt: Word(0x123456789ABCDEF0), expectedResult: Word(0x2468acf13579bde0), funct: 0b11_1110},
-			// Rotate with MSB set, shifting it down into the lower bits
-			{name: "drotr32 with MSB set", sa: 32 + 4, rt: Word(0x8000000000000000), expectedResult: Word(0x0000000008000000), funct: 0b11_1110},
-			// Rotate all ones (0xFFFFFFFFFFFFFFFF) should remain unchanged
-			{name: "drotr32 all ones", sa: 32 + 8, rt: Word(0xFFFFFFFFFFFFFFFF), expectedResult: Word(0xFFFFFFFFFFFFFFFF), funct: 0b11_1110},
-			// Rotate zero (should remain zero)
-			{name: "drotr32 zero", sa: 32 + 5, rt: Word(0x0000000000000000), expectedResult: Word(0x0000000000000000), funct: 0b11_1110},
+	cases := []struct {
+		name           string
+		rs             Word
+		rt             Word
+		sa             uint32
+		funct          uint32
+		expectedResult Word
+	}{
+		// drotr
+		// 0x2 rotated right by 1 -> 0x1
+		{name: "drotr", sa: 1, rt: Word(0x2), expectedResult: Word(0x1), funct: 0b11_1010},
+		// 0x1 rotated right by 1 -> MSB set
+		{name: "drotr MSB set", sa: 1, rt: Word(0x1), expectedResult: Word(0x80_00_00_00_00_00_00_00), funct: 0b11_1010},
+		// Rotate right by 8 (byte-level rotation)
+		{name: "drotr byte shift", sa: 8, rt: Word(0x123456789ABCDEF0), expectedResult: Word(0xF0123456789ABCDE), funct: 0b11_1010},
+		// Rotate right by 16 (halfword-level rotation)
+		{name: "drotr halfword shift", sa: 16, rt: Word(0x123456789ABCDEF0), expectedResult: Word(0xDEF0123456789ABC), funct: 0b11_1010},
+		// Edge case: rotating zero
+		{name: "drotr zero", sa: 5, rt: Word(0x0), expectedResult: Word(0x0), funct: 0b11_1010},
 
-			// drotrv
-			// 0x2 rotated right by 1 -> 0x1
-			{name: "drotrv", rs: 1, rt: Word(0x2), expectedResult: Word(0x1), funct: 0b01_0110},
-			// 0x1 rotated right by 1 -> MSB set
-			{name: "drotrv MSB set", rs: 1, rt: Word(0x1), expectedResult: Word(0x80_00_00_00_00_00_00_00), funct: 0b01_0110},
-			// Rotate right by 8 (byte-level rotation)
-			{name: "drotrv byte shift", rs: 8, rt: Word(0x123456789ABCDEF0), expectedResult: Word(0xF0123456789ABCDE), funct: 0b01_0110},
-			// Rotate right by 16 (halfword-level rotation)
-			{name: "drotrv halfword shift", rs: 16, rt: Word(0x123456789ABCDEF0), expectedResult: Word(0xDEF0123456789ABC), funct: 0b01_0110},
-			// Rotate by exactly 32 bits (should swap halves)
-			{name: "drotrv by 32", rs: 32, rt: Word(0x123456789ABCDEF0), expectedResult: Word(0x9ABCDEF012345678), funct: 0b01_0110},
-			// Rotate by 33 bits (should shift one more bit beyond simple case)
-			{name: "drotrv by 33", rs: 33, rt: Word(0x123456789ABCDEF0), expectedResult: Word(0x4d5e6f78091a2b3c), funct: 0b01_0110},
-			// Rotate by 40 bits (byte-level rotation)
-			{name: "drotrv by 40", rs: 40, rt: Word(0x123456789ABCDEF0), expectedResult: Word(0x789abcdef0123456), funct: 0b01_0110},
-			// Rotate by 48 bits (halfword-level rotation)
-			{name: "drotrv by 48", rs: 48, rt: Word(0x123456789ABCDEF0), expectedResult: Word(0x56789abcdef01234), funct: 0b01_0110},
-			// Rotate by 63 bits (one less than full 64-bit cycle)
-			{name: "drotrv by 63", rs: 63, rt: Word(0x123456789ABCDEF0), expectedResult: Word(0x2468acf13579bde0), funct: 0b01_0110},
-			// Rotate with MSB set, shifting it down into the lower bits
-			{name: "drotrv with MSB set", rs: 36, rt: Word(0x8000000000000000), expectedResult: Word(0x0000000008000000), funct: 0b01_0110},
-			// Rotate all ones (0xFFFFFFFFFFFFFFFF) should remain unchanged
-			{name: "drotrv all ones", rs: 40, rt: Word(0xFFFFFFFFFFFFFFFF), expectedResult: Word(0xFFFFFFFFFFFFFFFF), funct: 0b01_0110},
-			// Rotate zero (should remain zero)
-			{name: "drotrv zero", rs: 5, rt: Word(0x0), expectedResult: Word(0x0), funct: 0b01_0110},
-		}
+		// drotr32
+		// Rotate by exactly 32 bits (should swap halves)
+		{name: "drotr32", sa: 32 + 0, rt: Word(0x123456789ABCDEF0), expectedResult: Word(0x9ABCDEF012345678), funct: 0b11_1110},
+		// Rotate by 33 bits (should shift one more bit beyond simple case)
+		{name: "drotr32 by 1", sa: 32 + 1, rt: Word(0x123456789ABCDEF0), expectedResult: Word(0x4d5e6f78091a2b3c), funct: 0b11_1110},
+		// Rotate by 40 bits (byte-level rotation)
+		{name: "drotr32 by 8 (byte shift)", sa: 32 + 8, rt: Word(0x123456789ABCDEF0), expectedResult: Word(0x789abcdef0123456), funct: 0b11_1110},
+		// Rotate by 48 bits (halfword-level rotation)
+		{name: "drotr32 by 16 (halfword shift)", sa: 32 + 16, rt: Word(0x123456789ABCDEF0), expectedResult: Word(0x56789abcdef01234), funct: 0b11_1110},
+		// Rotate by 63 bits (one less than full 64-bit cycle)
+		{name: "drotr32 by 31", sa: 32 + 31, rt: Word(0x123456789ABCDEF0), expectedResult: Word(0x2468acf13579bde0), funct: 0b11_1110},
+		// Rotate with MSB set, shifting it down into the lower bits
+		{name: "drotr32 with MSB set", sa: 32 + 4, rt: Word(0x8000000000000000), expectedResult: Word(0x0000000008000000), funct: 0b11_1110},
+		// Rotate all ones (0xFFFFFFFFFFFFFFFF) should remain unchanged
+		{name: "drotr32 all ones", sa: 32 + 8, rt: Word(0xFFFFFFFFFFFFFFFF), expectedResult: Word(0xFFFFFFFFFFFFFFFF), funct: 0b11_1110},
+		// Rotate zero (should remain zero)
+		{name: "drotr32 zero", sa: 32 + 5, rt: Word(0x0000000000000000), expectedResult: Word(0x0000000000000000), funct: 0b11_1110},
 
-		versions := GetMipsVersionTestCases(t)
-		for _, v := range versions {
-			for i, tt := range cases {
-				testName := fmt.Sprintf("%v (%v)", tt.name, v.Name)
-				t.Run(testName, func(t *testing.T) {
-					// Set up state
-					goVm := v.VMFactory(nil, os.Stdout, os.Stderr, testutil.CreateLogger(), testutil.WithRandomization(int64(i)))
-					state := goVm.GetState()
+		// drotrv
+		// 0x2 rotated right by 1 -> 0x1
+		{name: "drotrv", rs: 1, rt: Word(0x2), expectedResult: Word(0x1), funct: 0b01_0110},
+		// 0x1 rotated right by 1 -> MSB set
+		{name: "drotrv MSB set", rs: 1, rt: Word(0x1), expectedResult: Word(0x80_00_00_00_00_00_00_00), funct: 0b01_0110},
+		// Rotate right by 8 (byte-level rotation)
+		{name: "drotrv byte shift", rs: 8, rt: Word(0x123456789ABCDEF0), expectedResult: Word(0xF0123456789ABCDE), funct: 0b01_0110},
+		// Rotate right by 16 (halfword-level rotation)
+		{name: "drotrv halfword shift", rs: 16, rt: Word(0x123456789ABCDEF0), expectedResult: Word(0xDEF0123456789ABC), funct: 0b01_0110},
+		// Rotate by exactly 32 bits (should swap halves)
+		{name: "drotrv by 32", rs: 32, rt: Word(0x123456789ABCDEF0), expectedResult: Word(0x9ABCDEF012345678), funct: 0b01_0110},
+		// Rotate by 33 bits (should shift one more bit beyond simple case)
+		{name: "drotrv by 33", rs: 33, rt: Word(0x123456789ABCDEF0), expectedResult: Word(0x4d5e6f78091a2b3c), funct: 0b01_0110},
+		// Rotate by 40 bits (byte-level rotation)
+		{name: "drotrv by 40", rs: 40, rt: Word(0x123456789ABCDEF0), expectedResult: Word(0x789abcdef0123456), funct: 0b01_0110},
+		// Rotate by 48 bits (halfword-level rotation)
+		{name: "drotrv by 48", rs: 48, rt: Word(0x123456789ABCDEF0), expectedResult: Word(0x56789abcdef01234), funct: 0b01_0110},
+		// Rotate by 63 bits (one less than full 64-bit cycle)
+		{name: "drotrv by 63", rs: 63, rt: Word(0x123456789ABCDEF0), expectedResult: Word(0x2468acf13579bde0), funct: 0b01_0110},
+		// Rotate with MSB set, shifting it down into the lower bits
+		{name: "drotrv with MSB set", rs: 36, rt: Word(0x8000000000000000), expectedResult: Word(0x0000000008000000), funct: 0b01_0110},
+		// Rotate all ones (0xFFFFFFFFFFFFFFFF) should remain unchanged
+		{name: "drotrv all ones", rs: 40, rt: Word(0xFFFFFFFFFFFFFFFF), expectedResult: Word(0xFFFFFFFFFFFFFFFF), funct: 0b01_0110},
+		// Rotate zero (should remain zero)
+		{name: "drotrv zero", rs: 5, rt: Word(0x0), expectedResult: Word(0x0), funct: 0b01_0110},
+	}
 
-					var insn uint32
-					if tt.funct == 0b11_1010 { // drotr
-						insn = 1<<21 | rtReg<<16 | rdReg<<11 | tt.sa<<6 | tt.funct
-					} else if tt.funct == 0b11_1110 { // drotr32
-						require.GreaterOrEqual(t, tt.sa, uint32(32), "sa should be >= 32 for drotr32")
-						insn = 1<<21 | rtReg<<16 | rdReg<<11 | (tt.sa-32)<<6 | tt.funct
-					} else if tt.funct == 0b01_0110 { // drotrv
-						insn = rsReg<<21 | rtReg<<16 | rdReg<<11 | 1<<6 | tt.funct
-					}
-					testutil.StoreInstruction(state.GetMemory(), state.GetPC(), insn)
-					state.GetRegistersRef()[rtReg] = tt.rt
-					if tt.funct == 0b01_0110 { // drotrv
-						state.GetRegistersRef()[rsReg] = tt.rs
-					}
-					// step := state.GetStep()
+	versions := GetMipsVersionTestCases(t)
+	for _, v := range versions {
+		for i, tt := range cases {
+			testName := fmt.Sprintf("%v (%v)", tt.name, v.Name)
+			t.Run(testName, func(t *testing.T) {
+				// Set up state
+				goVm := v.VMFactory(nil, os.Stdout, os.Stderr, testutil.CreateLogger(), testutil.WithRandomization(int64(i)))
+				state := goVm.GetState()
 
-					// Setup expectations
-					expected := testutil.NewExpectedState(state)
-					expected.ExpectStep()
-					expected.Registers[rdReg] = tt.expectedResult
-					// stepWitness, err := goVm.Step(true)
-					_, err := goVm.Step(true)
-					require.NoError(t, err)
+				var insn uint32
+				if tt.funct == 0b11_1010 { // drotr
+					insn = 1<<21 | rtReg<<16 | rdReg<<11 | tt.sa<<6 | tt.funct
+				} else if tt.funct == 0b11_1110 { // drotr32
+					require.GreaterOrEqual(t, tt.sa, uint32(32), "sa should be >= 32 for drotr32")
+					insn = 1<<21 | rtReg<<16 | rdReg<<11 | (tt.sa-32)<<6 | tt.funct
+				} else if tt.funct == 0b01_0110 { // drotrv
+					insn = rsReg<<21 | rtReg<<16 | rdReg<<11 | 1<<6 | tt.funct
+				}
+				testutil.StoreInstruction(state.GetMemory(), state.GetPC(), insn)
+				state.GetRegistersRef()[rtReg] = tt.rt
+				if tt.funct == 0b01_0110 { // drotrv
+					state.GetRegistersRef()[rsReg] = tt.rs
+				}
+				// step := state.GetStep()
 
-					// Check expectations
-					expected.Validate(t, state)
+				// Setup expectations
+				expected := testutil.NewExpectedState(state)
+				expected.ExpectStep()
+				expected.Registers[rdReg] = tt.expectedResult
+				// stepWitness, err := goVm.Step(true)
+				_, err := goVm.Step(true)
+				require.NoError(t, err)
 
-					// testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
-				})
-			}
+				// Check expectations
+				expected.Validate(t, state)
+
+				// testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
+			})
 		}
 	}
 }
