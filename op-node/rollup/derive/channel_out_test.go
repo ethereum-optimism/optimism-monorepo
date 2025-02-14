@@ -502,16 +502,16 @@ func TestSpanChannelOut_MaxRLPBytesPerChannel(t *testing.T) {
 
 func testSpanChannelOut_MaxRLPBytesPerChannel(t *testing.T, algo CompressionAlgo) {
 
-	largeBatchSize := int(rollup.NewChainSpec(&rollupCfg).MaxRLPBytesPerChannel(0))
+	maxRLPBytesPerChannel := int(rollup.NewChainSpec(&rollupCfg).MaxRLPBytesPerChannel(0))
 	cout, singularBatches := SpanChannelAndBatches(t, 100, 1, algo)
 
-	cout.rlp[0] = bytes.NewBuffer(make([]byte, largeBatchSize))
-	cout.rlp[1] = bytes.NewBuffer(make([]byte, largeBatchSize))
-	cout.sealedRLPBytes = largeBatchSize
+	cout.rlp[0] = bytes.NewBuffer(make([]byte, maxRLPBytesPerChannel))
+	cout.rlp[1] = bytes.NewBuffer(make([]byte, maxRLPBytesPerChannel))
+	cout.sealedRLPBytes = maxRLPBytesPerChannel
 
 	err := cout.addSingularBatch(singularBatches[0], 1)
-	require.ErrorIs(t, err, ErrTooManyRLPBytes)
+	require.ErrorIs(t, err, ErrTooManyRLPBytes, "error should be ErrTooManyRLPBytes")
 
-	require.Equal(t, cout.activeRLP().Len(), largeBatchSize, "active RLP should be equal to the max RLP limit")
-	require.Greater(t, cout.inactiveRLP().Len(), largeBatchSize)
+	require.Equal(t, cout.activeRLP().Len(), maxRLPBytesPerChannel, "active RLP should be equal to the max RLP limit")
+	require.Greater(t, cout.inactiveRLP().Len(), maxRLPBytesPerChannel, "inactive RLP should be greater than max RLP limit")
 }
