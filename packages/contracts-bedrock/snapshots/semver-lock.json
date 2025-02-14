@@ -16,24 +16,24 @@
     "sourceCodeHash": "0xf9ba98657dc235355146e381b654fe3ed766feb7cd87636ec0c9d4c6dd3e1973"
   },
   "src/L1/OPContractsManager.sol": {
-    "initCodeHash": "0x2f804e5eb43691fd948a9a2bf14703dca82a26a52e1f9723cb7addfcc8a11aca",
-    "sourceCodeHash": "0x5510caa8e93dc9ffc0a7e20b5fca253b96ec76f1efe0c37043bd76c783d2905f"
+    "initCodeHash": "0x46854dc61df090557afac79893d15b20e4fedec21532c8bbb5a53541e4ffc998",
+    "sourceCodeHash": "0xbe4ef0e3512ad58067c6466acf0a9faa3840a714168575a0c54b12a3eb981169"
   },
   "src/L1/OPContractsManagerInterop.sol": {
-    "initCodeHash": "0xe8e46acbadfe279a0c94123c88b7f0063b3dc17d868c105d91fbdac4d58a8ea9",
-    "sourceCodeHash": "0x29df30f140d5aac4c662a5cf0c360af48f433a8bb9e707f36ea0d5e6ddaaee95"
+    "initCodeHash": "0x9e2351f46ebc2c38409ee61b7011f0da422c35f4976ca7f69d1f85e43fd0e1f5",
+    "sourceCodeHash": "0xf2bb175b204952eb4f73f9bdccf01c1d6556c903b025332f0f366923cfd829a2"
   },
   "src/L1/OPPrestateUpdater.sol": {
     "initCodeHash": "0xc60b3bc19bf12e92a8110dcea67015533683034cbe60469bb23328f5a05bcda2",
     "sourceCodeHash": "0x4a79d8405160bd493f2c5d6f666245736989ff6c388f546967f38c7a3f4d97ef"
   },
   "src/L1/OptimismPortal2.sol": {
-    "initCodeHash": "0x2cc5776c92d6cb154aa3d9897c476deaf49d98dc81493fabaea72987b9588853",
-    "sourceCodeHash": "0x09d877d68eb2439759e0a912a5d86d85b4742dfd205bdc1ac9dfbb32f8ccb7b0"
+    "initCodeHash": "0xcfc4a71c03f3ab83272a94790a429fb567f681658ce8efd680ae81e6fa712a98",
+    "sourceCodeHash": "0x7374d012c58229017269d9f3b5a74fb08a5f3e105e1f7beb7c1f5219828a2470"
   },
   "src/L1/OptimismPortalInterop.sol": {
-    "initCodeHash": "0x1d97b348b70a43a4dd96f8285252593931f4e0b2ff4e6d549169e82c8ddea4f9",
-    "sourceCodeHash": "0x1610886629862a69b043f45fa8a187341f5a9ab05fd2c2d84f0add56e2be4439"
+    "initCodeHash": "0x5325fcddac6b2ce75268633ddbc59ade21be22e80cabb710056c36e39de64363",
+    "sourceCodeHash": "0x31861ce3dbfcaab2bb49eaf0f80ed38d2a6ff6a572b857d71264d0600b217be9"
   },
   "src/L1/ProtocolVersions.sol": {
     "initCodeHash": "0x5a76c8530cb24cf23d3baacc6eefaac226382af13f1e2a35535d2ec2b0573b29",
@@ -160,8 +160,8 @@
     "sourceCodeHash": "0xb7b0a06cd971c4647247dc19ce997d0c64a73e87c81d30731da9cf9efa1b952a"
   },
   "src/dispute/AnchorStateRegistry.sol": {
-    "initCodeHash": "0x378970d3613b8cf0202cc660afd8b0447988a22c18fdb9e7096a5dedbb389ad8",
-    "sourceCodeHash": "0x95cd2860ee20ed54615da02f53c87ca836aa15af20e3164ae6ef5a9b9cfd3983"
+    "initCodeHash": "0xbe0cc8d3743263583127f220b558e9bc985d0cc4df1d8e5acde00baa6e385e0a",
+    "sourceCodeHash": "0x4dfa6091aedbec03e9de31438b275aeb876262cede6e83e5689259bd102c2010"
   },
   "src/dispute/DelayedWETH.sol": {
     "initCodeHash": "0xdd0b5e523f3b53563fe0b6e6165fb73605b14910ffa32a7cbed855cdebab47c6",
@@ -192,8 +192,8 @@
     "sourceCodeHash": "0x62c9a6182d82692fb9c173ddb0d7978bcff2d1d4dc8cd2f10625e1e65bda6888"
   },
   "src/safe/DeputyGuardianModule.sol": {
-    "initCodeHash": "0x5eaf823d81995ce1f703f26e31049c54c1d4902dd9873a0b4645d470f2f459a2",
-    "sourceCodeHash": "0x17236a91c4171ae9525eae0e59fa65bb2dc320d62677cfc7d7eb942f182619fb"
+    "initCodeHash": "0x922eab27de69d6f17e1a6bc5772398639b91404909e13fb0f71f2c78cee8c2a9",
+    "sourceCodeHash": "0x08953bb5026894ff66edb3a75de3b4f691994c318dd3b430c0a7187bff004257"
   },
   "src/safe/DeputyPauseModule.sol": {
     "initCodeHash": "0xa3b7bf0c93b41f39ebc18a81322b90127a633d684ae9f86c2f2a1c48fe7f1372",

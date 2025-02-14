@@ -557,13 +557,13 @@ contract OPContractsManager_AddGameType_Test is Test {
             superchainConfigImpl: DeployUtils.create1("SuperchainConfig"),
             protocolVersionsImpl: DeployUtils.create1("ProtocolVersions"),
             l1ERC721BridgeImpl: DeployUtils.create1("L1ERC721Bridge"),
-            optimismPortalImpl: DeployUtils.create1("OptimismPortal2", abi.encode(1, 1)),
+            optimismPortalImpl: DeployUtils.create1("OptimismPortal2", abi.encode(1)),
             systemConfigImpl: DeployUtils.create1("SystemConfig"),
             optimismMintableERC20FactoryImpl: DeployUtils.create1("OptimismMintableERC20Factory"),
             l1CrossDomainMessengerImpl: DeployUtils.create1("L1CrossDomainMessenger"),
             l1StandardBridgeImpl: DeployUtils.create1("L1StandardBridge"),
             disputeGameFactoryImpl: DeployUtils.create1("DisputeGameFactory"),
-            anchorStateRegistryImpl: DeployUtils.create1("AnchorStateRegistry"),
+            anchorStateRegistryImpl: DeployUtils.create1("AnchorStateRegistry", abi.encode(1)),
             delayedWETHImpl: DeployUtils.create1("DelayedWETH", abi.encode(3)),
             mipsImpl: DeployUtils.create1("MIPS64", abi.encode(oracle))
         });

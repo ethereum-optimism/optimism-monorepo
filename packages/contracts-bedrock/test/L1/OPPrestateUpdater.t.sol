@@ -69,7 +69,7 @@ contract OPPrestateUpdater_Test is Test {
             l1CrossDomainMessengerImpl: DeployUtils.create1("L1CrossDomainMessenger"),
             l1StandardBridgeImpl: DeployUtils.create1("L1StandardBridge"),
             disputeGameFactoryImpl: DeployUtils.create1("DisputeGameFactory"),
-            anchorStateRegistryImpl: DeployUtils.create1("AnchorStateRegistry"),
+            anchorStateRegistryImpl: DeployUtils.create1("AnchorStateRegistry", abi.encode(1)),
             delayedWETHImpl: DeployUtils.create1("DelayedWETH", abi.encode(3)),
             mipsImpl: DeployUtils.create1("MIPS", abi.encode(oracle))
         });
