@@ -48,7 +48,6 @@ type BatcherConfig struct {
 	// For throttling DA. See CLIConfig in config.go for details on these parameters.
 	ThrottleThreshold, ThrottleTxSize          uint64
 	ThrottleBlockSize, ThrottleAlwaysBlockSize uint64
-	ThrottleInterval                           time.Duration
 }
 
 // BatcherService represents a full batch-submitter instance and its resources,

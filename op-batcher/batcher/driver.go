@@ -168,7 +168,7 @@ func (l *BatchSubmitter) StartBatchSubmitting() error {
 	blocksLoaded := make(chan struct{})
 
 	// DA throttling loop should always be started except for testing (indicated by ThrottleInterval == 0)
-	if l.Config.ThrottleInterval > 0 {
+	if l.Config.ThrottleThreshold > 0 {
 		l.wg.Add(1)
 		go l.throttlingLoop(l.wg, pendingBytesUpdated) // ranges over pendingBytesUpdated channel
 	} else {
@@ -388,7 +388,7 @@ const (
 // sendToThrottlingLoop sends the current pending bytes to the throttling loop.
 // It is not blocking, no signal will be sent if the channel is full.
 func (l *BatchSubmitter) sendToThrottlingLoop(pendingBytesUpdated chan int64) {
-	if l.Config.ThrottleInterval == 0 {
+	if l.Config.ThrottleThreshold == 0 {
 		return
 	}
 
