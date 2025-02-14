@@ -70,16 +70,18 @@ func ExecMipsCoreStepLogic(cpu *mipsevm.CpuScalars, registers *[32]Word, memory 
 		// R-type (stores rd)
 		rt = registers[rtReg]
 		rdReg = Word((insn >> 11) & 0x1F)
-	} else if opcode == 0x2f { // SPECIAL3
+	} else if opcode == 0x1f { // SPECIAL3
 		// SPECIAL3 is generally R-type with exceptions
 		if fun == 0x20 {
 			// seb, seh, wsbh
 			// R-type (stores rd)
+			rt = registers[rtReg]
 			rdReg = Word((insn >> 11) & 0x1F)
 		} else if fun == 0x24 {
 			// dsbh, dshd
 			// R-type (stores rd)
 			assertMips64(insn)
+			rt = registers[rtReg]
 			rdReg = Word((insn >> 11) & 0x1F)
 		} else if fun == 0x3 || fun == 0x1 || fun == 0x2 || fun == 0x7 || fun == 0x5 || fun == 0x6 || fun == 0x4 || fun == 0x0 {
 			// dext, dextm, dextu, dins, dinsm, dinsu, ins, ext
