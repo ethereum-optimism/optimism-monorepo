@@ -19,6 +19,8 @@ var constructorArgEncoders = map[string]constructorArgEncoder{
 	"OptimismPortalImplAddress":      encodeOptimismPortalArgs,
 	"PreimageOracleSingletonAddress": encodePreimageOracleArgs,
 	"MipsSingletonAddress":           encodeMipsArgs,
+	"SuperchainConfigProxyAddress":   encodeSuperchainConfigProxyArgs,
+	"PermissionedDisputeGameAddress": encodePermissionedDisputeGameArgs,
 }
 
 func (v *Verifier) getEncodedConstructorArgs(contractName string) (string, error) {
@@ -228,6 +230,94 @@ func encodeOpcmArgs(v *Verifier) (string, error) {
 	releaseBytes := []byte(release)
 	result = append(result, common.LeftPadBytes(big.NewInt(int64(len(releaseBytes))).Bytes(), 32)...)
 	result = append(result, common.RightPadBytes(releaseBytes, (len(releaseBytes)+31)/32*32)...)
+
+	return strings.TrimPrefix(hexutil.Encode(result), "0x"), nil
+}
+
+func encodeSuperchainConfigProxyArgs(v *Verifier) (string, error) {
+	addr := v.st.SuperchainDeployment.ProxyAdminAddress
+	padded := common.LeftPadBytes(addr.Bytes(), 32)
+	return strings.TrimPrefix(hexutil.Encode(padded), "0x"), nil
+}
+
+func encodePermissionedDisputeGameArgs(v *Verifier) (string, error) {
+	addr := v.st.Chains[v.l2ChainIndex].PermissionedDisputeGameAddress
+	result := []byte{}
+
+	var gameType uint32
+	gameTypeFn := w3.MustNewFunc("gameType()", "uint32")
+	if err := v.w3Client.Call(eth.CallFunc(addr, gameTypeFn).Returns(&gameType)); err != nil {
+		return "", err
+	}
+	result = append(result, common.LeftPadBytes(big.NewInt(int64(gameType)).Bytes(), 32)...)
+
+	var absolutePrestate [32]byte
+	absolutePrestateFn := w3.MustNewFunc("absolutePrestate()", "bytes32")
+	if err := v.w3Client.Call(eth.CallFunc(addr, absolutePrestateFn).Returns(&absolutePrestate)); err != nil {
+		return "", err
+	}
+	result = append(result, absolutePrestate[:]...)
+
+	var maxGameDepth big.Int
+	maxGameDepthFn := w3.MustNewFunc("maxGameDepth()", "uint256")
+	if err := v.w3Client.Call(eth.CallFunc(addr, maxGameDepthFn).Returns(&maxGameDepth)); err != nil {
+		return "", err
+	}
+	result = append(result, common.LeftPadBytes(maxGameDepth.Bytes(), 32)...)
+
+	var splitDepth big.Int
+	splitDepthFn := w3.MustNewFunc("splitDepth()", "uint256")
+	if err := v.w3Client.Call(eth.CallFunc(addr, splitDepthFn).Returns(&splitDepth)); err != nil {
+		return "", err
+	}
+	result = append(result, common.LeftPadBytes(splitDepth.Bytes(), 32)...)
+
+	var clockExtension uint64
+	clockExtensionFn := w3.MustNewFunc("clockExtension()", "uint64")
+	if err := v.w3Client.Call(eth.CallFunc(addr, clockExtensionFn).Returns(&clockExtension)); err != nil {
+		return "", err
+	}
+	result = append(result, common.LeftPadBytes(big.NewInt(int64(clockExtension)).Bytes(), 32)...)
+
+	var maxClockDuration uint64
+	maxClockDurationFn := w3.MustNewFunc("maxClockDuration()", "uint64")
+	if err := v.w3Client.Call(eth.CallFunc(addr, maxClockDurationFn).Returns(&maxClockDuration)); err != nil {
+		return "", err
+	}
+	result = append(result, common.LeftPadBytes(big.NewInt(int64(maxClockDuration)).Bytes(), 32)...)
+	var vm common.Address
+	vmFn := w3.MustNewFunc("vm()", "address")
+	if err := v.w3Client.Call(eth.CallFunc(addr, vmFn).Returns(&vm)); err != nil {
+		return "", err
+	}
+	result = append(result, common.LeftPadBytes(vm.Bytes(), 32)...)
+
+	var weth common.Address
+	wethFn := w3.MustNewFunc("weth()", "address")
+	if err := v.w3Client.Call(eth.CallFunc(addr, wethFn).Returns(&weth)); err != nil {
+		return "", err
+	}
+	result = append(result, common.LeftPadBytes(weth.Bytes(), 32)...)
+
+	var anchorStateRegistry common.Address
+	anchorStateRegistryFn := w3.MustNewFunc("anchorStateRegistry()", "address")
+	if err := v.w3Client.Call(eth.CallFunc(addr, anchorStateRegistryFn).Returns(&anchorStateRegistry)); err != nil {
+		return "", err
+	}
+	result = append(result, common.LeftPadBytes(anchorStateRegistry.Bytes(), 32)...)
+
+	var l2ChainId big.Int
+	l2ChainIdFn := w3.MustNewFunc("l2ChainId()", "uint256")
+	if err := v.w3Client.Call(eth.CallFunc(addr, l2ChainIdFn).Returns(&l2ChainId)); err != nil {
+		return "", err
+	}
+	result = append(result, common.LeftPadBytes(l2ChainId.Bytes(), 32)...)
+
+	proposer := v.st.AppliedIntent.Chains[v.l2ChainIndex].Roles.Proposer
+	result = append(result, common.LeftPadBytes(proposer.Bytes(), 32)...)
+
+	challenger := v.st.AppliedIntent.Chains[v.l2ChainIndex].Roles.Challenger
+	result = append(result, common.LeftPadBytes(challenger.Bytes(), 32)...)
 
 	return strings.TrimPrefix(hexutil.Encode(result), "0x"), nil
 }

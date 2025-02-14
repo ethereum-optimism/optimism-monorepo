@@ -25,6 +25,7 @@ import (
 type Verifier struct {
 	apiKey       string
 	l1ChainID    uint64
+	l2ChainIndex int
 	st           *state.State
 	artifactsFS  foundry.StatDirFs
 	log          log.Logger
@@ -35,7 +36,7 @@ type Verifier struct {
 	numSkipped   int
 }
 
-func NewVerifier(apiKey string, l1ChainID uint64, st *state.State, artifactsFS foundry.StatDirFs, l log.Logger, w3Client *w3.Client) (*Verifier, error) {
+func NewVerifier(apiKey string, l1ChainID uint64, l2ChainIndex int, st *state.State, artifactsFS foundry.StatDirFs, l log.Logger, w3Client *w3.Client) (*Verifier, error) {
 	etherscanUrl := getAPIEndpoint(l1ChainID)
 	if etherscanUrl == "" {
 		return nil, fmt.Errorf("unsupported L1 chain ID: %d", l1ChainID)
@@ -44,6 +45,7 @@ func NewVerifier(apiKey string, l1ChainID uint64, st *state.State, artifactsFS f
 	return &Verifier{
 		apiKey:       apiKey,
 		l1ChainID:    l1ChainID,
+		l2ChainIndex: l2ChainIndex,
 		st:           st,
 		artifactsFS:  artifactsFS,
 		log:          l,
@@ -91,7 +93,7 @@ func VerifyCLI(cliCtx *cli.Context) error {
 	}
 	l.Info("Downloaded artifacts", "path", artifactsFS)
 
-	v, err := NewVerifier(etherscanAPIKey, l1ChainId, st, artifactsFS, l, w3Client)
+	v, err := NewVerifier(etherscanAPIKey, l1ChainId, l2ChainIndex, st, artifactsFS, l, w3Client)
 	if err != nil {
 		return fmt.Errorf("failed to create verifier: %w", err)
 	}
