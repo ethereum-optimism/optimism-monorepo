@@ -162,7 +162,7 @@ func (info *L1BlockInfo) unmarshalBinaryBedrock(data []byte) error {
 	return nil
 }
 
-// Interop & Ecotone Binary Format
+// Ecotone Binary Format
 // +---------+--------------------------+
 // | Bytes   | Field                    |
 // +---------+--------------------------+
@@ -179,22 +179,90 @@ func (info *L1BlockInfo) unmarshalBinaryBedrock(data []byte) error {
 // +---------+--------------------------+
 
 func (info *L1BlockInfo) marshalBinaryEcotone() ([]byte, error) {
-	out, err := marshalBinaryWithSignature(info, L1InfoFuncEcotoneBytes4)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal Ecotone l1 block info: %w", err)
+	w := bytes.NewBuffer(make([]byte, 0, L1InfoEcotoneLen)) // Ecotone and Interop have the same length
+	if err := solabi.WriteSignature(w, L1InfoFuncEcotoneBytes4); err != nil {
+		return nil, err
 	}
-	return out, nil
+	if err := binary.Write(w, binary.BigEndian, info.BaseFeeScalar); err != nil {
+		return nil, err
+	}
+	if err := binary.Write(w, binary.BigEndian, info.BlobBaseFeeScalar); err != nil {
+		return nil, err
+	}
+	if err := binary.Write(w, binary.BigEndian, info.SequenceNumber); err != nil {
+		return nil, err
+	}
+	if err := binary.Write(w, binary.BigEndian, info.Time); err != nil {
+		return nil, err
+	}
+	if err := binary.Write(w, binary.BigEndian, info.Number); err != nil {
+		return nil, err
+	}
+	if err := solabi.WriteUint256(w, info.BaseFee); err != nil {
+		return nil, err
+	}
+	blobBasefee := info.BlobBaseFee
+	if blobBasefee == nil {
+		blobBasefee = big.NewInt(1) // set to 1, to match the min blob basefee as defined in EIP-4844
+	}
+	if err := solabi.WriteUint256(w, blobBasefee); err != nil {
+		return nil, err
+	}
+	if err := solabi.WriteHash(w, info.BlockHash); err != nil {
+		return nil, err
+	}
+	// ABI encoding will perform the left-padding with zeroes to 32 bytes, matching the "batcherHash" SystemConfig format and version 0 byte.
+	if err := solabi.WriteAddress(w, info.BatcherAddr); err != nil {
+		return nil, err
+	}
+	return w.Bytes(), nil
 }
 
-func (info *L1BlockInfo) marshalBinaryInterop() ([]byte, error) {
-	out, err := marshalBinaryWithSignature(info, L1InfoFuncInteropBytes4)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal Interop l1 block info: %w", err)
+func (info *L1BlockInfo) unmarshalBinaryEcotone(data []byte) error {
+	if len(data) != L1InfoEcotoneLen {
+		return fmt.Errorf("data is unexpected length: %d", len(data))
 	}
-	return out, nil
+	r := bytes.NewReader(data)
+
+	var err error
+	if _, err := solabi.ReadAndValidateSignature(r, L1InfoFuncEcotoneBytes4); err != nil {
+		return err
+	}
+	if err := binary.Read(r, binary.BigEndian, &info.BaseFeeScalar); err != nil {
+		return ErrInvalidFormat
+	}
+	if err := binary.Read(r, binary.BigEndian, &info.BlobBaseFeeScalar); err != nil {
+		return ErrInvalidFormat
+	}
+	if err := binary.Read(r, binary.BigEndian, &info.SequenceNumber); err != nil {
+		return ErrInvalidFormat
+	}
+	if err := binary.Read(r, binary.BigEndian, &info.Time); err != nil {
+		return ErrInvalidFormat
+	}
+	if err := binary.Read(r, binary.BigEndian, &info.Number); err != nil {
+		return ErrInvalidFormat
+	}
+	if info.BaseFee, err = solabi.ReadUint256(r); err != nil {
+		return err
+	}
+	if info.BlobBaseFee, err = solabi.ReadUint256(r); err != nil {
+		return err
+	}
+	if info.BlockHash, err = solabi.ReadHash(r); err != nil {
+		return err
+	}
+	// The "batcherHash" will be correctly parsed as address, since the version 0 and left-padding matches the ABI encoding format.
+	if info.BatcherAddr, err = solabi.ReadAddress(r); err != nil {
+		return err
+	}
+	if !solabi.EmptyReader(r) {
+		return errors.New("too many bytes")
+	}
+	return nil
 }
 
-// Isthmus Binary Format
+// Interop & Isthmus Binary Format
 // +---------+--------------------------+
 // | Bytes   | Field                    |
 // +---------+--------------------------+
@@ -213,8 +281,24 @@ func (info *L1BlockInfo) marshalBinaryInterop() ([]byte, error) {
 // +---------+--------------------------+
 
 func (info *L1BlockInfo) marshalBinaryIsthmus() ([]byte, error) {
+	out, err := marshalBinaryWithSignature(info, L1InfoFuncIsthmusBytes4)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal Isthmus l1 block info: %w", err)
+	}
+	return out, nil
+}
+
+func (info *L1BlockInfo) marshalBinaryInterop() ([]byte, error) {
+	out, err := marshalBinaryWithSignature(info, L1InfoFuncInteropBytes4)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal Interop l1 block info: %w", err)
+	}
+	return out, nil
+}
+
+func marshalBinaryWithSignature(info *L1BlockInfo, signature []byte) ([]byte, error) {
 	w := bytes.NewBuffer(make([]byte, 0, L1InfoIsthmusLen))
-	if err := solabi.WriteSignature(w, []byte(L1InfoFuncIsthmusBytes4)); err != nil {
+	if err := solabi.WriteSignature(w, signature); err != nil {
 		return nil, err
 	}
 	if err := binary.Write(w, binary.BigEndian, info.BaseFeeScalar); err != nil {
@@ -258,106 +342,18 @@ func (info *L1BlockInfo) marshalBinaryIsthmus() ([]byte, error) {
 	return w.Bytes(), nil
 }
 
-func marshalBinaryWithSignature(info *L1BlockInfo, signature []byte) ([]byte, error) {
-	w := bytes.NewBuffer(make([]byte, 0, L1InfoEcotoneLen)) // Ecotone and Interop have the same length
-	if err := solabi.WriteSignature(w, signature); err != nil {
-		return nil, err
-	}
-	if err := binary.Write(w, binary.BigEndian, info.BaseFeeScalar); err != nil {
-		return nil, err
-	}
-	if err := binary.Write(w, binary.BigEndian, info.BlobBaseFeeScalar); err != nil {
-		return nil, err
-	}
-	if err := binary.Write(w, binary.BigEndian, info.SequenceNumber); err != nil {
-		return nil, err
-	}
-	if err := binary.Write(w, binary.BigEndian, info.Time); err != nil {
-		return nil, err
-	}
-	if err := binary.Write(w, binary.BigEndian, info.Number); err != nil {
-		return nil, err
-	}
-	if err := solabi.WriteUint256(w, info.BaseFee); err != nil {
-		return nil, err
-	}
-	blobBasefee := info.BlobBaseFee
-	if blobBasefee == nil {
-		blobBasefee = big.NewInt(1) // set to 1, to match the min blob basefee as defined in EIP-4844
-	}
-	if err := solabi.WriteUint256(w, blobBasefee); err != nil {
-		return nil, err
-	}
-	if err := solabi.WriteHash(w, info.BlockHash); err != nil {
-		return nil, err
-	}
-	// ABI encoding will perform the left-padding with zeroes to 32 bytes, matching the "batcherHash" SystemConfig format and version 0 byte.
-	if err := solabi.WriteAddress(w, info.BatcherAddr); err != nil {
-		return nil, err
-	}
-	return w.Bytes(), nil
-}
-
-func (info *L1BlockInfo) unmarshalBinaryEcotone(data []byte) error {
-	return unmarshalBinaryWithSignatureAndData(info, L1InfoFuncEcotoneBytes4, data)
-}
-
 func (info *L1BlockInfo) unmarshalBinaryInterop(data []byte) error {
 	return unmarshalBinaryWithSignatureAndData(info, L1InfoFuncInteropBytes4, data)
 }
 
 func unmarshalBinaryWithSignatureAndData(info *L1BlockInfo, signature []byte, data []byte) error {
-	if len(data) != L1InfoEcotoneLen {
-		return fmt.Errorf("data is unexpected length: %d", len(data))
-	}
-	r := bytes.NewReader(data)
-
-	var err error
-	if _, err := solabi.ReadAndValidateSignature(r, signature); err != nil {
-		return err
-	}
-	if err := binary.Read(r, binary.BigEndian, &info.BaseFeeScalar); err != nil {
-		return ErrInvalidFormat
-	}
-	if err := binary.Read(r, binary.BigEndian, &info.BlobBaseFeeScalar); err != nil {
-		return ErrInvalidFormat
-	}
-	if err := binary.Read(r, binary.BigEndian, &info.SequenceNumber); err != nil {
-		return ErrInvalidFormat
-	}
-	if err := binary.Read(r, binary.BigEndian, &info.Time); err != nil {
-		return ErrInvalidFormat
-	}
-	if err := binary.Read(r, binary.BigEndian, &info.Number); err != nil {
-		return ErrInvalidFormat
-	}
-	if info.BaseFee, err = solabi.ReadUint256(r); err != nil {
-		return err
-	}
-	if info.BlobBaseFee, err = solabi.ReadUint256(r); err != nil {
-		return err
-	}
-	if info.BlockHash, err = solabi.ReadHash(r); err != nil {
-		return err
-	}
-	// The "batcherHash" will be correctly parsed as address, since the version 0 and left-padding matches the ABI encoding format.
-	if info.BatcherAddr, err = solabi.ReadAddress(r); err != nil {
-		return err
-	}
-	if !solabi.EmptyReader(r) {
-		return errors.New("too many bytes")
-	}
-	return nil
-}
-
-func (info *L1BlockInfo) unmarshalBinaryIsthmus(data []byte) error {
 	if len(data) != L1InfoIsthmusLen {
 		return fmt.Errorf("data is unexpected length: %d", len(data))
 	}
 	r := bytes.NewReader(data)
 
 	var err error
-	if _, err := solabi.ReadAndValidateSignature(r, L1InfoFuncIsthmusBytes4); err != nil {
+	if _, err := solabi.ReadAndValidateSignature(r, signature); err != nil {
 		return err
 	}
 	if err := binary.Read(r, binary.BigEndian, &info.BaseFeeScalar); err != nil {
@@ -398,6 +394,10 @@ func (info *L1BlockInfo) unmarshalBinaryIsthmus(data []byte) error {
 		return errors.New("too many bytes")
 	}
 	return nil
+}
+
+func (info *L1BlockInfo) unmarshalBinaryIsthmus(data []byte) error {
+	return unmarshalBinaryWithSignatureAndData(info, L1InfoFuncIsthmusBytes4, data)
 }
 
 // isEcotoneButNotFirstBlock returns whether the specified block is subject to the Ecotone upgrade,
