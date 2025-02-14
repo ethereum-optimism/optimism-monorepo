@@ -864,3 +864,71 @@ func TestEVM_SingleStep_Ins64(t *testing.T) {
 		}
 	}
 }
+
+func TestEVM_SingleStep_Swap64(t *testing.T) {
+	t.Parallel()
+	rdReg := uint32(8)
+	rtReg := uint32(9)
+
+	cases := []struct {
+		name           string
+		rt             Word
+		funct          uint32
+		special        uint32
+		expectedResult Word
+	}{
+		// dsbh
+		// Swap bytes within halfwords for a 64-bit value
+		{name: "dsbh", rt: Word(0x1122334455667788), funct: 0b100100, special: 0b00010, expectedResult: Word(0x2211443366558877)},
+		// Swap bytes within halfwords when all bytes are the same
+		{name: "dsbh all same", rt: Word(0xFFFFFFFFFFFFFFFF), funct: 0b100100, special: 0b00010, expectedResult: Word(0xFFFFFFFFFFFFFFFF)},
+		// Swap bytes within halfwords with zeros
+		{name: "dsbh with zero", rt: Word(0x0000FFFF0000FFFF), funct: 0b100100, special: 0b00010, expectedResult: Word(0x0000FFFF0000FFFF)},
+		// Swap bytes within halfwords when all bytes are different
+		{name: "dsbh all different", rt: Word(0x123456789ABCDEF0), funct: 0b100100, special: 0b00010, expectedResult: Word(0x34127856BC9AF0DE)},
+
+		// dshd
+		// Swap halfwords within doubleword
+		{name: "dshd", rt: Word(0x1122334455667788), funct: 0b100100, special: 0b00101, expectedResult: Word(0x7788556633441122)},
+		// Swap halfwords within doubleword with alternating bit patterns
+		{name: "dshd pattern", rt: Word(0xAABBCCDDEEFF0011), funct: 0b100100, special: 0b00101, expectedResult: Word(0x0011EEFFCCDDAABB)},
+		// Swap halfwords within doubleword when all bytes are the same
+		{name: "dshd all same", rt: Word(0xFFFFFFFFFFFFFFFF), funct: 0b100100, special: 0b00101, expectedResult: Word(0xFFFFFFFFFFFFFFFF)},
+		// Swap halfwords within doubleword with zeros
+		{name: "dshd with zero", rt: Word(0x0000FFFF0000FFFF), funct: 0b100100, special: 0b00101, expectedResult: Word(0xFFFF0000FFFF0000)},
+		// Swap halfwords within doubleword when all bytes are different
+		{name: "dshd half reversed", rt: Word(0x123456789ABCDEF0), funct: 0b100100, special: 0b00101, expectedResult: Word(0xDEF09ABC56781234)},
+	}
+
+	versions := GetMipsVersionTestCases(t)
+	for _, v := range versions {
+		for i, tt := range cases {
+			testName := fmt.Sprintf("%v (%v)", tt.name, v.Name)
+			t.Run(testName, func(t *testing.T) {
+				// Set up state
+				goVm := v.VMFactory(nil, os.Stdout, os.Stderr, testutil.CreateLogger(), testutil.WithRandomization(int64(i)))
+				state := goVm.GetState()
+
+				var insn uint32
+				insn = 0b011111<<26 | rtReg<<16 | rdReg<<11 | tt.special<<6 | tt.funct
+
+				testutil.StoreInstruction(state.GetMemory(), state.GetPC(), insn)
+				state.GetRegistersRef()[rtReg] = tt.rt
+				// step := state.GetStep()
+
+				// Setup expectations
+				expected := testutil.NewExpectedState(state)
+				expected.ExpectStep()
+				expected.Registers[rdReg] = tt.expectedResult
+				// stepWitness, err := goVm.Step(true)
+				_, err := goVm.Step(true)
+				require.NoError(t, err)
+
+				// Check expectations
+				expected.Validate(t, state)
+
+				// testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
+			})
+		}
+	}
+}
