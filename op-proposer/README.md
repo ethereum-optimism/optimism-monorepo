@@ -46,7 +46,8 @@ On test networks, `--allow-non-finalized` may be used to make proposals sooner, 
 ### Build from source
 
 ```bash
-make op-proposer
+# from op-proposer dir:
+just op-proposer
 
 ./bin/op-proposer --help
 ```
