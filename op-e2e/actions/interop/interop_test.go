@@ -5,13 +5,14 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/ethereum-optimism/optimism/op-e2e/actions/interop/dsl"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/ethereum-optimism/optimism/op-e2e/actions/helpers"
+	"github.com/ethereum-optimism/optimism/op-e2e/actions/interop/dsl"
+	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/interop/contracts/bindings/emit"
 	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/interop/contracts/bindings/inbox"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/derive"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/event"
@@ -367,4 +368,95 @@ func TestInteropLocalSafeInvalidation(gt *testing.T) {
 	actors.ChainB.Sequencer.ActL2PipelineFull(t)
 	status = actors.ChainB.Sequencer.SyncStatus()
 	require.Equal(t, uint64(2), status.SafeL2.Number)
+}
+
+func TestInteropCrossSafeDependencyDelay(gt *testing.T) {
+	t := helpers.NewDefaultTesting(gt)
+
+	is := dsl.SetupInterop(t)
+	actors := is.CreateActors()
+
+	// get both sequencers set up
+	actors.ChainA.Sequencer.ActL2PipelineFull(t)
+	actors.ChainB.Sequencer.ActL2PipelineFull(t)
+
+	// sync the supervisor, handle initial events emitted by the nodes
+	actors.ChainA.Sequencer.SyncSupervisor(t)
+	actors.ChainB.Sequencer.SyncSupervisor(t)
+	actors.Supervisor.ProcessFull(t)
+
+	// We create a batch with some empty blocks before and after the cross-chain message,
+	// so multiple L2 blocks are all derived from the same L1 block.
+	actors.ChainA.Sequencer.ActL2EmptyBlock(t)
+	actors.ChainA.Sequencer.ActL2EmptyBlock(t)
+	actors.ChainA.Sequencer.ActL2EmptyBlock(t)
+
+	actors.ChainB.Sequencer.ActL2EmptyBlock(t)
+
+	aliceA := setupUser(t, is, actors.ChainA, 0)
+	aliceB := setupUser(t, is, actors.ChainB, 0)
+
+	// create a log event in chain B
+	auth := newL2TxOpts(t, aliceB.secret, actors.ChainB)
+	emitContractAddr, deployTx, _, err := emit.DeployEmit(auth, actors.ChainB.SequencerEngine.EthClient())
+	require.NoError(t, err)
+	includeTxOnChainBasic(t, actors.ChainB, deployTx, aliceB.address)
+	emitTx := newEmitMessageTx(t, actors.ChainB, aliceB, emitContractAddr, []byte("hello from B"))
+	includeTxOnChainBasic(t, actors.ChainB, emitTx, aliceB.address)
+
+	// consume the log event in chain A
+	execTx := newExecuteMessageTx(t, actors.ChainA, aliceA, actors.ChainB, emitTx)
+	includeTxOnChainBasic(t, actors.ChainA, execTx, aliceA.address)
+	execTxIncludedIn := actors.ChainA.Sequencer.SyncStatus().UnsafeL2
+
+	actors.ChainA.Sequencer.ActL2EmptyBlock(t)
+	actors.ChainB.Sequencer.ActL2EmptyBlock(t)
+
+	chainAHead := actors.ChainA.Sequencer.SyncStatus().UnsafeL2
+	chainBHead := actors.ChainB.Sequencer.SyncStatus().UnsafeL2
+
+	// Now submit the data for chain A, and submit the data of chain B late,
+	// so the scope has to be bumped even though we know of the event in the unsafe chain already.
+
+	actors.ChainA.Batcher.ActSubmitAll(t)
+	actors.L1Miner.ActL1StartBlock(12)(t)
+	actors.L1Miner.ActL1IncludeTx(actors.ChainA.BatcherAddr)(t)
+	actors.L1Miner.ActL1EndBlock(t)
+
+	actors.L1Miner.ActEmptyBlock(t)
+	actors.L1Miner.ActEmptyBlock(t)
+
+	actors.ChainB.Batcher.ActSubmitAll(t)
+	actors.L1Miner.ActL1StartBlock(12)(t)
+	actors.L1Miner.ActL1IncludeTx(actors.ChainB.BatcherAddr)(t)
+	actors.L1Miner.ActL1EndBlock(t)
+	chainBSubmittedIn, err := actors.L1Miner.EthClient().BlockByNumber(t.Ctx(), nil)
+	require.NoError(t, err)
+
+	actors.Supervisor.SignalLatestL1(t)
+	actors.Supervisor.ProcessFull(t)
+
+	actors.ChainA.Sequencer.ActL1HeadSignal(t)
+	actors.ChainB.Sequencer.ActL1HeadSignal(t)
+	actors.ChainA.Sequencer.ActL2PipelineFull(t)
+	actors.ChainB.Sequencer.ActL2PipelineFull(t)
+
+	// it takes a few round trips to sync the L1 blocks
+	for i := 0; i < 5; i++ {
+		actors.ChainA.Sequencer.SyncSupervisor(t)
+		actors.ChainB.Sequencer.SyncSupervisor(t)
+		actors.Supervisor.ProcessFull(t)
+		actors.ChainA.Sequencer.ActL2PipelineFull(t)
+		actors.ChainB.Sequencer.ActL2PipelineFull(t)
+	}
+
+	// Assert the blocks are now cross-safe
+	require.Equal(t, chainAHead, actors.ChainA.Sequencer.SyncStatus().SafeL2)
+	require.Equal(t, chainBHead, actors.ChainB.Sequencer.SyncStatus().SafeL2)
+
+	// Assert that the executing message in chain A only
+	// became cross-safe when the dependency of chain B became cross safe later.
+	source, err := actors.Supervisor.CrossDerivedFrom(t.Ctx(), actors.ChainA.ChainID, execTxIncludedIn.ID())
+	require.NoError(t, err)
+	require.Equal(t, chainBSubmittedIn.NumberU64(), source.Number)
 }
