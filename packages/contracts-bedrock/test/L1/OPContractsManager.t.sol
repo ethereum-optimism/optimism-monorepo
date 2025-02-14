@@ -25,6 +25,8 @@ import { IProtocolVersions } from "interfaces/L1/IProtocolVersions.sol";
 import { IPreimageOracle } from "interfaces/cannon/IPreimageOracle.sol";
 import { IPermissionedDisputeGame } from "interfaces/dispute/IPermissionedDisputeGame.sol";
 import { IDelayedWETH } from "interfaces/dispute/IDelayedWETH.sol";
+import { IDisputeGame } from "interfaces/dispute/IDisputeGame.sol";
+import { IDisputeGameFactory } from "interfaces/dispute/IDisputeGameFactory.sol";
 import { IFaultDisputeGame } from "interfaces/dispute/IFaultDisputeGame.sol";
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 import { IOPContractsManager } from "interfaces/L1/IOPContractsManager.sol";
@@ -213,6 +215,7 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
     IProxyAdmin superchainProxyAdmin;
     address upgrader;
     IOPContractsManager.OpChainConfig[] opChainConfigs;
+    Claim absolutePrestate;
 
     function setUp() public virtual override {
         super.disableUpgradedFork();
@@ -226,6 +229,7 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
             "OPContractsManager_Upgrade_Harness: cannot test upgrade on superchain ops repo upgrade tests"
         );
 
+        absolutePrestate = Claim.wrap(bytes32(keccak256("absolutePrestate")));
         proxyAdmin = IProxyAdmin(EIP1967Helper.getAdmin(address(systemConfig)));
         superchainProxyAdmin = IProxyAdmin(EIP1967Helper.getAdmin(address(superchainConfig)));
         upgrader = proxyAdmin.owner();
@@ -235,12 +239,16 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
         vm.etch(upgrader, vm.getDeployedCode("test/mocks/Callers.sol:DelegateCaller"));
 
         opChainConfigs.push(
-            IOPContractsManager.OpChainConfig({ systemConfigProxy: systemConfig, proxyAdmin: proxyAdmin })
+            IOPContractsManager.OpChainConfig({
+                systemConfigProxy: systemConfig,
+                proxyAdmin: proxyAdmin,
+                absolutePrestate: absolutePrestate
+            })
         );
 
         // Retrieve the l2ChainId, which was read from the superchain-registry, and saved in Artifacts
         // encoded as an address.
-        l2ChainId = uint256(bytes32(bytes20(address(artifacts.mustGetAddress("L2ChainId")))) >> 96);
+        l2ChainId = uint256(uint160(address(artifacts.mustGetAddress("L2ChainId"))));
 
         delayedWETHPermissionedGameProxy =
             IDelayedWETH(payable(artifacts.mustGetAddress("PermissionedDelayedWETHProxy")));
@@ -255,8 +263,6 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
     }
 
     function runUpgradeTestAndChecks(address _delegateCaller) public {
-        vm.etch(_delegateCaller, vm.getDeployedCode("test/mocks/Callers.sol:DelegateCaller"));
-
         IOPContractsManager.Implementations memory impls = opcm.implementations();
 
         // Cache the old L1xDM address so we can look for it in the AddressManager's event
@@ -266,7 +272,10 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
         bytes32 salt = keccak256(
             abi.encode(
                 l2ChainId,
-                string.concat("v2.0.0-", string(bytes.concat(bytes20(address(opChainConfigs[0].systemConfigProxy))))),
+                string.concat(
+                    "v2.0.0-",
+                    string(bytes.concat(bytes32(uint256(uint160(address(opChainConfigs[0].systemConfigProxy))))))
+                ),
                 "AnchorStateRegistry"
             )
         );
@@ -302,9 +311,14 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
         vm.expectEmit(address(_delegateCaller));
         emit Upgraded(l2ChainId, opChainConfigs[0].systemConfigProxy, address(_delegateCaller));
 
+        // Temporarily replace the upgrader with a DelegateCaller so we can test the upgrade,
+        // then reset its code to the original code.
+        bytes memory delegateCallerCode = address(_delegateCaller).code;
+        vm.etch(_delegateCaller, vm.getDeployedCode("test/mocks/Callers.sol:DelegateCaller"));
         DelegateCaller(_delegateCaller).dcForward(
             address(opcm), abi.encodeCall(IOPContractsManager.upgrade, (opChainConfigs))
         );
+        vm.etch(_delegateCaller, delegateCallerCode);
 
         // Check the implementations of the core addresses
         assertEq(impls.systemConfigImpl, EIP1967Helper.getImplementation(address(systemConfig)));
@@ -465,6 +479,12 @@ contract OPContractsManager_Upgrade_TestFails is OPContractsManager_Upgrade_Harn
             address(opcm), abi.encodeCall(IOPContractsManager.upgrade, (opChainConfigs))
         );
     }
+
+    function test_upgrade_absolutePrestateNotSet_reverts() public {
+        opChainConfigs[0].absolutePrestate = Claim.wrap(bytes32(0));
+        vm.expectRevert(IOPContractsManager.PrestateNotSet.selector);
+        DelegateCaller(upgrader).dcForward(address(opcm), abi.encodeCall(IOPContractsManager.upgrade, (opChainConfigs)));
+    }
 }
 
 contract OPContractsManager_SetRC_Test is OPContractsManager_Upgrade_Harness {
@@ -486,6 +506,7 @@ contract OPContractsManager_SetRC_Test is OPContractsManager_Upgrade_Harness {
 
     /// @notice Tests the setRC function can not be set by non-upgrade controller.
     function test_setRC_nonUpgradeController_reverts(address _nonUpgradeController) public {
+        // Disallow the upgrade controller to have code, or be a 'special' address.
         if (
             _nonUpgradeController == upgrader || _nonUpgradeController == address(0)
                 || _nonUpgradeController < address(0x4200000000000000000000000000000000000000)
@@ -493,6 +514,7 @@ contract OPContractsManager_SetRC_Test is OPContractsManager_Upgrade_Harness {
                 || _nonUpgradeController == address(vm)
                 || _nonUpgradeController == 0x000000000000000000636F6e736F6c652e6c6f67
                 || _nonUpgradeController == 0x4e59b44847b379578588920cA78FbF26c0B4956C
+                || _nonUpgradeController.code.length > 0
         ) {
             _nonUpgradeController = makeAddr("nonUpgradeController");
         }
@@ -508,6 +530,10 @@ contract OPContractsManager_AddGameType_Test is Test {
     IOPContractsManager internal opcm;
 
     IOPContractsManager.DeployOutput internal chainDeployOutput;
+
+    event GameTypeAdded(
+        uint256 indexed l2ChainId, GameType indexed gameType, IDisputeGame newDisputeGame, IDisputeGame oldDisputeGame
+    );
 
     function setUp() public {
         ISuperchainConfig superchainConfigProxy = ISuperchainConfig(makeAddr("superchainConfig"));
@@ -680,6 +706,15 @@ contract OPContractsManager_AddGameType_Test is Test {
         IOPContractsManager.AddGameInput[] memory inputs = new IOPContractsManager.AddGameInput[](1);
         inputs[0] = input;
 
+        uint256 l2ChainId = IFaultDisputeGame(
+            address(IDisputeGameFactory(input.systemConfig.disputeGameFactory()).gameImpls(GameType.wrap(1)))
+        ).l2ChainId();
+
+        // Expect the GameTypeAdded event to be emitted.
+        vm.expectEmit(true, true, false, false, address(this));
+        emit GameTypeAdded(
+            l2ChainId, input.disputeGameType, IDisputeGame(payable(address(0))), IDisputeGame(payable(address(0)))
+        );
         (bool success, bytes memory rawGameOut) =
             address(opcm).delegatecall(abi.encodeCall(IOPContractsManager.addGameType, (inputs)));
         assertTrue(success, "addGameType failed");

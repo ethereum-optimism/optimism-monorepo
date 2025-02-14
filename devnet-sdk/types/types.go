@@ -2,11 +2,14 @@ package types
 
 import (
 	"context"
+	"math/big"
+
+	"github.com/ethereum/go-ethereum/common"
 )
 
-type Address string
+type Address = common.Address
 
-type ChainID uint64
+type ChainID *big.Int
 
 type ReadInvocation[T any] interface {
 	Call(ctx context.Context) (T, error)

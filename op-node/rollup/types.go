@@ -15,6 +15,7 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 
 	altda "github.com/ethereum-optimism/optimism/op-alt-da"
+	opparams "github.com/ethereum-optimism/optimism/op-node/params"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 )
 
@@ -143,6 +144,17 @@ type Config struct {
 
 	// AltDAConfig. We are in the process of migrating to the AltDAConfig from these legacy top level values
 	AltDAConfig *AltDAConfig `json:"alt_da,omitempty"`
+
+	// ChainOpConfig is the OptimismConfig of the execution layer ChainConfig.
+	// It is used during safe chain consolidation to translate zero SystemConfig EIP1559
+	// parameters to the protocol values, like the execution layer does.
+	// If missing, it is loaded by the op-node from the embedded superchain config at startup.
+	ChainOpConfig *params.OptimismConfig `json:"chain_op_config,omitempty"`
+
+	// OverrideMessageExpiryTimeInterop is only used for testing purposes.
+	// It is used to override the protocol-defined interop message time expiry.
+	// DO NOT this read value directly. Use GetMessageExpiryTimeInterop instead.
+	OverrideMessageExpiryTimeInterop uint64 `json:"override_message_expiry_time_interop,omitempty"`
 }
 
 // ValidateL1Config checks L1 config variables for errors.
@@ -602,6 +614,16 @@ func (c *Config) GetOPAltDAConfig() (altda.Config, error) {
 		ResolveWindow:              c.AltDAConfig.DAResolveWindow,
 		CommitmentType:             t,
 	}, nil
+}
+
+// GetMessageExpiryTimeInterop returns the expiry time of interop messages in seconds.
+// If a message expiry override is set in the rollup config, it returns the override value.
+// Otherwise, it returns the protocol-defined interop message time expiry.
+func (c *Config) GetMessageExpiryTimeInterop() uint64 {
+	if c.OverrideMessageExpiryTimeInterop != 0 {
+		return c.OverrideMessageExpiryTimeInterop
+	}
+	return opparams.MessageExpiryTimeSecondsInterop
 }
 
 func (c *Config) AltDAEnabled() bool {

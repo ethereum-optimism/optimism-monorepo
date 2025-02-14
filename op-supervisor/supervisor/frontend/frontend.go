@@ -18,7 +18,7 @@ type AdminBackend interface {
 type QueryBackend interface {
 	CheckMessage(identifier types.Identifier, payloadHash common.Hash) (types.SafetyLevel, error)
 	CheckMessages(messages []types.Message, minSafety types.SafetyLevel) error
-	CrossDerivedFrom(ctx context.Context, chainID eth.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error)
+	CrossDerivedToSource(ctx context.Context, chainID eth.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error)
 	LocalUnsafe(ctx context.Context, chainID eth.ChainID) (eth.BlockID, error)
 	CrossSafe(ctx context.Context, chainID eth.ChainID) (types.DerivedIDPair, error)
 	Finalized(ctx context.Context, chainID eth.ChainID) (eth.BlockID, error)
@@ -69,8 +69,14 @@ func (q *QueryFrontend) FinalizedL1() eth.BlockRef {
 	return q.Supervisor.FinalizedL1()
 }
 
+// CrossDerivedFrom is deprecated, but remains for backwards compatibility to callers
+// it is equivalent to CrossDerivedToSource
 func (q *QueryFrontend) CrossDerivedFrom(ctx context.Context, chainID eth.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error) {
-	return q.Supervisor.CrossDerivedFrom(ctx, chainID, derived)
+	return q.Supervisor.CrossDerivedToSource(ctx, chainID, derived)
+}
+
+func (q *QueryFrontend) CrossDerivedToSource(ctx context.Context, chainID eth.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error) {
+	return q.Supervisor.CrossDerivedToSource(ctx, chainID, derived)
 }
 
 func (q *QueryFrontend) SuperRootAtTimestamp(ctx context.Context, timestamp hexutil.Uint64) (eth.SuperRootResponse, error) {

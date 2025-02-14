@@ -54,6 +54,8 @@ orbs:
   slack: circleci/slack@4.10.1
   shellcheck: circleci/shellcheck@3.2.0
   codecov: codecov/codecov@5.0.3
+  utils: ethereum-optimism/circleci-utils@1.0.8
+
 commands:
   gcp-oidc-authenticate:
     description: "Authenticate with GCP using a CircleCI OIDC token."
@@ -161,67 +163,6 @@ commands:
           environment:
             FOUNDRY_PROFILE: ci
 
-  checkout-with-mise:
-    steps:
-      - checkout
-      - run:
-          name: Initialize mise environment
-          command: |
-            # This is used to create a per-user cache key to preserve permissions across different
-            # executor types.
-            user=$(whoami)
-            echo "$user" > .executor-user
-            echo "Set executor user to $user."
-            
-            if [[ "$user" == "root" ]]; then
-              # Self-hosted runners will persist this cache between runs. Cleaning it up means that we
-              # preserve the semantics of the cache regardless of executor type. It's also much faster
-              # to delete the cache and recreate it than it is to overwrite it in place.
-              rm -rf /data/mise-data
-              echo "Cleaned up cache data."
-            
-              mkdir -p /data/mise-data
-              echo "Created Mise data dir."
-              mkdir -p ~/.cache
-              echo "Created Mise cache dir."
-            else
-              sudo rm -rf /data/mise-data
-              echo "Cleaned up cache data."
-              sudo mkdir -p /data/mise-data
-              sudo chown -R "$user:$user" /data/mise-data
-              echo "Created Mise data dir."
-              sudo mkdir -p ~/.cache
-              sudo chown -R "$user:$user" ~/.cache
-              echo "Created Mise cache dir."
-            fi
-      - restore_cache:
-          name: Restore mise cache
-          keys:
-            - mise-v5-{{ checksum ".executor-user" }}-{{ checksum "mise.toml" }}
-      - run:
-          name: Install mise
-          command: |
-            if command -v mise &> /dev/null; then
-              echo "mise already installed at $(command -v mise)"
-            else
-              curl https://mise.run | sh
-            fi
-            
-            echo "export PATH=\"$HOME/.local/bin:\$PATH\"" >> "$BASH_ENV"
-            echo "export MISE_DATA_DIR=/data/mise-data" >> "$BASH_ENV"
-            echo "export MISE_JOBS=$(nproc)" >> "$BASH_ENV"
-            echo "eval \"\$($HOME/.local/bin/mise activate --shims)\"" >> "$BASH_ENV"
-      - run:
-          name: Install mise deps
-          command: |
-            mise install -v -y
-      - save_cache:
-          name: Save mise cache
-          key: mise-v5-{{ checksum ".executor-user" }}-{{ checksum "mise.toml" }}
-          paths:
-            - /data/mise-data
-
-
 jobs:
   cannon-go-lint-and-test:
     machine: true
@@ -238,7 +179,7 @@ jobs:
         type: integer
         default: 32
     steps:
-      - checkout-with-mise
+      - utils/checkout-with-mise
       - check-changed:
           patterns: cannon,packages/contracts-bedrock/src/cannon,op-preimage,go.mod
       - attach_workspace:
@@ -307,10 +248,11 @@ jobs:
                 mentions: "@proofs-team"
 
   cannon-build-test-vectors:
-    machine: true
-    resource_class: ethereum-optimism/latitude-1
+    docker:
+      - image: <<pipeline.parameters.default_docker_image>>
+    resource_class: large
     steps:
-      - checkout-with-mise
+      - utils/checkout-with-mise
       - check-changed:
           patterns: cannon/mipsevm/tests/open_mips_tests/test
       - run:
@@ -329,7 +271,7 @@ jobs:
     machine: true
     resource_class: ethereum-optimism/latitude-1
     steps:
-      - checkout-with-mise
+      - utils/checkout-with-mise
       - run:
           name: Check `RISCV.sol` bytecode
           working_directory: packages/contracts-bedrock
@@ -365,8 +307,9 @@ jobs:
           mentions: "@clabby @proofs-team"
 
   contracts-bedrock-build:
-    machine: true
-    resource_class: ethereum-optimism/latitude-1
+    docker:
+      - image: <<pipeline.parameters.default_docker_image>>
+    resource_class: large
     parameters:
       build_args:
         description: Forge build arguments
@@ -377,7 +320,7 @@ jobs:
         type: string
         default: ci
     steps:
-      - checkout-with-mise
+      - utils/checkout-with-mise
       - install-contracts-dependencies
       - run:
           name: Print forge version
@@ -407,7 +350,7 @@ jobs:
       - image: <<pipeline.parameters.default_docker_image>>
     resource_class: xlarge
     steps:
-      - checkout-with-mise
+      - utils/checkout-with-mise
       - attach_workspace: { at: "." }
       - install-contracts-dependencies
       - check-changed:
@@ -468,7 +411,7 @@ jobs:
       resource_class: "<<parameters.resource_class>>"
       docker_layer_caching: true # we rely on this for faster builds, and actively warm it up for builds with common stages
     steps:
-      - checkout-with-mise
+      - utils/checkout-with-mise
       - attach_workspace:
           at: /tmp/docker_images
       - run:
@@ -665,19 +608,49 @@ jobs:
     machine: true
     resource_class: ethereum-optimism/latitude-1
     steps:
-      - checkout-with-mise
+      - utils/checkout-with-mise
       - attach_workspace: { at: "." }
       - install-contracts-dependencies
       - check-changed:
           patterns: contracts-bedrock
+      - run:
+          name: Check if target branch is develop
+          command: |
+            # Get PR number from CIRCLE_PULL_REQUEST
+            PR_NUMBER=$(echo $CIRCLE_PULL_REQUEST | rev | cut -d/ -f1 | rev)
+
+            # Use GitHub API to get target branch
+            TARGET_BRANCH=$(curl -s "https://api.github.com/repos/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}/pulls/${PR_NUMBER}" | jq -r .base.ref)
+
+            # If the target branch is not develop, do not run this check
+            if [ "$TARGET_BRANCH" != "develop" ]; then
+              echo "Target branch is not develop, skipping frozen files check"
+              circleci-agent step halt
+            fi
+      - run:
+          name: Check if PR has exempt label
+          command: |
+            # Get PR number from CIRCLE_PULL_REQUEST
+            PR_NUMBER=$(echo $CIRCLE_PULL_REQUEST | rev | cut -d/ -f1 | rev)
+
+            # Use GitHub API to get labels
+            LABELS=$(curl -s "https://api.github.com/repos/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}/pulls/${PR_NUMBER}" | jq -r .labels)
+
+            # If the PR has the "M-exempt-frozen-files" label, do not run this check
+            if echo $LABELS | jq -e 'any(.[]; .name == "M-exempt-frozen-files")' > /dev/null; then
+              echo "Skipping frozen files check, PR has exempt label"
+              circleci-agent step halt
+            fi
       - run:
           name: Check frozen files
           command: just check-frozen-code
           working_directory: packages/contracts-bedrock
 
   contracts-bedrock-tests:
-    machine: true
-    resource_class: ethereum-optimism/latitude-1
+    circleci_ip_ranges: true
+    docker:
+      - image: <<pipeline.parameters.default_docker_image>>
+    resource_class: xlarge
     parameters:
       test_list:
         description: List of test files to run
@@ -699,7 +672,7 @@ jobs:
         type: string
         default: ci
     steps:
-      - checkout-with-mise
+      - utils/checkout-with-mise
       - attach_workspace: { at: "." }
       - install-contracts-dependencies
       - run:
@@ -760,8 +733,10 @@ jobs:
       - notify-failures-on-develop
 
   contracts-bedrock-coverage:
-    machine: true
-    resource_class: ethereum-optimism/latitude-1
+    circleci_ip_ranges: true
+    docker:
+        - image: <<pipeline.parameters.default_docker_image>>
+    resource_class: xlarge
     parameters:
       test_flags:
         description: Additional flags to pass to the test command
@@ -776,7 +751,7 @@ jobs:
         type: string
         default: ci
     steps:
-      - checkout-with-mise
+      - utils/checkout-with-mise
       - attach_workspace: { at: "." }
       - install-contracts-dependencies
       - check-changed:
@@ -798,6 +773,15 @@ jobs:
           command: |
             sudo apt-get update
             sudo apt-get install -y lcov
+      - run:
+          name: Write pinned block number for cache key
+          command: |
+            just print-pinned-block-number > ./pinnedBlockNumber.txt
+            cat pinnedBlockNumber.txt
+          working_directory: packages/contracts-bedrock
+      - restore_cache:
+          name: Restore forked state
+          key: forked-state-contracts-bedrock-tests-upgrade-{{ checksum "packages/contracts-bedrock/pinnedBlockNumber.txt" }}
       - run:
           name: Run coverage tests
           command: just coverage-lcov-all <<parameters.test_flags>>
@@ -821,10 +805,12 @@ jobs:
       - notify-failures-on-develop
 
   contracts-bedrock-tests-upgrade:
-    machine: true
-    resource_class: ethereum-optimism/latitude-1
+    circleci_ip_ranges: true
+    docker:
+      - image: <<pipeline.parameters.default_docker_image>>
+    resource_class: large
     steps:
-      - checkout-with-mise
+      - utils/checkout-with-mise
       - attach_workspace: { at: "." }
       - install-contracts-dependencies
       - check-changed:
@@ -846,7 +832,6 @@ jobs:
           command: |
             just print-pinned-block-number > ./pinnedBlockNumber.txt
             cat pinnedBlockNumber.txt
-            pwd
           working_directory: packages/contracts-bedrock
       - restore_cache:
           name: Restore forked state
@@ -888,7 +873,7 @@ jobs:
     machine: true
     resource_class: ethereum-optimism/latitude-1
     steps:
-      - checkout-with-mise
+      - utils/checkout-with-mise
       - attach_workspace: { at: "." }
       - install-contracts-dependencies
       - check-changed:
@@ -911,8 +896,6 @@ jobs:
       - run-contracts-check:
           command: lint
       - run-contracts-check:
-          command: gas-snapshot-check
-      - run-contracts-check:
           command: snapshots-check-no-build
       - run-contracts-check:
           command: interfaces-check-no-build
@@ -931,7 +914,7 @@ jobs:
     machine:
       image: <<pipeline.parameters.base_image>>
     steps:
-      - checkout-with-mise
+      - utils/checkout-with-mise
       - run:
           name: Install ripgrep
           command: sudo apt-get install -y ripgrep
@@ -952,10 +935,11 @@ jobs:
         description: should load in foundry artifacts
         type: boolean
         default: false
-    machine: true
-    resource_class: ethereum-optimism/latitude-1
+    docker:
+      - image: <<pipeline.parameters.default_docker_image>>
+    resource_class: xlarge
     steps:
-      - checkout-with-mise
+      - utils/checkout-with-mise
       - check-changed:
           patterns: "<<parameters.package_name>>"
       - attach_workspace:
@@ -980,7 +964,7 @@ jobs:
     machine: true
     resource_class: ethereum-optimism/latitude-1
     steps:
-      - checkout-with-mise
+      - utils/checkout-with-mise
       - run:
           name: run Go linter
           command: |
@@ -1019,7 +1003,7 @@ jobs:
     machine: true
     resource_class: <<parameters.resource_class>>
     steps:
-      - checkout-with-mise
+      - utils/checkout-with-mise
       - attach_workspace:
           at: "."
       - run:
@@ -1038,7 +1022,6 @@ jobs:
           no_output_timeout: <<parameters.no_output_timeout>>
           command: |
             mkdir -p ./tmp/test-results && mkdir -p ./tmp/testlogs
-
             cd op-e2e && make pre-test && cd ..
 
             packages=(
@@ -1057,13 +1040,15 @@ jobs:
             export SEPOLIA_RPC_URL="https://ci-sepolia-l1-archive.optimism.io"
             export MAINNET_RPC_URL="https://ci-mainnet-l1-archive.optimism.io"
             export PARALLEL=$(nproc)
+            export OP_TESTLOG_FILE_LOGGER_OUTDIR=$(realpath ./tmp/testlogs)
 
             <<parameters.environment_overrides>>
 
             gotestsum --format=testname \
               --junitfile=./tmp/test-results/results.xml \
               --jsonfile=./tmp/testlogs/log.json \
-              --rerun-fails=2 \
+              --rerun-fails=3 \
+              --rerun-fails-max-failures=50 \
               --packages="$formatted_packages" \
               -- -parallel=$PARALLEL -coverprofile=coverage.out -timeout=<<parameters.test_timeout>>
       - codecov/upload:
@@ -1071,8 +1056,12 @@ jobs:
           files: ./coverage.out
       - store_test_results:
           path: ./tmp/test-results
+      - run:
+          name: Compress test logs
+          command: tar -czf testlogs.tar.gz -C ./tmp testlogs
+          when: always
       - store_artifacts:
-          path: ./tmp/testlogs
+          path: testlogs.tar.gz
           when: always
       - when:
           condition: "<<parameters.notify>>"
@@ -1081,13 +1070,15 @@ jobs:
                 mentions: "<<parameters.mentions>>"
 
   sanitize-op-program:
-    machine: true
-    resource_class: ethereum-optimism/latitude-1
+    docker:
+      - image: <<pipeline.parameters.default_docker_image>>
+    resource_class: large
     steps:
-      - checkout-with-mise
+      - utils/checkout-with-mise
       - run:
           name: Install tools
           command: |
+            sudo apt-get update
             sudo apt-get install -y binutils-mips-linux-gnu
       - run:
           name: Build cannon
@@ -1105,7 +1096,7 @@ jobs:
     machine: true
     resource_class: ethereum-optimism/latitude-1
     steps:
-      - checkout-with-mise
+      - utils/checkout-with-mise
       - restore_cache:
           name: Restore cannon prestate cache
           key: cannon-prestate-{{ checksum "./cannon/bin/cannon" }}-{{ checksum "op-program/bin/op-program-client.elf" }}
@@ -1130,7 +1121,7 @@ jobs:
     docker:
       - image: <<pipeline.parameters.default_docker_image>>
     steps:
-      - checkout-with-mise
+      - utils/checkout-with-mise
       - setup_remote_docker
       - run:
           name: Build prestates
@@ -1145,7 +1136,7 @@ jobs:
     machine: true
     resource_class: ethereum-optimism/latitude-1
     steps:
-      - checkout-with-mise
+      - utils/checkout-with-mise
       - attach_workspace:
           at: "."
       - gcp-cli/install
@@ -1164,17 +1155,25 @@ jobs:
             echo "Publishing ${PRESTATE_HASH}, ${PRESTATE_MT64_HASH}, ${PRESTATE_INTEROP_HASH} as ${BRANCH_NAME}"
             if [[ "" != "<< pipeline.git.branch >>" ]]
             then
+              # Upload the git commit info for each prestate since this won't be recorded in releases.json
+              (echo "Commit=<< pipeline.git.revision >>" && echo "Prestate=${PRESTATE_HASH}") | gsutil cp - "gs://oplabs-network-data/proofs/op-program/cannon/${BRANCH_NAME}.bin.gz.txt"
+              (echo "Commit=<< pipeline.git.revision >>" && echo "Prestate: ${PRESTATE_MT64_HASH}") | gsutil cp - "gs://oplabs-network-data/proofs/op-program/cannon/${BRANCH_NAME}-mt64.bin.gz.txt"
+              (echo "Commit=<< pipeline.git.revision >>" && echo "Prestate: ${PRESTATE_INTEROP_HASH}") | gsutil cp - "gs://oplabs-network-data/proofs/op-program/cannon/${BRANCH_NAME}-interop.bin.gz.txt"
+
+
               # Use the branch name for branches to provide a consistent URL
               PRESTATE_HASH="${BRANCH_NAME}"
-              PRESTATE_MT64_HASH="${BRANCH_NAME}"
-              PRESTATE_INTEROP_HASH="${BRANCH_NAME}"
+              PRESTATE_MT64_HASH="${BRANCH_NAME}-mt64"
+              PRESTATE_INTEROP_HASH="${BRANCH_NAME}-interop"
             fi
             gsutil cp ./op-program/bin/prestate.bin.gz \
               "gs://oplabs-network-data/proofs/op-program/cannon/${PRESTATE_HASH}.bin.gz"
+
             gsutil cp ./op-program/bin/prestate-mt64.bin.gz \
-              "gs://oplabs-network-data/proofs/op-program/cannon/${PRESTATE_MT64_HASH}-mt64.bin.gz"
+              "gs://oplabs-network-data/proofs/op-program/cannon/${PRESTATE_MT64_HASH}.bin.gz"
+
             gsutil cp ./op-program/bin/prestate-interop.bin.gz \
-              "gs://oplabs-network-data/proofs/op-program/cannon/${PRESTATE_INTEROP_HASH}-interop.bin.gz"
+              "gs://oplabs-network-data/proofs/op-program/cannon/${PRESTATE_INTEROP_HASH}.bin.gz"
       - notify-failures-on-develop:
           mentions: "@proofs-team"
 
@@ -1182,7 +1181,7 @@ jobs:
     docker:
       - image: <<pipeline.parameters.default_docker_image>>
     steps:
-      - checkout-with-mise
+      - utils/checkout-with-mise
       - setup_remote_docker
       - run: make -C op-program verify-reproducibility
       - notify-failures-on-develop:
@@ -1192,7 +1191,7 @@ jobs:
     docker:
       - image: <<pipeline.parameters.default_docker_image>>
     steps:
-      - checkout-with-mise
+      - utils/checkout-with-mise
       - setup_remote_docker
       - run:
           name: Build cannon
@@ -1259,7 +1258,7 @@ jobs:
     docker:
       - image: cimg/go:1.21
     steps:
-      - checkout-with-mise
+      - utils/checkout-with-mise
       - run:
           name: verify-sepolia
           command: |
@@ -1272,7 +1271,7 @@ jobs:
     machine: true
     resource_class: ethereum-optimism/latitude-1
     steps:
-      - checkout-with-mise
+      - utils/checkout-with-mise
       - run:
           name: compat-sepolia
           command: |
@@ -1283,7 +1282,7 @@ jobs:
     machine: true
     resource_class: ethereum-optimism/latitude-1
     steps:
-      - checkout-with-mise
+      - utils/checkout-with-mise
       - check-changed:
           patterns: op-node
       - run:
@@ -1294,7 +1293,7 @@ jobs:
     machine: true
     resource_class: ethereum-optimism/latitude-1
     steps:
-      - checkout-with-mise
+      - utils/checkout-with-mise
       - check-changed:
           patterns: op-service
       - run:
@@ -1306,7 +1305,7 @@ jobs:
       - image: <<pipeline.parameters.default_docker_image>>
     resource_class: xlarge
     steps:
-      - checkout-with-mise
+      - utils/checkout-with-mise
       - install-contracts-dependencies
       - check-changed:
           no_go_deps: "true"
@@ -1343,7 +1342,7 @@ jobs:
           oidc_token_file_path: /tmp/oidc_token.json
           project_id: GCP_TOOLS_ARTIFACTS_PROJECT_ID
           service_account_email: GCP_CONTRACTS_PUBLISHER_SERVICE_ACCOUNT_EMAIL
-      - checkout-with-mise
+      - utils/checkout-with-mise
       - install-contracts-dependencies
       - run:
           name: Pull artifacts
@@ -1378,7 +1377,7 @@ jobs:
       - gcp-oidc-authenticate:
           gcp_cred_config_file_path: /tmp/gcp_cred_config.json
           oidc_token_file_path: /tmp/oidc_token.json
-      - checkout-with-mise
+      - utils/checkout-with-mise
       - run:
           name: Configure Docker
           command: |
@@ -1448,7 +1447,7 @@ workflows:
             - contracts-bedrock-build
       - contracts-bedrock-frozen-code:
           requires:
-            - contracts-bedrock-checks
+            - contracts-bedrock-build
       - diff-asterisc-bytecode
       - semgrep-scan:
           name: semgrep-scan-local
@@ -1480,6 +1479,8 @@ workflows:
           uses_artifacts: true
           requires: ["contracts-bedrock-build"]
       - go-tests:
+          environment_overrides: |
+            export PARALLEL=24
           packages: |
             op-alt-da
             op-batcher
@@ -1500,6 +1501,7 @@ workflows:
             op-e2e/actions
             op-e2e/faultproofs
             packages/contracts-bedrock/scripts/checks
+            op-dripper
           requires:
             - contracts-bedrock-build
             - cannon-prestate-quick
@@ -1539,6 +1541,7 @@ workflows:
                 - da-server
                 - op-supervisor
                 - cannon
+                - op-dripper
       - cannon-prestate-quick
       - sanitize-op-program:
           requires:
@@ -1605,6 +1608,7 @@ workflows:
                 - op-supervisor
                 - op-deployer
                 - cannon
+                - op-dripper
           name: <<matrix.docker_name>>-docker-release
           docker_tags: <<pipeline.git.revision>>
           platforms: "linux/amd64,linux/arm64"
@@ -1635,6 +1639,7 @@ workflows:
                 - op-supervisor
                 - op-deployer
                 - cannon
+                - op-dripper
           name: <<matrix.op_component>>-cross-platform
           requires:
             - op-node-docker-release
@@ -1647,6 +1652,7 @@ workflows:
             - op-ufm-docker-release
             - op-supervisor-docker-release
             - cannon-docker-release
+            - op-dripper-docker-release
       # Standard (xlarge) AMD-only docker images go here
       - docker-build:
           matrix:
@@ -1796,7 +1802,7 @@ workflows:
   scheduled-docker-publish:
     when:
       or:
-        - equal: [build_hourly, <<pipeline.schedule.name>>]
+        - equal: [build_daily, <<pipeline.schedule.name>>]
         # Trigger on manual triggers if explicitly requested
         - equal: [true, << pipeline.parameters.docker_publish_dispatch >>]
     jobs:
@@ -1813,6 +1819,7 @@ workflows:
                 - op-conductor
                 - op-supervisor
                 - cannon
+                - op-dripper
           name: <<matrix.docker_name>>-docker-publish
           docker_tags: <<pipeline.git.revision>>,<<pipeline.git.branch>>
           platforms: "linux/amd64,linux/arm64"
@@ -1833,6 +1840,7 @@ workflows:
                 - op-conductor
                 - op-supervisor
                 - cannon
+                - op-dripper
           name: <<matrix.op_component>>-cross-platform
           requires:
             - <<matrix.op_component>>-docker-publish

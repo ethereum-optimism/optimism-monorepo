@@ -1,10 +1,10 @@
 package metrics
 
 import (
+	"github.com/ethereum-optimism/optimism/op-node/rollup/event"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
-	"github.com/prometheus/client_golang/prometheus"
-
 	opmetrics "github.com/ethereum-optimism/optimism/op-service/metrics"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 const Namespace = "op_supervisor"
@@ -24,6 +24,8 @@ type Metricer interface {
 	RecordDBSearchEntriesRead(chainID eth.ChainID, count int64)
 
 	Document() []opmetrics.DocumentedMetric
+
+	event.Metrics
 }
 
 type Metrics struct {
@@ -31,8 +33,10 @@ type Metrics struct {
 	registry *prometheus.Registry
 	factory  opmetrics.Factory
 
+	*event.EventMetricsTracker
+
 	opmetrics.RPCMetrics
-	opmetrics.RefMetrics
+	RefMetrics opmetrics.RefMetricsWithChainID
 
 	CacheSizeVec *prometheus.GaugeVec
 	CacheGetVec  *prometheus.CounterVec
@@ -46,6 +50,7 @@ type Metrics struct {
 }
 
 var _ Metricer = (*Metrics)(nil)
+var _ event.Metrics = (*Metrics)(nil)
 
 // implements the Registry getter, for metrics HTTP server to hook into
 var _ opmetrics.RegistryMetricer = (*Metrics)(nil)
@@ -64,7 +69,9 @@ func NewMetrics(procName string) *Metrics {
 		registry: registry,
 		factory:  factory,
 
-		RPCMetrics: opmetrics.MakeRPCMetrics(ns, factory),
+		EventMetricsTracker: event.NewMetricsTracker(ns, factory),
+		RPCMetrics:          opmetrics.MakeRPCMetrics(ns, factory),
+		RefMetrics:          opmetrics.MakeRefMetricsWithChainID(ns, factory),
 
 		info: *factory.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: ns,
@@ -140,16 +147,15 @@ func (m *Metrics) RecordInfo(version string) {
 
 // RecordUp sets the up metric to 1.
 func (m *Metrics) RecordUp() {
-	prometheus.MustRegister()
 	m.up.Set(1)
 }
 
 func (m *Metrics) RecordCrossUnsafeRef(chainID eth.ChainID, ref eth.BlockRef) {
-	m.RefMetrics.RecordRef("l2", "cross_unsafe", ref.Number, ref.Time, ref.Hash, chainIDLabel(chainID))
+	m.RefMetrics.RecordRef("l2", "cross_unsafe", ref.Number, ref.Time, ref.Hash, chainID)
 }
 
 func (m *Metrics) RecordCrossSafeRef(chainID eth.ChainID, ref eth.BlockRef) {
-	m.RefMetrics.RecordRef("l2", "cross_safe", ref.Number, ref.Time, ref.Hash, chainIDLabel(chainID))
+	m.RefMetrics.RecordRef("l2", "cross_safe", ref.Number, ref.Time, ref.Hash, chainID)
 }
 
 func (m *Metrics) CacheAdd(chainID eth.ChainID, label string, cacheSize int, evicted bool) {

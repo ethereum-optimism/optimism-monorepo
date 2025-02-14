@@ -564,6 +564,9 @@ contract SemgrepTest__sol_style_malformed_revert {
             )
         );
 
+        // ok: sol-style-malformed-revert
+        revert(string.concat("StandardValidatorV180: ", _errors));
+
         // ruleid: sol-style-malformed-revert
         revert("MyContract: ");
 

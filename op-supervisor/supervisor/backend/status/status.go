@@ -1,6 +1,7 @@
 package status
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/ethereum-optimism/optimism/op-node/rollup/event"
@@ -39,7 +40,7 @@ func (su *StatusTracker) OnEvent(ev event.Event) bool {
 	switch x := ev.(type) {
 	case superevents.LocalDerivedOriginUpdateEvent:
 		status := loadStatusRef(x.ChainID)
-		status.CurrentL1 = x.Derived.DerivedFrom
+		status.CurrentL1 = x.Origin
 	case superevents.LocalUnsafeUpdateEvent:
 		status := loadStatusRef(x.ChainID)
 		status.LocalUnsafe = x.NewLocalUnsafe
@@ -49,15 +50,26 @@ func (su *StatusTracker) OnEvent(ev event.Event) bool {
 	return true
 }
 
-func (su *StatusTracker) SyncStatus() eth.SupervisorSyncStatus {
+func (su *StatusTracker) SyncStatus() (eth.SupervisorSyncStatus, error) {
 	su.mu.RLock()
 	defer su.mu.RUnlock()
 
 	var supervisorStatus eth.SupervisorSyncStatus
+	// to collect the min synced L1, we need to iterate over all nodes
+	// and compare the current L1 block they each reported.
 	for _, nodeStatus := range su.statuses {
-		if supervisorStatus.MinSyncedL1 == (eth.L1BlockRef{}) || supervisorStatus.MinSyncedL1.Number < nodeStatus.CurrentL1.Number {
+		// if the min synced L1 is not set, or the node's current L1 is lower than the min synced L1, set it
+		if supervisorStatus.MinSyncedL1 == (eth.L1BlockRef{}) || supervisorStatus.MinSyncedL1.Number > nodeStatus.CurrentL1.Number {
 			supervisorStatus.MinSyncedL1 = nodeStatus.CurrentL1
 		}
+		// if the height is equal, we need to compare the hash
+		if supervisorStatus.MinSyncedL1.Number == nodeStatus.CurrentL1.Number &&
+			supervisorStatus.MinSyncedL1.Hash != nodeStatus.CurrentL1.Hash {
+			// if the hashes are not equal, return an empty status
+			return eth.SupervisorSyncStatus{}, fmt.Errorf("min synced L1 hash mismatch: %v != %v", supervisorStatus.MinSyncedL1.Hash, nodeStatus.CurrentL1.Hash)
+		}
+		// if the node's current L1 is higher than the min synced L1, we can skip it,
+		// because we already know a different node isn't synced to it yet
 	}
 	supervisorStatus.Chains = make(map[eth.ChainID]*eth.SupervisorChainSyncStatus)
 	for chainID, nodeStatus := range su.statuses {
@@ -65,5 +77,5 @@ func (su *StatusTracker) SyncStatus() eth.SupervisorSyncStatus {
 			LocalUnsafe: nodeStatus.LocalUnsafe,
 		}
 	}
-	return supervisorStatus
+	return supervisorStatus, nil
 }

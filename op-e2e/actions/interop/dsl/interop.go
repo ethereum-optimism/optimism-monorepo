@@ -1,4 +1,4 @@
-package interop
+package dsl
 
 import (
 	"context"
@@ -145,6 +145,10 @@ func (sa *SupervisorActor) SignalLatestL1(t helpers.Testing) {
 
 func (sa *SupervisorActor) SignalFinalizedL1(t helpers.Testing) {
 	require.NoError(t, sa.backend.PullFinalizedL1())
+}
+
+func (sa *SupervisorActor) Rewind(chain eth.ChainID, block eth.BlockID) error {
+	return sa.backend.Rewind(chain, block)
 }
 
 // worldToDepSet converts a set of chain configs into a dependency-set for the supervisor.

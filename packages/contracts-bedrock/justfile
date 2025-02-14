@@ -16,22 +16,24 @@ dep-status:
 ########################################################
 
 # Core forge build command.
-forge-build:
-  forge build
+forge-build *ARGS:
+  forge build {{ARGS}}
 
 # Developer build command (faster).
-forge-build-dev:
-  FOUNDRY_PROFILE=lite forge build
+forge-build-dev *ARGS:
+  FOUNDRY_PROFILE=lite forge build {{ARGS}}
 
 # Builds source contracts only.
 build-source:
   forge build --skip "/**/test/**" --skip "/**/scripts/**"
 
 # Builds the contracts.
-build: lint-fix-no-fail forge-build interfaces-check-no-build
+build *ARGS: lint-fix-no-fail
+  just forge-build {{ARGS}}
 
 # Builds the contracts (developer mode).
-build-dev: lint-fix-no-fail forge-build-dev interfaces-check-no-build
+build-dev *ARGS: lint-fix-no-fail
+  just forge-build-dev {{ARGS}}
 
 # Builds the go-ffi tool for contract tests.
 build-go-ffi-default:
@@ -77,14 +79,10 @@ prepare-upgrade-env *ARGS : build-go-ffi
   #!/bin/bash
   echo "Running upgrade tests at block $pinnedBlockNumber"
   export FORK_BLOCK_NUMBER=$pinnedBlockNumber
-  export NO_MATCH_CONTRACTS="OptimismPortal2WithMockERC20_Test|OptimismPortal2_FinalizeWithdrawal_Test|'AnchorStateRegistry_*'|FaultDisputeGame_Test|PermissionedDisputeGame_Test|FaultDispute_1v1_Actors_Test|DelayedWETH_Hold_Test"
-  export NO_MATCH_PATHS="test/dispute/AnchorStateRegistry.t.sol"
   export FORK_RPC_URL=$ETH_RPC_URL
   export FORK_TEST=true
   {{ARGS}} \
-  --match-path "test/{L1,dispute}/**" \
-  --no-match-contract "$NO_MATCH_CONTRACTS" \
-  --no-match-path "$NO_MATCH_PATHS"
+  --match-path "test/{L1,dispute,cannon}/**"
 
 # Runs upgrade path variant of contract tests.
 test-upgrade *ARGS:
@@ -102,10 +100,12 @@ anvil-fork:
 # Helpful for debugging.
 test-upgrade-against-anvil *ARGS: build-go-ffi
   #!/bin/bash
+  echo "Running upgrade tests at block $pinnedBlockNumber"
   export FORK_BLOCK_NUMBER=$pinnedBlockNumber
-  FORK_RPC_URL=http://127.0.0.1:8545 \
-    FORK_TEST=true \
-    forge test {{ARGS}}
+  export FORK_RPC_URL=http://127.0.0.1:8545
+  export FORK_TEST=true
+  forge test {{ARGS}} \
+  --match-path "test/{L1,dispute,cannon}/**"
 
 # Runs standard contract tests with rerun flag.
 test-rerun: build-go-ffi
@@ -141,7 +141,7 @@ coverage-lcov-upgrade *ARGS: build-go-ffi
 # Runs coverage-lcov and coverage-lcov-upgrade and merges their output files info one file
 coverage-lcov-all *ARGS:
   just coverage-lcov {{ARGS}} && \
-  just coverage-lcov-upgrade {{ARGS}} && \
+  just coverage-lcov-upgrade --match-contract OPContractsManager_Upgrade_Test {{ARGS}} && \
   lcov -a lcov.info -a lcov-upgrade.info -o lcov-all.info
 
 ########################################################
@@ -160,13 +160,6 @@ deploy:
 ########################################################
 #                       SNAPSHOTS                      #
 ########################################################
-
-# Generates a gas snapshot without building.
-gas-snapshot-no-build:
-  forge snapshot --match-contract GasBenchMark --snap snapshots/.gas-snapshot
-
-# Generates a gas snapshot.
-gas-snapshot: build-go-ffi gas-snapshot-no-build
 
 # Generates default Kontrol summary.
 kontrol-summary:
@@ -194,7 +187,7 @@ semver-lock-no-build:
 semver-lock: build-source semver-lock-no-build
 
 # Generates core snapshots without building contracts.
-snapshots-no-build: snapshots-abi-storage-no-build semver-lock-no-build gas-snapshot-no-build
+snapshots-no-build: snapshots-abi-storage-no-build semver-lock-no-build
 
 # Builds contracts and then generates core snapshots.
 snapshots: build-source snapshots-no-build
@@ -204,16 +197,8 @@ snapshots: build-source snapshots-no-build
 #                        CHECKS                        #
 ########################################################
 
-# Checks that the gas snapshot is up to date without building.
-gas-snapshot-check-no-build:
-  forge snapshot --match-contract GasBenchMark --snap snapshots/.gas-snapshot --check
-
-# Checks that the gas snapshot is up to date.
-gas-snapshot-check: build-go-ffi gas-snapshot-check-no-build
-
 # Checks if the snapshots are up to date without building.
-snapshots-check-no-build:
-  just snapshots-no-build && git diff --exit-code snapshots
+snapshots-check-no-build: snapshots-no-build
 
 # Checks if the snapshots are up to date.
 snapshots-check: build snapshots-check-no-build
@@ -307,16 +292,46 @@ check:
 ########################################################
 
 # Cleans, builds, lints, and runs all checks.
-pre-pr: clean pre-pr-no-build
+# Alias for pre-pr.
+pre-commit *ARGS:
+  just pre-pr {{ARGS}}
 
-# Builds, lints, and runs all checks. Sometimes a bad cache causes issues, in which case the above
-# `pre-pr` is preferred. But in most cases this will be sufficient and much faster then a full build.
-# Steps:
-# - Build (dev mode) to confirm that contracts compile
-# - Lint contracts
-# - Generate snapshots
-# - Run all checks to confirm everything is good
-pre-pr-no-build: build-dev lint snapshots-no-build check
+# Cleans, builds, lints, and runs all checks.
+pre-pr *ARGS:
+  #!/bin/bash
+  # Optionally clean the previous build.
+  # --clean is typically not needed but can force a clean build if you suspect cache issues.
+  if [[ "{{ARGS}}" == *"--clean"* ]]; then
+      just clean
+  fi
+
+  # Create temp directory for build cache if it doesn't exist.
+  TEMP_BUILD_DIR=$(mktemp -d)
+  trap '[ -d "$TEMP_BUILD_DIR" ] && rm -rf "$TEMP_BUILD_DIR"' EXIT INT
+
+  just build-dev
+
+  # Cache build artifacts for the dev build. We expect that developers will
+  # generally be using the dev build, but a production build of the src
+  # contracts is required for generating the correct snapshots. Production
+  # build will overwrite the cache for the dev build, which ultimately means
+  # that developers would have to wait a full minute for the dev build each
+  # time they run this command. By caching the artifacts for the dev build, we
+  # can save a lot of marginal time.
+  cp -r artifacts "$TEMP_BUILD_DIR/"
+  cp -r forge-artifacts "$TEMP_BUILD_DIR/"
+  cp -r cache "$TEMP_BUILD_DIR/"
+
+  just lint
+  just build-source
+  just check
+
+  # Restore build artifacts after running checks.
+  if [ -d "$TEMP_BUILD_DIR" ]; then
+    cp -r "$TEMP_BUILD_DIR/artifacts" ./
+    cp -r "$TEMP_BUILD_DIR/forge-artifacts" ./
+    cp -r "$TEMP_BUILD_DIR/cache" ./
+  fi
 
 # Fixes linting errors.
 lint-fix:
@@ -330,3 +345,13 @@ lint-fix-no-fail:
 
 # Fixes linting errors and checks that the code is correctly formatted.
 lint: lint-fix lint-check
+
+
+########################################################
+#                         DOCS                         #
+########################################################
+
+# Update TOCs
+update-tocs:
+  doctoc README.md
+  doctoc meta/POLICY.md

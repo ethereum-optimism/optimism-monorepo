@@ -1,0 +1,37 @@
+[
+  {
+    "bytes": "320",
+    "label": "impls",
+    "offset": 0,
+    "slot": "0",
+    "type": "struct StandardValidatorV180.Implementations"
+  },
+  {
+    "bytes": "20",
+    "label": "superchainConfig",
+    "offset": 0,
+    "slot": "10",
+    "type": "contract ISuperchainConfig"
+  },
+  {
+    "bytes": "20",
+    "label": "l1PAOMultisig",
+    "offset": 0,
+    "slot": "11",
+    "type": "address"
+  },
+  {
+    "bytes": "20",
+    "label": "mips",
+    "offset": 0,
+    "slot": "12",
+    "type": "address"
+  },
+  {
+    "bytes": "20",
+    "label": "challenger",
+    "offset": 0,
+    "slot": "13",
+    "type": "address"
+  }
+]

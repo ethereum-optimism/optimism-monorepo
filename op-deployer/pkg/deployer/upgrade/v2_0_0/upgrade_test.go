@@ -8,10 +8,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum-optimism/optimism/op-service/testutils/devnet"
+
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/broadcaster"
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/testutil"
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/env"
-	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/retryproxy"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -27,10 +28,12 @@ func TestUpgradeOPChainInput_OpChainConfigs(t *testing.T) {
 			{
 				SystemConfigProxy: common.Address{0x01},
 				ProxyAdmin:        common.Address{0x02},
+				AbsolutePrestate:  common.Hash{0x03},
 			},
 			{
 				SystemConfigProxy: common.Address{0x04},
 				ProxyAdmin:        common.Address{0x05},
+				AbsolutePrestate:  common.Hash{0x06},
 			},
 		},
 	}
@@ -42,30 +45,30 @@ func TestUpgradeOPChainInput_OpChainConfigs(t *testing.T) {
 			"0000000000000000000000000000000000000000000000000000000000000002"+
 			"0000000000000000000000000100000000000000000000000000000000000000"+
 			"0000000000000000000000000200000000000000000000000000000000000000"+
+			"0300000000000000000000000000000000000000000000000000000000000000"+
 			"0000000000000000000000000400000000000000000000000000000000000000"+
-			"0000000000000000000000000500000000000000000000000000000000000000",
+			"0000000000000000000000000500000000000000000000000000000000000000"+
+			"0600000000000000000000000000000000000000000000000000000000000000",
 		hex.EncodeToString(data),
 	)
 }
 
 func TestUpgrader_Upgrade(t *testing.T) {
-	_, afactsFS := testutil.LocalArtifacts(t)
-
-	forkRPCURL := os.Getenv("SEPOLIA_RPC_URL")
-	require.NotEmpty(t, forkRPCURL, "must specify RPC url via SEPOLIA_RPC_URL env var")
-
 	lgr := testlog.Logger(t, slog.LevelDebug)
+
+	forkedL1, stopL1, err := devnet.NewForkedSepolia(lgr)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, stopL1())
+	})
+	l1RPC := forkedL1.RPCUrl()
+
+	_, afactsFS := testutil.LocalArtifacts(t)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
-	retryProxy := retryproxy.New(lgr, forkRPCURL)
-	require.NoError(t, retryProxy.Start())
-	t.Cleanup(func() {
-		require.NoError(t, retryProxy.Stop())
-	})
-
-	rpcClient, err := rpc.Dial(retryProxy.Endpoint())
+	rpcClient, err := rpc.Dial(l1RPC)
 	require.NoError(t, err)
 
 	bcast := new(broadcaster.CalldataBroadcaster)
@@ -99,7 +102,7 @@ func TestUpgrader_Upgrade(t *testing.T) {
 		{
 			To: &addr,
 			Data: []byte{
-				0x5d, 0x4e, 0xfc, 0x8b, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+				0xff, 0x2d, 0xd5, 0xa1, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x20, 0x00, 0x00, 0x00,
 				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -109,7 +112,9 @@ func TestUpgrader_Upgrade(t *testing.T) {
 				0xf1, 0xd2, 0x08, 0x4b, 0x9e, 0x0a, 0x93, 0xb5, 0x38, 0x00, 0x00, 0x00, 0x00,
 				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x18, 0x9a, 0xba, 0xaa, 0xa8,
 				0x2d, 0xfc, 0x01, 0x5a, 0x58, 0x8a, 0x7d, 0xba, 0xd6, 0xf1, 0x3b, 0x1d, 0x34,
-				0x85, 0xbc,
+				0x85, 0xbc, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xa, 0xbc,
 			},
 			Value: (*hexutil.Big)(common.Big0),
 		},

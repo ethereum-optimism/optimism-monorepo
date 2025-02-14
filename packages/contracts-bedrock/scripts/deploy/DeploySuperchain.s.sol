@@ -342,7 +342,6 @@ contract DeploySuperchain is Script {
 
     function deploySuperchainImplementationContracts(DeploySuperchainInput, DeploySuperchainOutput _dso) public {
         // Deploy implementation contracts.
-        vm.startBroadcast(msg.sender);
         ISuperchainConfig superchainConfigImpl = ISuperchainConfig(
             DeployUtils.createDeterministic({
                 _name: "SuperchainConfig",
@@ -357,7 +356,6 @@ contract DeploySuperchain is Script {
                 _salt: _salt
             })
         );
-        vm.stopBroadcast();
 
         vm.label(address(superchainConfigImpl), "SuperchainConfigImpl");
         vm.label(address(protocolVersionsImpl), "ProtocolVersionsImpl");

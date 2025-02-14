@@ -324,6 +324,9 @@ func BlockAsPayload(bl *types.Block, config *params.ChainConfig) (*ExecutionPayl
 		}
 		opaqueTxs[i] = otx
 	}
+	if baseFee == nil {
+		return nil, fmt.Errorf("base fee was nil")
+	}
 
 	payload := &ExecutionPayload{
 		ParentHash:    bl.ParentHash(),

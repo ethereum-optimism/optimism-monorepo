@@ -41,6 +41,13 @@ var (
 	ecrecoverPrecompileAddress          = common.BytesToAddress([]byte{0x1})
 	bn256PairingPrecompileAddress       = common.BytesToAddress([]byte{0x8})
 	kzgPointEvaluationPrecompileAddress = common.BytesToAddress([]byte{0xa})
+	blsG1AddPrecompileAddress           = common.BytesToAddress([]byte{0xb})
+	blsG1MSMPrecompileAddress           = common.BytesToAddress([]byte{0xc})
+	blsG2AddPrecompileAddress           = common.BytesToAddress([]byte{0xd})
+	blsG2MSMPrecompileAddress           = common.BytesToAddress([]byte{0xe})
+	blsPairingPrecompileAddress         = common.BytesToAddress([]byte{0xf})
+	blsMapToG1PrecompileAddress         = common.BytesToAddress([]byte{0x10})
+	blsMapToG2PrecompileAddress         = common.BytesToAddress([]byte{0x11})
 )
 
 // PrecompileOracle defines the high-level API used to retrieve the result of a precompile call
@@ -66,6 +73,75 @@ func CreatePrecompileOverrides(precompileOracle PrecompileOracle) vm.PrecompileO
 			return &precompile
 		case kzgPointEvaluationPrecompileAddress:
 			return &kzgPointEvaluationOracle{Orig: orig, Oracle: precompileOracle}
+		case blsG1AddPrecompileAddress:
+			// no size limit - fixed input
+			return &blsOperationOracle{
+				Orig:              orig,
+				Oracle:            precompileOracle,
+				checkInputSize:    checkInputExactSize(256),
+				checkOutput:       checkOutputExactSize(128),
+				precompileAddress: blsG1AddPrecompileAddress,
+			}
+		case blsG1MSMPrecompileAddress:
+			return &blsOperationOracleWithSizeLimit{
+				sizeLimit: params.Bls12381G1MulMaxInputSizeIsthmus,
+				blsOperationOracle: blsOperationOracle{
+					Orig:              orig,
+					Oracle:            precompileOracle,
+					checkInputSize:    checkInputSizeNonzeroMultipleOf(160),
+					checkOutput:       checkOutputExactSize(128),
+					precompileAddress: blsG1MSMPrecompileAddress,
+				},
+			}
+		case blsG2AddPrecompileAddress:
+			// no size limit - fixed input
+			return &blsOperationOracle{
+				Orig:              orig,
+				Oracle:            precompileOracle,
+				checkInputSize:    checkInputExactSize(512),
+				checkOutput:       checkOutputExactSize(256),
+				precompileAddress: blsG2AddPrecompileAddress,
+			}
+		case blsG2MSMPrecompileAddress:
+			return &blsOperationOracleWithSizeLimit{
+				sizeLimit: params.Bls12381G2MulMaxInputSizeIsthmus,
+				blsOperationOracle: blsOperationOracle{
+					Orig:              orig,
+					Oracle:            precompileOracle,
+					checkInputSize:    checkInputSizeNonzeroMultipleOf(288),
+					checkOutput:       checkOutputExactSize(256),
+					precompileAddress: blsG2MSMPrecompileAddress,
+				},
+			}
+		case blsPairingPrecompileAddress:
+			return &blsOperationOracleWithSizeLimit{
+				sizeLimit: params.Bls12381PairingMaxInputSizeIsthmus,
+				blsOperationOracle: blsOperationOracle{
+					Orig:              orig,
+					Oracle:            precompileOracle,
+					checkInputSize:    checkInputSizeNonzeroMultipleOf(384),
+					checkOutput:       checkOutputTrueOrFalse(),
+					precompileAddress: blsPairingPrecompileAddress,
+				},
+			}
+		case blsMapToG1PrecompileAddress:
+			// no size limit - fixed input
+			return &blsOperationOracle{
+				Orig:              orig,
+				Oracle:            precompileOracle,
+				checkInputSize:    checkInputExactSize(64),
+				checkOutput:       checkOutputExactSize(128),
+				precompileAddress: blsMapToG1PrecompileAddress,
+			}
+		case blsMapToG2PrecompileAddress:
+			// no size limit - fixed input
+			return &blsOperationOracle{
+				Orig:              orig,
+				Oracle:            precompileOracle,
+				checkInputSize:    checkInputExactSize(128),
+				checkOutput:       checkOutputExactSize(256),
+				precompileAddress: blsMapToG2PrecompileAddress,
+			}
 		default:
 			return orig
 		}
@@ -226,4 +302,76 @@ func (b *kzgPointEvaluationOracle) Run(input []byte) ([]byte, error) {
 		panic("unexpected result from KZG point evaluation check")
 	}
 	return result, nil
+}
+
+var (
+	errInvalidBlsSize      = errors.New("invalid input size for BLS12-381 operation")
+	errInvalidBlsOperation = errors.New("invalid BLS12-381 operation")
+)
+
+func checkInputExactSize(size int) func([]byte) bool {
+	return func(input []byte) bool {
+		return len(input) == size
+	}
+}
+
+func checkInputSizeNonzeroMultipleOf(size int) func([]byte) bool {
+	return func(input []byte) bool {
+		return len(input)%size == 0 && len(input) > 0
+	}
+}
+
+func checkOutputExactSize(size int) func([]byte) bool {
+	return func(output []byte) bool {
+		return len(output) == size
+	}
+}
+
+func checkOutputTrueOrFalse() func([]byte) bool {
+	return func(output []byte) bool {
+		return bytes.Equal(output, true32Byte) || bytes.Equal(output, false32Byte)
+	}
+}
+
+type blsOperationOracle struct {
+	Orig              vm.PrecompiledContract
+	Oracle            PrecompileOracle
+	checkInputSize    func([]byte) (ok bool)
+	checkOutput       func([]byte) (ok bool)
+	precompileAddress common.Address
+}
+
+func (b *blsOperationOracle) RequiredGas(input []byte) uint64 {
+	return b.Orig.RequiredGas(input)
+}
+
+func (b *blsOperationOracle) Run(input []byte) ([]byte, error) {
+	inputSizeValid := b.checkInputSize(input)
+	// Handle some corner cases cheaply
+	if !inputSizeValid {
+		return nil, errInvalidBlsSize
+	}
+
+	// Modification note: below replaces point verification and pairing checks
+	// Assumes both L2 and the L1 oracle have an identical range of valid points
+	result, ok := b.Oracle.Precompile(b.precompileAddress, input, b.RequiredGas(input))
+	if !ok {
+		return nil, errInvalidBlsOperation
+	}
+	if !b.checkOutput(result) {
+		panic("unexpected result from BLS12-381 operation")
+	}
+	return result, nil
+}
+
+type blsOperationOracleWithSizeLimit struct {
+	blsOperationOracle
+	sizeLimit uint64
+}
+
+func (b *blsOperationOracleWithSizeLimit) Run(input []byte) ([]byte, error) {
+	if uint64(len(input)) > b.sizeLimit {
+		return nil, errInvalidBlsSize
+	}
+	return b.blsOperationOracle.Run(input)
 }

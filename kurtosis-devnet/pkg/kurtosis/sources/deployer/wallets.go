@@ -66,7 +66,7 @@ func (d *Deployer) getKnownWallets(ctx context.Context, fs *artifact.EnclaveFS) 
 
 		knownWallets = append(knownWallets, &Wallet{
 			Name:       key.String(),
-			Address:    addr.Hex(),
+			Address:    addr,
 			PrivateKey: hexutil.Bytes(crypto.FromECDSA(sec)).String(),
 		})
 	}

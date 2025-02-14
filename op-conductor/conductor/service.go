@@ -172,15 +172,17 @@ func (c *OpConductor) initConsensus(ctx context.Context) error {
 	raftConsensusConfig := &consensus.RaftConsensusConfig{
 		ServerID: c.cfg.RaftServerID,
 		// AdvertisedAddr may be empty: the server will then default to what it binds to.
-		AdvertisedAddr:    raft.ServerAddress(c.cfg.ConsensusAdvertisedAddr),
-		ListenAddr:        c.cfg.ConsensusAddr,
-		ListenPort:        c.cfg.ConsensusPort,
-		StorageDir:        c.cfg.RaftStorageDir,
-		Bootstrap:         c.cfg.RaftBootstrap,
-		RollupCfg:         &c.cfg.RollupCfg,
-		SnapshotInterval:  c.cfg.RaftSnapshotInterval,
-		SnapshotThreshold: c.cfg.RaftSnapshotThreshold,
-		TrailingLogs:      c.cfg.RaftTrailingLogs,
+		AdvertisedAddr:     raft.ServerAddress(c.cfg.ConsensusAdvertisedAddr),
+		ListenAddr:         c.cfg.ConsensusAddr,
+		ListenPort:         c.cfg.ConsensusPort,
+		StorageDir:         c.cfg.RaftStorageDir,
+		Bootstrap:          c.cfg.RaftBootstrap,
+		RollupCfg:          &c.cfg.RollupCfg,
+		SnapshotInterval:   c.cfg.RaftSnapshotInterval,
+		SnapshotThreshold:  c.cfg.RaftSnapshotThreshold,
+		TrailingLogs:       c.cfg.RaftTrailingLogs,
+		HeartbeatTimeout:   c.cfg.RaftHeartbeatTimeout,
+		LeaderLeaseTimeout: c.cfg.RaftLeaderLeaseTimeout,
 	}
 	cons, err := consensus.NewRaftConsensus(c.log, raftConsensusConfig)
 	if err != nil {

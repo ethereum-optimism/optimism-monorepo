@@ -412,6 +412,7 @@ func TestChannelManager_handleChannelInvalidated(t *testing.T) {
 	stateSnapshot := queue.Queue[*types.Block]{blockA, blockB}
 	m.blocks = stateSnapshot
 	require.Empty(t, m.channelQueue)
+	require.Equal(t, metrics.ChannelQueueLength, 0)
 
 	// Place an old channel in the queue.
 	// This channel should not be affected by
@@ -419,7 +420,9 @@ func TestChannelManager_handleChannelInvalidated(t *testing.T) {
 	oldChannel := newChannel(l, nil, m.defaultCfg, defaultTestRollupConfig, 0, nil)
 	oldChannel.Close()
 	m.channelQueue = []*channel{oldChannel}
+	metrics.RecordChannelQueueLength(1) // we need to do this manually b/c we are not using the usual codepath to set state
 	require.Len(t, m.channelQueue, 1)
+	require.Equal(t, metrics.ChannelQueueLength, 1)
 
 	// Setup initial metrics
 	metrics.RecordL2BlockInPendingQueue(blockA)
@@ -429,6 +432,8 @@ func TestChannelManager_handleChannelInvalidated(t *testing.T) {
 	// Trigger the blocks -> channelQueue data pipelining
 	require.NoError(t, m.ensureChannelWithSpace(eth.BlockID{}))
 	require.Len(t, m.channelQueue, 2)
+	require.Equal(t, metrics.ChannelQueueLength, 2)
+
 	require.NoError(t, m.processBlocks())
 
 	// Assert that at least one block was processed into the channel
@@ -446,6 +451,7 @@ func TestChannelManager_handleChannelInvalidated(t *testing.T) {
 	require.Equal(t, m.blocks, stateSnapshot)
 	require.Contains(t, m.channelQueue, oldChannel)
 	require.Len(t, m.channelQueue, 1)
+	require.Equal(t, metrics.ChannelQueueLength, 1)
 
 	// Check metric came back up to previous value
 	require.Equal(t, pendingBytesBefore, metrics.PendingBlocksBytesCurrent)

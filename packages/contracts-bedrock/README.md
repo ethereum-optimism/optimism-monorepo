@@ -18,6 +18,7 @@ High-level information about these contracts can be found within this README and
   - [Style Guide](#style-guide)
   - [Contract Interfaces](#contract-interfaces)
   - [Solidity Versioning](#solidity-versioning)
+  - [Frozen Code](#frozen-code)
 - [Deployment](#deployment)
   - [Deploying Production Networks](#deploying-production-networks)
 - [Generating L2 Genesis Allocs](#generating-l2-genesis-allocs)
@@ -89,7 +90,8 @@ newer Solidity versions.
 From time to time we need to ensure that certain files remain frozen, as they may be under audit or
 a large PR is in the works and we wish to avoid a large rebase. In order to enforce this,
 a hardcoded list of contracts is stored in `./scripts/checks/check-frozen-files.sh`. Any change
-which affects the resulting init or source code of that contract will cause a failure in CI.
+which affects the resulting init or source code of a contract which is not allowed to be modified
+will prevent merging to the `develop` branch.
 
 In order to remove a file from the freeze it must be removed from the check file.
 

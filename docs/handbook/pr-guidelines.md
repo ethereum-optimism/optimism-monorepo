@@ -34,6 +34,21 @@ This is organized by current state of PR, so it can be easily referenced frequen
 - **Explain Decisions/Tradeoffs**: Explain rationale for any design/architecture decisions and implementation details in the PR description. If it closes an issue, remember to mention the issue it closes, e.g. `Closes <issueUrl>`. Otherwise, just link to the issue. If there is no issue, whatever details would have been in the issue should be in the PR description.
 - **Guide PR reviewers:** Let them know about areas of concern, under-tested areas, or vague requirements that should be ironed out.
 
+### Triggering CI on PRs from external forks
+If the PR is from an external fork, our CI suite will not automatically run on the PR. A reviewer with sufficient permissions (e.g. the automatically assigened reviewer) needs to comment on the PR wih
+
+> /ci authorize COMMITHASH
+
+or
+
+> /ci authorize https://github.com/ethereum-optimism/optimism/pull/PR_NUMBER/commits/COMMITHASH
+
+to trigger the CI suite to run. CI is a precondition for merging the PR and should be done before review is conducted, because it will reveal any failing tests or other problems such as linting errors.
+
+> [!NOTE]
+> COMMITHASH and PR_NUMBER have their usual meanings but you must use the **full** commit hash and not a shortened version. Otherwise CI will not be triggered.
+
+
 ### Reviewing PRs
 
 - **Verify Requirements are Met**: If the PR claims to fix or close an issue, check that all the requirements in the issue are actually met. Otherwise the issue may be in a good place to merge, but just shouldn’t close the issue.

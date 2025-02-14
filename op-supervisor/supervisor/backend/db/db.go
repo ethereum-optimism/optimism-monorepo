@@ -51,31 +51,37 @@ type LogStorage interface {
 	OpenBlock(blockNum uint64) (ref eth.BlockRef, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error)
 }
 
-type LocalDerivedFromStorage interface {
+type DerivationStorage interface {
+	// basic info
 	First() (pair types.DerivedBlockSealPair, err error)
-	Latest() (pair types.DerivedBlockSealPair, err error)
-	Invalidated() (pair types.DerivedBlockSealPair, err error)
-	AddDerived(derivedFrom eth.BlockRef, derived eth.BlockRef) error
-	ReplaceInvalidatedBlock(replacementDerived eth.BlockRef, invalidated common.Hash) (types.DerivedBlockSealPair, error)
-	RewindAndInvalidate(invalidated types.DerivedBlockRefPair) error
-	LastDerivedAt(derivedFrom eth.BlockID) (derived types.BlockSeal, err error)
-	IsDerived(derived eth.BlockID) error
-	DerivedFrom(derived eth.BlockID) (derivedFrom types.BlockSeal, err error)
-	FirstAfter(derivedFrom, derived eth.BlockID) (next types.DerivedBlockSealPair, err error)
-	NextDerivedFrom(derivedFrom eth.BlockID) (nextDerivedFrom types.BlockSeal, err error)
+	Last() (pair types.DerivedBlockSealPair, err error)
+
+	// mapping from source<>derived
+	DerivedToFirstSource(derived eth.BlockID) (source types.BlockSeal, err error)
+	SourceToLastDerived(source eth.BlockID) (derived types.BlockSeal, err error)
+
+	// traversal
+	Next(pair types.DerivedIDPair) (next types.DerivedBlockSealPair, err error)
+	NextSource(source eth.BlockID) (nextSource types.BlockSeal, err error)
 	NextDerived(derived eth.BlockID) (next types.DerivedBlockSealPair, err error)
-	PreviousDerivedFrom(derivedFrom eth.BlockID) (prevDerivedFrom types.BlockSeal, err error)
+	PreviousSource(source eth.BlockID) (prevSource types.BlockSeal, err error)
 	PreviousDerived(derived eth.BlockID) (prevDerived types.BlockSeal, err error)
+
+	// type-specific
+	Invalidated() (pair types.DerivedBlockSealPair, err error)
+	ContainsDerived(derived eth.BlockID) error
+
+	// writing
+	AddDerived(source eth.BlockRef, derived eth.BlockRef) error
+	ReplaceInvalidatedBlock(replacementDerived eth.BlockRef, invalidated common.Hash) (types.DerivedBlockSealPair, error)
+
+	// rewining
+	RewindAndInvalidate(invalidated types.DerivedBlockRefPair) error
 	RewindToScope(scope eth.BlockID) error
 	RewindToFirstDerived(v eth.BlockID) error
 }
 
-var _ LocalDerivedFromStorage = (*fromda.DB)(nil)
-
-type CrossDerivedFromStorage interface {
-	LocalDerivedFromStorage
-	// This will start to differ with reorg support
-}
+var _ DerivationStorage = (*fromda.DB)(nil)
 
 var _ LogStorage = (*logs.DB)(nil)
 
@@ -95,10 +101,10 @@ type ChainsDB struct {
 	crossUnsafe locks.RWMap[eth.ChainID, *locks.RWValue[types.BlockSeal]]
 
 	// local-safe: index of what we optimistically know about L2 blocks being derived from L1
-	localDBs locks.RWMap[eth.ChainID, LocalDerivedFromStorage]
+	localDBs locks.RWMap[eth.ChainID, DerivationStorage]
 
 	// cross-safe: index of L2 blocks we know to only have cross-L2 valid dependencies
-	crossDBs locks.RWMap[eth.ChainID, CrossDerivedFromStorage]
+	crossDBs locks.RWMap[eth.ChainID, DerivationStorage]
 
 	// finalized: the L1 finality progress. This can be translated into what may be considered as finalized in L2.
 	// It is initially zeroed, and the L2 finality query will return
@@ -138,10 +144,12 @@ func (db *ChainsDB) AttachEmitter(em event.Emitter) {
 func (db *ChainsDB) OnEvent(ev event.Event) bool {
 	switch x := ev.(type) {
 	case superevents.AnchorEvent:
+		db.logger.Info("Received chain anchor information",
+			"chain", x.ChainID, "derived", x.Anchor.Derived, "source", x.Anchor.Source)
 		db.maybeInitEventsDB(x.ChainID, x.Anchor)
 		db.maybeInitSafeDB(x.ChainID, x.Anchor)
 	case superevents.LocalDerivedEvent:
-		db.UpdateLocalSafe(x.ChainID, x.Derived.DerivedFrom, x.Derived.Derived)
+		db.UpdateLocalSafe(x.ChainID, x.Derived.Source, x.Derived.Derived)
 	case superevents.FinalizedL1RequestEvent:
 		db.onFinalizedL1(x.FinalizedL1)
 	case superevents.ReplaceBlockEvent:
@@ -160,7 +168,7 @@ func (db *ChainsDB) AddLogDB(chainID eth.ChainID, logDB LogStorage) {
 	db.logDBs.Set(chainID, logDB)
 }
 
-func (db *ChainsDB) AddLocalDerivedFromDB(chainID eth.ChainID, dfDB LocalDerivedFromStorage) {
+func (db *ChainsDB) AddLocalDerivationDB(chainID eth.ChainID, dfDB DerivationStorage) {
 	if db.localDBs.Has(chainID) {
 		db.logger.Warn("overwriting existing local derived-from DB for chain", "chain", chainID)
 	}
@@ -168,7 +176,7 @@ func (db *ChainsDB) AddLocalDerivedFromDB(chainID eth.ChainID, dfDB LocalDerived
 	db.localDBs.Set(chainID, dfDB)
 }
 
-func (db *ChainsDB) AddCrossDerivedFromDB(chainID eth.ChainID, dfDB CrossDerivedFromStorage) {
+func (db *ChainsDB) AddCrossDerivationDB(chainID eth.ChainID, dfDB DerivationStorage) {
 	if db.crossDBs.Has(chainID) {
 		db.logger.Warn("overwriting existing cross derived-from DB for chain", "chain", chainID)
 	}

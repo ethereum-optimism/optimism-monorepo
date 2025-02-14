@@ -15,7 +15,7 @@ _prestate-build PATH='.':
     docker buildx build --output {{PATH}} --progress plain -f ../op-program/Dockerfile.repro ../
 
 _docker_build TAG TARGET CONTEXT DOCKERFILE *ARGS:
-    docker buildx build -t {{TAG}} \
+    docker buildx build --load -t {{TAG}} \
         -f {{CONTEXT}}/{{DOCKERFILE}} \
         {{ if TARGET != '' {  "--target " + TARGET } else { "" } }} \
         --build-arg GIT_COMMIT={git_commit} \
@@ -89,4 +89,4 @@ pectra-devnet: (devnet "pectra.yaml")
 
 # subshells
 enter-devnet DEVNET CHAIN='Ethereum':
-    exec go run ../devnet-sdk/shell/cmd/enter/main.go --devnet tests/{{DEVNET}}.json --chain {{CHAIN}}
+    exec go run ../devnet-sdk/shell/cmd/enter/main.go --devnet kt://{{DEVNET}} --chain {{CHAIN}}

@@ -9,7 +9,7 @@ The `init` command is used like this:
 op-deployer init \
   --l1-chain-id <chain ID of your L1> \
   --l2-chain-ids <comman separated list of chain IDs for your L2s> \
-  --output-dir <directory to write the intent and state files> \
+  --outdir <directory to write the intent and state files> \
   --intent-config-type <standard/custom/strict/standard-overrides/strict-overrides>
 ```
 

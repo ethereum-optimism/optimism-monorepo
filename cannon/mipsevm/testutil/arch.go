@@ -70,3 +70,8 @@ func Cannon32OnlyTest(t testing.TB, msg string, args ...any) {
 		t.Skipf(msg, args...)
 	}
 }
+
+// FlipSign flips the sign of a 2's complement Word
+func FlipSign(val Word) Word {
+	return ^val + 1
+}

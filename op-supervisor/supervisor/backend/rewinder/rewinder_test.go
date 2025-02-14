@@ -164,7 +164,7 @@ func TestRewindL2(t *testing.T) {
 	i.OnEvent(superevents.LocalSafeUpdateEvent{
 		ChainID: chainID,
 		NewLocalSafe: types.DerivedBlockSealPair{
-			DerivedFrom: types.BlockSeal{
+			Source: types.BlockSeal{
 				Hash:   l1Block1.Hash,
 				Number: l1Block1.Number,
 			},
@@ -261,7 +261,7 @@ func TestNoRewindNeeded(t *testing.T) {
 	i.OnEvent(superevents.LocalSafeUpdateEvent{
 		ChainID: chainID,
 		NewLocalSafe: types.DerivedBlockSealPair{
-			DerivedFrom: types.BlockSeal{
+			Source: types.BlockSeal{
 				Hash:   l1Block2.Hash,
 				Number: l1Block2.Number,
 			},
@@ -359,7 +359,7 @@ func TestRewindLongChain(t *testing.T) {
 	i.OnEvent(superevents.LocalSafeUpdateEvent{
 		ChainID: chainID,
 		NewLocalSafe: types.DerivedBlockSealPair{
-			DerivedFrom: types.BlockSeal{
+			Source: types.BlockSeal{
 				Hash:   l1Blocks[96/10].Hash,
 				Number: l1Blocks[96/10].Number,
 			},
@@ -428,7 +428,7 @@ func TestRewindMultiChain(t *testing.T) {
 		i.OnEvent(superevents.LocalSafeUpdateEvent{
 			ChainID: chainID,
 			NewLocalSafe: types.DerivedBlockSealPair{
-				DerivedFrom: types.BlockSeal{
+				Source: types.BlockSeal{
 					Hash:   l1Block1.Hash,
 					Number: l1Block1.Number,
 				},
@@ -566,7 +566,7 @@ func TestRewindL2WalkBack(t *testing.T) {
 	i.OnEvent(superevents.LocalSafeUpdateEvent{
 		ChainID: chainID,
 		NewLocalSafe: types.DerivedBlockSealPair{
-			DerivedFrom: types.BlockSeal{
+			Source: types.BlockSeal{
 				Hash:   block4B.L1Origin.Hash,
 				Number: block4B.L1Origin.Number,
 			},
@@ -772,12 +772,12 @@ func setupTestChains(t *testing.T, chainIDs ...eth.ChainID) *testSetup {
 		// Create and open the local derived-from DB
 		localDB, err := fromda.NewFromFile(logger, &stubMetrics{}, filepath.Join(chainDir, "local_safe.db"))
 		require.NoError(t, err)
-		chainsDB.AddLocalDerivedFromDB(chainID, localDB)
+		chainsDB.AddLocalDerivationDB(chainID, localDB)
 
 		// Create and open the cross derived-from DB
 		crossDB, err := fromda.NewFromFile(logger, &stubMetrics{}, filepath.Join(chainDir, "cross_safe.db"))
 		require.NoError(t, err)
-		chainsDB.AddCrossDerivedFromDB(chainID, crossDB)
+		chainsDB.AddCrossDerivationDB(chainID, crossDB)
 
 		// Add cross-unsafe tracker
 		chainsDB.AddCrossUnsafeTracker(chainID)

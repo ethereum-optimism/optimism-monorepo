@@ -3,7 +3,7 @@ package system
 import (
 	"context"
 	"fmt"
-	"strconv"
+	"math/big"
 	"sync"
 
 	"github.com/ethereum-optimism/optimism/devnet-sdk/constraints"
@@ -119,9 +119,12 @@ func (c *chain) Wallet(ctx context.Context, constraints ...constraints.WalletCon
 
 func (c *chain) ID() types.ChainID {
 	if c.id == "" {
-		return types.ChainID(0)
+		return types.ChainID(big.NewInt(0))
 	}
-	id, _ := strconv.ParseUint(c.id, 10, 64)
+	id, ok := new(big.Int).SetString(c.id, 10)
+	if !ok {
+		return types.ChainID(big.NewInt(0))
+	}
 	return types.ChainID(id)
 }
 

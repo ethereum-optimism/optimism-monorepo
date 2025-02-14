@@ -39,12 +39,28 @@ type RPCBlock struct {
 }
 
 func getBlock(ctx context.Context, client client.RPC, method string, tag string) (*types.Block, error) {
-	var bl *RPCBlock
-	err := client.CallContext(ctx, &bl, method, tag, true)
+	var raw json.RawMessage
+	err := client.CallContext(ctx, &raw, method, tag, true)
 	if err != nil {
 		return nil, err
 	}
-	return types.NewBlockWithHeader(&bl.Header).WithBody(types.Body{Transactions: bl.Transactions}), nil
+
+	var head *types.Header
+	if err := json.Unmarshal(raw, &head); err != nil {
+		return nil, err
+	}
+
+	type rpcBlock struct {
+		Hash         common.Hash          `json:"hash"`
+		Transactions []*types.Transaction `json:"transactions"`
+	}
+
+	var body *rpcBlock
+	if err := json.Unmarshal(raw, &body); err != nil {
+		return nil, err
+	}
+
+	return types.NewBlockWithHeader(head).WithBody(types.Body{Transactions: body.Transactions}), nil
 }
 
 func getHeader(ctx context.Context, client client.RPC, method string, tag string) (*types.Header, error) {

@@ -682,6 +682,11 @@
             "internalType": "contract IProxyAdmin",
             "name": "proxyAdmin",
             "type": "address"
+          },
+          {
+            "internalType": "Claim",
+            "name": "absolutePrestate",
+            "type": "bytes32"
           }
         ],
         "internalType": "struct OPContractsManager.OpChainConfig[]",
@@ -743,6 +748,37 @@
       }
     ],
     "name": "Deployed",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "l2ChainId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "GameType",
+        "name": "gameType",
+        "type": "uint32"
+      },
+      {
+        "indexed": false,
+        "internalType": "contract IDisputeGame",
+        "name": "newDisputeGame",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "contract IDisputeGame",
+        "name": "oldDisputeGame",
+        "type": "address"
+      }
+    ],
+    "name": "GameTypeAdded",
     "type": "event"
   },
   {
@@ -861,6 +897,11 @@
   {
     "inputs": [],
     "name": "OnlyUpgradeController",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "PrestateNotSet",
     "type": "error"
   },
   {

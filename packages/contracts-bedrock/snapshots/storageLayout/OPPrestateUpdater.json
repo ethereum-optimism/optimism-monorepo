@@ -1,0 +1,30 @@
+[
+  {
+    "bytes": "32",
+    "label": "L1_CONTRACTS_RELEASE",
+    "offset": 0,
+    "slot": "0",
+    "type": "string"
+  },
+  {
+    "bytes": "288",
+    "label": "blueprint",
+    "offset": 0,
+    "slot": "1",
+    "type": "struct OPContractsManager.Blueprints"
+  },
+  {
+    "bytes": "384",
+    "label": "implementation",
+    "offset": 0,
+    "slot": "10",
+    "type": "struct OPContractsManager.Implementations"
+  },
+  {
+    "bytes": "1",
+    "label": "isRC",
+    "offset": 0,
+    "slot": "22",
+    "type": "bool"
+  }
+]

@@ -108,6 +108,7 @@ func NewSupervisorBackend(ctx context.Context, logger log.Logger,
 	}
 
 	eventSys := event.NewSystem(logger, eventExec)
+	eventSys.AddTracer(event.NewMetricsTracer(m))
 
 	sysCtx, sysCancel := context.WithCancel(ctx)
 
@@ -255,17 +256,17 @@ func (su *SupervisorBackend) openChainDBs(chainID eth.ChainID) error {
 	}
 	su.chainDBs.AddLogDB(chainID, logDB)
 
-	localDB, err := db.OpenLocalDerivedFromDB(su.logger, chainID, su.dataDir, cm)
+	localDB, err := db.OpenLocalDerivationDB(su.logger, chainID, su.dataDir, cm)
 	if err != nil {
 		return fmt.Errorf("failed to open local derived-from DB of chain %s: %w", chainID, err)
 	}
-	su.chainDBs.AddLocalDerivedFromDB(chainID, localDB)
+	su.chainDBs.AddLocalDerivationDB(chainID, localDB)
 
-	crossDB, err := db.OpenCrossDerivedFromDB(su.logger, chainID, su.dataDir, cm)
+	crossDB, err := db.OpenCrossDerivationDB(su.logger, chainID, su.dataDir, cm)
 	if err != nil {
 		return fmt.Errorf("failed to open cross derived-from DB of chain %s: %w", chainID, err)
 	}
-	su.chainDBs.AddCrossDerivedFromDB(chainID, crossDB)
+	su.chainDBs.AddCrossDerivationDB(chainID, crossDB)
 
 	su.chainDBs.AddCrossUnsafeTracker(chainID)
 
@@ -456,8 +457,8 @@ func (su *SupervisorBackend) CrossSafe(ctx context.Context, chainID eth.ChainID)
 		return types.DerivedIDPair{}, err
 	}
 	return types.DerivedIDPair{
-		DerivedFrom: p.DerivedFrom.ID(),
-		Derived:     p.Derived.ID(),
+		Source:  p.Source.ID(),
+		Derived: p.Derived.ID(),
 	}, nil
 }
 
@@ -467,8 +468,8 @@ func (su *SupervisorBackend) LocalSafe(ctx context.Context, chainID eth.ChainID)
 		return types.DerivedIDPair{}, err
 	}
 	return types.DerivedIDPair{
-		DerivedFrom: p.DerivedFrom.ID(),
-		Derived:     p.Derived.ID(),
+		Source:  p.Source.ID(),
+		Derived: p.Derived.ID(),
 	}, nil
 }
 
@@ -522,8 +523,8 @@ func (su *SupervisorBackend) FinalizedL1() eth.BlockRef {
 	return su.chainDBs.FinalizedL1()
 }
 
-func (su *SupervisorBackend) CrossDerivedFrom(ctx context.Context, chainID eth.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error) {
-	v, err := su.chainDBs.CrossDerivedFromBlockRef(chainID, derived)
+func (su *SupervisorBackend) CrossDerivedToSource(ctx context.Context, chainID eth.ChainID, derived eth.BlockID) (source eth.BlockRef, err error) {
+	v, err := su.chainDBs.CrossDerivedToSourceRef(chainID, derived)
 	if err != nil {
 		return eth.BlockRef{}, err
 	}
@@ -542,7 +543,7 @@ func (su *SupervisorBackend) SuperRootAtTimestamp(ctx context.Context, timestamp
 	chainInfos := make([]eth.ChainRootInfo, len(chains))
 	superRootChains := make([]eth.ChainIDAndOutput, len(chains))
 
-	var crossSafeDerivedFrom eth.BlockID
+	var crossSafeSource eth.BlockID
 
 	for i, chainID := range chains {
 		src, ok := su.syncSources.Get(chainID)
@@ -570,12 +571,12 @@ func (su *SupervisorBackend) SuperRootAtTimestamp(ctx context.Context, timestamp
 		if err != nil {
 			return eth.SuperRootResponse{}, err
 		}
-		derivedFrom, err := su.chainDBs.CrossDerivedFrom(chainID, ref.ID())
+		derivedFrom, err := su.chainDBs.CrossDerivedToSource(chainID, ref.ID())
 		if err != nil {
 			return eth.SuperRootResponse{}, err
 		}
-		if crossSafeDerivedFrom.Number == 0 || crossSafeDerivedFrom.Number < derivedFrom.Number {
-			crossSafeDerivedFrom = derivedFrom.ID()
+		if crossSafeSource.Number == 0 || crossSafeSource.Number < derivedFrom.Number {
+			crossSafeSource = derivedFrom.ID()
 		}
 	}
 	superRoot := eth.SuperRoot(&eth.SuperV1{
@@ -583,7 +584,7 @@ func (su *SupervisorBackend) SuperRootAtTimestamp(ctx context.Context, timestamp
 		Chains:    superRootChains,
 	})
 	return eth.SuperRootResponse{
-		CrossSafeDerivedFrom: crossSafeDerivedFrom,
+		CrossSafeDerivedFrom: crossSafeSource,
 		Timestamp:            uint64(timestamp),
 		SuperRoot:            superRoot,
 		Chains:               chainInfos,
@@ -591,7 +592,7 @@ func (su *SupervisorBackend) SuperRootAtTimestamp(ctx context.Context, timestamp
 }
 
 func (su *SupervisorBackend) SyncStatus() (eth.SupervisorSyncStatus, error) {
-	return su.statusTracker.SyncStatus(), nil
+	return su.statusTracker.SyncStatus()
 }
 
 // PullLatestL1 makes the supervisor aware of the latest L1 block. Exposed for testing purposes.
