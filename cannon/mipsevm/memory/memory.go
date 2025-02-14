@@ -81,33 +81,6 @@ func (m *Memory) ForEachPage(fn func(pageIndex Word, page *Page) error) error {
 	return nil
 }
 
-func (m *Memory) invalidate(addr Word) {
-	// addr must be aligned
-	if addr&arch.ExtMask != 0 {
-		panic(fmt.Errorf("unaligned memory access: %x", addr))
-	}
-
-	// find page, and invalidate addr within it
-	if p, ok := m.pageLookup(addr >> PageAddrSize); ok {
-		prevValid := p.Ok[1]
-		p.invalidate(addr & PageAddrMask)
-		if !prevValid { // if the page was already invalid before, then nodes to mem-root will also still be.
-			return
-		}
-	} else { // no page? nothing to invalidate
-		return
-	}
-
-	// find the gindex of the first page covering the address: i.e. ((1 << WordSize) | addr) >> PageAddrSize
-	// Avoid 64-bit overflow by distributing the right shift across the OR.
-	gindex := (uint64(1) << (WordSize - PageAddrSize)) | uint64(addr>>PageAddrSize)
-
-	for gindex > 0 {
-		m.nodes[gindex] = nil
-		gindex >>= 1
-	}
-}
-
 func (m *Memory) MerkleizeSubtree(gindex uint64) [32]byte {
 	l := uint64(bits.Len64(gindex))
 	if l > MemProofLeafCount {
@@ -207,7 +180,20 @@ func (m *Memory) SetWord(addr Word, v Word) {
 		// Go may mmap relatively large ranges, but we only allocate the pages just in time.
 		p = m.AllocPage(pageIndex)
 	} else {
-		m.invalidate(addr) // invalidate this branch of memory, now that the value changed
+		prevValid := p.Ok[1]
+		p.invalidate(pageAddr)
+		if prevValid { // if the page was already invalid before, then nodes to mem-root will also still be.
+
+			// find the gindex of the first page covering the address: i.e. ((1 << WordSize) | addr) >> PageAddrSize
+			// Avoid 64-bit overflow by distributing the right shift across the OR.
+			gindex := (uint64(1) << (WordSize - PageAddrSize)) | uint64(addr>>PageAddrSize)
+
+			for gindex > 0 {
+				m.nodes[gindex] = nil
+				gindex >>= 1
+			}
+
+		}
 	}
 	arch.ByteOrderWord.PutWord(p.Data[pageAddr:pageAddr+arch.WordSizeBytes], v)
 }
