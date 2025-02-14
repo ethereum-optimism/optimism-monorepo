@@ -60,7 +60,7 @@ The `receiptsLoop` which
 
 The `throttlingLoop` which
 
-1. Waits for a signal from the `blockLoadingLoop`
+1. Waits for a signal either from the `blockLoadingLoop` or from the active sequencer endpoint provider (if more than one sequencer endpoint is provided)
 2. If it detects that the pending data in state is over a threshold, calls the sequencer over RPC and tells it to throttle the amount of L2 data it produces. See the (section below)[#data-availability-backlog]
 
 The relationships are shown in this diagram:
