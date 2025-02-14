@@ -301,7 +301,7 @@ func (su *SupervisorBackend) AttachProcessorSource(chainID eth.ChainID, src proc
 	if !ok {
 		return fmt.Errorf("unknown chain %s, cannot attach RPC to processor", chainID)
 	}
-	proc.SetSource(src)
+	proc.AddSource(src)
 	return nil
 }
 
