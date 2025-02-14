@@ -452,7 +452,8 @@ func (t *stubTasks) RunDerivation(
 	_ eth.Bytes32,
 	_ uint64,
 	_ l1.Oracle,
-	_ l2.Oracle) (tasks.DerivationResult, error) {
+	_ l2.Oracle,
+) (tasks.DerivationResult, error) {
 	return tasks.DerivationResult{
 		Head:       t.l2SafeHead,
 		BlockHash:  t.blockHash,
@@ -496,7 +497,6 @@ func (t *stubTasks) ExpectBuildDepositOnlyBlock(
 		mock.Anything,
 		expectL1Head,
 		expectAgreedL2OutputRoot,
-		mock.Anything,
 		mock.Anything,
 		mock.Anything,
 		mock.Anything,

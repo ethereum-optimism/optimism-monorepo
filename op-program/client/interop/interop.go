@@ -189,7 +189,8 @@ func (t *interopTaskExecutor) RunDerivation(
 	agreedOutputRoot eth.Bytes32,
 	claimedBlockNumber uint64,
 	l1Oracle l1.Oracle,
-	l2Oracle l2.Oracle) (tasks.DerivationResult, error) {
+	l2Oracle l2.Oracle,
+) (tasks.DerivationResult, error) {
 	return tasks.RunDerivation(
 		logger,
 		rollupCfg,
