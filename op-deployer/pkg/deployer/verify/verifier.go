@@ -6,8 +6,9 @@ import (
 	"reflect"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/log"
+	"github.com/lmittmann/w3"
+	"github.com/lmittmann/w3/module/eth"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/time/rate"
 
@@ -29,9 +30,12 @@ type Verifier struct {
 	log          log.Logger
 	etherscanUrl string
 	rateLimiter  *rate.Limiter
+	w3Client     *w3.Client
+	numVerified  int
+	numSkipped   int
 }
 
-func NewVerifier(apiKey string, l1ChainID uint64, st *state.State, artifactsFS foundry.StatDirFs, l log.Logger) (*Verifier, error) {
+func NewVerifier(apiKey string, l1ChainID uint64, st *state.State, artifactsFS foundry.StatDirFs, l log.Logger, w3Client *w3.Client) (*Verifier, error) {
 	etherscanUrl := getAPIEndpoint(l1ChainID)
 	if etherscanUrl == "" {
 		return nil, fmt.Errorf("unsupported L1 chain ID: %d", l1ChainID)
@@ -45,6 +49,7 @@ func NewVerifier(apiKey string, l1ChainID uint64, st *state.State, artifactsFS f
 		log:          l,
 		etherscanUrl: etherscanUrl,
 		rateLimiter:  rate.NewLimiter(rate.Limit(3), 2),
+		w3Client:     w3Client,
 	}, nil
 }
 
@@ -58,15 +63,17 @@ func VerifyCLI(cliCtx *cli.Context) error {
 	etherscanAPIKey := cliCtx.String(deployer.EtherscanAPIKeyFlagName)
 	l2ChainIndex := cliCtx.Int(deployer.L2ChainIndexFlagName)
 
-	client, err := ethclient.Dial(l1RPCUrl)
+	ctx := ctxinterrupt.WithCancelOnInterrupt(cliCtx.Context)
+
+	w3Client, err := w3.Dial(l1RPCUrl)
 	if err != nil {
 		return fmt.Errorf("failed to connect to L1: %w", err)
 	}
+	defer w3Client.Close()
 
-	ctx := ctxinterrupt.WithCancelOnInterrupt(cliCtx.Context)
-	l1ChainId, err := client.ChainID(ctx)
-	if err != nil {
-		return err
+	var l1ChainId uint64
+	if err := w3Client.Call(eth.ChainID().Returns(&l1ChainId)); err != nil {
+		return fmt.Errorf("failed to get chain ID: %w", err)
 	}
 
 	st, err := pipeline.ReadState(workdir)
@@ -74,7 +81,7 @@ func VerifyCLI(cliCtx *cli.Context) error {
 		return fmt.Errorf("failed to read state: %w", err)
 	}
 
-	if l1ChainId.Uint64() != st.AppliedIntent.L1ChainID {
+	if l1ChainId != st.AppliedIntent.L1ChainID {
 		return fmt.Errorf("rpc l1 chain ID does not match state l1 chain ID: %d != %d", l1ChainId, st.AppliedIntent.L1ChainID)
 	}
 
@@ -84,7 +91,7 @@ func VerifyCLI(cliCtx *cli.Context) error {
 	}
 	l.Info("Downloaded artifacts", "path", artifactsFS)
 
-	v, err := NewVerifier(etherscanAPIKey, l1ChainId.Uint64(), st, artifactsFS, l)
+	v, err := NewVerifier(etherscanAPIKey, l1ChainId, st, artifactsFS, l, w3Client)
 	if err != nil {
 		return fmt.Errorf("failed to create verifier: %w", err)
 	}
@@ -92,6 +99,10 @@ func VerifyCLI(cliCtx *cli.Context) error {
 	// Retrieve the CLI flags for the contract bundle and contract name.
 	bundleName := cliCtx.String(deployer.ContractBundleFlagName)
 	contractName := cliCtx.String(deployer.ContractNameFlagName)
+
+	defer func() {
+		v.log.Info("final results", "numVerified", v.numVerified, "numSkipped", v.numSkipped)
+	}()
 
 	if bundleName == "" && contractName == "" {
 		if err := v.verifyAll(ctx, l2ChainIndex); err != nil {
@@ -109,7 +120,6 @@ func VerifyCLI(cliCtx *cli.Context) error {
 		// If a contract name is provided without a contract bundle, report an error.
 		return fmt.Errorf("contract-name flag provided without contract-bundle flag")
 	}
-
 	v.log.Info("--- SUCCESS ---")
 	return nil
 }

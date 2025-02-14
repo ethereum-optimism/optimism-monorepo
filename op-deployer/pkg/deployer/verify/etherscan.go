@@ -36,6 +36,7 @@ func (v *Verifier) verifyContract(address common.Address, contractName string) e
 	}
 	if verified {
 		v.log.Info("Contract is already verified", "name", contractName, "address", address.Hex())
+		v.numSkipped++
 		return nil
 	}
 
@@ -85,8 +86,13 @@ func (v *Verifier) verifyContract(address common.Address, contractName string) e
 		return fmt.Errorf("verification request failed: status=%s message=%s result=%s",
 			result.Status, result.Message, result.Result)
 	}
-	v.log.Info("Verification request submitted successfully", "name", contractName, "address", address.Hex())
-	return v.checkVerificationStatus(result.Result)
+	v.log.Info("Verification request submitted", "name", contractName, "address", address.Hex())
+	err = v.checkVerificationStatus(result.Result)
+	if err == nil {
+		v.log.Info("Verification complete", "name", contractName, "address", address.Hex())
+		v.numVerified++
+	}
+	return err
 }
 
 // sendRateLimitedRequest is a helper function which waits for a rate limit token
