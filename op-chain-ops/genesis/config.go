@@ -83,6 +83,9 @@ type DevDeployConfig struct {
 	// FundDevAccounts configures whether to fund the dev accounts.
 	// This should only be used during devnet deployments.
 	FundDevAccounts bool `json:"fundDevAccounts"`
+	// OverrideMessageExpiryTime configures the message expiry time of interop messages.
+	// This should only be used during devnet deployments.
+	OverrideMessageExpiryTime uint64 `json:"overrideMessageExpiryTime"`
 }
 
 type L2GenesisBlockDeployConfig struct {

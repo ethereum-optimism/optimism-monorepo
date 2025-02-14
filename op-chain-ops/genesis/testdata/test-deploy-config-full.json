@@ -74,6 +74,7 @@
   "faultGameGenesisOutputRoot": "0x0000000000000000000000000000000000000000000000000000000000000000",
   "faultGameSplitDepth": 0,
   "faultGameWithdrawalDelay": 604800,
+  "overrideMessageExpiryTime": 0,
   "preimageOracleMinProposalSize": 1800000,
   "preimageOracleChallengePeriod": 86400,
   "systemConfigStartBlock": 0,
