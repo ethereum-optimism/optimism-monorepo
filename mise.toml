@@ -23,7 +23,7 @@ just = "1.37.0"
 # Python dependencies
 "pipx:slither-analyzer" = "0.10.2"
 "pipx:semgrep" = "1.90.0"
-"pipx:frnmst/md-toc" = "875c4368f1cec75115e8d1b76e91fc9a9a45c6b0"
+"pipx:md_toc" = "9.0.0"
 
 # Foundry dependencies
 # Foundry is a special case because it supplies multiple binaries at the same
