@@ -200,9 +200,14 @@ func (db *DB) addLink(derivedFrom eth.BlockRef, derived eth.BlockRef, invalidate
 	lastSource := last.source
 	lastDerived := last.derived
 
+	if (lastSource.Number+1 == derivedFrom.Number) && (lastDerived.Number+1 == derived.Number) {
+		return fmt.Errorf("cannot add source:%s derived:%s on top of last entry source:%s derived:%s, must increment source or derived, not both: %w",
+			derivedFrom, derived, last.source, last.derived, types.ErrOutOfOrder)
+	}
+
 	if lastDerived.ID() == derived.ID() && lastSource.ID() == derivedFrom.ID() {
 		// it shouldn't be possible, but the ID component of a block ref doesn't include the timestamp
-		// so if the timestampt doesn't match, still return no error to the caller, but at least log a warning
+		// so if the timestamp doesn't match, still return no error to the caller, but at least log a warning
 		if lastDerived.Timestamp != derived.Time {
 			db.log.Warn("Derived block already exists with different timestamp", "derived", derived, "lastDerived", lastDerived)
 		}
@@ -222,7 +227,7 @@ func (db *DB) addLink(derivedFrom eth.BlockRef, derived eth.BlockRef, invalidate
 		// I.e. we encountered an empty L1 block, and the same L2 block continues to be the last block that was derived from it.
 		if invalidated != (common.Hash{}) {
 			if lastDerived.Hash != invalidated {
-				return fmt.Errorf("inserting block %s that invalidates %s at height %d, but expected %s", derived.Hash, invalidated, lastDerived.Number, lastDerived.Hash)
+				return fmt.Errorf("inserting block %s that invalidates %s at height %d, but expected %s: %w", derived.Hash, invalidated, lastDerived.Number, lastDerived.Hash, types.ErrConflict)
 			}
 		} else {
 			if lastDerived.Hash != derived.Hash {

@@ -1,6 +1,7 @@
 package fromda
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -97,15 +98,15 @@ func invariantNumberIncrement(prev, current LinkEntry) error {
 	derivedFromSame := current.source.Number == prev.source.Number
 	// At least one of the two must increment, otherwise we are just repeating data in the DB.
 	if derivedSame && derivedFromSame {
-		return fmt.Errorf("expected at least either derivedFrom or derived to increment, but both have same number")
+		return errors.New("expected at least either derivedFrom or derived to increment, but both have same number")
 	}
 	derivedIncrement := current.derived.Number == prev.derived.Number+1
 	derivedFromIncrement := current.source.Number == prev.source.Number+1
-	if !(derivedSame || derivedIncrement) {
-		return fmt.Errorf("expected derived to either stay the same or increment, got prev %s current %s", prev.derived, current.derived)
+	if derivedIncrement && derivedFromIncrement {
+		return errors.New("expected derivedFrom or derived to increment, but not both")
 	}
-	if !(derivedFromSame || derivedFromIncrement) {
-		return fmt.Errorf("expected derivedFrom to either stay the same or increment, got prev %s current %s", prev.source, current.source)
+	if !derivedIncrement && !derivedFromIncrement {
+		return errors.New("expected derivedFrom or derived to increment, but not neither")
 	}
 	return nil
 }
