@@ -209,7 +209,6 @@ var optionalFlags = []cli.Flag{
 	ActiveSequencerCheckDurationFlag,
 	CompressionAlgoFlag,
 	ThrottleThresholdFlag,
-	ThrottleIntervalFlag,
 	ThrottleTxSizeFlag,
 	ThrottleBlockSizeFlag,
 	ThrottleAlwaysBlockSizeFlag,
