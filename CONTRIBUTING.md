@@ -174,6 +174,8 @@ Additionally, if you are writing a new feature, please ensure you add appropriat
 
 Follow the [Development Quick Start](#development-quick-start) to set up your local development environment.
 
+Read any README files in the packages you are contributing to. Some packages have additional instructions that are not covered in this guide.
+
 We recommend using the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) format on commit messages.
 
 Unless your PR is ready for immediate review and merging, please mark it as 'draft' (or simply do not open a PR yet).
