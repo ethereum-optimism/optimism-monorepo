@@ -1377,3 +1377,64 @@ func TestEVM_SingleStep_Swap(t *testing.T) {
 		}
 	}
 }
+
+func TestEVM_SingleStep_Ext(t *testing.T) {
+	t.Parallel()
+	rsReg := uint32(7)
+	rtReg := uint32(9)
+
+	cases := []struct {
+		name           string
+		rs             Word
+		msbd           uint32
+		lsb            uint32
+		funct          uint32
+		expectedResult Word
+	}{
+		// ext
+		// Extract lower 8 bits (byte 0)
+		{name: "ext byte 0", rs: Word(0x12345678), msbd: 8 - 1, lsb: 0, funct: 0b000000, expectedResult: Word(0x78)},
+		// Extract bits 8-15 (byte 1)
+		{name: "ext byte 1", rs: Word(0x12345678), msbd: 8 - 1, lsb: 8, funct: 0b000000, expectedResult: Word(0x56)},
+		// Extract bits 16-23 (byte 2)
+		{name: "ext byte 2", rs: Word(0x12345678), msbd: 8 - 1, lsb: 16, funct: 0b000000, expectedResult: Word(0x34)},
+		// Extract bits 24-31 (byte 3)
+		{name: "ext byte 3", rs: Word(0x12345678), msbd: 8 - 1, lsb: 24, funct: 0b000000, expectedResult: Word(0x12)},
+		// Extract 16-bit halfword from bits 8-23
+		{name: "ext halfword", rs: Word(0x12345678), msbd: 16 - 1, lsb: 8, funct: 0b000000, expectedResult: Word(0x3456)},
+		// Extract full 32-bit word (should return the same value)
+		{name: "ext full word", rs: Word(0x12345678), msbd: 32 - 1, lsb: 0, funct: 0b000000, expectedResult: Word(0x12345678)},
+	}
+
+	versions := GetMipsVersionTestCases(t)
+	for _, v := range versions {
+		for i, tt := range cases {
+			testName := fmt.Sprintf("%v (%v)", tt.name, v.Name)
+			t.Run(testName, func(t *testing.T) {
+				// Set up state
+				goVm := v.VMFactory(nil, os.Stdout, os.Stderr, testutil.CreateLogger(), testutil.WithRandomization(int64(i)))
+				state := goVm.GetState()
+
+				var insn uint32
+				insn = 0b011111<<26 | rsReg<<21 | rtReg<<16 | tt.msbd<<11 | tt.lsb<<6 | tt.funct
+
+				testutil.StoreInstruction(state.GetMemory(), state.GetPC(), insn)
+				state.GetRegistersRef()[rsReg] = tt.rs
+				// step := state.GetStep()
+
+				// Setup expectations
+				expected := testutil.NewExpectedState(state)
+				expected.ExpectStep()
+				expected.Registers[rtReg] = tt.expectedResult
+				// stepWitness, err := goVm.Step(true)
+				_, err := goVm.Step(true)
+				require.NoError(t, err)
+
+				// Check expectations
+				expected.Validate(t, state)
+
+				// testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
+			})
+		}
+	}
+}

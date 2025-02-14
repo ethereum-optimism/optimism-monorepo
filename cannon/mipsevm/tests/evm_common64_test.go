@@ -727,6 +727,22 @@ func TestEVM_SingleStep_Ext64(t *testing.T) {
 		{name: "dextu 24-bit field", rs: Word(0x123456789ABCDEF0), msbd: 24 - 1, lsb: 36, funct: 0b000010, expectedResult: Word(0x234567)},
 		// Extract full 32-bit word from bit 32
 		{name: "dextu full word", rs: Word(0x123456789ABCDEF0), msbd: 32 - 1, lsb: 32, funct: 0b000010, expectedResult: Word(0x12345678)},
+
+		// ext
+		// Extract lower 8 bits (byte 0)
+		{name: "ext byte 0", rs: Word(0x12345678), msbd: 8 - 1, lsb: 0, funct: 0b000000, expectedResult: Word(0x78)},
+		// Extract bits 8-15 (byte 1)
+		{name: "ext byte 1", rs: Word(0x12345678), msbd: 8 - 1, lsb: 8, funct: 0b000000, expectedResult: Word(0x56)},
+		// Extract bits 16-23 (byte 2)
+		{name: "ext byte 2", rs: Word(0x12345678), msbd: 8 - 1, lsb: 16, funct: 0b000000, expectedResult: Word(0x34)},
+		// Extract bits 24-31 (byte 3)
+		{name: "ext byte 3", rs: Word(0x12345678), msbd: 8 - 1, lsb: 24, funct: 0b000000, expectedResult: Word(0x12)},
+		// Extract 16-bit halfword from bits 8-23
+		{name: "ext halfword", rs: Word(0x12345678), msbd: 16 - 1, lsb: 8, funct: 0b000000, expectedResult: Word(0x3456)},
+		// Extract full 32-bit word (should return the same value)
+		{name: "ext full word", rs: Word(0x12345678), msbd: 32 - 1, lsb: 0, funct: 0b000000, expectedResult: Word(0x12345678)},
+		// Extract full 32-bit word sign extended
+		{name: "ext full word", rs: Word(0xFFFFFFFF), msbd: 32 - 1, lsb: 0, funct: 0b000000, expectedResult: Word(0xFFFFFFFFFFFFFFFF)},
 	}
 
 	versions := GetMipsVersionTestCases(t)
@@ -747,6 +763,8 @@ func TestEVM_SingleStep_Ext64(t *testing.T) {
 				} else if tt.funct == 0b00_0010 { // dextu
 					require.GreaterOrEqual(t, tt.lsb, uint32(32), "lsb should be >= 32 for dextu")
 					insn = 0b011111<<26 | rsReg<<21 | rtReg<<16 | tt.msbd<<11 | (tt.lsb-32)<<6 | tt.funct
+				} else if tt.funct == 0b00_0000 { // ext
+					insn = 0b011111<<26 | rsReg<<21 | rtReg<<16 | tt.msbd<<11 | tt.lsb<<6 | tt.funct
 				}
 
 				testutil.StoreInstruction(state.GetMemory(), state.GetPC(), insn)
