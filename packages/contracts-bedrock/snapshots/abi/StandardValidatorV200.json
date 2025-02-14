@@ -64,13 +64,18 @@
             "type": "address"
           }
         ],
-        "internalType": "struct StandardValidatorV200.ImplementationsV200",
+        "internalType": "struct StandardValidatorBase.ImplementationsBase",
         "name": "_implementations",
         "type": "tuple"
       },
       {
         "internalType": "contract ISuperchainConfig",
         "name": "_superchainConfig",
+        "type": "address"
+      },
+      {
+        "internalType": "contract IProtocolVersions",
+        "name": "_protocolVersions",
         "type": "address"
       },
       {
@@ -393,6 +398,19 @@
   },
   {
     "inputs": [],
+    "name": "protocolVersions",
+    "outputs": [
+      {
+        "internalType": "contract IProtocolVersions",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "protocolVersionsImpl",
     "outputs": [
       {
@@ -494,11 +512,6 @@
           {
             "internalType": "contract ISystemConfig",
             "name": "sysCfg",
-            "type": "address"
-          },
-          {
-            "internalType": "contract IProtocolVersions",
-            "name": "protocolVersions",
             "type": "address"
           },
           {
