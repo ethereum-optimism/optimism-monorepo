@@ -85,6 +85,11 @@ func (v BlockVersion) HasWithdrawalsRoot() bool {
 	return v == BlockV4
 }
 
+// ImpliesRequestsRoot returns whether an empty requests-root should be assumed to be there, but not encoded.
+func (v BlockVersion) ImpliesRequestsRoot() bool {
+	return v == BlockV4
+}
+
 func executionPayloadFixedPart(version BlockVersion) uint32 {
 	if version == BlockV4 {
 		return blockV4FixedPart
@@ -488,6 +493,11 @@ func (envelope *ExecutionPayloadEnvelope) UnmarshalSSZ(version BlockVersion, sco
 	err = payload.UnmarshalSSZ(version, scope-32, r)
 	if err != nil {
 		return err
+	}
+
+	if version.ImpliesRequestsRoot() {
+		h := types.EmptyRequestsHash
+		envelope.RequestsHash = &h
 	}
 
 	envelope.ExecutionPayload = &payload
