@@ -932,3 +932,71 @@ func TestEVM_SingleStep_Swap64(t *testing.T) {
 		}
 	}
 }
+
+func TestEVM_SingleStep_SignExtend64(t *testing.T) {
+	t.Parallel()
+	rdReg := uint32(8)
+	rtReg := uint32(9)
+	cases := []struct {
+		name           string
+		rt             Word
+		funct          uint32
+		special        uint32
+		expectedResult Word
+	}{
+		// seb
+		// Sign-extend byte (positive value)
+		{name: "seb positive", rt: Word(0x0000007F), funct: 0b100000, special: 0b10000, expectedResult: Word(0x000000000000007F)},
+		// Sign-extend byte (negative value)
+		{name: "seb negative", rt: Word(0x00000080), funct: 0b100000, special: 0b10000, expectedResult: Word(0xFFFFFFFFFFFFFF80)},
+		// Sign-extend byte (mid-range)
+		{name: "seb mid-range", rt: Word(0x00000055), funct: 0b100000, special: 0b10000, expectedResult: Word(0x0000000000000055)},
+		// Sign-extend byte (full 8-bit set)
+		{name: "seb full-byte", rt: Word(0x000000FF), funct: 0b100000, special: 0b10000, expectedResult: Word(0xFFFFFFFFFFFFFFFF)},
+		// Sign-extend byte with upper bits set
+		{name: "seb upper bits", rt: Word(0x123456FF), funct: 0b100000, special: 0b10000, expectedResult: Word(0xFFFFFFFFFFFFFFFF)},
+
+		// seh
+		{name: "seh positive", rt: Word(0x00007FFF), funct: 0b100000, special: 0b11000, expectedResult: Word(0x0000000000007FFF)},
+		// Sign-extend halfword (negative value)
+		{name: "seh negative", rt: Word(0x00008000), funct: 0b100000, special: 0b11000, expectedResult: Word(0xFFFFFFFFFFFF8000)},
+		// Sign-extend halfword (mid-range)
+		{name: "seh mid-range", rt: Word(0x00005555), funct: 0b100000, special: 0b11000, expectedResult: Word(0x0000000000005555)},
+		// Sign-extend halfword (full 16-bit set)
+		{name: "seh full-halfword", rt: Word(0x0000FFFF), funct: 0b100000, special: 0b11000, expectedResult: Word(0xFFFFFFFFFFFFFFFF)},
+		// Sign-extend halfword with upper bits set
+		{name: "seh upper bits", rt: Word(0x1234FFFF), funct: 0b100000, special: 0b11000, expectedResult: Word(0xFFFFFFFFFFFFFFFF)},
+	}
+
+	versions := GetMipsVersionTestCases(t)
+	for _, v := range versions {
+		for i, tt := range cases {
+			testName := fmt.Sprintf("%v (%v)", tt.name, v.Name)
+			t.Run(testName, func(t *testing.T) {
+				// Set up state
+				goVm := v.VMFactory(nil, os.Stdout, os.Stderr, testutil.CreateLogger(), testutil.WithRandomization(int64(i)))
+				state := goVm.GetState()
+
+				var insn uint32
+				insn = 0b011111<<26 | rtReg<<16 | rdReg<<11 | tt.special<<6 | tt.funct
+
+				testutil.StoreInstruction(state.GetMemory(), state.GetPC(), insn)
+				state.GetRegistersRef()[rtReg] = tt.rt
+				// step := state.GetStep()
+
+				// Setup expectations
+				expected := testutil.NewExpectedState(state)
+				expected.ExpectStep()
+				expected.Registers[rdReg] = tt.expectedResult
+				// stepWitness, err := goVm.Step(true)
+				_, err := goVm.Step(true)
+				require.NoError(t, err)
+
+				// Check expectations
+				expected.Validate(t, state)
+
+				// testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
+			})
+		}
+	}
+}

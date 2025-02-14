@@ -1250,3 +1250,70 @@ func TestEVM_SingleStep_Rot(t *testing.T) {
 		}
 	}
 }
+
+func TestEVM_SingleStep_SignExtend(t *testing.T) {
+	rdReg := uint32(8)
+	rtReg := uint32(9)
+	versions := GetMipsVersionTestCases(t)
+	cases := []struct {
+		name      string
+		rt        Word
+		funct     uint32
+		special   uint32
+		expectVal Word
+	}{
+		// seb
+		// Sign-extend byte (positive value)
+		{name: "seb positive", rt: Word(0x0000007F), funct: 0b100000, special: 0b10000, expectVal: Word(0x0000007F)},
+		// Sign-extend byte (negative value)
+		{name: "seb negative", rt: Word(0x00000080), funct: 0b100000, special: 0b10000, expectVal: Word(0xFFFFFF80)},
+		// Sign-extend byte (mid-range)
+		{name: "seb mid-range", rt: Word(0x00000055), funct: 0b100000, special: 0b10000, expectVal: Word(0x00000055)},
+		// Sign-extend byte (full 8-bit set)
+		{name: "seb full-byte", rt: Word(0x000000FF), funct: 0b100000, special: 0b10000, expectVal: Word(0xFFFFFFFF)},
+		// Sign-extend byte with upper bits set
+		{name: "seb upper bits", rt: Word(0x123456FF), funct: 0b100000, special: 0b10000, expectVal: Word(0xFFFFFFFF)},
+
+		// seh
+		// Sign-extend halfword (positive value)
+		{name: "seh positive", rt: Word(0x00007FFF), funct: 0b100000, special: 0b11000, expectVal: Word(0x00007FFF)},
+		// Sign-extend halfword (negative value)
+		{name: "seh negative", rt: Word(0x00008000), funct: 0b100000, special: 0b11000, expectVal: Word(0xFFFF8000)},
+		// Sign-extend halfword (mid-range)
+		{name: "seh mid-range", rt: Word(0x00005555), funct: 0b100000, special: 0b11000, expectVal: Word(0x00005555)},
+		// Sign-extend halfword (full 16-bit set)
+		{name: "seh full-halfword", rt: Word(0x0000FFFF), funct: 0b100000, special: 0b11000, expectVal: Word(0xFFFFFFFF)},
+		// Sign-extend halfword with upper bits set
+		{name: "seh upper bits", rt: Word(0x1234FFFF), funct: 0b100000, special: 0b11000, expectVal: Word(0xFFFFFFFF)},
+	}
+
+	for _, v := range versions {
+		for i, tt := range cases {
+			testName := fmt.Sprintf("%v (%v)", tt.name, v.Name)
+			t.Run(testName, func(t *testing.T) {
+				goVm := v.VMFactory(nil, os.Stdout, os.Stderr, testutil.CreateLogger(), testutil.WithRandomization(int64(i)), testutil.WithPC(0), testutil.WithNextPC(4))
+				state := goVm.GetState()
+				var insn uint32
+				insn = 0b011111<<26 | rtReg<<16 | rdReg<<11 | tt.special<<6 | tt.funct
+
+				testutil.StoreInstruction(state.GetMemory(), state.GetPC(), insn)
+				state.GetRegistersRef()[rtReg] = tt.rt
+				//step := state.GetStep()
+
+				// Setup expectations
+				expected := testutil.NewExpectedState(state)
+				expected.ExpectStep()
+
+				expected.Registers[rdReg] = tt.expectVal
+
+				// stepWitness, err := goVm.Step(true)
+				_, err := goVm.Step(true)
+				require.NoError(t, err)
+
+				// Check expectations
+				expected.Validate(t, state)
+				// testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
+			})
+		}
+	}
+}
