@@ -96,6 +96,10 @@ type ChainsDB struct {
 	// unsafe info: the sequence of block seals and events
 	logDBs locks.RWMap[eth.ChainID, LogStorage]
 
+	// initLocks: used to prevent certain database calls until initialization is signaled
+	// uninitialized chains won't have values in the map
+	initialized locks.RWMap[eth.ChainID, struct{}]
+
 	// cross-unsafe: how far we have processed the unsafe data.
 	// If present but set to a zeroed value the cross-unsafe will fallback to cross-safe.
 	crossUnsafe locks.RWMap[eth.ChainID, *locks.RWValue[types.BlockSeal]]
@@ -146,8 +150,7 @@ func (db *ChainsDB) OnEvent(ev event.Event) bool {
 	case superevents.AnchorEvent:
 		db.logger.Info("Received chain anchor information",
 			"chain", x.ChainID, "derived", x.Anchor.Derived, "source", x.Anchor.Source)
-		db.maybeInitEventsDB(x.ChainID, x.Anchor)
-		db.maybeInitSafeDB(x.ChainID, x.Anchor)
+		db.initFromAnchor(x.ChainID, x.Anchor)
 	case superevents.LocalDerivedEvent:
 		db.UpdateLocalSafe(x.ChainID, x.Derived.Source, x.Derived.Derived)
 	case superevents.FinalizedL1RequestEvent:

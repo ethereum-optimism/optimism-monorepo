@@ -1,7 +1,6 @@
 package syncnode
 
 import (
-	"context"
 	"fmt"
 	"sync/atomic"
 
@@ -11,7 +10,6 @@ import (
 	"github.com/ethereum-optimism/optimism/op-node/rollup/event"
 	"github.com/ethereum-optimism/optimism/op-service/locks"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
-	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/superevents"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 )
 
@@ -82,18 +80,10 @@ func (snc *SyncNodesController) AttachNodeController(chainID eth.ChainID, ctrl S
 
 	logger.Info("Attaching node", "chain", chainID, "passive", noSubscribe)
 
+	// create the managed node, register and return
 	node := NewManagedNode(logger, chainID, ctrl, snc.backend, noSubscribe)
 	snc.eventSys.Register(name, node, event.DefaultRegisterOpts())
-
 	controllersForChain.Set(node, struct{}{})
-	anchor, err := ctrl.AnchorPoint(context.Background())
-	if err != nil {
-		return nil, fmt.Errorf("failed to get anchor point: %w", err)
-	}
-	snc.emitter.Emit(superevents.AnchorEvent{
-		ChainID: chainID,
-		Anchor:  anchor,
-	})
 	node.Start()
 	return node, nil
 }

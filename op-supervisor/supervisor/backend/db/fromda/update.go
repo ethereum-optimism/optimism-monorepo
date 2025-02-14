@@ -186,6 +186,7 @@ func (db *DB) addLink(derivedFrom eth.BlockRef, derived eth.BlockRef, invalidate
 		if err := db.store.Append(e); err != nil {
 			return err
 		}
+		db.log.Debug("First entry in DB", "entry", link)
 		db.m.RecordDBDerivedEntryCount(db.store.Size())
 		return nil
 	}
