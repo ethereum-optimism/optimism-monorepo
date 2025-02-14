@@ -48,7 +48,12 @@ func Test_Operator_Fee_Constistency(gt *testing.T) {
 		env.Miner.ActL1StartBlock(12)(t)
 		env.Miner.ActL1EndBlock(t)
 
-		aliceInitialBalance, err := env.Engine.EthClient().BalanceAt(context.Background(), env.Alice.Address(), nil)
+		aliceInitialBalance, err := env.Engine.EthClient().
+			BalanceAt(context.Background(), env.Alice.Address(), nil)
+		require.NoError(t, err)
+
+		l1BaseFeeVaultInitialBalance, err := env.Engine.EthClient().
+			BalanceAt(context.Background(), env.Dp.DeployConfig.BaseFeeVaultRecipient, nil)
 		require.NoError(t, err)
 
 		env.Sequencer.ActL2StartBlock(t)
@@ -68,17 +73,24 @@ func Test_Operator_Fee_Constistency(gt *testing.T) {
 		l1FeeVaultBalance, err := env.Engine.EthClient().BalanceAt(context.Background(), predeploys.L1FeeVaultAddr, nil)
 		require.NoError(t, err)
 
-		OperatorFeeVaultBalance, err := env.Engine.EthClient().BalanceAt(context.Background(), predeploys.OperatorFeeVaultAddr, nil)
+		BaseFeeVaultFinalBalance, err := env.Engine.EthClient().
+			BalanceAt(context.Background(), predeploys.BaseFeeVaultAddr, nil)
 		require.NoError(t, err)
+
+		OperatorFeeVaultBalance, err := env.Engine.EthClient().BalanceAt(context.Background(), predeploys.OperatorFeeVaultAddr, nil)
 
 		aliceFinalBalance, err := env.Engine.EthClient().BalanceAt(context.Background(), env.Alice.Address(), nil)
 		require.NoError(t, err)
+
+		require.True(t, aliceFinalBalance.Cmp(aliceInitialBalance) < 0, "Alice's balance should decrease")
 
 		// Check that the operator fee sent to the vault is correct
 		require.Equal(t,
 			new(big.Int).Add(
 				new(big.Int).Div(
-					new(big.Int).Mul(new(big.Int).SetUint64(receipt.GasUsed), new(big.Int).SetUint64(uint64(OperatorFeeScalar))),
+					new(
+						big.Int,
+					).Mul(new(big.Int).SetUint64(receipt.GasUsed), new(big.Int).SetUint64(uint64(OperatorFeeScalar))),
 					new(big.Int).SetUint64(1e6),
 				),
 				new(big.Int).SetUint64(OperatorFeeConstant),
@@ -87,14 +99,23 @@ func Test_Operator_Fee_Constistency(gt *testing.T) {
 		)
 
 		// Check that no Ether has been minted or burned
-		require.Equal(t,
+		initialTotalBalance := new(big.Int).Add(
 			aliceInitialBalance,
+			l1BaseFeeVaultInitialBalance,
+		)
+		finalTotalBalance := new(big.Int).Add(
+			aliceFinalBalance,
+			new(big.Int).Add(l1FeeVaultBalance, new(big.Int).Add(OperatorFeeVaultBalance, BaseFeeVaultFinalBalance)),
+		)
+		require.Equal(t, initialTotalBalance, finalTotalBalance)
+
+		// Check that the difference in alice's balance is equal to the total fee
+		aliceBalanceDiff := new(big.Int).Sub(aliceFinalBalance, aliceInitialBalance)
+		require.Equal(t,
+			aliceBalanceDiff,
 			new(big.Int).Add(
-				aliceFinalBalance,
-				new(big.Int).Add(
-					new(big.Int).Mul(new(big.Int).SetUint64(receipt.GasUsed), receipt.EffectiveGasPrice),
-					new(big.Int).Add(l1FeeVaultBalance, OperatorFeeVaultBalance),
-				),
+				new(big.Int).Add(l1FeeVaultBalance, OperatorFeeVaultBalance),
+				BaseFeeVaultFinalBalance,
 			),
 		)
 
