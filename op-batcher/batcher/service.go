@@ -139,17 +139,20 @@ func (bs *BatcherService) initFromCLIConfig(ctx context.Context, version string,
 		return fmt.Errorf("failed to start RPC server: %w", err)
 	}
 
-	// If we use an active endpoint provider, we need to set up the callback to notify the driver any time we
+	// If we use an active endpoint provider AND throttling is enabled,
+	// we need to set up the callback to notify the driver any time we
 	// get a new active sequencer
 	if provider, ok := bs.EndpointProvider.(*dial.ActiveL2EndpointProvider); ok {
-		// callback to notify the driver of a new active sequencer
-		cb := func() {
-			select {
-			case bs.driver.activeSequencerChanged <- struct{}{}:
-			default:
+		if cfg.ThrottleThreshold > 0 {
+			// callback to notify the driver of a new active sequencer
+			cb := func() {
+				select {
+				case bs.driver.activeSequencerChanged <- struct{}{}:
+				default:
+				}
 			}
+			provider.ActiveL2RollupProvider.SetOnActiveProviderChanged(cb)
 		}
-		provider.ActiveL2RollupProvider.SetOnActiveProviderChanged(cb)
 	}
 
 	bs.Metrics.RecordInfo(bs.Version)
