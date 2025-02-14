@@ -19,6 +19,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
 	"github.com/ethereum-optimism/optimism/op-service/testutils"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
 	supervisortypes "github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 	"github.com/ethereum/go-ethereum/common"
 	gethTypes "github.com/ethereum/go-ethereum/core/types"
@@ -48,9 +49,14 @@ func setupTwoChains() (*staticConfigSource, *eth.SuperV1, *stubTasks) {
 			{ChainID: eth.ChainIDFromBig(rollupCfg2.L2ChainID), Output: eth.OutputRoot(&eth.OutputV0{BlockHash: common.Hash{0x22}})},
 		},
 	}
+	depset, _ := depset.NewStaticConfigDependencySet(map[eth.ChainID]*depset.StaticConfigDependency{
+		eth.ChainIDFromBig(rollupCfg1.L2ChainID): {ChainIndex: supervisortypes.ChainIndex(rollupCfg1.L2ChainID.Uint64()), ActivationTime: 0, HistoryMinTime: 0},
+		eth.ChainIDFromBig(rollupCfg2.L2ChainID): {ChainIndex: supervisortypes.ChainIndex(rollupCfg2.L2ChainID.Uint64()), ActivationTime: 0, HistoryMinTime: 0},
+	})
 	configSource := &staticConfigSource{
 		rollupCfgs:   []*rollup.Config{rollupCfg1, &rollupCfg2},
 		chainConfigs: []*params.ChainConfig{chainCfg1, &chainCfg2},
+		depset:       depset,
 	}
 	tasksStub := &stubTasks{
 		l2SafeHead: eth.L2BlockRef{Number: 918429823450218}, // Past the claimed block
@@ -568,6 +574,7 @@ func (t *stubTasks) ExpectBuildDepositOnlyBlock(
 type staticConfigSource struct {
 	rollupCfgs   []*rollup.Config
 	chainConfigs []*params.ChainConfig
+	depset       *depset.StaticConfigDependencySet
 }
 
 func (s *staticConfigSource) RollupConfig(chainID eth.ChainID) (*rollup.Config, error) {
@@ -586,4 +593,8 @@ func (s *staticConfigSource) ChainConfig(chainID eth.ChainID) (*params.ChainConf
 		}
 	}
 	return nil, fmt.Errorf("no chain config found for chain %d", chainID)
+}
+
+func (s *staticConfigSource) DependencySet(chainID eth.ChainID) (*depset.StaticConfigDependencySet, error) {
+	return s.depset, nil
 }

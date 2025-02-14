@@ -16,6 +16,8 @@ import (
 	"github.com/ethereum-optimism/optimism/op-program/client/interop/types"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
+	supervisortypes "github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/require"
@@ -649,7 +651,7 @@ func runFppTest(gt *testing.T, test *transitionTest, actors *dsl.InteropActors) 
 		logger,
 		actors.L1Miner,
 		checkResult,
-		WithInteropEnabled(actors, test.agreedClaim, crypto.Keccak256Hash(test.disputedClaim), proposalTimestamp),
+		WithInteropEnabled(t, actors, test.agreedClaim, crypto.Keccak256Hash(test.disputedClaim), proposalTimestamp),
 		fpHelpers.WithL1Head(l1Head),
 	)
 }
@@ -697,13 +699,32 @@ func runChallengerTest(gt *testing.T, test *transitionTest, actors *dsl.InteropA
 	}
 }
 
-func WithInteropEnabled(actors *dsl.InteropActors, agreedPrestate []byte, disputedClaim common.Hash, claimTimestamp uint64) fpHelpers.FixtureInputParam {
+func WithInteropEnabled(t helpers.StatefulTesting, actors *dsl.InteropActors, agreedPrestate []byte, disputedClaim common.Hash, claimTimestamp uint64) fpHelpers.FixtureInputParam {
 	return func(f *fpHelpers.FixtureInputs) {
 		f.InteropEnabled = true
 		f.AgreedPrestate = agreedPrestate
 		f.L2OutputRoot = crypto.Keccak256Hash(agreedPrestate)
 		f.L2Claim = disputedClaim
 		f.L2BlockNumber = claimTimestamp
+
+		chainIndexA, err := actors.ChainA.ChainID.ToUInt32()
+		require.NoError(t, err)
+		chainIndexB, err := actors.ChainB.ChainID.ToUInt32()
+		require.NoError(t, err)
+		deps := map[eth.ChainID]*depset.StaticConfigDependency{
+			actors.ChainA.ChainID: {
+				ChainIndex:     supervisortypes.ChainIndex(chainIndexA),
+				ActivationTime: 0,
+				HistoryMinTime: 0,
+			},
+			actors.ChainB.ChainID: {
+				ChainIndex:     supervisortypes.ChainIndex(chainIndexB),
+				ActivationTime: 0,
+				HistoryMinTime: 0,
+			},
+		}
+		f.DependencySet, err = depset.NewStaticConfigDependencySet(deps)
+		require.NoError(t, err)
 
 		for _, chain := range []*dsl.Chain{actors.ChainA, actors.ChainB} {
 			f.L2Sources = append(f.L2Sources, &fpHelpers.FaultProofProgramL2Source{
