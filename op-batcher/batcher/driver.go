@@ -508,12 +508,11 @@ func (l *BatchSubmitter) blockLoadingLoop(ctx context.Context, wg *sync.WaitGrou
 				if err := l.loadBlocksIntoState(ctx, blocksToLoad.start, blocksToLoad.end); errors.Is(err, ErrReorg) {
 					l.Log.Warn("error loading blocks, clearing state and waiting for node sync", "err", err)
 					l.waitNodeSyncAndClearState()
-					continue
 				} else {
 					l.sendToThrottlingLoop(pendingBytesUpdated) // we have increased the pending data. Signal the throttling loop to check if it should throttle.
-					l.signalPublishingLoop(blocksLoadedCh)      // signal the write loop that blocks have been loaded
 				}
 			}
+			l.signalPublishingLoop(blocksLoadedCh) // always signal the write loop to ensure we periodically publish even if we aren't loading blocks
 		case <-ctx.Done():
 			l.Log.Info("blockLoadingLoop returning")
 			return
