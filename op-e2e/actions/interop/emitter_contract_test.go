@@ -187,7 +187,10 @@ func initializeEmitterContractTest(t helpers.Testing, aliceA *userWithKeys, acto
 
 func includeTxOnChainBasic(t helpers.Testing, chain *dsl.Chain, tx *types.Transaction, sender common.Address) {
 	chain.Sequencer.ActL2StartBlock(t)
-	require.NoError(t, chain.SequencerEngine.EngineApi.IncludeTx(tx, sender))
+	// is used for building an empty block with tx==nil
+	if tx != nil {
+		require.NoError(t, chain.SequencerEngine.EngineApi.IncludeTx(tx, sender))
+	}
 	chain.Sequencer.ActL2EndBlock(t)
 }
 
