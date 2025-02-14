@@ -21,6 +21,20 @@ import { IDelayedWETH } from "interfaces/dispute/IDelayedWETH.sol";
 // Contracts
 import { OPPrestateUpdater } from "src/L1/OPPrestateUpdater.sol";
 
+interface IOPContractsManager180 {
+struct Blueprints {
+    address addressManager;
+        address proxy;
+        address proxyAdmin;
+        address l1ChugSplashProxy;
+        address resolvedDelegateProxy;
+        address anchorStateRegistry;
+        address permissionedDisputeGame1;
+        address permissionedDisputeGame2;
+    }
+    function blueprints() external view returns (Blueprints memory);
+}
+
 contract DeployOPPrestateUpdater is Script {
     bytes32 internal _salt = DeployUtils.DEFAULT_SALT;
 
@@ -36,18 +50,22 @@ contract DeployOPPrestateUpdater is Script {
         // Superchain shared contracts
         ISuperchainConfig superchainConfig = ISuperchainConfig(vm.parseTomlAddress(superchainToml, ".superchain_config_addr"));
         IProtocolVersions protocolVersions = IProtocolVersions(vm.parseTomlAddress(superchainToml, ".protocol_versions_addr"));
+        IOPContractsManager180 opContractsManager180 = IOPContractsManager180(vm.parseTomlAddress(superchainToml, ".op_contracts_manager_proxy_addr"));
+
+
         // forgefmt: disable-start
-        vm.startBroadcast(msg.sender);
         IOPContractsManager.Blueprints memory blueprints;
         blueprints.addressManager = address(0);
         blueprints.proxy = address(0);
         blueprints.proxyAdmin = address(0);
         blueprints.l1ChugSplashProxy = address(0);
         blueprints.resolvedDelegateProxy = address(0);
-        // The max initcode/runtimecode size is 48KB/24KB.
-        // But for Blueprint, the initcode is stored as runtime code, that's why it's necessary to split into 2 parts.
-        (blueprints.permissionedDisputeGame1, blueprints.permissionedDisputeGame2) = DeployUtils.createDeterministicBlueprint(vm.getCode("PermissionedDisputeGame"), _salt);
-        (blueprints.permissionlessDisputeGame1, blueprints.permissionlessDisputeGame2) = DeployUtils.createDeterministicBlueprint(vm.getCode("FaultDisputeGame"), _salt);
+
+        IOPContractsManager180.Blueprints memory blueprints180 = opContractsManager180.blueprints();
+        blueprints.permissionedDisputeGame1 = blueprints180.permissionedDisputeGame1;
+        blueprints.permissionedDisputeGame2 = blueprints180.permissionedDisputeGame2;
+
+        // (blueprints.permissionlessDisputeGame1, blueprints.permissionlessDisputeGame2) = DeployUtils.createDeterministicBlueprint(vm.getCode("FaultDisputeGame"), _salt);
         // forgefmt: disable-end
 
         oppu = OPPrestateUpdater(
@@ -59,11 +77,10 @@ contract DeployOPPrestateUpdater is Script {
                 _salt: bytes32(_salt)
             })
         );
-        vm.stopBroadcast();
 
-        require(LibString.eq(oppu.l1ContractsRelease(), string.concat("", "-rc")), "OPPUI-30");
         require(address(oppu.superchainConfig()) == address(superchainConfig), "OPPUI-10");
         require(address(oppu.protocolVersions()) == address(protocolVersions), "OPPUI-20");
+        require(LibString.eq(oppu.l1ContractsRelease(), "none"), "OPPUI-30");
 
         require(oppu.upgradeController() == address(0), "OPPUI-40");
 
