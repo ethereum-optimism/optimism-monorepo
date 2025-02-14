@@ -499,51 +499,5 @@
     ],
     "stateMutability": "pure",
     "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "components": [
-          {
-            "internalType": "contract IProxyAdmin",
-            "name": "proxyAdmin",
-            "type": "address"
-          },
-          {
-            "internalType": "contract ISystemConfig",
-            "name": "sysCfg",
-            "type": "address"
-          },
-          {
-            "internalType": "bytes32",
-            "name": "absolutePrestate",
-            "type": "bytes32"
-          },
-          {
-            "internalType": "uint256",
-            "name": "l2ChainID",
-            "type": "uint256"
-          }
-        ],
-        "internalType": "struct StandardValidatorV180.InputV180",
-        "name": "_input",
-        "type": "tuple"
-      },
-      {
-        "internalType": "bool",
-        "name": "_allowFailure",
-        "type": "bool"
-      }
-    ],
-    "name": "validate",
-    "outputs": [
-      {
-        "internalType": "string",
-        "name": "",
-        "type": "string"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
   }
 ]
