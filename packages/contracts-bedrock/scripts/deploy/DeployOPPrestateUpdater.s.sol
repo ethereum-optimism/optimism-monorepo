@@ -25,12 +25,17 @@ contract DeployOPPrestateUpdater is Script {
     bytes32 internal _salt = DeployUtils.DEFAULT_SALT;
 
     function deployOPPrestateUpdater(
-        ISuperchainConfig _superchainConfig,
-        IProtocolVersions _protocolVersions
+        string memory _baseChain
     )
         public
         returns (OPPrestateUpdater oppu)
     {
+        string memory superchainBasePath = "./lib/superchain-registry/superchain/configs/";
+        string memory superchainToml = vm.readFile(string.concat(superchainBasePath, _baseChain, "/superchain.toml"));
+
+        // Superchain shared contracts
+        ISuperchainConfig superchainConfig = ISuperchainConfig(vm.parseTomlAddress(superchainToml, ".superchain_config_addr"));
+        IProtocolVersions protocolVersions = IProtocolVersions(vm.parseTomlAddress(superchainToml, ".protocol_versions_addr"));
         // forgefmt: disable-start
         vm.startBroadcast(msg.sender);
         IOPContractsManager.Blueprints memory blueprints;
@@ -49,16 +54,16 @@ contract DeployOPPrestateUpdater is Script {
             DeployUtils.createDeterministic({
                 _name: "OPPrestateUpdater",
                 _args: DeployUtils.encodeConstructor(
-                    abi.encodeCall(IOPPrestateUpdater.__constructor__, (_superchainConfig, _protocolVersions, blueprints))
+                    abi.encodeCall(IOPPrestateUpdater.__constructor__, (superchainConfig, protocolVersions, blueprints))
                 ),
                 _salt: bytes32(_salt)
             })
         );
         vm.stopBroadcast();
 
-        require(address(oppu.superchainConfig()) == address(_superchainConfig), "OPPUI-10");
-        require(address(oppu.protocolVersions()) == address(_protocolVersions), "OPPUI-20");
         require(LibString.eq(oppu.l1ContractsRelease(), string.concat("", "-rc")), "OPPUI-30");
+        require(address(oppu.superchainConfig()) == address(superchainConfig), "OPPUI-10");
+        require(address(oppu.protocolVersions()) == address(protocolVersions), "OPPUI-20");
 
         require(oppu.upgradeController() == address(0), "OPPUI-40");
 
