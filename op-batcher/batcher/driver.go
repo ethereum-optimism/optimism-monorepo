@@ -126,7 +126,7 @@ func NewBatchSubmitter(setup DriverSetup) *BatchSubmitter {
 	return &BatchSubmitter{
 		DriverSetup:            setup,
 		channelMgr:             state,
-		activeSequencerChanged: make(chan struct{}),
+		activeSequencerChanged: make(chan struct{}, 1),
 	}
 }
 
