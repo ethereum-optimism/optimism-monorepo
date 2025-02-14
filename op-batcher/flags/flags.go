@@ -156,15 +156,9 @@ var (
 		Value:   false,
 		EnvVars: prefixEnvVars("WAIT_NODE_SYNC"),
 	}
-	ThrottleIntervalFlag = &cli.DurationFlag{
-		Name:    "throttle-interval",
-		Usage:   "Interval between potential DA throttling actions. Zero disables throttling.",
-		Value:   2 * time.Second,
-		EnvVars: prefixEnvVars("THROTTLE_INTERVAL"),
-	}
 	ThrottleThresholdFlag = &cli.IntFlag{
 		Name:    "throttle-threshold",
-		Usage:   "The threshold on pending-blocks-bytes-current beyond which the batcher will instruct the block builder to start throttling transactions with larger DA demands",
+		Usage:   "The threshold on pending-blocks-bytes-current beyond which the batcher will instruct the block builder to start throttling transactions with larger DA demands. Zero disables throttling.",
 		Value:   1_000_000,
 		EnvVars: prefixEnvVars("THROTTLE_THRESHOLD"),
 	}
