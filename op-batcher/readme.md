@@ -67,16 +67,29 @@ The relationships are shown in this diagram:
 
 ```mermaid
 architecture-beta
-    group bs(server)[BatchSubmitter]
 
+    service seq(database)[Sequencer]
+    service dalayer(cloud)[DA Layer]
+
+    group bs(server)[BatchSubmitter]
     service blockLoadingLoop(server)[blockLoadingLoop] in bs
     service publishingLoop(server)[publishingLoop] in bs
     service receiptsLoop(server)[receiptsLoop] in bs
     service throttlingLoop(server)[throttlingLoop] in bs
 
-		blockLoadingLoop:R --> L:publishingLoop
-		blockLoadingLoop:B --> T:throttlingLoop
-		publishingLoop:B --> T:receiptsLoop
+    group h(server)[x N] in bs
+    service handler(server)[handler] in h
+
+    blockLoadingLoop:R --> L:publishingLoop
+    blockLoadingLoop:B --> T:throttlingLoop
+    publishingLoop:R -- L:handler{group}
+    handler{group}:B --> T:receiptsLoop
+
+    seq:R -->L:blockLoadingLoop
+    seq:B <--L:throttlingLoop
+
+    publishingLoop:T --> B:dalayer
+    handler:T <--R:dalayer
 ```
 
 ### State variables

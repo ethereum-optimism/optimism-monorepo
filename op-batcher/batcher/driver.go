@@ -177,8 +177,8 @@ func (l *BatchSubmitter) StartBatchSubmitting() error {
 
 	l.wg.Add(3)
 	go l.receiptsLoop(l.wg, receiptsCh)                                           // ranges over receiptsCh channel
-	go l.publishingLoop(l.shutdownCtx, l.wg, receiptsCh, blocksLoaded)            // ranges over blocksLoaded, sends on receiptsCh + closes it when done
-	go l.blockLoadingLoop(l.shutdownCtx, l.wg, pendingBytesUpdated, blocksLoaded) // sends on pendingBytesUpdated (if throttling enabled), and blocksLoaded + closes them both when done
+	go l.publishingLoop(l.shutdownCtx, l.wg, receiptsCh, blocksLoaded)            // ranges over blocksLoaded, spawns routines which send on receiptsCh. Closes receiptsCh when done.
+	go l.blockLoadingLoop(l.shutdownCtx, l.wg, pendingBytesUpdated, blocksLoaded) // sends on pendingBytesUpdated (if throttling enabled), and blocksLoaded. Closes them both when done
 
 	l.Log.Info("Batch Submitter started")
 	return nil
