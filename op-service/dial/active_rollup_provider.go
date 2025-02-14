@@ -137,7 +137,9 @@ func (p *ActiveL2RollupProvider) findActiveEndpoints(ctx context.Context) error 
 				p.log.Debug("Current sequencer active.", "index", idx, "url", ep)
 			} else {
 				p.log.Info("Found new active sequencer.", "index", idx, "url", ep)
-				p.onActiveProviderChanged()
+				if p.onActiveProviderChanged != nil {
+					p.onActiveProviderChanged()
+				}
 			}
 			return nil
 		} else {
