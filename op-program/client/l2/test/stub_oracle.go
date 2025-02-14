@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	interopTypes "github.com/ethereum-optimism/optimism/op-program/client/interop/types"
+	l2Types "github.com/ethereum-optimism/optimism/op-program/client/l2/types"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/rawdb"
@@ -81,6 +82,10 @@ func (o StubBlockOracle) TransitionStateByRoot(root common.Hash) *interopTypes.T
 		o.t.Fatalf("requested unknown transition state root %s", root)
 	}
 	return output
+}
+
+func (o StubBlockOracle) Hinter() l2Types.OracleHinter {
+	return nil
 }
 
 func (o StubBlockOracle) BlockDataByHash(agreedBlockHash, blockHash common.Hash, chainID eth.ChainID) *gethTypes.Block {

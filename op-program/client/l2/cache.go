@@ -2,6 +2,7 @@ package l2
 
 import (
 	interopTypes "github.com/ethereum-optimism/optimism/op-program/client/interop/types"
+	l2Types "github.com/ethereum-optimism/optimism/op-program/client/l2/types"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -38,6 +39,10 @@ func NewCachingOracle(oracle Oracle) *CachingOracle {
 		codes:   codeLRU,
 		outputs: outputLRU,
 	}
+}
+
+func (o *CachingOracle) Hinter() l2Types.OracleHinter {
+	return o.oracle.Hinter()
 }
 
 func (o *CachingOracle) NodeByHash(nodeHash common.Hash, chainID eth.ChainID) []byte {

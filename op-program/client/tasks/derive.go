@@ -50,15 +50,14 @@ func RunDerivation(
 	l1Oracle l1.Oracle,
 	l2Oracle l2.Oracle,
 	db l2.KeyValueStore,
-	options DerivationOptions,
-) (DerivationResult, error) {
+	options DerivationOptions) (DerivationResult, error) {
 	l1Source := l1.NewOracleL1Client(logger, l1Oracle, l1Head)
 	l1BlobsSource := l1.NewBlobFetcher(logger, l1Oracle)
 	engineBackend, err := l2.NewOracleBackedL2Chain(logger, l2Oracle, l1Oracle, l2Cfg, l2OutputRoot, db)
 	if err != nil {
 		return DerivationResult{}, fmt.Errorf("failed to create oracle-backed L2 chain: %w", err)
 	}
-	l2Source := l2.NewOracleEngine(cfg, logger, engineBackend)
+	l2Source := l2.NewOracleEngine(cfg, logger, engineBackend, l2Oracle.Hinter())
 
 	logger.Info("Starting derivation", "chainID", cfg.L2ChainID)
 	d := cldr.NewDriver(logger, cfg, l1Source, l1BlobsSource, l2Source, l2ClaimBlockNum)

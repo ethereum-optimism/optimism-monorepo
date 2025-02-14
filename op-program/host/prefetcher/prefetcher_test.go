@@ -771,6 +771,34 @@ func TestBadHints(t *testing.T) {
 	})
 }
 
+func TestFallbackWhenExperimentalFails(t *testing.T) {
+	rng := rand.New(rand.NewSource(123))
+	node := testutils.RandomData(rng, 30)
+	hash := crypto.Keccak256Hash(node)
+
+	key := preimage.Keccak256Key(hash)
+
+	_, l1Source, l1BlobSource, l2Cls, kv := createPrefetcher(t)
+
+	cl := l2Cls.sources[defaultChainID]
+	cl.experimental = true
+
+	l2Sources := &l2Clients{sources: make(map[eth.ChainID]*l2Client)}
+	l2Sources.sources[defaultChainID] = cl
+
+	prefetcher := NewPrefetcher(testlog.Logger(t, log.LevelInfo), l1Source, l1BlobSource, defaultChainID, l2Sources, kv, nil, common.Hash{}, nil)
+
+	defer l2Cls.sources[defaultChainID].AssertExpectations(t)
+	l2Cls.sources[defaultChainID].ExpectNodeByHash(hash, node, nil)
+	_ = prefetcher.Hint(l2.PayloadWitnessHint{ParentBlockHash: common.Hash{0x1}, PayloadAttributes: &eth.PayloadAttributes{}}.Hint())
+
+	// first should fail, but should succeed after retry
+	_ = prefetcher.Hint(l2.StateNodeHint{Hash: hash, ChainID: defaultChainID}.Hint())
+	result, err := prefetcher.GetPreimage(context.Background(), key.PreimageKey())
+	require.NoError(t, err)
+	require.Equal(t, node, result)
+}
+
 func TestRetryWhenNotAvailableAfterPrefetching(t *testing.T) {
 	rng := rand.New(rand.NewSource(123))
 	node := testutils.RandomData(rng, 30)
@@ -828,7 +856,8 @@ func (l *l2Clients) ForChainIDWithoutRetries(id eth.ChainID) (hostTypes.L2Source
 type l2Client struct {
 	*testutils.MockL2Client
 	*testutils.MockDebugClient
-	rollupCfg *rollup.Config
+	rollupCfg    *rollup.Config
+	experimental bool
 }
 
 func (m *l2Client) RollupConfig() *rollup.Config {
@@ -836,7 +865,11 @@ func (m *l2Client) RollupConfig() *rollup.Config {
 }
 
 func (m *l2Client) ExperimentalEnabled() bool {
-	panic("implement me")
+	return m.experimental
+}
+
+func (m *l2Client) PayloadExecutionWitness(ctx context.Context, parentHash common.Hash, payloadAttributes eth.PayloadAttributes) (*eth.ExecutionWitness, error) {
+	return nil, hostcommon.ErrExperimentalPrefetchFailed
 }
 
 func (m *l2Client) OutputByRoot(ctx context.Context, blockHash common.Hash) (eth.Output, error) {
