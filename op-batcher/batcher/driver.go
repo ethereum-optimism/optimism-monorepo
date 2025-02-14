@@ -177,7 +177,7 @@ func (l *BatchSubmitter) StartBatchSubmitting() error {
 
 	l.wg.Add(3)
 	go l.receiptsLoop(l.wg, receiptsCh)                                           // ranges over receiptsCh channel
-	go l.publishingLoop(l.shutdownCtx, l.wg, receiptsCh, blocksLoaded)            // ranges over blocksLoaded, spawns routines which send on receiptsCh. Closes receiptsCh when done.
+	go l.publishingLoop(l.killCtx, l.wg, receiptsCh, blocksLoaded)                // ranges over blocksLoaded, spawns routines which send on receiptsCh. Closes receiptsCh when done.
 	go l.blockLoadingLoop(l.shutdownCtx, l.wg, pendingBytesUpdated, blocksLoaded) // sends on pendingBytesUpdated (if throttling enabled), and blocksLoaded. Closes them both when done
 
 	l.Log.Info("Batch Submitter started")
@@ -464,7 +464,7 @@ func (l *BatchSubmitter) publishingLoop(ctx context.Context, wg *sync.WaitGroup,
 	if l.Config.MaxConcurrentDARequests > 0 {
 		daGroup.SetLimit(int(l.Config.MaxConcurrentDARequests))
 	}
-	txQueue := txmgr.NewQueue[txRef](l.killCtx, l.Txmgr, l.Config.MaxPendingTransactions)
+	txQueue := txmgr.NewQueue[txRef](ctx, l.Txmgr, l.Config.MaxPendingTransactions)
 
 	for range blocksLoadedCh {
 		if !l.checkTxpool(txQueue, receiptsCh) {
@@ -682,7 +682,7 @@ func (l *BatchSubmitter) publishStateToL1(ctx context.Context, queue *txmgr.Queu
 			return
 		}
 
-		err := l.publishTxToL1(l.killCtx, queue, receiptsCh, daGroup)
+		err := l.publishTxToL1(ctx, queue, receiptsCh, daGroup)
 
 		if err != nil {
 			if err != io.EOF {
