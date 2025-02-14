@@ -769,3 +769,98 @@ func TestEVM_SingleStep_Ext64(t *testing.T) {
 		}
 	}
 }
+
+func TestEVM_SingleStep_Ins64(t *testing.T) {
+	t.Parallel()
+	rsReg := uint32(7)
+	rtReg := uint32(9)
+
+	cases := []struct {
+		name           string
+		rs             Word
+		rt             Word
+		msb            uint32
+		lsb            uint32
+		funct          uint32
+		expectedResult Word
+	}{
+		// dins
+		// Insert 8 bits from rs into rt at bit 16
+		{name: "dins byte insert", rs: Word(0x12345678), rt: Word(0xFFFFFFFFFFFFFFFF), msb: 16 + (8 - 1), lsb: 16, funct: 0b000111, expectedResult: Word(0xFFFFFFFFFF_78_FFFF)},
+		// Insert 12 bits from rs into rt at bit 20
+		{name: "dins 12-bit insert", rs: Word(0x12345678), rt: Word(0xFFFFFFFFFFFFFFFF), msb: 20 + (12 - 1), lsb: 20, funct: 0b000111, expectedResult: Word(0xFFFFFFFF_678_FFFFF)},
+		// Insert 16 bits from rs into rt at bit 8
+		{name: "dins halfword insert", rs: Word(0x12345678), rt: Word(0xFFFFFFFFFFFFFFFF), msb: 8 + (16 - 1), lsb: 8, funct: 0b000111, expectedResult: Word(0xFFFFFFFFFF_5678_FF)},
+		// Insert 24 bits from rs into rt at bit 4
+		{name: "dins 24-bit insert", rs: Word(0x12345678), rt: Word(0xFFFFFFFFFFFFFFFF), msb: 4 + (24 - 1), lsb: 4, funct: 0b000111, expectedResult: Word(0xFFFFFFFFF_345678_F)},
+		// Insert 32 bits from rs into rt at bit 0
+		{name: "dins full word insert", rs: Word(0x12345678), rt: Word(0xFFFFFFFFFFFFFFFF), msb: 0 + (32 - 1), lsb: 0, funct: 0b000111, expectedResult: Word(0xFFFFFFFF_12345678)},
+
+		// dinsm
+		// Insert 32 + 8 bits from rs into rt at bit 24
+		{name: "dinsm byte insert", rs: Word(0x123456789ABCDEF0), rt: Word(0xFFFFFFFFFFFFFFFF), msb: 32 + (8 - 1), lsb: 24, funct: 0b000101, expectedResult: Word(0xFFFFFF_DEF0_FFFFFF)},
+		// Insert 32 + 12 bits from rs into rt at bit 28
+		{name: "dinsm 12-bit insert", rs: Word(0x123456789ABCDEF0), rt: Word(0xFFFFFFFFFFFFFFFF), msb: 32 + (12 - 1), lsb: 28, funct: 0b000101, expectedResult: Word(0xFFFFF_DEF0_FFFFFFF)},
+		// Insert 32 + 16 bits from rs into rt at bit 20
+		{name: "dinsm halfword insert", rs: Word(0x123456789ABCDEF0), rt: Word(0xFFFFFFFFFFFFFFFF), msb: 32 + (16 - 1), lsb: 20, funct: 0b000101, expectedResult: Word(0xFFFF_ABCDEF0_FFFFF)},
+		// Insert 32 + 24 bits from rs into rt at bit 12
+		{name: "dinsm 24-bit insert", rs: Word(0x123456789ABCDEF0), rt: Word(0xFFFFFFFFFFFFFFFF), msb: 32 + (24 - 1), lsb: 12, funct: 0b000101, expectedResult: Word(0xFF_6789ABCDEF0_FFF)},
+		// Insert 32 + 32 bits from rs into rt at bit 0
+		{name: "dinsm full dword insert", rs: Word(0x123456789ABCDEF0), rt: Word(0xFFFFFFFFFFFFFFFF), msb: 32 + (32 - 1), lsb: 0, funct: 0b000101, expectedResult: Word(0x123456789ABCDEF0)},
+
+		// dinsu
+		// Insert 8 bits from rs into rt at bit 40
+		{name: "dinsu byte insert", rs: Word(0x123456789ABCDEF0), rt: Word(0xFFFFFFFFFFFFFFFF), msb: 40 + (8 - 1), lsb: 40, funct: 0b000110, expectedResult: Word(0xFFFF_F0_FFFFFFFFFF)},
+		// Insert 12 bits from rs into rt at bit 44
+		{name: "dinsu 12-bit insert", rs: Word(0x123456789ABCDEF0), rt: Word(0xFFFFFFFFFFFFFFFF), msb: 44 + (12 - 1), lsb: 44, funct: 0b000110, expectedResult: Word(0xFF_EF0_FFFFFFFFFFF)},
+		// Insert 16 bits from rs into rt at bit 48
+		{name: "dinsu halfword insert", rs: Word(0x123456789ABCDEF0), rt: Word(0xFFFFFFFFFFFFFFFF), msb: 48 + (16 - 1), lsb: 48, funct: 0b000110, expectedResult: Word(0xDEF0_FFFFFFFFFFFF)},
+		// Insert 24 bits from rs into rt at bit 36
+		{name: "dinsu 24-bit insert", rs: Word(0x123456789ABCDEF0), rt: Word(0xFFFFFFFFFFFFFFFF), msb: 36 + (24 - 1), lsb: 36, funct: 0b000110, expectedResult: Word(0xF_BCDEF0_FFFFFFFFF)},
+		// Insert 32 bits from rs into rt at bit 32
+		{name: "dinsu full word insert", rs: Word(0x123456789ABCDEF0), rt: Word(0xFFFFFFFFFFFFFFFF), msb: 32 + (32 - 1), lsb: 32, funct: 0b000110, expectedResult: Word(0x9ABCDEF0_FFFFFFFF)},
+	}
+
+	versions := GetMipsVersionTestCases(t)
+	for _, v := range versions {
+		for i, tt := range cases {
+			testName := fmt.Sprintf("%v (%v)", tt.name, v.Name)
+			t.Run(testName, func(t *testing.T) {
+				// Set up state
+				goVm := v.VMFactory(nil, os.Stdout, os.Stderr, testutil.CreateLogger(), testutil.WithRandomization(int64(i)))
+				state := goVm.GetState()
+
+				var insn uint32
+				if tt.funct == 0b00_0111 { // dins
+					insn = 0b011111<<26 | rsReg<<21 | rtReg<<16 | tt.msb<<11 | tt.lsb<<6 | tt.funct
+				} else if tt.funct == 0b00_0101 { // dinsm
+					require.GreaterOrEqual(t, tt.msb, uint32(32), "msb should be >= 32 for dextm")
+					insn = 0b011111<<26 | rsReg<<21 | rtReg<<16 | (tt.msb-32)<<11 | tt.lsb<<6 | tt.funct
+				} else if tt.funct == 0b00_0110 { // dinsu
+					require.GreaterOrEqual(t, tt.msb, uint32(32), "msb should be >= 32 for dextm")
+					require.GreaterOrEqual(t, tt.lsb, uint32(32), "lsb should be >= 32 for dextu")
+					insn = 0b011111<<26 | rsReg<<21 | rtReg<<16 | (tt.msb-32)<<11 | (tt.lsb-32)<<6 | tt.funct
+				}
+
+				testutil.StoreInstruction(state.GetMemory(), state.GetPC(), insn)
+				state.GetRegistersRef()[rtReg] = tt.rt
+				state.GetRegistersRef()[rsReg] = tt.rs
+
+				// step := state.GetStep()
+
+				// Setup expectations
+				expected := testutil.NewExpectedState(state)
+				expected.ExpectStep()
+				expected.Registers[rtReg] = tt.expectedResult
+				// stepWitness, err := goVm.Step(true)
+				_, err := goVm.Step(true)
+				require.NoError(t, err)
+
+				// Check expectations
+				expected.Validate(t, state)
+
+				// testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
+			})
+		}
+	}
+}
