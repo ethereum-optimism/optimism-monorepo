@@ -1157,6 +1157,7 @@ func TestEVM_SingleStep_Branch32(t *testing.T) {
 }
 
 func TestEVM_SingleStep_Rot(t *testing.T) {
+	t.Parallel()
 	rsReg := uint32(7)
 	rdReg := uint32(8)
 	rtReg := uint32(9)
@@ -1252,6 +1253,7 @@ func TestEVM_SingleStep_Rot(t *testing.T) {
 }
 
 func TestEVM_SingleStep_SignExtend(t *testing.T) {
+	t.Parallel()
 	rdReg := uint32(8)
 	rtReg := uint32(9)
 	versions := GetMipsVersionTestCases(t)
@@ -1312,6 +1314,64 @@ func TestEVM_SingleStep_SignExtend(t *testing.T) {
 
 				// Check expectations
 				expected.Validate(t, state)
+				// testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
+			})
+		}
+	}
+}
+
+func TestEVM_SingleStep_Swap(t *testing.T) {
+	t.Parallel()
+	rdReg := uint32(8)
+	rtReg := uint32(9)
+
+	cases := []struct {
+		name           string
+		rt             Word
+		funct          uint32
+		special        uint32
+		expectedResult Word
+	}{
+		// wsbh
+		// Swap bytes within halfwords (standard case)
+		{name: "wsbh", rt: Word(0x11223344), funct: 0b100000, special: 0b00010, expectedResult: Word(0x22114433)},
+		// Swap bytes within halfwords (alternating pattern)
+		{name: "wsbh pattern", rt: Word(0xAABBCCDD), funct: 0b100000, special: 0b00010, expectedResult: Word(0xBBAADDCC)},
+		// Swap bytes within halfwords (all bits set)
+		{name: "wsbh all ones", rt: Word(0xFFFFFFFF), funct: 0b100000, special: 0b00010, expectedResult: Word(0xFFFFFFFF)},
+		// Swap bytes within halfwords (all bits zero)
+		{name: "wsbh all zero", rt: Word(0x00000000), funct: 0b100000, special: 0b00010, expectedResult: Word(0x00000000)},
+		// Swap bytes within halfwords (mixed values)
+		{name: "wsbh mixed", rt: Word(0x12345678), funct: 0b100000, special: 0b00010, expectedResult: Word(0x34127856)},
+	}
+
+	versions := GetMipsVersionTestCases(t)
+	for _, v := range versions {
+		for i, tt := range cases {
+			testName := fmt.Sprintf("%v (%v)", tt.name, v.Name)
+			t.Run(testName, func(t *testing.T) {
+				// Set up state
+				goVm := v.VMFactory(nil, os.Stdout, os.Stderr, testutil.CreateLogger(), testutil.WithRandomization(int64(i)))
+				state := goVm.GetState()
+
+				var insn uint32
+				insn = 0b011111<<26 | rtReg<<16 | rdReg<<11 | tt.special<<6 | tt.funct
+
+				testutil.StoreInstruction(state.GetMemory(), state.GetPC(), insn)
+				state.GetRegistersRef()[rtReg] = tt.rt
+				// step := state.GetStep()
+
+				// Setup expectations
+				expected := testutil.NewExpectedState(state)
+				expected.ExpectStep()
+				expected.Registers[rdReg] = tt.expectedResult
+				// stepWitness, err := goVm.Step(true)
+				_, err := goVm.Step(true)
+				require.NoError(t, err)
+
+				// Check expectations
+				expected.Validate(t, state)
+
 				// testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
 			})
 		}

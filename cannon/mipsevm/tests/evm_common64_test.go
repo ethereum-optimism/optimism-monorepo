@@ -898,6 +898,16 @@ func TestEVM_SingleStep_Swap64(t *testing.T) {
 		{name: "dshd with zero", rt: Word(0x0000FFFF0000FFFF), funct: 0b100100, special: 0b00101, expectedResult: Word(0xFFFF0000FFFF0000)},
 		// Swap halfwords within doubleword when all bytes are different
 		{name: "dshd half reversed", rt: Word(0x123456789ABCDEF0), funct: 0b100100, special: 0b00101, expectedResult: Word(0xDEF09ABC56781234)},
+
+		// wsbh
+		// Swap bytes within halfwords (lower 32 bits)
+		{name: "wsbh", rt: Word(0x11223344), funct: 0b100000, special: 0b00010, expectedResult: Word(0x0000000022114433)},
+		// Swap bytes within halfwords (sign extend)
+		{name: "wsbh sign extend", rt: Word(0xEEFF0011), funct: 0b100000, special: 0b00010, expectedResult: Word(0xFFFFFFFFFFEE1100)},
+		// Swap bytes within halfwords (all bits set)
+		{name: "wsbh all ones 64-bit", rt: Word(0xFFFFFFFF), funct: 0b100000, special: 0b00010, expectedResult: Word(0xFFFFFFFFFFFFFFFF)},
+		// Swap bytes within halfwords (all bits zero)
+		{name: "wsbh all zero 64-bit", rt: Word(0x00000000), funct: 0b100000, special: 0b00010, expectedResult: Word(0x0000000000000000)},
 	}
 
 	versions := GetMipsVersionTestCases(t)
