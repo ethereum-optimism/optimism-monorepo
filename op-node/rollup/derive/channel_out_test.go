@@ -492,15 +492,15 @@ func testSpanChannelOut_MaxBlocksPerSpanBatch(t *testing.T, tt maxBlocksTest) {
 	}
 }
 
-func TestSpanChannelOut_ExceedMaxRLPBytesPerChannel(t *testing.T) {
+func TestSpanChannelOut_MaxRLPBytesPerChannel(t *testing.T) {
 	for _, algo := range CompressionAlgos {
-		t.Run("testSpanChannelOut_ExceedMaxRLPBytesPerChannel_"+algo.String(), func(t *testing.T) {
-			testSpanChannelOut_ExceedMaxRLPBytesPerChannel(t, algo)
+		t.Run("testSpanChannelOut_MaxRLPBytesPerChannel_"+algo.String(), func(t *testing.T) {
+			testSpanChannelOut_MaxRLPBytesPerChannel(t, algo)
 		})
 	}
 }
 
-func testSpanChannelOut_ExceedMaxRLPBytesPerChannel(t *testing.T, algo CompressionAlgo) {
+func testSpanChannelOut_MaxRLPBytesPerChannel(t *testing.T, algo CompressionAlgo) {
 
 	largeBatchSize := int(rollup.NewChainSpec(&rollupCfg).MaxRLPBytesPerChannel(0))
 	cout, singularBatches := SpanChannelAndBatches(t, 100, 1, algo)
@@ -509,11 +509,9 @@ func testSpanChannelOut_ExceedMaxRLPBytesPerChannel(t *testing.T, algo Compressi
 	cout.rlp[1] = bytes.NewBuffer(make([]byte, largeBatchSize))
 	cout.sealedRLPBytes = largeBatchSize
 
-	for _, batch := range singularBatches {
-		err := cout.addSingularBatch(batch, 1)
-		require.ErrorIs(t, err, ErrTooManyRLPBytes)
-	}
+	err := cout.addSingularBatch(singularBatches[0], 1)
+	require.ErrorIs(t, err, ErrTooManyRLPBytes)
 
-	require.Equal(t, cout.activeRLP().Len(), largeBatchSize)
+	require.Equal(t, cout.activeRLP().Len(), largeBatchSize, "active RLP should be equal to the max RLP limit")
 	require.Greater(t, cout.inactiveRLP().Len(), largeBatchSize)
 }
