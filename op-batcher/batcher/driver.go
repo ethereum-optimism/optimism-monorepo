@@ -167,7 +167,7 @@ func (l *BatchSubmitter) StartBatchSubmitting() error {
 	pendingBytesUpdated := make(chan int64)
 	blocksLoaded := make(chan struct{})
 
-	// DA throttling loop should always be started except for testing (indicated by ThrottleInterval == 0)
+	// DA throttling loop should always be started except for testing (indicated by ThrottleThreshold == 0)
 	if l.Config.ThrottleThreshold > 0 {
 		l.wg.Add(1)
 		go l.throttlingLoop(l.wg, pendingBytesUpdated) // ranges over pendingBytesUpdated channel

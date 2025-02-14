@@ -97,7 +97,7 @@ type CLIConfig struct {
 	ActiveSequencerCheckDuration time.Duration
 
 	// ThrottleThreshold is the number of pending bytes beyond which the batcher will start throttling future bytes. Set to 0 to
-	// disable notifications entirely (only recommended for testing).
+	// disable sequencer throttling entirely (only recommended for testing).
 	ThrottleThreshold uint64
 	// ThrottleTxSize is the DA size of a transaction to start throttling when we are over the throttling threshold.
 	ThrottleTxSize uint64
