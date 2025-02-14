@@ -676,3 +676,96 @@ func TestEVM_SingleStep_Rot64(t *testing.T) {
 		}
 	}
 }
+
+func TestEVM_SingleStep_Ext64(t *testing.T) {
+	t.Parallel()
+	rsReg := uint32(7)
+	rtReg := uint32(9)
+
+	cases := []struct {
+		name           string
+		rs             Word
+		msbd           uint32
+		lsb            uint32
+		funct          uint32
+		expectedResult Word
+	}{
+		// dext
+		// Extract 8 bits starting at bit 0 (byte 0)
+		{name: "dext byte 0", rs: Word(0x123456789ABCDEF0), msbd: 8 - 1, lsb: 0, funct: 0b000011, expectedResult: Word(0xF0)},
+		// Extract 8 bits starting at bit 8 (byte 1)
+		{name: "dext byte 1", rs: Word(0x123456789ABCDEF0), msbd: 8 - 1, lsb: 8, funct: 0b000011, expectedResult: Word(0xDE)},
+		// Extract 8 bits starting at bit 16 (byte 2)
+		{name: "dext byte 2", rs: Word(0x123456789ABCDEF0), msbd: 8 - 1, lsb: 16, funct: 0b000011, expectedResult: Word(0xBC)},
+		// Extract 8 bits starting at bit 24 (byte 3)
+		{name: "dext byte 3", rs: Word(0x123456789ABCDEF0), msbd: 8 - 1, lsb: 24, funct: 0b000011, expectedResult: Word(0x9A)},
+		// Extract 4 bits starting at bit 0 (low nibble)
+		{name: "dext nibble low", rs: Word(0x123456789ABCDEF0), msbd: 4 - 1, lsb: 0, funct: 0b000011, expectedResult: Word(0x0)},
+		// Extract 4 bits starting at bit 12 (high nibble)
+		{name: "dext nibble high", rs: Word(0x123456789ABCDEF0), msbd: 4 - 1, lsb: 12, funct: 0b000011, expectedResult: Word(0xD)},
+		// Extract full 16-bit halfword [15:0]
+		{name: "dext half word", rs: Word(0x123456789ABCDEF0), msbd: 16 - 1, lsb: 0, funct: 0b000011, expectedResult: Word(0xDEF0)},
+		// Extract full 32-bit word [31:0]
+		{name: "dext full word", rs: Word(0x123456789ABCDEF0), msbd: 32 - 1, lsb: 0, funct: 0b000011, expectedResult: Word(0x9ABCDEF0)},
+
+		// dextm
+		// Extract 32 + 8 bits starting at bit 20 [60:20]
+		{name: "dextm by 40", rs: Word(0x123456789ABCDEF0), msbd: 32 + (8 - 1), lsb: 20, funct: 0b000001, expectedResult: Word(0x23456789AB)},
+		// Extract 32 + 16 bits starting at bit 24 [48:0]
+		{name: "dextm by 48", rs: Word(0x123456789ABCDEF0), msbd: 32 + (16 - 1), lsb: 0, funct: 0b000001, expectedResult: Word(0x56789ABCDEF0)},
+		// Extract 32 + 28 word from bit 4 [63:4]
+		{name: "dextm by 60", rs: Word(0x123456789ABCDEF0), msbd: 32 + (28 - 1), lsb: 4, funct: 0b000001, expectedResult: Word(0x123456789ABCDEF)},
+
+		// dextu
+		// Extract 4 bits from bit 40
+		{name: "dextu byte 5", rs: Word(0x123456789ABCDEF0), msbd: 4 - 1, lsb: 40, funct: 0b000010, expectedResult: Word(0x6)},
+		// Extract 12 bits from bit 44
+		{name: "dextu 12-bit unaligned", rs: Word(0x123456789ABCDEF0), msbd: 12 - 1, lsb: 44, funct: 0b000010, expectedResult: Word(0x345)},
+		// Extract 16 bits from bit 48 (halfword in upper half)
+		{name: "dextu halfword", rs: Word(0x123456789ABCDEF0), msbd: 16 - 1, lsb: 48, funct: 0b000010, expectedResult: Word(0x1234)},
+		// Extract 24 bits from bit 36
+		{name: "dextu 24-bit field", rs: Word(0x123456789ABCDEF0), msbd: 24 - 1, lsb: 36, funct: 0b000010, expectedResult: Word(0x234567)},
+		// Extract full 32-bit word from bit 32
+		{name: "dextu full word", rs: Word(0x123456789ABCDEF0), msbd: 32 - 1, lsb: 32, funct: 0b000010, expectedResult: Word(0x12345678)},
+	}
+
+	versions := GetMipsVersionTestCases(t)
+	for _, v := range versions {
+		for i, tt := range cases {
+			testName := fmt.Sprintf("%v (%v)", tt.name, v.Name)
+			t.Run(testName, func(t *testing.T) {
+				// Set up state
+				goVm := v.VMFactory(nil, os.Stdout, os.Stderr, testutil.CreateLogger(), testutil.WithRandomization(int64(i)))
+				state := goVm.GetState()
+
+				var insn uint32
+				if tt.funct == 0b00_0011 { // dext
+					insn = 0b011111<<26 | rsReg<<21 | rtReg<<16 | tt.msbd<<11 | tt.lsb<<6 | tt.funct
+				} else if tt.funct == 0b00_0001 { // dextm
+					require.GreaterOrEqual(t, tt.msbd, uint32(32), "msbd should be >= 32 for dextm")
+					insn = 0b011111<<26 | rsReg<<21 | rtReg<<16 | (tt.msbd-32)<<11 | tt.lsb<<6 | tt.funct
+				} else if tt.funct == 0b00_0010 { // dextu
+					require.GreaterOrEqual(t, tt.lsb, uint32(32), "lsb should be >= 32 for dextu")
+					insn = 0b011111<<26 | rsReg<<21 | rtReg<<16 | tt.msbd<<11 | (tt.lsb-32)<<6 | tt.funct
+				}
+
+				testutil.StoreInstruction(state.GetMemory(), state.GetPC(), insn)
+				state.GetRegistersRef()[rsReg] = tt.rs
+				// step := state.GetStep()
+
+				// Setup expectations
+				expected := testutil.NewExpectedState(state)
+				expected.ExpectStep()
+				expected.Registers[rtReg] = tt.expectedResult
+				// stepWitness, err := goVm.Step(true)
+				_, err := goVm.Step(true)
+				require.NoError(t, err)
+
+				// Check expectations
+				expected.Validate(t, state)
+
+				// testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
+			})
+		}
+	}
+}
