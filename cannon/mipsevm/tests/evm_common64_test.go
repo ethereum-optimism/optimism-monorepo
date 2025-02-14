@@ -566,12 +566,13 @@ func TestEVM_SingleStep_Clz64(t *testing.T) {
 
 func TestEVM_SingleStep_Rot64(t *testing.T) {
 	t.Parallel()
-	// rsReg := uint32(7)
+	rsReg := uint32(7)
 	rdReg := uint32(8)
 	rtReg := uint32(9)
 	{
 		cases := []struct {
 			name           string
+			rs             Word
 			rt             Word
 			sa             uint32
 			funct          uint32
@@ -606,6 +607,32 @@ func TestEVM_SingleStep_Rot64(t *testing.T) {
 			{name: "drotr32 all ones", sa: 32 + 8, rt: Word(0xFFFFFFFFFFFFFFFF), expectedResult: Word(0xFFFFFFFFFFFFFFFF), funct: 0b11_1110},
 			// Rotate zero (should remain zero)
 			{name: "drotr32 zero", sa: 32 + 5, rt: Word(0x0000000000000000), expectedResult: Word(0x0000000000000000), funct: 0b11_1110},
+
+			// drotrv
+			// 0x2 rotated right by 1 -> 0x1
+			{name: "drotrv", rs: 1, rt: Word(0x2), expectedResult: Word(0x1), funct: 0b01_0110},
+			// 0x1 rotated right by 1 -> MSB set
+			{name: "drotrv MSB set", rs: 1, rt: Word(0x1), expectedResult: Word(0x80_00_00_00_00_00_00_00), funct: 0b01_0110},
+			// Rotate right by 8 (byte-level rotation)
+			{name: "drotrv byte shift", rs: 8, rt: Word(0x123456789ABCDEF0), expectedResult: Word(0xF0123456789ABCDE), funct: 0b01_0110},
+			// Rotate right by 16 (halfword-level rotation)
+			{name: "drotrv halfword shift", rs: 16, rt: Word(0x123456789ABCDEF0), expectedResult: Word(0xDEF0123456789ABC), funct: 0b01_0110},
+			// Rotate by exactly 32 bits (should swap halves)
+			{name: "drotrv by 32", rs: 32, rt: Word(0x123456789ABCDEF0), expectedResult: Word(0x9ABCDEF012345678), funct: 0b01_0110},
+			// Rotate by 33 bits (should shift one more bit beyond simple case)
+			{name: "drotrv by 33", rs: 33, rt: Word(0x123456789ABCDEF0), expectedResult: Word(0x4d5e6f78091a2b3c), funct: 0b01_0110},
+			// Rotate by 40 bits (byte-level rotation)
+			{name: "drotrv by 40", rs: 40, rt: Word(0x123456789ABCDEF0), expectedResult: Word(0x789abcdef0123456), funct: 0b01_0110},
+			// Rotate by 48 bits (halfword-level rotation)
+			{name: "drotrv by 48", rs: 48, rt: Word(0x123456789ABCDEF0), expectedResult: Word(0x56789abcdef01234), funct: 0b01_0110},
+			// Rotate by 63 bits (one less than full 64-bit cycle)
+			{name: "drotrv by 63", rs: 63, rt: Word(0x123456789ABCDEF0), expectedResult: Word(0x2468acf13579bde0), funct: 0b01_0110},
+			// Rotate with MSB set, shifting it down into the lower bits
+			{name: "drotrv with MSB set", rs: 36, rt: Word(0x8000000000000000), expectedResult: Word(0x0000000008000000), funct: 0b01_0110},
+			// Rotate all ones (0xFFFFFFFFFFFFFFFF) should remain unchanged
+			{name: "drotrv all ones", rs: 40, rt: Word(0xFFFFFFFFFFFFFFFF), expectedResult: Word(0xFFFFFFFFFFFFFFFF), funct: 0b01_0110},
+			// Rotate zero (should remain zero)
+			{name: "drotrv zero", rs: 5, rt: Word(0x0), expectedResult: Word(0x0), funct: 0b01_0110},
 		}
 
 		versions := GetMipsVersionTestCases(t)
@@ -620,12 +647,17 @@ func TestEVM_SingleStep_Rot64(t *testing.T) {
 					var insn uint32
 					if tt.funct == 0b11_1010 { // drotr
 						insn = 1<<21 | rtReg<<16 | rdReg<<11 | tt.sa<<6 | tt.funct
-					} else { // drotr32
+					} else if tt.funct == 0b11_1110 { // drotr32
 						require.GreaterOrEqual(t, tt.sa, uint32(32), "sa should be >= 32 for drotr32")
 						insn = 1<<21 | rtReg<<16 | rdReg<<11 | (tt.sa-32)<<6 | tt.funct
+					} else if tt.funct == 0b01_0110 { // drotrv
+						insn = rsReg<<21 | rtReg<<16 | rdReg<<11 | 1<<6 | tt.funct
 					}
 					testutil.StoreInstruction(state.GetMemory(), state.GetPC(), insn)
 					state.GetRegistersRef()[rtReg] = tt.rt
+					if tt.funct == 0b01_0110 { // drotrv
+						state.GetRegistersRef()[rsReg] = tt.rs
+					}
 					// step := state.GetStep()
 
 					// Setup expectations
