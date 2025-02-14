@@ -671,24 +671,24 @@ func (l *BatchSubmitter) publishStateToL1(ctx context.Context, queue *txmgr.Queu
 		case <-ctx.Done():
 			return
 		default:
-			// if the txmgr is closed, we stop the transaction sending
-			if l.Txmgr.IsClosed() {
-				l.Log.Info("Txmgr is closed, aborting state publishing")
-				return
-			}
-			if !l.checkTxpool(queue, receiptsCh) {
-				l.Log.Info("txpool state is not good, aborting state publishing")
-				return
-			}
+		}
+		// if the txmgr is closed, we stop the transaction sending
+		if l.Txmgr.IsClosed() {
+			l.Log.Info("Txmgr is closed, aborting state publishing")
+			return
+		}
+		if !l.checkTxpool(queue, receiptsCh) {
+			l.Log.Info("txpool state is not good, aborting state publishing")
+			return
+		}
 
-			err := l.publishTxToL1(l.killCtx, queue, receiptsCh, daGroup)
+		err := l.publishTxToL1(l.killCtx, queue, receiptsCh, daGroup)
 
-			if err != nil {
-				if err != io.EOF {
-					l.Log.Error("Error publishing tx to l1", "err", err)
-				}
-				return
+		if err != nil {
+			if err != io.EOF {
+				l.Log.Error("Error publishing tx to l1", "err", err)
 			}
+			return
 		}
 	}
 }
