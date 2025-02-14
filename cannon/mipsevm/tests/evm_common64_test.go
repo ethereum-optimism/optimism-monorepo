@@ -837,6 +837,20 @@ func TestEVM_SingleStep_Ins64(t *testing.T) {
 		{name: "dinsu 24-bit insert", rs: Word(0x123456789ABCDEF0), rt: Word(0xFFFFFFFFFFFFFFFF), msb: 36 + (24 - 1), lsb: 36, funct: 0b000110, expectedResult: Word(0xF_BCDEF0_FFFFFFFFF)},
 		// Insert 32 bits from rs into rt at bit 32
 		{name: "dinsu full word insert", rs: Word(0x123456789ABCDEF0), rt: Word(0xFFFFFFFFFFFFFFFF), msb: 32 + (32 - 1), lsb: 32, funct: 0b000110, expectedResult: Word(0x9ABCDEF0_FFFFFFFF)},
+
+		// ins
+		// Insert 8-bit value from rs into rt at bit 0
+		{name: "ins byte 0", rs: Word(0x000000AA), rt: Word(0x0FFF0000), msb: 0 + (8 - 1), lsb: 0, funct: 0b000100, expectedResult: Word(0x0FFF00AA)},
+		// Insert 8-bit value from rs into rt at bit 8
+		{name: "ins byte 1", rs: Word(0x000000AA), rt: Word(0x0FFF0000), msb: 8 + (8 - 1), lsb: 8, funct: 0b000100, expectedResult: Word(0x0FFFAA00)},
+		// Insert 16-bit value from rs into rt at bit 0
+		{name: "ins halfword 0", rs: Word(0x0000AAAA), rt: Word(0x0FFF0000), msb: 0 + (16 - 1), lsb: 0, funct: 0b000100, expectedResult: Word(0x0FFFAAAA)},
+		// Insert 16-bit value from rs into rt at bit 8 (sign extend)
+		{name: "ins halfword 1", rs: Word(0x0000AAAA), rt: Word(0xFFFF0000), msb: 8 + (16 - 1), lsb: 8, funct: 0b000100, expectedResult: Word(0xFFFFFFFFFFAAAA00)},
+		// Insert 24-bit value from rs into rt at bit 4 (sign extend)
+		{name: "ins 24-bit", rs: Word(0x00AAAAAA), rt: Word(0xFFFF0000), msb: 4 + (24 - 1), lsb: 4, funct: 0b000100, expectedResult: Word(0xFFFFFFFFFAAAAAA0)},
+		// Insert full 32-bit value from rs into rt (sign extend)
+		{name: "ins full word", rs: Word(0xAAAAAAAA), rt: Word(0xFFFF0000), msb: 0 + (32 - 1), lsb: 0, funct: 0b000100, expectedResult: Word(0xFFFFFFFFAAAAAAAA)},
 	}
 
 	versions := GetMipsVersionTestCases(t)
@@ -849,7 +863,7 @@ func TestEVM_SingleStep_Ins64(t *testing.T) {
 				state := goVm.GetState()
 
 				var insn uint32
-				if tt.funct == 0b00_0111 { // dins
+				if tt.funct == 0b00_0111 || tt.funct == 0b00_0100 { // dins, ins
 					insn = 0b011111<<26 | rsReg<<21 | rtReg<<16 | tt.msb<<11 | tt.lsb<<6 | tt.funct
 				} else if tt.funct == 0b00_0101 { // dinsm
 					require.GreaterOrEqual(t, tt.msb, uint32(32), "msb should be >= 32 for dextm")
@@ -859,7 +873,6 @@ func TestEVM_SingleStep_Ins64(t *testing.T) {
 					require.GreaterOrEqual(t, tt.lsb, uint32(32), "lsb should be >= 32 for dextu")
 					insn = 0b011111<<26 | rsReg<<21 | rtReg<<16 | (tt.msb-32)<<11 | (tt.lsb-32)<<6 | tt.funct
 				}
-
 				testutil.StoreInstruction(state.GetMemory(), state.GetPC(), insn)
 				state.GetRegistersRef()[rtReg] = tt.rt
 				state.GetRegistersRef()[rsReg] = tt.rs

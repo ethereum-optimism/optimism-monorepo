@@ -1438,3 +1438,66 @@ func TestEVM_SingleStep_Ext(t *testing.T) {
 		}
 	}
 }
+
+func TestEVM_SingleStep_Ins(t *testing.T) {
+	t.Parallel()
+	rsReg := uint32(7)
+	rtReg := uint32(9)
+
+	cases := []struct {
+		name           string
+		rs             Word
+		rt             Word
+		msb            uint32
+		lsb            uint32
+		funct          uint32
+		expectedResult Word
+	}{
+		// ins
+		// Insert 8-bit value from rs into rt at bit 0
+		{name: "ins byte 0", rs: Word(0x000000AA), rt: Word(0xFFFF0000), msb: 0 + (8 - 1), lsb: 0, funct: 0b000100, expectedResult: Word(0xFFFF00AA)},
+		// Insert 8-bit value from rs into rt at bit 8
+		{name: "ins byte 1", rs: Word(0x000000AA), rt: Word(0xFFFF0000), msb: 8 + (8 - 1), lsb: 8, funct: 0b000100, expectedResult: Word(0xFFFFAA00)},
+		// Insert 16-bit value from rs into rt at bit 0
+		{name: "ins halfword 0", rs: Word(0x0000AAAA), rt: Word(0xFFFF0000), msb: 0 + (16 - 1), lsb: 0, funct: 0b000100, expectedResult: Word(0xFFFFAAAA)},
+		// Insert 16-bit value from rs into rt at bit 8
+		{name: "ins halfword 1", rs: Word(0x0000AAAA), rt: Word(0xFFFF0000), msb: 8 + (16 - 1), lsb: 8, funct: 0b000100, expectedResult: Word(0xFFAAAA00)},
+		// Insert 24-bit value from rs into rt at bit 4
+		{name: "ins 24-bit", rs: Word(0x00AAAAAA), rt: Word(0xFFFF0000), msb: 4 + (24 - 1), lsb: 4, funct: 0b000100, expectedResult: Word(0xFAAAAAA0)},
+		// Insert full 32-bit value from rs into rt
+		{name: "ins full word", rs: Word(0xAAAAAAAA), rt: Word(0xFFFF0000), msb: 0 + (32 - 1), lsb: 0, funct: 0b000100, expectedResult: Word(0xAAAAAAAA)},
+	}
+
+	versions := GetMipsVersionTestCases(t)
+	for _, v := range versions {
+		for i, tt := range cases {
+			testName := fmt.Sprintf("%v (%v)", tt.name, v.Name)
+			t.Run(testName, func(t *testing.T) {
+				// Set up state
+				goVm := v.VMFactory(nil, os.Stdout, os.Stderr, testutil.CreateLogger(), testutil.WithRandomization(int64(i)))
+				state := goVm.GetState()
+
+				var insn uint32
+				insn = 0b011111<<26 | rsReg<<21 | rtReg<<16 | tt.msb<<11 | tt.lsb<<6 | tt.funct
+
+				testutil.StoreInstruction(state.GetMemory(), state.GetPC(), insn)
+				state.GetRegistersRef()[rsReg] = tt.rs
+				state.GetRegistersRef()[rtReg] = tt.rt
+				// step := state.GetStep()
+
+				// Setup expectations
+				expected := testutil.NewExpectedState(state)
+				expected.ExpectStep()
+				expected.Registers[rtReg] = tt.expectedResult
+				// stepWitness, err := goVm.Step(true)
+				_, err := goVm.Step(true)
+				require.NoError(t, err)
+
+				// Check expectations
+				expected.Validate(t, state)
+
+				// testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
+			})
+		}
+	}
+}
