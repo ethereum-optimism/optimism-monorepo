@@ -546,7 +546,12 @@ func (l *BatchSubmitter) throttlingLoop(wg *sync.WaitGroup, pendingBytesUpdated 
 	defer wg.Done()
 	l.Log.Info("Starting DA throttling loop")
 
+	retryInterval := 10 * time.Second
+	retryTimer := time.NewTimer(retryInterval)
+	retryTimer.Stop()
+
 	updateParams := func(pendingBytes int64) {
+		retryTimer.Stop()
 		ctx, cancel := context.WithTimeout(l.shutdownCtx, l.Config.NetworkTimeout)
 		defer cancel()
 		cl, err := l.EndpointProvider.EthClient(ctx)
@@ -590,10 +595,12 @@ func (l *BatchSubmitter) throttlingLoop(wg *sync.WaitGroup, pendingBytesUpdated 
 			return
 		} else if err != nil {
 			l.Log.Error("SetMaxDASize rpc failed, retrying.", "err", err)
+			retryTimer.Reset(retryInterval)
 			return
 		}
 		if !success {
 			l.Log.Error("Result of SetMaxDASize was false, retrying.")
+			retryTimer.Reset(retryInterval)
 		}
 	}
 
@@ -610,6 +617,8 @@ func (l *BatchSubmitter) throttlingLoop(wg *sync.WaitGroup, pendingBytesUpdated 
 			updateParams(pendingBytes)
 			cachedPendingBytes = pendingBytes
 		case <-l.activeSequencerChanged:
+			updateParams(cachedPendingBytes)
+		case <-retryTimer.C:
 			updateParams(cachedPendingBytes)
 		}
 	}
