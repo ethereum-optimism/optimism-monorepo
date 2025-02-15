@@ -351,7 +351,6 @@ lint: lint-fix lint-check
 #                         DOCS                         #
 ########################################################
 
-# Update TOCs
-update-tocs:
-  doctoc README.md
-  doctoc meta/POLICY.md
+# Generates a table of contents for the POLICY.md file.
+toc:
+  md_toc -p github meta/POLICY.md
