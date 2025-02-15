@@ -20,9 +20,7 @@ type TestBatchSubmitter struct {
 // called *before* the batcher starts submitting batches to ensure successful jamming, and will
 // error out otherwise.
 func (l *TestBatchSubmitter) JamTxPool(ctx context.Context) error {
-	l.mutex.Lock()
-	defer l.mutex.Unlock()
-	if l.running {
+	if l.running.Load() {
 		return errors.New("tried to jam tx pool but batcher is already running")
 	}
 	var candidate *txmgr.TxCandidate
