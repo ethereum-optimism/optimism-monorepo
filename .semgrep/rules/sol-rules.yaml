@@ -3,7 +3,13 @@ rules:
     languages: [solidity]
     severity: ERROR
     message: _args parameter should be wrapped with DeployUtils.encodeConstructor
-    pattern-regex: DeployUtils\.(create1|create2|create1AndSave|create2AndSave)\s*\(\s*\{[^}]*?_args\s*:\s*(?!\s*DeployUtils\.encodeConstructor\()\s*[^}]*?\}\s*\)
+    pattern-regex: DeployUtils\.(create1|create2|create1AndSave|create2AndSave|createDeterministic)\s*\(\s*\{[^}]*?_args\s*:\s*(?!\s*DeployUtils\.encodeConstructor\()\s*[^}]*?\}\s*\)
+
+  - id: sol-safety-deployutils-named-args
+    languages: [solidity]
+    severity: ERROR
+    message: Calls to DeployUtils functions must use named arguments.
+    pattern-regex: DeployUtils\.(create1|create2|create1AndSave|create2AndSave|createDeterministic)\s*\((?!\{)
 
   - id: sol-safety-expectrevert-before-ll-call
     languages: [solidity]

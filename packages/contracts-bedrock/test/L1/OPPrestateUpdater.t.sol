@@ -12,6 +12,8 @@ import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 import { Blueprint } from "src/libraries/Blueprint.sol";
 
 // Interfaces
+import { IMIPS } from "interfaces/cannon/IMIPS.sol";
+import { IOptimismPortal2 } from "interfaces/L1/IOptimismPortal2.sol";
 import { IProxyAdmin } from "interfaces/universal/IProxyAdmin.sol";
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 import { IProtocolVersions } from "interfaces/L1/IProtocolVersions.sol";
@@ -57,21 +59,35 @@ contract OPPrestateUpdater_Test is Test {
         (blueprints.permissionlessDisputeGame1, blueprints.permissionlessDisputeGame2) =
             Blueprint.create(vm.getCode("FaultDisputeGame"), salt);
 
-        IPreimageOracle oracle = IPreimageOracle(DeployUtils.create1("PreimageOracle", abi.encode(126000, 86400)));
+        IPreimageOracle oracle = IPreimageOracle(
+            DeployUtils.create1({
+                _name: "PreimageOracle",
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(IPreimageOracle.__constructor__, (126000, 86400)))
+            })
+        );
 
         IOPContractsManager.Implementations memory impls = IOPContractsManager.Implementations({
-            superchainConfigImpl: DeployUtils.create1("SuperchainConfig"),
-            protocolVersionsImpl: DeployUtils.create1("ProtocolVersions"),
-            l1ERC721BridgeImpl: DeployUtils.create1("L1ERC721Bridge"),
-            optimismPortalImpl: DeployUtils.create1("OptimismPortal2", abi.encode(1, 1)),
-            systemConfigImpl: DeployUtils.create1("SystemConfig"),
-            optimismMintableERC20FactoryImpl: DeployUtils.create1("OptimismMintableERC20Factory"),
-            l1CrossDomainMessengerImpl: DeployUtils.create1("L1CrossDomainMessenger"),
-            l1StandardBridgeImpl: DeployUtils.create1("L1StandardBridge"),
-            disputeGameFactoryImpl: DeployUtils.create1("DisputeGameFactory"),
-            anchorStateRegistryImpl: DeployUtils.create1("AnchorStateRegistry"),
-            delayedWETHImpl: DeployUtils.create1("DelayedWETH", abi.encode(3)),
-            mipsImpl: DeployUtils.create1("MIPS", abi.encode(oracle))
+            superchainConfigImpl: DeployUtils.create1({ _name: "SuperchainConfig" }),
+            protocolVersionsImpl: DeployUtils.create1({ _name: "ProtocolVersions" }),
+            l1ERC721BridgeImpl: DeployUtils.create1({ _name: "L1ERC721Bridge" }),
+            optimismPortalImpl: DeployUtils.create1({
+                _name: "OptimismPortal2",
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(IOptimismPortal2.__constructor__, (1, 1)))
+            }),
+            systemConfigImpl: DeployUtils.create1({ _name: "SystemConfig" }),
+            optimismMintableERC20FactoryImpl: DeployUtils.create1({ _name: "OptimismMintableERC20Factory" }),
+            l1CrossDomainMessengerImpl: DeployUtils.create1({ _name: "L1CrossDomainMessenger" }),
+            l1StandardBridgeImpl: DeployUtils.create1({ _name: "L1StandardBridge" }),
+            disputeGameFactoryImpl: DeployUtils.create1({ _name: "DisputeGameFactory" }),
+            anchorStateRegistryImpl: DeployUtils.create1({ _name: "AnchorStateRegistry" }),
+            delayedWETHImpl: DeployUtils.create1({
+                _name: "DelayedWETH",
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(IDelayedWETH.__constructor__, (3)))
+            }),
+            mipsImpl: DeployUtils.create1({
+                _name: "MIPS",
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(IMIPS.__constructor__, (oracle)))
+            })
         });
 
         vm.etch(address(superchainConfigProxy), hex"01");
