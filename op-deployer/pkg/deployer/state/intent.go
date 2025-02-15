@@ -16,12 +16,12 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-type IntentConfigType string
+type IntentType string
 
 const (
-	IntentConfigTypeStandard          IntentConfigType = "standard"
-	IntentConfigTypeCustom            IntentConfigType = "custom"
-	IntentConfigTypeStandardOverrides IntentConfigType = "standard-overrides"
+	IntentTypeStandard          IntentType = "standard"
+	IntentTypeCustom            IntentType = "custom"
+	IntentTypeStandardOverrides IntentType = "standard-overrides"
 )
 
 var emptyAddress common.Address
@@ -37,7 +37,7 @@ type SuperchainProofParams struct {
 }
 
 type Intent struct {
-	ConfigType            IntentConfigType   `json:"configType" toml:"configType"`
+	ConfigType            IntentType         `json:"configType" toml:"configType"`
 	L1ChainID             uint64             `json:"l1ChainID" toml:"l1ChainID"`
 	SuperchainRoles       *SuperchainRoles   `json:"superchainRoles" toml:"superchainRoles,omitempty"`
 	FundDevAccounts       bool               `json:"fundDevAccounts" toml:"fundDevAccounts"`
@@ -193,17 +193,17 @@ func (c *Intent) Check() error {
 
 	var err error
 	switch c.ConfigType {
-	case IntentConfigTypeStandard:
+	case IntentTypeStandard:
 		err = c.validateStandardValues()
-	case IntentConfigTypeCustom:
+	case IntentTypeCustom:
 		err = c.validateCustomConfig()
-	case IntentConfigTypeStandardOverrides:
+	case IntentTypeStandardOverrides:
 		err = c.validateCustomConfig()
 	default:
-		return fmt.Errorf("intent-config-type unsupported: %s", c.ConfigType)
+		return fmt.Errorf("intent-type unsupported: %s", c.ConfigType)
 	}
 	if err != nil {
-		return fmt.Errorf("failed to validate intent-config-type=%s: %w", c.ConfigType, err)
+		return fmt.Errorf("failed to validate intent-type=%s: %w", c.ConfigType, err)
 	}
 
 	return nil
@@ -241,15 +241,15 @@ func (c *Intent) checkL2Prod() error {
 	return err
 }
 
-func NewIntent(configType IntentConfigType, l1ChainId uint64, l2ChainIds []common.Hash) (Intent, error) {
+func NewIntent(configType IntentType, l1ChainId uint64, l2ChainIds []common.Hash) (Intent, error) {
 	switch configType {
-	case IntentConfigTypeCustom:
+	case IntentTypeCustom:
 		return NewIntentCustom(l1ChainId, l2ChainIds)
 
-	case IntentConfigTypeStandard:
+	case IntentTypeStandard:
 		return NewIntentStandard(l1ChainId, l2ChainIds)
 
-	case IntentConfigTypeStandardOverrides:
+	case IntentTypeStandardOverrides:
 		return NewIntentStandardOverrides(l1ChainId, l2ChainIds)
 
 	default:
@@ -261,7 +261,7 @@ func NewIntent(configType IntentConfigType, l1ChainId uint64, l2ChainIds []commo
 // user will populate the values before running 'apply'
 func NewIntentCustom(l1ChainId uint64, l2ChainIds []common.Hash) (Intent, error) {
 	intent := Intent{
-		ConfigType:         IntentConfigTypeCustom,
+		ConfigType:         IntentTypeCustom,
 		L1ChainID:          l1ChainId,
 		L1ContractsLocator: &artifacts.Locator{URL: &url.URL{}},
 		L2ContractsLocator: &artifacts.Locator{URL: &url.URL{}},
@@ -278,7 +278,7 @@ func NewIntentCustom(l1ChainId uint64, l2ChainIds []common.Hash) (Intent, error)
 
 func NewIntentStandard(l1ChainId uint64, l2ChainIds []common.Hash) (Intent, error) {
 	intent := Intent{
-		ConfigType:         IntentConfigTypeStandard,
+		ConfigType:         IntentTypeStandard,
 		L1ChainID:          l1ChainId,
 		L1ContractsLocator: artifacts.DefaultL1ContractsLocator,
 		L2ContractsLocator: artifacts.DefaultL2ContractsLocator,
@@ -313,7 +313,7 @@ func NewIntentStandardOverrides(l1ChainId uint64, l2ChainIds []common.Hash) (Int
 	if err != nil {
 		return Intent{}, err
 	}
-	intent.ConfigType = IntentConfigTypeStandardOverrides
+	intent.ConfigType = IntentTypeStandardOverrides
 
 	return intent, nil
 }

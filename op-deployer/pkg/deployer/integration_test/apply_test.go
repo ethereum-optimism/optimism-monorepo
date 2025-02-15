@@ -577,7 +577,7 @@ func newIntent(
 	l2Loc *artifacts.Locator,
 ) (*state.Intent, *state.State) {
 	intent := &state.Intent{
-		ConfigType: state.IntentConfigTypeCustom,
+		ConfigType: state.IntentTypeCustom,
 		L1ChainID:  l1ChainID.Uint64(),
 		SuperchainRoles: &state.SuperchainRoles{
 			ProxyAdminOwner:       addrFor(t, dk, devkeys.L1ProxyAdminOwnerRole.Key(l1ChainID)),

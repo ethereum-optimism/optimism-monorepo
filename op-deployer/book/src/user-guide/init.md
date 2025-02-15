@@ -10,7 +10,7 @@ op-deployer init \
   --l1-chain-id <chain ID of your L1> \
   --l2-chain-ids <comman separated list of chain IDs for your L2s> \
   --outdir <directory to write the intent and state files> \
-  --intent-config-type <standard/custom/standard-overrides>
+  --intent-type <standard/custom/standard-overrides>
 ```
 
 You should then see the following files appear in your output directory:
