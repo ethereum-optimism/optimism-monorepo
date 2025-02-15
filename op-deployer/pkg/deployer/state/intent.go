@@ -21,9 +21,7 @@ type IntentConfigType string
 const (
 	IntentConfigTypeStandard          IntentConfigType = "standard"
 	IntentConfigTypeCustom            IntentConfigType = "custom"
-	IntentConfigTypeStrict            IntentConfigType = "strict"
 	IntentConfigTypeStandardOverrides IntentConfigType = "standard-overrides"
-	IntentConfigTypeStrictOverrides   IntentConfigType = "strict-overrides"
 )
 
 var emptyAddress common.Address
@@ -110,25 +108,6 @@ func (c *Intent) validateCustomConfig() error {
 	return nil
 }
 
-func (c *Intent) validateStrictConfig() error {
-	if err := c.validateStandardValues(); err != nil {
-		return err
-	}
-
-	challenger, _ := standard.ChallengerAddressFor(c.L1ChainID)
-	l1ProxyAdminOwner, _ := standard.L1ProxyAdminOwner(c.L1ChainID)
-	for chainIndex := range c.Chains {
-		if c.Chains[chainIndex].Roles.Challenger != challenger {
-			return fmt.Errorf("invalid challenger address for chain: %s", c.Chains[chainIndex].ID)
-		}
-		if c.Chains[chainIndex].Roles.L1ProxyAdminOwner != l1ProxyAdminOwner {
-			return fmt.Errorf("invalid l1ProxyAdminOwner address for chain: %s", c.Chains[chainIndex].ID)
-		}
-	}
-
-	return nil
-}
-
 // Ensures the following:
 //  1. no zero-values for non-standard fields (user should have populated these)
 //  2. no non-standard values for standard fields (user should not have changed these)
@@ -159,6 +138,17 @@ func (c *Intent) validateStandardValues() error {
 		}
 		if len(chain.AdditionalDisputeGames) > 0 {
 			return fmt.Errorf("%w: chainId=%s additionalDisputeGames must be nil", ErrNonStandardValue, chain.ID)
+		}
+	}
+
+	challenger, _ := standard.ChallengerAddressFor(c.L1ChainID)
+	l1ProxyAdminOwner, _ := standard.L1ProxyAdminOwner(c.L1ChainID)
+	for chainIndex := range c.Chains {
+		if c.Chains[chainIndex].Roles.Challenger != challenger {
+			return fmt.Errorf("invalid challenger address for chain: %s", c.Chains[chainIndex].ID)
+		}
+		if c.Chains[chainIndex].Roles.L1ProxyAdminOwner != l1ProxyAdminOwner {
+			return fmt.Errorf("invalid l1ProxyAdminOwner address for chain: %s", c.Chains[chainIndex].ID)
 		}
 	}
 
@@ -207,9 +197,7 @@ func (c *Intent) Check() error {
 		err = c.validateStandardValues()
 	case IntentConfigTypeCustom:
 		err = c.validateCustomConfig()
-	case IntentConfigTypeStrict:
-		err = c.validateStrictConfig()
-	case IntentConfigTypeStandardOverrides, IntentConfigTypeStrictOverrides:
+	case IntentConfigTypeStandardOverrides:
 		err = c.validateCustomConfig()
 	default:
 		return fmt.Errorf("intent-config-type unsupported: %s", c.ConfigType)
@@ -264,12 +252,6 @@ func NewIntent(configType IntentConfigType, l1ChainId uint64, l2ChainIds []commo
 	case IntentConfigTypeStandardOverrides:
 		return NewIntentStandardOverrides(l1ChainId, l2ChainIds)
 
-	case IntentConfigTypeStrict:
-		return NewIntentStrict(l1ChainId, l2ChainIds)
-
-	case IntentConfigTypeStrictOverrides:
-		return NewIntentStrictOverrides(l1ChainId, l2ChainIds)
-
 	default:
 		return Intent{}, fmt.Errorf("intent config type not supported")
 	}
@@ -308,12 +290,19 @@ func NewIntentStandard(l1ChainId uint64, l2ChainIds []common.Hash) (Intent, erro
 	}
 	intent.SuperchainRoles = superchainRoles
 
+	challenger, _ := standard.ChallengerAddressFor(l1ChainId)
+	l1ProxyAdminOwner, _ := standard.L1ProxyAdminOwner(l1ChainId)
+
 	for _, l2ChainID := range l2ChainIds {
 		intent.Chains = append(intent.Chains, &ChainIntent{
 			ID:                       l2ChainID,
 			Eip1559DenominatorCanyon: standard.Eip1559DenominatorCanyon,
 			Eip1559Denominator:       standard.Eip1559Denominator,
 			Eip1559Elasticity:        standard.Eip1559Elasticity,
+			Roles: ChainRoles{
+				Challenger:        challenger,
+				L1ProxyAdminOwner: l1ProxyAdminOwner,
+			},
 		})
 	}
 	return intent, nil
@@ -325,34 +314,6 @@ func NewIntentStandardOverrides(l1ChainId uint64, l2ChainIds []common.Hash) (Int
 		return Intent{}, err
 	}
 	intent.ConfigType = IntentConfigTypeStandardOverrides
-
-	return intent, nil
-}
-
-// Same as NewIntentStandard, but also sets l2 Challenger and L1ProxyAdminOwner
-// addresses to standard values
-func NewIntentStrict(l1ChainId uint64, l2ChainIds []common.Hash) (Intent, error) {
-	intent, err := NewIntentStandard(l1ChainId, l2ChainIds)
-	if err != nil {
-		return Intent{}, err
-	}
-	intent.ConfigType = IntentConfigTypeStrict
-
-	challenger, _ := standard.ChallengerAddressFor(l1ChainId)
-	l1ProxyAdminOwner, _ := standard.L1ProxyAdminOwner(l1ChainId)
-	for chainIndex := range intent.Chains {
-		intent.Chains[chainIndex].Roles.Challenger = challenger
-		intent.Chains[chainIndex].Roles.L1ProxyAdminOwner = l1ProxyAdminOwner
-	}
-	return intent, nil
-}
-
-func NewIntentStrictOverrides(l1ChainId uint64, l2ChainIds []common.Hash) (Intent, error) {
-	intent, err := NewIntentStrict(l1ChainId, l2ChainIds)
-	if err != nil {
-		return Intent{}, err
-	}
-	intent.ConfigType = IntentConfigTypeStrictOverrides
 
 	return intent, nil
 }

@@ -88,12 +88,10 @@ var (
 	}
 	IntentConfigTypeFlag = &cli.StringFlag{
 		Name: IntentConfigTypeFlagName,
-		Usage: fmt.Sprintf("Intent config type to use. Options: %s (default), %s, %s, %s, %s",
+		Usage: fmt.Sprintf("Intent config type to use. Options: %s (default), %s, %s",
 			state.IntentConfigTypeStandard,
 			state.IntentConfigTypeCustom,
-			state.IntentConfigTypeStrict,
-			state.IntentConfigTypeStandardOverrides,
-			state.IntentConfigTypeStrictOverrides),
+			state.IntentConfigTypeStandardOverrides),
 		EnvVars: PrefixEnvVar("INTENT_CONFIG_TYPE"),
 		Value:   string(state.IntentConfigTypeStandard),
 	}
