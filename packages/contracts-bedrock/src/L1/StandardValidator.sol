@@ -513,22 +513,18 @@ contract StandardValidatorBase {
         string memory _errors,
         IDisputeGameFactory _dgf,
         IAnchorStateRegistry _asr,
-        IProxyAdmin _admin,
+        IProxyAdmin,
         GameType _gameType,
         string memory _errorPrefix
     )
         internal
         view
+        virtual
         returns (string memory)
     {
         _errorPrefix = string.concat(_errorPrefix, "-ANCHORP");
         _errors = internalRequire(
             stringEq(_asr.version(), anchorStateRegistryVersion()), string.concat(_errorPrefix, "-10"), _errors
-        );
-        _errors = internalRequire(
-            _admin.getProxyImplementation(address(_asr)) == anchorStateRegistryImpl,
-            string.concat(_errorPrefix, "-20"),
-            _errors
         );
         _errors = internalRequire(
             address(_asr.disputeGameFactory()) == address(_dgf), string.concat(_errorPrefix, "-30"), _errors
@@ -647,6 +643,28 @@ contract StandardValidatorV200 is StandardValidatorBase {
             revert(string.concat("StandardValidatorV200: ", _errors));
         }
 
+        return _errors;
+    }
+
+    function assertValidAnchorStateRegistry(
+        string memory _errors,
+        IDisputeGameFactory _dgf,
+        IAnchorStateRegistry _asr,
+        IProxyAdmin _admin,
+        GameType _gameType,
+        string memory _errorPrefix
+    )
+        internal
+        view
+        override
+        returns (string memory)
+    {
+        _errors = super.assertValidAnchorStateRegistry(_errors, _dgf, _asr, _admin, _gameType, _errorPrefix);
+        _errors = internalRequire(
+            _admin.getProxyImplementation(address(_asr)) == anchorStateRegistryImpl,
+            string.concat(_errorPrefix, "-ANCHORP-20"),
+            _errors
+        );
         return _errors;
     }
 
