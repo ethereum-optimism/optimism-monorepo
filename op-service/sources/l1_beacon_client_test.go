@@ -215,14 +215,14 @@ func TestBeaconHTTPClient(t *testing.T) {
 }
 
 func TestClientPoolSingle(t *testing.T) {
-	p := NewClientPool[int](1)
+	p := NewClientPool(1)
 	for i := 0; i < 10; i++ {
 		require.Equal(t, 1, p.Get())
 		p.MoveToNext()
 	}
 }
 func TestClientPoolSeveral(t *testing.T) {
-	p := NewClientPool[int](0, 1, 2, 3)
+	p := NewClientPool(0, 1, 2, 3)
 	for i := 0; i < 25; i++ {
 		require.Equal(t, i%4, p.Get())
 		p.MoveToNext()
