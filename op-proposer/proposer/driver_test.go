@@ -87,11 +87,11 @@ func setup(t *testing.T, testName string) (*L2OutputSubmitter, *mockRollupEndpoi
 
 	lgr, logs := testlog.CaptureLogger(t, log.LevelDebug)
 	setup := DriverSetup{
-		Log:            lgr,
-		Metr:           metrics.NoopMetrics,
-		Cfg:            proposerConfig,
-		Txmgr:          txmgr,
-		RollupProvider: ep,
+		Log:                    lgr,
+		Metr:                   metrics.NoopMetrics,
+		Cfg:                    proposerConfig,
+		Txmgr:                  txmgr,
+		ProposalSourceProvider: NewRollupProposalSourceProvider(ep),
 	}
 
 	parsed, err := bindings.L2OutputOracleMetaData.GetAbi()
@@ -173,7 +173,7 @@ func TestL2OutputSubmitter_OutputRetry(t *testing.T) {
 				require.Equal(t, numFails+1, dgfContract.hasProposedCount)
 			}
 
-			require.Len(t, logs.FindLogs(testlog.NewMessageContainsFilter("Error getting output")), numFails)
+			require.Len(t, logs.FindLogs(testlog.NewMessageContainsFilter("Error getting proposal")), numFails)
 			require.NotNil(t, logs.FindLog(testlog.NewMessageFilter("Proposer tx successfully published")))
 			require.NotNil(t, logs.FindLog(testlog.NewMessageFilter("loop returning")))
 		})

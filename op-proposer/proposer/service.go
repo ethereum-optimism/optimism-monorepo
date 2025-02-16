@@ -55,9 +55,9 @@ type ProposerService struct {
 
 	ProposerConfig
 
-	TxManager      txmgr.TxManager
-	L1Client       *ethclient.Client
-	RollupProvider dial.RollupProvider
+	TxManager              txmgr.TxManager
+	L1Client               *ethclient.Client
+	ProposalSourceProvider ProposalSourceProvider
 
 	driver *L2OutputSubmitter
 
@@ -129,17 +129,27 @@ func (ps *ProposerService) initRPCClients(ctx context.Context, cfg *CLIConfig) e
 	}
 	ps.L1Client = l1Client
 
-	var rollupProvider dial.RollupProvider
-	if strings.Contains(cfg.RollupRpc, ",") {
-		rollupUrls := strings.Split(cfg.RollupRpc, ",")
-		rollupProvider, err = dial.NewActiveL2RollupProvider(ctx, rollupUrls, cfg.ActiveSequencerCheckDuration, dial.DefaultDialTimeout, ps.Log)
-	} else {
-		rollupProvider, err = dial.NewStaticL2RollupProvider(ctx, ps.Log, cfg.RollupRpc)
+	if cfg.RollupRpc != "" {
+		var rollupProvider dial.RollupProvider
+		if strings.Contains(cfg.RollupRpc, ",") {
+			rollupUrls := strings.Split(cfg.RollupRpc, ",")
+			rollupProvider, err = dial.NewActiveL2RollupProvider(ctx, rollupUrls, cfg.ActiveSequencerCheckDuration, dial.DefaultDialTimeout, ps.Log)
+		} else {
+			rollupProvider, err = dial.NewStaticL2RollupProvider(ctx, ps.Log, cfg.RollupRpc)
+		}
+		if err != nil {
+			return fmt.Errorf("failed to build L2 endpoint provider: %w", err)
+		}
+		ps.ProposalSourceProvider = NewRollupProposalSourceProvider(rollupProvider)
 	}
-	if err != nil {
-		return fmt.Errorf("failed to build L2 endpoint provider: %w", err)
+	if cfg.SupervisorRpc != "" {
+		// TODO: Create supervisor RPC
+		//supervisorRpc, err := dial.DialRPCClientWithTimeout(ctx, dial.DefaultDialTimeout, ps.Log, cfg.SupervisorRpc)
+		//if err != nil {
+		//	return fmt.Errorf("failed to dial supervisor RPC client: %w", err)
+		//}
+		//ps.SupervisorClient = sources.NewSupervisorClient(client.NewBaseRPCClient(supervisorRpc))
 	}
-	ps.RollupProvider = rollupProvider
 	return nil
 }
 
@@ -226,13 +236,13 @@ func (ps *ProposerService) initDGF(cfg *CLIConfig) {
 
 func (ps *ProposerService) initDriver() error {
 	driver, err := NewL2OutputSubmitter(DriverSetup{
-		Log:            ps.Log,
-		Metr:           ps.Metrics,
-		Cfg:            ps.ProposerConfig,
-		Txmgr:          ps.TxManager,
-		L1Client:       ps.L1Client,
-		Multicaller:    batching.NewMultiCaller(ps.L1Client.Client(), batching.DefaultBatchSize),
-		RollupProvider: ps.RollupProvider,
+		Log:                    ps.Log,
+		Metr:                   ps.Metrics,
+		Cfg:                    ps.ProposerConfig,
+		Txmgr:                  ps.TxManager,
+		L1Client:               ps.L1Client,
+		Multicaller:            batching.NewMultiCaller(ps.L1Client.Client(), batching.DefaultBatchSize),
+		ProposalSourceProvider: ps.ProposalSourceProvider,
 	})
 	if err != nil {
 		return err
@@ -326,8 +336,8 @@ func (ps *ProposerService) Stop(ctx context.Context) error {
 		ps.L1Client.Close()
 	}
 
-	if ps.RollupProvider != nil {
-		ps.RollupProvider.Close()
+	if ps.ProposalSourceProvider != nil {
+		ps.ProposalSourceProvider.Close()
 	}
 
 	if result == nil {

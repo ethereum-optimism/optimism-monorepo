@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/ethereum-optimism/optimism/op-proposer/bindings"
+	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/testutils"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind/backends"
@@ -57,9 +58,17 @@ func TestManualABIPacking(t *testing.T) {
 	l2ooAbi, err := bindings.L2OutputOracleMetaData.GetAbi()
 	require.NoError(t, err)
 
-	output := testutils.RandomOutputResponse(rng)
+	proposal := Proposal{
+		Version:     eth.Bytes32{},
+		Root:        testutils.RandomHash(rng),
+		BlockRef:    testutils.RandomL2BlockRef(rng),
+		HeadL1:      testutils.RandomBlockRef(rng),
+		CurrentL1:   testutils.RandomBlockRef(rng),
+		SafeL2:      testutils.RandomL2BlockRef(rng),
+		FinalizedL2: testutils.RandomL2BlockRef(rng),
+	}
 
-	txData, err := proposeL2OutputTxData(l2ooAbi, output)
+	txData, err := proposeL2OutputTxData(l2ooAbi, proposal)
 	require.NoError(t, err)
 
 	// set a gas limit to disable gas estimation. The invariants that the L2OO tries to uphold
@@ -67,10 +76,10 @@ func TestManualABIPacking(t *testing.T) {
 	opts.GasLimit = 100_000
 	tx, err := l2oo.ProposeL2Output(
 		opts,
-		output.OutputRoot,
-		new(big.Int).SetUint64(output.BlockRef.Number),
-		output.Status.CurrentL1.Hash,
-		new(big.Int).SetUint64(output.Status.CurrentL1.Number))
+		proposal.Root,
+		new(big.Int).SetUint64(proposal.BlockRef.Number),
+		proposal.CurrentL1.Hash,
+		new(big.Int).SetUint64(proposal.CurrentL1.Number))
 	require.NoError(t, err)
 
 	require.Equal(t, txData, tx.Data())
