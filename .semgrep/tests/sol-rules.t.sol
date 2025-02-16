@@ -57,6 +57,13 @@ contract SemgrepTest__sol_safety_deployutils_args {
             _args: abi.encodeCall(ISuperchainConfig.__constructor__, ())
         });
 
+        // ruleid: sol-safety-deployutils-args
+        DeployUtils.createDeterministic({
+            _name: "SuperchainConfig",
+            _args: abi.encodeCall(ISuperchainConfig.__constructor__, ()),
+            _salt: _implSalt()
+        });
+
         // ok: sol-safety-deployutils-args
         DeployUtils.create1AndSave({
             _save: this,
@@ -87,6 +94,93 @@ contract SemgrepTest__sol_safety_deployutils_args {
             _name: "Proxy",
             _nick: "DataAvailabilityChallengeProxy",
             _args: DeployUtils.encodeConstructor(abi.encodeCall(IProxy.__constructor__, (proxyAdmin)))
+        });
+
+        // ok: sol-safety-deployutils-args
+        DeployUtils.createDeterministic({
+            _name: "Proxy",
+            _args: DeployUtils.encodeConstructor(abi.encodeCall(IProxy.__constructor__, (proxyAdmin))),
+            _salt: _implSalt()
+        });
+    }
+}
+
+contract SemgrepTest__sol_safety_deployutils_named_args {
+    function test() {
+        // ruleid: sol-safety-deployutils-named-args
+        DeployUtils.create1AndSave(
+            this,
+            "Proxy",
+            "DataAvailabilityChallengeProxy",
+            DeployUtils.encodeConstructor(abi.encodeCall(IProxy.__constructor__, (proxyAdmin)))
+        );
+
+        // ruleid: sol-safety-deployutils-named-args
+        DeployUtils.create1(
+            "Proxy",
+            "DataAvailabilityChallengeProxy",
+            DeployUtils.encodeConstructor(abi.encodeCall(IProxy.__constructor__, (proxyAdmin)))
+        );
+
+        // ruleid: sol-safety-deployutils-named-args
+        DeployUtils.create2AndSave(
+            this,
+            _implSalt(),
+            "Proxy",
+            "DataAvailabilityChallengeProxy",
+            DeployUtils.encodeConstructor(abi.encodeCall(IProxy.__constructor__, (proxyAdmin)))
+        );
+
+        // ruleid: sol-safety-deployutils-named-args
+        DeployUtils.create2(
+            _implSalt(),
+            "Proxy",
+            "DataAvailabilityChallengeProxy",
+            DeployUtils.encodeConstructor(abi.encodeCall(IProxy.__constructor__, (proxyAdmin)))
+        );
+
+        // ruleid: sol-safety-deployutils-named-args
+        DeployUtils.createDeterministic(
+            "Proxy", DeployUtils.encodeConstructor(abi.encodeCall(IProxy.__constructor__, (proxyAdmin))), _implSalt()
+        );
+
+        // ok: sol-safety-deployutils-named-args
+        DeployUtils.create1AndSave({
+            _save: this,
+            _name: "Proxy",
+            _nick: "DataAvailabilityChallengeProxy",
+            _args: DeployUtils.encodeConstructor(abi.encodeCall(IProxy.__constructor__, (proxyAdmin)))
+        });
+
+        // ok: sol-safety-deployutils-named-args
+        DeployUtils.create1({
+            _name: "Proxy",
+            _nick: "DataAvailabilityChallengeProxy",
+            _args: DeployUtils.encodeConstructor(abi.encodeCall(IProxy.__constructor__, (proxyAdmin)))
+        });
+
+        // ok: sol-safety-deployutils-named-args
+        DeployUtils.create2AndSave({
+            _save: this,
+            _salt: _implSalt(),
+            _name: "Proxy",
+            _nick: "DataAvailabilityChallengeProxy",
+            _args: DeployUtils.encodeConstructor(abi.encodeCall(IProxy.__constructor__, (proxyAdmin)))
+        });
+
+        // ok: sol-safety-deployutils-named-args
+        DeployUtils.create2({
+            _salt: _implSalt(),
+            _name: "Proxy",
+            _nick: "DataAvailabilityChallengeProxy",
+            _args: DeployUtils.encodeConstructor(abi.encodeCall(IProxy.__constructor__, (proxyAdmin)))
+        });
+
+        // ok: sol-safety-deployutils-named-args
+        DeployUtils.createDeterministic({
+            _name: "Proxy",
+            _args: DeployUtils.encodeConstructor(abi.encodeCall(IProxy.__constructor__, (proxyAdmin))),
+            _salt: _implSalt()
         });
     }
 }
