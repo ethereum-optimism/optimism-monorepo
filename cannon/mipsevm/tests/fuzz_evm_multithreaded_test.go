@@ -44,12 +44,12 @@ func FuzzStateSyscallCloneMT(f *testing.F) {
 		expected.PrestateActiveThread().Registers[7] = 0
 		// Set expectations for new, cloned thread
 		expected.ActiveThreadId = nextThreadId
-		epxectedNewThread := expected.ExpectNewThread()
-		epxectedNewThread.PC = state.GetCpu().NextPC
-		epxectedNewThread.NextPC = state.GetCpu().NextPC + 4
-		epxectedNewThread.Registers[register.RegSyscallNum] = 0
-		epxectedNewThread.Registers[register.RegSyscallErrno] = 0
-		epxectedNewThread.Registers[register.RegSP] = stackPtr
+		expectedNewThread := expected.ExpectNewThread()
+		expectedNewThread.PC = state.GetCpu().NextPC
+		expectedNewThread.NextPC = state.GetCpu().NextPC + 4
+		expectedNewThread.Registers[register.RegSyscallNum] = 0
+		expectedNewThread.Registers[register.RegSyscallErrno] = 0
+		expectedNewThread.Registers[register.RegSP] = stackPtr
 		expected.NextThreadId = nextThreadId + 1
 		expected.StepsSinceLastContextSwitch = 0
 		if state.TraverseRight {
