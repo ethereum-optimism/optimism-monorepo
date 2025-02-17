@@ -3,6 +3,7 @@ pragma solidity 0.8.15;
 
 // Testing
 import { Test, stdStorage, StdStorage } from "forge-std/Test.sol";
+import { VmSafe } from "forge-std/Vm.sol";
 import { CommonTest } from "test/setup/CommonTest.sol";
 import { DeployOPChain_TestBase } from "test/opcm/DeployOPChain.t.sol";
 import { DelegateCaller } from "test/mocks/Callers.sol";
@@ -316,15 +317,13 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
         bytes memory delegateCallerCode = address(_delegateCaller).code;
         vm.etch(_delegateCaller, vm.getDeployedCode("test/mocks/Callers.sol:DelegateCaller"));
 
-        // Measure gas usage of the upgrade call
-        uint256 gasStart = gasleft();
         DelegateCaller(_delegateCaller).dcForward(
             address(opcm), abi.encodeCall(IOPContractsManager.upgrade, (opChainConfigs))
         );
-        uint256 gasUsed = gasStart - gasleft();
 
-        // The upgrade should cost less than 15M gas.
-        assertLt(gasUsed, 15_000_000, "Upgrade exceeds gas target of 15M");
+        VmSafe.Gas memory gas = vm.lastCallGas();
+
+        assertLt(gas.gasTotalUsed, 15_000_000, "Upgrade exceeds gas target of 15M");
 
         vm.etch(_delegateCaller, delegateCallerCode);
 
