@@ -143,7 +143,7 @@ func NewSupervisorBackend(ctx context.Context, logger log.Logger,
 	eventSys.Register("sync-controller", super.syncNodesController, event.DefaultRegisterOpts())
 
 	// create status tracker
-	super.statusTracker = status.NewStatusTracker()
+	super.statusTracker = status.NewStatusTracker(depSet.Chains())
 	eventSys.Register("status", super.statusTracker, event.DefaultRegisterOpts())
 
 	// Initialize the resources of the supervisor backend.
