@@ -486,11 +486,16 @@ func (l *L2OutputSubmitter) proposeOutput(ctx context.Context, output Proposal) 
 	defer cancel()
 
 	if err := l.sendTransaction(cCtx, output); err != nil {
-		l.Log.Error("Failed to send proposal transaction",
+		logCtx := []interface{}{
 			"err", err,
 			"l1blocknum", output.CurrentL1.Number,
 			"l1blockhash", output.CurrentL1.Hash,
-			"l1head", output.Legacy.HeadL1.Number) // TODO: This should only apply to L2OO transactions
+		}
+		// Add legacy data only if available
+		if output.Legacy.HeadL1 != (eth.L1BlockRef{}) {
+			logCtx = append(logCtx, "l1head", output.Legacy.HeadL1.Number)
+		}
+		l.Log.Error("Failed to send proposal transaction", logCtx...)
 		return
 	}
 	l.Metr.RecordL2Proposal(output.SequenceNum)
