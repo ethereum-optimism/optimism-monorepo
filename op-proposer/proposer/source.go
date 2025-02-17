@@ -2,6 +2,7 @@ package proposer
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/ethereum-optimism/optimism/op-service/dial"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
@@ -9,16 +10,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 )
-
-type ProposalSourceProvider interface {
-	// ProposalSource returns an available ProposalSource
-	// Note: ctx should be a lifecycle context without an attached timeout as client selection may involve
-	// multiple network operations, specifically in the case of failover.
-	ProposalSource(ctx context.Context) (ProposalSource, error)
-
-	// Close closes the underlying client or clients
-	Close()
-}
 
 type Proposal struct {
 	Version eth.Bytes32
@@ -47,6 +38,9 @@ type LegacyProposalData struct {
 type ProposalSource interface {
 	ProposalAtBlock(ctx context.Context, blockNum uint64) (Proposal, error)
 	SyncStatus(ctx context.Context) (SourceSyncStatus, error)
+
+	// Close closes the underlying client or clients
+	Close()
 }
 
 type SourceSyncStatus struct {
@@ -55,36 +49,26 @@ type SourceSyncStatus struct {
 	FinalizedL2 uint64
 }
 
-type RollupProposalSourceProvider struct {
+type RollupProposalSource struct {
 	provider dial.RollupProvider
 }
 
-func (r *RollupProposalSourceProvider) ProposalSource(ctx context.Context) (ProposalSource, error) {
-	client, err := r.provider.RollupClient(ctx)
-	if err != nil {
-		return nil, err
-	}
+func NewRollupProposalSource(provider dial.RollupProvider) *RollupProposalSource {
 	return &RollupProposalSource{
-		client: client,
-	}, nil
-}
-
-func (r *RollupProposalSourceProvider) Close() {
-	r.provider.Close()
-}
-
-func NewRollupProposalSourceProvider(provider dial.RollupProvider) *RollupProposalSourceProvider {
-	return &RollupProposalSourceProvider{
 		provider: provider,
 	}
 }
 
-type RollupProposalSource struct {
-	client dial.RollupClientInterface
+func (r *RollupProposalSource) Close() {
+	r.provider.Close()
 }
 
 func (r *RollupProposalSource) SyncStatus(ctx context.Context) (SourceSyncStatus, error) {
-	status, err := r.client.SyncStatus(ctx)
+	client, err := r.provider.RollupClient(ctx)
+	if err != nil {
+		return SourceSyncStatus{}, fmt.Errorf("failed to select active rollup client: %w", err)
+	}
+	status, err := client.SyncStatus(ctx)
 	if err != nil {
 		return SourceSyncStatus{}, err
 	}
@@ -96,7 +80,11 @@ func (r *RollupProposalSource) SyncStatus(ctx context.Context) (SourceSyncStatus
 }
 
 func (r *RollupProposalSource) ProposalAtBlock(ctx context.Context, blockNum uint64) (Proposal, error) {
-	output, err := r.client.OutputAtBlock(ctx, blockNum)
+	client, err := r.provider.RollupClient(ctx)
+	if err != nil {
+		return Proposal{}, fmt.Errorf("failed to select active rollup client: %w", err)
+	}
+	output, err := client.OutputAtBlock(ctx, blockNum)
 	if err != nil {
 		return Proposal{}, err
 	}
@@ -114,26 +102,14 @@ func (r *RollupProposalSource) ProposalAtBlock(ctx context.Context, blockNum uin
 	}, nil
 }
 
-type SupervisorProposalSourceProvider struct {
-	client *sources.SupervisorClient
-}
-
-func (p *SupervisorProposalSourceProvider) Close() {
-	p.client.Close()
-}
-
-func NewSupervisorProposalSourceProvider(client *sources.SupervisorClient) *SupervisorProposalSourceProvider {
-	return &SupervisorProposalSourceProvider{
-		client: client,
-	}
-}
-
-func (p *SupervisorProposalSourceProvider) ProposalSource(ctx context.Context) (ProposalSource, error) {
-	return &SupervisorProposalSource{client: p.client}, nil
-}
-
 type SupervisorProposalSource struct {
 	client *sources.SupervisorClient
+}
+
+func NewSupervisorProposalSource(client *sources.SupervisorClient) *SupervisorProposalSource {
+	return &SupervisorProposalSource{
+		client: client,
+	}
 }
 
 func (s *SupervisorProposalSource) SyncStatus(ctx context.Context) (SourceSyncStatus, error) {
@@ -162,4 +138,8 @@ func (s *SupervisorProposalSource) ProposalAtBlock(ctx context.Context, blockNum
 		// Unsupported by super root proposals
 		Legacy: LegacyProposalData{},
 	}, nil
+}
+
+func (s *SupervisorProposalSource) Close() {
+	s.client.Close()
 }

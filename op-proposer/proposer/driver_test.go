@@ -87,11 +87,11 @@ func setup(t *testing.T, testName string) (*L2OutputSubmitter, *mockRollupEndpoi
 
 	lgr, logs := testlog.CaptureLogger(t, log.LevelDebug)
 	setup := DriverSetup{
-		Log:                    lgr,
-		Metr:                   metrics.NoopMetrics,
-		Cfg:                    proposerConfig,
-		Txmgr:                  txmgr,
-		ProposalSourceProvider: NewRollupProposalSourceProvider(ep),
+		Log:            lgr,
+		Metr:           metrics.NoopMetrics,
+		Cfg:            proposerConfig,
+		Txmgr:          txmgr,
+		ProposalSource: NewRollupProposalSource(ep),
 	}
 
 	parsed, err := bindings.L2OutputOracleMetaData.GetAbi()

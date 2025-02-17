@@ -57,9 +57,9 @@ type ProposerService struct {
 
 	ProposerConfig
 
-	TxManager              txmgr.TxManager
-	L1Client               *ethclient.Client
-	ProposalSourceProvider ProposalSourceProvider
+	TxManager      txmgr.TxManager
+	L1Client       *ethclient.Client
+	ProposalSource ProposalSource
 
 	driver *L2OutputSubmitter
 
@@ -142,7 +142,7 @@ func (ps *ProposerService) initRPCClients(ctx context.Context, cfg *CLIConfig) e
 		if err != nil {
 			return fmt.Errorf("failed to build L2 endpoint provider: %w", err)
 		}
-		ps.ProposalSourceProvider = NewRollupProposalSourceProvider(rollupProvider)
+		ps.ProposalSource = NewRollupProposalSource(rollupProvider)
 	}
 	if cfg.SupervisorRpc != "" {
 		supervisorRpc, err := dial.DialRPCClientWithTimeout(ctx, dial.DefaultDialTimeout, ps.Log, cfg.SupervisorRpc)
@@ -150,7 +150,7 @@ func (ps *ProposerService) initRPCClients(ctx context.Context, cfg *CLIConfig) e
 			return fmt.Errorf("failed to dial supervisor RPC client: %w", err)
 		}
 		cl := sources.NewSupervisorClient(client.NewBaseRPCClient(supervisorRpc))
-		ps.ProposalSourceProvider = NewSupervisorProposalSourceProvider(cl)
+		ps.ProposalSource = NewSupervisorProposalSource(cl)
 	}
 	return nil
 }
@@ -238,13 +238,13 @@ func (ps *ProposerService) initDGF(cfg *CLIConfig) {
 
 func (ps *ProposerService) initDriver() error {
 	driver, err := NewL2OutputSubmitter(DriverSetup{
-		Log:                    ps.Log,
-		Metr:                   ps.Metrics,
-		Cfg:                    ps.ProposerConfig,
-		Txmgr:                  ps.TxManager,
-		L1Client:               ps.L1Client,
-		Multicaller:            batching.NewMultiCaller(ps.L1Client.Client(), batching.DefaultBatchSize),
-		ProposalSourceProvider: ps.ProposalSourceProvider,
+		Log:            ps.Log,
+		Metr:           ps.Metrics,
+		Cfg:            ps.ProposerConfig,
+		Txmgr:          ps.TxManager,
+		L1Client:       ps.L1Client,
+		Multicaller:    batching.NewMultiCaller(ps.L1Client.Client(), batching.DefaultBatchSize),
+		ProposalSource: ps.ProposalSource,
 	})
 	if err != nil {
 		return err
@@ -338,8 +338,8 @@ func (ps *ProposerService) Stop(ctx context.Context) error {
 		ps.L1Client.Close()
 	}
 
-	if ps.ProposalSourceProvider != nil {
-		ps.ProposalSourceProvider.Close()
+	if ps.ProposalSource != nil {
+		ps.ProposalSource.Close()
 	}
 
 	if result == nil {

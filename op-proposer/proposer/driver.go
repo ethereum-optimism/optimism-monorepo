@@ -64,8 +64,8 @@ type DriverSetup struct {
 	L1Client    L1Client
 	Multicaller *batching.MultiCaller
 
-	// ProposalSourceProvider provides a client to retrieve output roots from
-	ProposalSourceProvider ProposalSourceProvider
+	// ProposalSource retrieves the proposal data to submit
+	ProposalSource ProposalSource
 }
 
 // L2OutputSubmitter is responsible for proposing outputs
@@ -300,12 +300,7 @@ func (l *L2OutputSubmitter) FetchDGFOutput(ctx context.Context) (Proposal, bool,
 // FetchCurrentBlockNumber gets the current block number from the [L2OutputSubmitter]'s [RollupClient]. If the `AllowNonFinalized` configuration
 // option is set, it will return the safe head block number, and if not, it will return the finalized head block number.
 func (l *L2OutputSubmitter) FetchCurrentBlockNumber(ctx context.Context) (uint64, error) {
-	source, err := l.ProposalSourceProvider.ProposalSource(ctx)
-	if err != nil {
-		return 0, fmt.Errorf("getting proposal source: %w", err)
-	}
-
-	status, err := source.SyncStatus(ctx)
+	status, err := l.ProposalSource.SyncStatus(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("getting sync status: %w", err)
 	}
@@ -318,12 +313,7 @@ func (l *L2OutputSubmitter) FetchCurrentBlockNumber(ctx context.Context) (uint64
 }
 
 func (l *L2OutputSubmitter) FetchOutput(ctx context.Context, block uint64) (Proposal, error) {
-	source, err := l.ProposalSourceProvider.ProposalSource(ctx)
-	if err != nil {
-		return Proposal{}, fmt.Errorf("getting rollup client: %w", err)
-	}
-
-	output, err := source.ProposalAtBlock(ctx, block)
+	output, err := l.ProposalSource.ProposalAtBlock(ctx, block)
 	if err != nil {
 		return Proposal{}, fmt.Errorf("fetching output at block %d: %w", block, err)
 	}
@@ -482,13 +472,8 @@ func (l *L2OutputSubmitter) waitNodeSync() error {
 		return fmt.Errorf("failed to retrieve current L1 block number: %w", err)
 	}
 
-	client, err := l.ProposalSourceProvider.ProposalSource(l.ctx)
-	if err != nil {
-		return fmt.Errorf("failed to get rollup client: %w", err)
-	}
-
 	return dial.WaitL1Sync(l.ctx, l.Log, l1head, time.Second*12, func(ctx context.Context) (eth.L1BlockRef, error) {
-		status, err := client.SyncStatus(ctx)
+		status, err := l.ProposalSource.SyncStatus(ctx)
 		if err != nil {
 			return eth.L1BlockRef{}, err
 		}

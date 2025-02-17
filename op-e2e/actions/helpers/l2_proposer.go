@@ -103,13 +103,13 @@ func NewL2Proposer(t Testing, log log.Logger, cfg *ProposerCfg, l1 *ethclient.Cl
 	rollupProvider, err := dial.NewStaticL2RollupProviderFromExistingRollup(rollupCl)
 	require.NoError(t, err)
 	driverSetup := proposer.DriverSetup{
-		Log:                    log,
-		Metr:                   metrics.NoopMetrics,
-		Cfg:                    proposerConfig,
-		Txmgr:                  fakeTxMgr{from: crypto.PubkeyToAddress(cfg.ProposerKey.PublicKey)},
-		L1Client:               l1,
-		Multicaller:            batching.NewMultiCaller(l1.Client(), batching.DefaultBatchSize),
-		ProposalSourceProvider: proposer.NewRollupProposalSourceProvider(rollupProvider),
+		Log:            log,
+		Metr:           metrics.NoopMetrics,
+		Cfg:            proposerConfig,
+		Txmgr:          fakeTxMgr{from: crypto.PubkeyToAddress(cfg.ProposerKey.PublicKey)},
+		L1Client:       l1,
+		Multicaller:    batching.NewMultiCaller(l1.Client(), batching.DefaultBatchSize),
+		ProposalSource: proposer.NewRollupProposalSource(rollupProvider),
 	}
 
 	dr, err := proposer.NewL2OutputSubmitter(driverSetup)
