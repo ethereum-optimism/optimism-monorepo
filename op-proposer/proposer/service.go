@@ -11,6 +11,7 @@ import (
 
 	"github.com/ethereum-optimism/optimism/op-proposer/metrics"
 	"github.com/ethereum-optimism/optimism/op-proposer/proposer/rpc"
+	"github.com/ethereum-optimism/optimism/op-proposer/proposer/source"
 	opservice "github.com/ethereum-optimism/optimism/op-service"
 	"github.com/ethereum-optimism/optimism/op-service/cliapp"
 	"github.com/ethereum-optimism/optimism/op-service/client"
@@ -59,7 +60,7 @@ type ProposerService struct {
 
 	TxManager      txmgr.TxManager
 	L1Client       *ethclient.Client
-	ProposalSource ProposalSource
+	ProposalSource source.ProposalSource
 
 	driver *L2OutputSubmitter
 
@@ -142,7 +143,7 @@ func (ps *ProposerService) initRPCClients(ctx context.Context, cfg *CLIConfig) e
 		if err != nil {
 			return fmt.Errorf("failed to build L2 endpoint provider: %w", err)
 		}
-		ps.ProposalSource = NewRollupProposalSource(rollupProvider)
+		ps.ProposalSource = source.NewRollupProposalSource(rollupProvider)
 	}
 	if cfg.SupervisorRpc != "" {
 		supervisorRpc, err := dial.DialRPCClientWithTimeout(ctx, dial.DefaultDialTimeout, ps.Log, cfg.SupervisorRpc)
@@ -150,7 +151,7 @@ func (ps *ProposerService) initRPCClients(ctx context.Context, cfg *CLIConfig) e
 			return fmt.Errorf("failed to dial supervisor RPC client: %w", err)
 		}
 		cl := sources.NewSupervisorClient(client.NewBaseRPCClient(supervisorRpc))
-		ps.ProposalSource = NewSupervisorProposalSource(cl)
+		ps.ProposalSource = source.NewSupervisorProposalSource(cl)
 	}
 	return nil
 }

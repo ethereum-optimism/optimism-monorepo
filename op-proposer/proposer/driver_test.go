@@ -9,6 +9,7 @@ import (
 
 	"github.com/ethereum-optimism/optimism/op-proposer/bindings"
 	"github.com/ethereum-optimism/optimism/op-proposer/metrics"
+	"github.com/ethereum-optimism/optimism/op-proposer/proposer/source"
 	"github.com/ethereum-optimism/optimism/op-service/dial"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
@@ -91,7 +92,7 @@ func setup(t *testing.T, testName string) (*L2OutputSubmitter, *mockRollupEndpoi
 		Metr:           metrics.NoopMetrics,
 		Cfg:            proposerConfig,
 		Txmgr:          txmgr,
-		ProposalSource: NewRollupProposalSource(ep),
+		ProposalSource: source.NewRollupProposalSource(ep),
 	}
 
 	parsed, err := bindings.L2OutputOracleMetaData.GetAbi()

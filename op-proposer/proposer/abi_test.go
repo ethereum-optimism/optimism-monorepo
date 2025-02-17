@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/ethereum-optimism/optimism/op-proposer/bindings"
+	"github.com/ethereum-optimism/optimism/op-proposer/proposer/source"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/testutils"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -58,11 +59,11 @@ func TestManualABIPacking(t *testing.T) {
 	l2ooAbi, err := bindings.L2OutputOracleMetaData.GetAbi()
 	require.NoError(t, err)
 
-	proposal := Proposal{
+	proposal := source.Proposal{
 		Version:   eth.Bytes32{},
 		Root:      testutils.RandomHash(rng),
 		CurrentL1: testutils.RandomBlockID(rng),
-		Legacy: LegacyProposalData{
+		Legacy: source.LegacyProposalData{
 			BlockRef:    testutils.RandomL2BlockRef(rng),
 			HeadL1:      testutils.RandomBlockRef(rng),
 			SafeL2:      testutils.RandomL2BlockRef(rng),
