@@ -26,7 +26,6 @@ import (
 	"github.com/ethereum-optimism/optimism/op-proposer/metrics"
 	"github.com/ethereum-optimism/optimism/op-proposer/proposer"
 	"github.com/ethereum-optimism/optimism/op-service/dial"
-	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/sources"
 	"github.com/ethereum-optimism/optimism/op-service/txmgr"
 )
@@ -104,13 +103,13 @@ func NewL2Proposer(t Testing, log log.Logger, cfg *ProposerCfg, l1 *ethclient.Cl
 	rollupProvider, err := dial.NewStaticL2RollupProviderFromExistingRollup(rollupCl)
 	require.NoError(t, err)
 	driverSetup := proposer.DriverSetup{
-		Log:            log,
-		Metr:           metrics.NoopMetrics,
-		Cfg:            proposerConfig,
-		Txmgr:          fakeTxMgr{from: crypto.PubkeyToAddress(cfg.ProposerKey.PublicKey)},
-		L1Client:       l1,
-		Multicaller:    batching.NewMultiCaller(l1.Client(), batching.DefaultBatchSize),
-		RollupProvider: rollupProvider,
+		Log:                    log,
+		Metr:                   metrics.NoopMetrics,
+		Cfg:                    proposerConfig,
+		Txmgr:                  fakeTxMgr{from: crypto.PubkeyToAddress(cfg.ProposerKey.PublicKey)},
+		L1Client:               l1,
+		Multicaller:            batching.NewMultiCaller(l1.Client(), batching.DefaultBatchSize),
+		ProposalSourceProvider: proposer.NewRollupProposalSourceProvider(rollupProvider),
 	}
 
 	dr, err := proposer.NewL2OutputSubmitter(driverSetup)
@@ -225,20 +224,20 @@ func toCallArg(msg ethereum.CallMsg) interface{} {
 	return arg
 }
 
-func (p *L2Proposer) fetchNextOutput(t Testing) (*eth.OutputResponse, bool, error) {
+func (p *L2Proposer) fetchNextOutput(t Testing) (proposer.Proposal, bool, error) {
 	if p.allocType.UsesProofs() {
 		output, shouldPropose, err := p.driver.FetchDGFOutput(t.Ctx())
 		if err != nil || !shouldPropose {
-			return nil, false, err
+			return proposer.Proposal{}, false, err
 		}
 		encodedBlockNumber := make([]byte, 32)
-		binary.BigEndian.PutUint64(encodedBlockNumber[24:], output.BlockRef.Number)
-		game, err := p.disputeGameFactory.Games(&bind.CallOpts{}, p.driver.Cfg.DisputeGameType, output.OutputRoot, encodedBlockNumber)
+		binary.BigEndian.PutUint64(encodedBlockNumber[24:], output.Legacy.BlockRef.Number)
+		game, err := p.disputeGameFactory.Games(&bind.CallOpts{}, p.driver.Cfg.DisputeGameType, output.Root, encodedBlockNumber)
 		if err != nil {
-			return nil, false, err
+			return proposer.Proposal{}, false, err
 		}
 		if game.Timestamp != 0 {
-			return nil, false, nil
+			return proposer.Proposal{}, false, nil
 		}
 
 		return output, true, nil

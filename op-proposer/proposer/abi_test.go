@@ -59,13 +59,15 @@ func TestManualABIPacking(t *testing.T) {
 	require.NoError(t, err)
 
 	proposal := Proposal{
-		Version:     eth.Bytes32{},
-		Root:        testutils.RandomHash(rng),
-		BlockRef:    testutils.RandomL2BlockRef(rng),
-		HeadL1:      testutils.RandomBlockRef(rng),
-		CurrentL1:   testutils.RandomBlockRef(rng),
-		SafeL2:      testutils.RandomL2BlockRef(rng),
-		FinalizedL2: testutils.RandomL2BlockRef(rng),
+		Version:   eth.Bytes32{},
+		Root:      testutils.RandomHash(rng),
+		CurrentL1: testutils.RandomBlockID(rng),
+		Legacy: LegacyProposalData{
+			BlockRef:    testutils.RandomL2BlockRef(rng),
+			HeadL1:      testutils.RandomBlockRef(rng),
+			SafeL2:      testutils.RandomL2BlockRef(rng),
+			FinalizedL2: testutils.RandomL2BlockRef(rng),
+		},
 	}
 
 	txData, err := proposeL2OutputTxData(l2ooAbi, proposal)
@@ -77,7 +79,7 @@ func TestManualABIPacking(t *testing.T) {
 	tx, err := l2oo.ProposeL2Output(
 		opts,
 		proposal.Root,
-		new(big.Int).SetUint64(proposal.BlockRef.Number),
+		new(big.Int).SetUint64(proposal.Legacy.BlockRef.Number),
 		proposal.CurrentL1.Hash,
 		new(big.Int).SetUint64(proposal.CurrentL1.Number))
 	require.NoError(t, err)

@@ -243,11 +243,11 @@ func (l *L2OutputSubmitter) FetchL2OOOutput(ctx context.Context) (Proposal, bool
 	}
 
 	// Always propose if it's part of the Finalized L2 chain. Or if allowed, if it's part of the safe L2 chain.
-	if output.BlockRef.Number > output.FinalizedL2.Number && (!l.Cfg.AllowNonFinalized || output.BlockRef.Number > output.SafeL2.Number) {
+	if output.SequenceNum > output.Legacy.FinalizedL2.Number && (!l.Cfg.AllowNonFinalized || output.SequenceNum > output.Legacy.SafeL2.Number) {
 		l.Log.Debug("Not proposing yet, L2 block is not ready for proposal",
-			"l2_proposal", output.BlockRef,
-			"l2_safe", output.SafeL2,
-			"l2_finalized", output.FinalizedL2,
+			"l2_proposal", output.SequenceNum,
+			"l2_safe", output.Legacy.SafeL2,
+			"l2_finalized", output.Legacy.FinalizedL2,
 			"allow_non_finalized", l.Cfg.AllowNonFinalized)
 		return output, false, nil
 	}
@@ -312,9 +312,9 @@ func (l *L2OutputSubmitter) FetchCurrentBlockNumber(ctx context.Context) (uint64
 
 	// Use either the finalized or safe head depending on the config. Finalized head is default & safer.
 	if l.Cfg.AllowNonFinalized {
-		return status.SafeL2.Number, nil
+		return status.SafeL2, nil
 	}
-	return status.FinalizedL2.Number, nil
+	return status.FinalizedL2, nil
 }
 
 func (l *L2OutputSubmitter) FetchOutput(ctx context.Context, block uint64) (Proposal, error) {
@@ -330,8 +330,8 @@ func (l *L2OutputSubmitter) FetchOutput(ctx context.Context, block uint64) (Prop
 	if output.Version != supportedL2OutputVersion {
 		return Proposal{}, fmt.Errorf("unsupported l2 output version: %v, supported: %v", output.Version, supportedL2OutputVersion)
 	}
-	if onum := output.BlockRef.Number; onum != block { // sanity check, e.g. in case of bad RPC caching
-		return Proposal{}, fmt.Errorf("output block number %d mismatches requested %d", output.BlockRef.Number, block)
+	if onum := output.SequenceNum; onum != block { // sanity check, e.g. in case of bad RPC caching
+		return Proposal{}, fmt.Errorf("output block number %d mismatches requested %d", output.SequenceNum, block)
 	}
 	return output, nil
 }
@@ -346,7 +346,7 @@ func proposeL2OutputTxData(abi *abi.ABI, output Proposal) ([]byte, error) {
 	return abi.Pack(
 		"proposeL2Output",
 		output.Root,
-		new(big.Int).SetUint64(output.BlockRef.Number),
+		new(big.Int).SetUint64(output.SequenceNum),
 		output.CurrentL1.Hash,
 		new(big.Int).SetUint64(output.CurrentL1.Number))
 }
@@ -354,7 +354,7 @@ func proposeL2OutputTxData(abi *abi.ABI, output Proposal) ([]byte, error) {
 func (l *L2OutputSubmitter) ProposeL2OutputDGFTxCandidate(ctx context.Context, output Proposal) (txmgr.TxCandidate, error) {
 	cCtx, cancel := context.WithTimeout(ctx, l.Cfg.NetworkTimeout)
 	defer cancel()
-	return l.dgfContract.ProposalTx(cCtx, l.Cfg.DisputeGameType, output.Root, output.BlockRef.Number)
+	return l.dgfContract.ProposalTx(cCtx, l.Cfg.DisputeGameType, output.Root, output.SequenceNum)
 }
 
 // We wait until l1head advances beyond blocknum. This is used to make sure proposal tx won't
@@ -387,12 +387,7 @@ func (l *L2OutputSubmitter) waitForL1Head(ctx context.Context, blockNum uint64) 
 
 // sendTransaction creates & sends transactions through the underlying transaction manager.
 func (l *L2OutputSubmitter) sendTransaction(ctx context.Context, output Proposal) error {
-	err := l.waitForL1Head(ctx, output.HeadL1.Number+1)
-	if err != nil {
-		return err
-	}
-
-	l.Log.Info("Proposing output root", "output", output.Root, "block", output.BlockRef)
+	l.Log.Info("Proposing output root", "output", output.Root, "block", output.SequenceNum)
 	var receipt *types.Receipt
 	if l.Cfg.DisputeGameFactoryAddr != nil {
 		candidate, err := l.ProposeL2OutputDGFTxCandidate(ctx, output)
@@ -404,6 +399,10 @@ func (l *L2OutputSubmitter) sendTransaction(ctx context.Context, output Proposal
 			return err
 		}
 	} else {
+		err := l.waitForL1Head(ctx, output.Legacy.HeadL1.Number+1)
+		if err != nil {
+			return err
+		}
 		data, err := l.ProposeL2OutputTxData(output)
 		if err != nil {
 			return err
@@ -506,8 +505,12 @@ func (l *L2OutputSubmitter) proposeOutput(ctx context.Context, output Proposal) 
 			"err", err,
 			"l1blocknum", output.CurrentL1.Number,
 			"l1blockhash", output.CurrentL1.Hash,
-			"l1head", output.HeadL1.Number)
+			"l1head", output.Legacy.HeadL1.Number) // TODO: This should only apply to L2OO transactions
 		return
 	}
-	l.Metr.RecordL2BlocksProposed(output.BlockRef)
+	l.Metr.RecordL2Proposal(output.SequenceNum)
+	if output.Legacy.BlockRef != (eth.L2BlockRef{}) {
+		// Record legacy metrics when available
+		l.Metr.RecordL2BlocksProposed(output.Legacy.BlockRef)
+	}
 }

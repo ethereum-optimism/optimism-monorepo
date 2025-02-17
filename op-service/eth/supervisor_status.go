@@ -5,8 +5,10 @@ type SupervisorSyncStatus struct {
 	// This is not the same as the latest L1 block known to the supervisor,
 	// but rather the L1 block view of the supervisor nodes.
 	// This L1 block may not be fully derived into L2 data on all nodes yet.
-	MinSyncedL1 L1BlockRef                             `json:"minSyncedL1"`
-	Chains      map[ChainID]*SupervisorChainSyncStatus `json:"chains"`
+	MinSyncedL1        L1BlockRef                             `json:"minSyncedL1"`
+	SafeTimestamp      uint64                                 `json:"safeTimestamp"`
+	FinalizedTimestamp uint64                                 `json:"finalizedTimestamp"`
+	Chains             map[ChainID]*SupervisorChainSyncStatus `json:"chains"`
 }
 
 // SupervisorChainStatus is the status of a chain as seen by the supervisor.

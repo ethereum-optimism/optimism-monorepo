@@ -13,11 +13,13 @@ import (
 	"github.com/ethereum-optimism/optimism/op-proposer/proposer/rpc"
 	opservice "github.com/ethereum-optimism/optimism/op-service"
 	"github.com/ethereum-optimism/optimism/op-service/cliapp"
+	"github.com/ethereum-optimism/optimism/op-service/client"
 	"github.com/ethereum-optimism/optimism/op-service/dial"
 	"github.com/ethereum-optimism/optimism/op-service/httputil"
 	opmetrics "github.com/ethereum-optimism/optimism/op-service/metrics"
 	"github.com/ethereum-optimism/optimism/op-service/oppprof"
 	oprpc "github.com/ethereum-optimism/optimism/op-service/rpc"
+	"github.com/ethereum-optimism/optimism/op-service/sources"
 	"github.com/ethereum-optimism/optimism/op-service/sources/batching"
 	"github.com/ethereum-optimism/optimism/op-service/txmgr"
 
@@ -143,12 +145,12 @@ func (ps *ProposerService) initRPCClients(ctx context.Context, cfg *CLIConfig) e
 		ps.ProposalSourceProvider = NewRollupProposalSourceProvider(rollupProvider)
 	}
 	if cfg.SupervisorRpc != "" {
-		// TODO: Create supervisor RPC
-		//supervisorRpc, err := dial.DialRPCClientWithTimeout(ctx, dial.DefaultDialTimeout, ps.Log, cfg.SupervisorRpc)
-		//if err != nil {
-		//	return fmt.Errorf("failed to dial supervisor RPC client: %w", err)
-		//}
-		//ps.SupervisorClient = sources.NewSupervisorClient(client.NewBaseRPCClient(supervisorRpc))
+		supervisorRpc, err := dial.DialRPCClientWithTimeout(ctx, dial.DefaultDialTimeout, ps.Log, cfg.SupervisorRpc)
+		if err != nil {
+			return fmt.Errorf("failed to dial supervisor RPC client: %w", err)
+		}
+		cl := sources.NewSupervisorClient(client.NewBaseRPCClient(supervisorRpc))
+		ps.ProposalSourceProvider = NewSupervisorProposalSourceProvider(cl)
 	}
 	return nil
 }
