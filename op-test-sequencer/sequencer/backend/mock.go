@@ -5,16 +5,24 @@ import (
 
 	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/backend/builder"
 	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/frontend"
+	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/seqtypes"
 )
 
 type MockBackend struct{}
+
+var _ frontend.BuildBackend = (*MockBackend)(nil)
+var _ frontend.AdminBackend = (*MockBackend)(nil)
 
 func NewMockBackend() *MockBackend {
 	return &MockBackend{}
 }
 
-func (ba *MockBackend) Builder() frontend.BuildBackend {
-	return builder.NoopBuilder{}
+func (ba *MockBackend) CreateJob(id seqtypes.BuilderID) (builder.BuildJob, error) {
+	return nil, builder.ErrNoBuild
+}
+
+func (ba *MockBackend) GetJob(id seqtypes.JobID) builder.BuildJob {
+	return nil
 }
 
 func (ba *MockBackend) Start(ctx context.Context) error {

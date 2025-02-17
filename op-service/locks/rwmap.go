@@ -1,6 +1,9 @@
 package locks
 
-import "sync"
+import (
+	"maps"
+	"sync"
+)
 
 // RWMap is a simple wrapper around a map, with global Read-Write protection.
 // For many concurrent reads/writes a sync.Map may be more performant,
@@ -10,6 +13,12 @@ import "sync"
 type RWMap[K comparable, V any] struct {
 	inner map[K]V
 	mu    sync.RWMutex
+}
+
+// RWMapFromMap creates a RWMap from the given map.
+// This shallow-copies the map, changes to the original map will not affect the new RWMap.
+func RWMapFromMap[K comparable, V any](m map[K]V) *RWMap[K, V] {
+	return &RWMap[K, V]{inner: maps.Clone(m)}
 }
 
 // Default creates a value at the given key, if the key is not set yet.

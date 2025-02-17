@@ -6,12 +6,12 @@ import (
 	"github.com/urfave/cli/v2"
 
 	opservice "github.com/ethereum-optimism/optimism/op-service"
-	"github.com/ethereum-optimism/optimism/op-service/endpoint"
 	oplog "github.com/ethereum-optimism/optimism/op-service/log"
 	opmetrics "github.com/ethereum-optimism/optimism/op-service/metrics"
 	"github.com/ethereum-optimism/optimism/op-service/oppprof"
 	oprpc "github.com/ethereum-optimism/optimism/op-service/rpc"
 	"github.com/ethereum-optimism/optimism/op-test-sequencer/config"
+	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/backend/builder"
 )
 
 const EnvVarPrefix = "OP_TEST_SEQUENCER"
@@ -21,23 +21,11 @@ func prefixEnvVars(name string) []string {
 }
 
 var (
-	L2CLEndpointFlag = &cli.StringFlag{
-		Name:    "l2.cl",
-		Usage:   "Connect to L2 rollup consensus layer RPC",
-		EnvVars: prefixEnvVars("L2_CL"),
-		Value:   config.DefaultL2CL,
-	}
-	L2ELEndpointFlag = &cli.StringFlag{
-		Name:    "l2.el",
-		Usage:   "Connect to L2 execution layer RPC for state data",
-		EnvVars: prefixEnvVars("L2_EL"),
-		Value:   config.DefaultL2EL,
-	}
-	L1ELEndpointFlag = &cli.StringFlag{
-		Name:    "l1.el",
-		Usage:   "Connect to L1 execution layer for block data",
-		EnvVars: prefixEnvVars("L1_EL"),
-		Value:   config.DefaultL1EL,
+	BuildersConfigFlag = &cli.StringFlag{
+		Name:    "builders.config",
+		Usage:   "Config file to builder(s) to load",
+		EnvVars: prefixEnvVars("BUILDERS_CONFIG"),
+		Value:   config.DefaultConfigYaml,
 	}
 	RPCJWTSecretFlag = &cli.StringFlag{
 		Name:      "rpc.jwt-secret",
@@ -56,9 +44,7 @@ var (
 var requiredFlags = []cli.Flag{}
 
 var optionalFlags = []cli.Flag{
-	L2CLEndpointFlag,
-	L2ELEndpointFlag,
-	L1ELEndpointFlag,
+	BuildersConfigFlag,
 	RPCJWTSecretFlag,
 	MockRunFlag,
 }
@@ -93,9 +79,7 @@ func ConfigFromCLI(ctx *cli.Context, version string) *config.Config {
 		PprofConfig:   oppprof.ReadCLIConfig(ctx),
 		RPC:           oprpc.ReadCLIConfig(ctx),
 		JWTSecretPath: ctx.Path(RPCJWTSecretFlag.Name),
-		L2CL:          endpoint.URL(ctx.String(L2CLEndpointFlag.Name)),
-		L2EL:          endpoint.URL(ctx.String(L2ELEndpointFlag.Name)),
-		L1EL:          endpoint.URL(ctx.String(L1ELEndpointFlag.Name)),
+		Builders:      &builder.YamlLoader{Path: ctx.String(BuildersConfigFlag.Name)},
 		MockRun:       ctx.Bool(MockRunFlag.Name),
 	}
 }

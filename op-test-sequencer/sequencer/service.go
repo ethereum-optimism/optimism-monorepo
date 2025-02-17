@@ -23,7 +23,7 @@ import (
 
 type serviceBackend interface {
 	frontend.AdminBackend
-	Builder() frontend.BuildBackend
+	frontend.BuildBackend
 	Start(ctx context.Context) error
 	Stop(ctx context.Context) error
 }
@@ -123,7 +123,15 @@ func (s *Service) initBackend(ctx context.Context, cfg *config.Config) error {
 		s.backend = backend.NewMockBackend()
 		return nil
 	}
-	s.backend = backend.NewBackend(s.log, s.metrics)
+	setup, err := cfg.Builders.Load(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to load builder setup: %w", err)
+	}
+	builders, err := setup.Start(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to setup builders: %w", err)
+	}
+	s.backend = backend.NewBackend(s.log, s.metrics, builders)
 	return nil
 }
 

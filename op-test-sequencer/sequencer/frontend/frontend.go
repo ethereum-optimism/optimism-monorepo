@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"github.com/ethereum-optimism/optimism/op-service/eth"
+	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/backend/builder"
+	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/seqtypes"
 )
 
 type AdminBackend interface {
@@ -19,25 +21,42 @@ func (af *AdminFrontend) Hello(ctx context.Context, name string) (string, error)
 }
 
 type BuildBackend interface {
-	Open(ctx context.Context) (JobID, error)
-	Cancel(ctx context.Context, jobID JobID) error
-	Seal(ctx context.Context, jobID JobID) (eth.BlockRef, error)
+	CreateJob(id seqtypes.BuilderID) (builder.BuildJob, error)
+	GetJob(id seqtypes.JobID) builder.BuildJob
 }
 
 type BuildFrontend struct {
-	Backend interface {
-		Builder() BuildBackend
+	Backend BuildBackend
+}
+
+func (bf *BuildFrontend) Open(ctx context.Context, builderID seqtypes.BuilderID) (seqtypes.JobID, error) {
+	job, err := bf.Backend.CreateJob(builderID)
+	if err != nil {
+		return "", err
 	}
+	return job.ID(), nil
 }
 
-func (bf *BuildFrontend) Open(ctx context.Context) (JobID, error) {
-	return bf.Backend.Builder().Open(ctx)
+func (bf *BuildFrontend) Cancel(ctx context.Context, jobID seqtypes.JobID) error {
+	job := bf.Backend.GetJob(jobID)
+	if job == nil {
+		return nil
+	}
+	return job.Cancel(ctx)
 }
 
-func (bf *BuildFrontend) Cancel(ctx context.Context, jobID JobID) error {
-	return bf.Backend.Builder().Cancel(ctx, jobID)
+func (bf *BuildFrontend) Seal(ctx context.Context, jobID seqtypes.JobID) (eth.BlockRef, error) {
+	job := bf.Backend.GetJob(jobID)
+	if job == nil {
+		return eth.BlockRef{}, seqtypes.ErrUnknownJob
+	}
+	return job.Seal(ctx)
 }
 
-func (bf *BuildFrontend) Seal(ctx context.Context, jobID JobID) (eth.BlockRef, error) {
-	return bf.Backend.Builder().Seal(ctx, jobID)
+func (bf *BuildFrontend) Sign(ctx context.Context, jobID seqtypes.JobID) error {
+	return nil
+}
+
+func (bf *BuildFrontend) Publish(ctx context.Context, jobID seqtypes.JobID) error {
+	return nil
 }
