@@ -11,8 +11,10 @@ type SupervisorSyncStatus struct {
 	Chains             map[ChainID]*SupervisorChainSyncStatus `json:"chains"`
 }
 
-// SupervisorChainStatus is the status of a chain as seen by the supervisor.
+// SupervisorChainSyncStatus is the status of a chain as seen by the supervisor.
 type SupervisorChainSyncStatus struct {
 	// LocalUnsafe is the latest L2 block that has been processed by the supervisor.
 	LocalUnsafe BlockRef `json:"localUnsafe"`
+	Safe        BlockID  `json:"safe"`
+	Finalized   BlockID  `json:"finalized"`
 }

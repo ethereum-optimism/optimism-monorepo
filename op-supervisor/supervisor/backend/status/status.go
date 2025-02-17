@@ -95,6 +95,8 @@ func (su *StatusTracker) SyncStatus() (eth.SupervisorSyncStatus, error) {
 
 		supervisorStatus.Chains[chainID] = &eth.SupervisorChainSyncStatus{
 			LocalUnsafe: nodeStatus.LocalUnsafe,
+			Safe:        nodeStatus.CrossSafe.ID(),
+			Finalized:   nodeStatus.Finalized.ID(),
 		}
 		firstChain = false
 	}
