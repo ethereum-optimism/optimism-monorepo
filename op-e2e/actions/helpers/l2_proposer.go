@@ -231,7 +231,7 @@ func (p *L2Proposer) fetchNextOutput(t Testing) (proposer.Proposal, bool, error)
 			return proposer.Proposal{}, false, err
 		}
 		encodedBlockNumber := make([]byte, 32)
-		binary.BigEndian.PutUint64(encodedBlockNumber[24:], output.Legacy.BlockRef.Number)
+		binary.BigEndian.PutUint64(encodedBlockNumber[24:], output.SequenceNum)
 		game, err := p.disputeGameFactory.Games(&bind.CallOpts{}, p.driver.Cfg.DisputeGameType, output.Root, encodedBlockNumber)
 		if err != nil {
 			return proposer.Proposal{}, false, err
