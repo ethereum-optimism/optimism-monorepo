@@ -241,7 +241,11 @@ func encodeSuperchainConfigProxyArgs(v *Verifier) (string, error) {
 }
 
 func encodePermissionedDisputeGameArgs(v *Verifier) (string, error) {
-	addr := v.st.Chains[v.l2ChainIndex].PermissionedDisputeGameAddress
+	chainState, err := v.st.Chain(v.l2ChainID)
+	if err != nil {
+		return "", err
+	}
+	addr := chainState.PermissionedDisputeGameAddress
 	result := []byte{}
 
 	var gameType uint32
@@ -313,10 +317,14 @@ func encodePermissionedDisputeGameArgs(v *Verifier) (string, error) {
 	}
 	result = append(result, common.LeftPadBytes(l2ChainId.Bytes(), 32)...)
 
-	proposer := v.st.AppliedIntent.Chains[v.l2ChainIndex].Roles.Proposer
+	chainIntent, err := v.st.AppliedIntent.Chain(v.l2ChainID)
+	if err != nil {
+		return "", err
+	}
+	proposer := chainIntent.Roles.Proposer
 	result = append(result, common.LeftPadBytes(proposer.Bytes(), 32)...)
 
-	challenger := v.st.AppliedIntent.Chains[v.l2ChainIndex].Roles.Challenger
+	challenger := chainIntent.Roles.Challenger
 	result = append(result, common.LeftPadBytes(challenger.Bytes(), 32)...)
 
 	return strings.TrimPrefix(hexutil.Encode(result), "0x"), nil
