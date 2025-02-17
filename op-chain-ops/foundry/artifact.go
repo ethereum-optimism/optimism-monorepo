@@ -156,8 +156,9 @@ func ReadArtifact(path string) (*Artifact, error) {
 	return &artifact, nil
 }
 
-// SearchRemappings applies the configured remappings to a given source path.
-// It assumes that each remapping is of the form "alias/=actualPath".
+// SearchRemappings applies the configured remappings to a given source path,
+// or returns the source path unchanged if no remapping is found. It assumes that
+// each remapping is of the form "alias/=actualPath".
 func (a Artifact) SearchRemappings(sourcePath string) string {
 	for _, mapping := range a.Metadata.Settings.Remappings {
 		parts := strings.Split(mapping, "/=")
