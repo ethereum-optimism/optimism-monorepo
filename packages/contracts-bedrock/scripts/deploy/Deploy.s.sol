@@ -380,6 +380,9 @@ contract Deploy is Deployer {
         artifacts.save("OptimismPortalProxy", address(deployOutput.optimismPortalProxy));
         artifacts.save("OptimismPortal2Proxy", address(deployOutput.optimismPortalProxy));
 
+        // Save the dummy registry
+        artifacts.save("DummyRegistryProxy", address(deployOutput.dummyRegistry));
+
         // Check if the permissionless game implementation is already set
         IDisputeGameFactory factory = IDisputeGameFactory(artifacts.mustGetAddress("DisputeGameFactoryProxy"));
         address permissionlessGameImpl = address(factory.gameImpls(GameTypes.CANNON));

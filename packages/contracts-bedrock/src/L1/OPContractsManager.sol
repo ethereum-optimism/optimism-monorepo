@@ -29,6 +29,7 @@ import { IL1ERC721Bridge } from "interfaces/L1/IL1ERC721Bridge.sol";
 import { IL1StandardBridge } from "interfaces/L1/IL1StandardBridge.sol";
 import { IOptimismMintableERC20Factory } from "interfaces/universal/IOptimismMintableERC20Factory.sol";
 import { IHasSuperchainConfig } from "interfaces/L1/IHasSuperchainConfig.sol";
+import { IDummyRegistry } from "interfaces/L1/IDummyRegistry.sol";
 
 contract OPContractsManager is ISemver {
     // -------- Structs --------
@@ -80,6 +81,7 @@ contract OPContractsManager is ISemver {
         IPermissionedDisputeGame permissionedDisputeGame;
         IDelayedWETH delayedWETHPermissionedGameProxy;
         IDelayedWETH delayedWETHPermissionlessGameProxy;
+        IDummyRegistry dummyRegistry;
     }
 
     /// @notice Addresses of ERC-5202 Blueprint contracts. There are used for deploying full size
@@ -292,6 +294,12 @@ contract OPContractsManager is ISemver {
         output.opChainProxyAdmin = IProxyAdmin(
             Blueprint.deployFrom(
                 blueprint.proxyAdmin, computeSalt(l2ChainId, saltMixer, "ProxyAdmin"), abi.encode(address(this))
+            )
+        );
+        // This is my own contract.
+        output.dummyRegistry = IDummyRegistry(
+            Blueprint.deployFrom(
+                blueprint.proxyAdmin, computeSalt(l2ChainId, saltMixer, "DummyRegistry"), abi.encode(upgradeController)
             )
         );
         // Set the AddressManager on the ProxyAdmin.

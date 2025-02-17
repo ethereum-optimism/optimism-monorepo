@@ -22,7 +22,7 @@ import { IL1CrossDomainMessenger } from "interfaces/L1/IL1CrossDomainMessenger.s
 import { IL1ERC721Bridge } from "interfaces/L1/IL1ERC721Bridge.sol";
 import { IL1StandardBridge } from "interfaces/L1/IL1StandardBridge.sol";
 import { IOptimismMintableERC20Factory } from "interfaces/universal/IOptimismMintableERC20Factory.sol";
-
+import { IDummyRegistry } from "interfaces/L1/IDummyRegistry.sol";
 interface IOPContractsManager {
     // -------- Structs --------
 
@@ -73,6 +73,7 @@ interface IOPContractsManager {
         IPermissionedDisputeGame permissionedDisputeGame;
         IDelayedWETH delayedWETHPermissionedGameProxy;
         IDelayedWETH delayedWETHPermissionlessGameProxy;
+        IDummyRegistry dummyRegistry;
     }
 
     /// @notice Addresses of ERC-5202 Blueprint contracts. There are used for deploying full size
@@ -90,6 +91,7 @@ interface IOPContractsManager {
         address permissionedDisputeGame2;
         address permissionlessDisputeGame1;
         address permissionlessDisputeGame2;
+        address dummyRegistry;
     }
 
     /// @notice The latest implementation contracts for the OP Stack.

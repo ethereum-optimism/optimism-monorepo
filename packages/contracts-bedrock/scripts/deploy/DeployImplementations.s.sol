@@ -551,6 +551,8 @@ contract DeployImplementations is Script {
         // But for Blueprint, the initcode is stored as runtime code, that's why it's necessary to split into 2 parts.
         (blueprints.permissionedDisputeGame1, blueprints.permissionedDisputeGame2) = DeployUtils.createDeterministicBlueprint(vm.getCode("PermissionedDisputeGame"), _salt);
         (blueprints.permissionlessDisputeGame1, blueprints.permissionlessDisputeGame2) = DeployUtils.createDeterministicBlueprint(vm.getCode("FaultDisputeGame"), _salt);
+        (blueprints.dummyRegistry, checkAddress) = DeployUtils.createDeterministicBlueprint(vm.getCode("DummyRegistry"), _salt);
+        require(checkAddress == address(0), "OPCM-60");
         // forgefmt: disable-end
         vm.stopBroadcast();
 
