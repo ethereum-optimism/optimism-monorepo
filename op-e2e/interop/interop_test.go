@@ -7,9 +7,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum-optimism/optimism/op-chain-ops/devkeys"
+	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/contracts"
+	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/contracts/metrics"
+	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/setuputils"
+	l2os "github.com/ethereum-optimism/optimism/op-proposer/proposer"
+	"github.com/ethereum-optimism/optimism/op-service/dial"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	oplog "github.com/ethereum-optimism/optimism/op-service/log"
+	"github.com/ethereum-optimism/optimism/op-service/sources/batching"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum/go-ethereum"
@@ -395,4 +403,52 @@ func TestMultiNode(t *testing.T) {
 		mempoolFiltering: false,
 	}
 	setupAndRun(t, config, test)
+}
+
+func TestProposals(t *testing.T) {
+	test := func(t *testing.T, s2 SuperSystem) {
+		logger := testlog.Logger(t, log.LvlInfo)
+		ids := s2.L2IDs()
+		chainA := ids[0]
+		gameFactoryAddr := s2.DisputeGameFactory(chainA)
+
+		key := s2.L2OperatorKey(chainA, devkeys.ProposerRole)
+		proposerCLIConfig := &l2os.CLIConfig{
+			L1EthRpc:          s2.L1().UserRPC().RPC(),
+			SupervisorRpc:     s2.Supervisor().RPC(),
+			DGFAddress:        gameFactoryAddr.Hex(),
+			ProposalInterval:  6 * time.Second,
+			DisputeGameType:   1, // Permissioned game type is the only one currently deployed
+			PollInterval:      500 * time.Millisecond,
+			TxMgrConfig:       setuputils.NewTxMgrConfig(s2.L1().UserRPC(), &key),
+			AllowNonFinalized: true,
+			LogConfig: oplog.CLIConfig{
+				Level:  log.LvlInfo,
+				Format: oplog.FormatText,
+			},
+		}
+		proposer, err := l2os.ProposerServiceFromCLIConfig(context.Background(), "0.0.1", proposerCLIConfig,
+			logger.New("role", "testProposer"))
+		require.NoError(t, err)
+		t.Cleanup(func() {
+			require.NoError(t, proposer.Stop(context.Background()))
+		})
+		err = proposer.Start(context.Background())
+		require.NoError(t, err)
+
+		rpcClient, err := dial.DialRPCClientWithTimeout(context.Background(), time.Minute, logger, s2.L1().UserRPC().RPC())
+		require.NoError(t, err)
+		caller := batching.NewMultiCaller(rpcClient, batching.DefaultBatchSize)
+		factory := contracts.NewDisputeGameFactoryContract(metrics.NoopContractMetrics, gameFactoryAddr, caller)
+		ethClient := ethclient.NewClient(rpcClient)
+		require.Eventually(t, func() bool {
+			head, err := ethClient.BlockByNumber(context.Background(), nil)
+			require.NoError(t, err)
+			count, err := factory.GetGameCount(context.Background(), head.Hash())
+			require.NoError(t, err)
+			t.Logf("Current game count: %v", count)
+			return count > 0
+		}, time.Minute, time.Second)
+	}
+	setupAndRun(t, SuperSystemConfig{}, test)
 }
