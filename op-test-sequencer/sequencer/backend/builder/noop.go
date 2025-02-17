@@ -22,7 +22,7 @@ func (n *NoopBuilder) Attach(registry Registry) {
 	n.registry = registry
 }
 
-func (n *NoopBuilder) NewJob(id seqtypes.JobID) (BuildJob, error) {
+func (n *NoopBuilder) NewJob(ctx context.Context, id seqtypes.JobID, opts *seqtypes.BuildOpts) (BuildJob, error) {
 	if n.registry == nil {
 		return nil, ErrNoRegistry
 	}

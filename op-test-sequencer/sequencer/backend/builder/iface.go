@@ -14,7 +14,7 @@ import (
 // Different implementations are available, e.g. for local or remote block-building.
 type Builder interface {
 	Attach(registry Registry)
-	NewJob(id seqtypes.JobID) (BuildJob, error)
+	NewJob(ctx context.Context, id seqtypes.JobID, opts *seqtypes.BuildOpts) (BuildJob, error)
 	io.Closer
 	String() string
 }

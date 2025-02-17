@@ -17,13 +17,13 @@ var _ Registry = (*noopRegistry)(nil)
 
 func TestNoopBuilder(t *testing.T) {
 	x := &NoopBuilder{ID: seqtypes.BuilderID("noop")}
-	_, err := x.NewJob("123")
+	_, err := x.NewJob(context.Background(), "123", nil)
 	require.ErrorIs(t, err, ErrNoRegistry)
 
 	x.Attach(&noopRegistry{})
 
 	jobID := seqtypes.JobID("foo")
-	job, err := x.NewJob(jobID)
+	job, err := x.NewJob(context.Background(), jobID, nil)
 	require.NoError(t, err)
 	require.Equal(t, "foo", job.String())
 	require.Equal(t, jobID, job.ID())

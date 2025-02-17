@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-
 	"github.com/ethereum-optimism/optimism/op-service/endpoint"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/seqtypes"
@@ -116,6 +115,7 @@ type LocalL2Builder struct {
 }
 
 func (c *LocalL2Builder) Start(ctx context.Context, chainID eth.ChainID) (Builder, error) {
+	//cl, err := client.NewRPC(ctx, client.WithLazyDial())
 	// TODO dial RPCs
 	return nil, nil
 }

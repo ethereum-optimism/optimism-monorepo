@@ -2,7 +2,6 @@ package frontend
 
 import (
 	"context"
-
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/backend/builder"
 	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/seqtypes"
@@ -21,7 +20,7 @@ func (af *AdminFrontend) Hello(ctx context.Context, name string) (string, error)
 }
 
 type BuildBackend interface {
-	CreateJob(id seqtypes.BuilderID) (builder.BuildJob, error)
+	CreateJob(ctx context.Context, id seqtypes.BuilderID, opts *seqtypes.BuildOpts) (builder.BuildJob, error)
 	GetJob(id seqtypes.JobID) builder.BuildJob
 }
 
@@ -29,8 +28,8 @@ type BuildFrontend struct {
 	Backend BuildBackend
 }
 
-func (bf *BuildFrontend) Open(ctx context.Context, builderID seqtypes.BuilderID) (seqtypes.JobID, error) {
-	job, err := bf.Backend.CreateJob(builderID)
+func (bf *BuildFrontend) Open(ctx context.Context, builderID seqtypes.BuilderID, opts *seqtypes.BuildOpts) (seqtypes.JobID, error) {
+	job, err := bf.Backend.CreateJob(ctx, builderID, opts)
 	if err != nil {
 		return "", err
 	}

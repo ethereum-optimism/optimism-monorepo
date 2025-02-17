@@ -1,6 +1,7 @@
 package builder
 
 import (
+	"context"
 	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum-optimism/optimism/op-test-sequencer/metrics"
@@ -18,7 +19,7 @@ func (n *LocalBuilder) Attach(registry Registry) {
 	n.registry = registry
 }
 
-func (l *LocalBuilder) NewJob(id seqtypes.JobID) (BuildJob, error) {
+func (l *LocalBuilder) NewJob(ctx context.Context, id seqtypes.JobID, opts *seqtypes.BuildOpts) (BuildJob, error) {
 	if l.registry == nil {
 		return nil, ErrNoRegistry
 	}

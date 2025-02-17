@@ -49,7 +49,7 @@ func NewBackend(log log.Logger, m metrics.Metricer, builders builder.Builders) *
 	return b
 }
 
-func (ba *Backend) CreateJob(id seqtypes.BuilderID) (builder.BuildJob, error) {
+func (ba *Backend) CreateJob(ctx context.Context, id seqtypes.BuilderID, opts *seqtypes.BuildOpts) (builder.BuildJob, error) {
 	if !ba.active.Load() {
 		return nil, errInactive
 	}
@@ -58,7 +58,7 @@ func (ba *Backend) CreateJob(id seqtypes.BuilderID) (builder.BuildJob, error) {
 		return nil, seqtypes.ErrUnknownBuilder
 	}
 	jobID := seqtypes.JobID("job-" + uuid.New().String())
-	job, err := bu.NewJob(jobID)
+	job, err := bu.NewJob(ctx, jobID, opts)
 	if err != nil {
 		return nil, err
 	}
