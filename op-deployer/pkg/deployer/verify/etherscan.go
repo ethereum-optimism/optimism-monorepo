@@ -47,7 +47,7 @@ func (v *Verifier) verifyContract(address common.Address, contractName string) e
 	}
 
 	optimized := "0"
-	if source.OptimizationUsed {
+	if source.Optimizer.Enabled {
 		optimized = "1"
 	}
 
@@ -61,7 +61,7 @@ func (v *Verifier) verifyContract(address common.Address, contractName string) e
 		"contractname":          {source.ContractName},
 		"compilerversion":       {fmt.Sprintf("v%s", source.CompilerVersion)},
 		"optimizationUsed":      {optimized},
-		"runs":                  {fmt.Sprintf("%d", source.OptimizationRuns)},
+		"runs":                  {fmt.Sprintf("%d", source.Optimizer.Runs)},
 		"evmversion":            {source.EVMVersion},
 		"constructorArguements": {source.ConstructorArgs},
 	}
@@ -144,11 +144,7 @@ func (v *Verifier) checkVerificationStatus(reqId string) error {
 		}
 		defer resp.Body.Close()
 
-		var result struct {
-			Status  string `json:"status"`
-			Message string `json:"message"`
-			Result  string `json:"result"`
-		}
+		var result EtherscanResponse
 		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 			return fmt.Errorf("failed to decode checkverifystatus response: %w", err)
 		}
@@ -165,4 +161,75 @@ func (v *Verifier) checkVerificationStatus(reqId string) error {
 		}
 	}
 	return fmt.Errorf("verification timed out")
+}
+
+type StandardInput struct {
+	Language string                   `json:"language"`
+	Sources  map[string]SourceContent `json:"sources"`
+	Settings Settings                 `json:"settings"`
+}
+
+type SourceContent struct {
+	Content string `json:"content"`
+}
+
+type Settings struct {
+	Optimizer       OptimizerSettings `json:"optimizer"`
+	EVMVersion      string            `json:"evmVersion"`
+	Metadata        MetadataSettings  `json:"metadata"`
+	OutputSelection OutputSelection   `json:"outputSelection"`
+}
+
+type OptimizerSettings struct {
+	Enabled bool `json:"enabled"`
+	Runs    int  `json:"runs"`
+}
+
+type MetadataSettings struct {
+	UseLiteralContent bool   `json:"useLiteralContent"`
+	BytecodeHash      string `json:"bytecodeHash"`
+}
+
+type OutputSelection struct {
+	All map[string]OutputSelectionDetails `json:"*"`
+}
+
+type OutputSelectionDetails struct {
+	All []string `json:"*"`
+}
+
+func newStandardInput(
+	sources map[string]SourceContent,
+	optimizer OptimizerSettings,
+	evmVersion string,
+) StandardInput {
+	return StandardInput{
+		Language: "Solidity",
+		Sources:  sources,
+		Settings: Settings{
+			Optimizer: OptimizerSettings{
+				Enabled: optimizer.Enabled,
+				Runs:    optimizer.Runs,
+			},
+			EVMVersion: evmVersion,
+			Metadata: MetadataSettings{
+				UseLiteralContent: true,
+				BytecodeHash:      "none",
+			},
+			OutputSelection: OutputSelection{
+				All: map[string]OutputSelectionDetails{
+					"*": {
+						All: []string{
+							"abi",
+							"evm.bytecode.object",
+							"evm.bytecode.sourceMap",
+							"evm.deployedBytecode.object",
+							"evm.deployedBytecode.sourceMap",
+							"metadata",
+						},
+					},
+				},
+			},
+		},
+	}
 }
