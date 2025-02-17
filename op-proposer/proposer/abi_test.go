@@ -79,7 +79,7 @@ func TestManualABIPacking(t *testing.T) {
 	tx, err := l2oo.ProposeL2Output(
 		opts,
 		proposal.Root,
-		new(big.Int).SetUint64(proposal.Legacy.BlockRef.Number),
+		new(big.Int).SetUint64(proposal.SequenceNum),
 		proposal.CurrentL1.Hash,
 		new(big.Int).SetUint64(proposal.CurrentL1.Number))
 	require.NoError(t, err)
