@@ -32,7 +32,7 @@ type LegacyProposalData struct {
 }
 
 type ProposalSource interface {
-	ProposalAtBlock(ctx context.Context, blockNum uint64) (Proposal, error)
+	ProposalAtSequenceNum(ctx context.Context, blockNum uint64) (Proposal, error)
 	SyncStatus(ctx context.Context) (SyncStatus, error)
 
 	// Close closes the underlying client or clients

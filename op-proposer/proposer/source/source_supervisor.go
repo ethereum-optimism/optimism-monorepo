@@ -31,7 +31,7 @@ func (s *SupervisorProposalSource) SyncStatus(ctx context.Context) (SyncStatus, 
 	}, nil
 }
 
-func (s *SupervisorProposalSource) ProposalAtBlock(ctx context.Context, blockNum uint64) (Proposal, error) {
+func (s *SupervisorProposalSource) ProposalAtSequenceNum(ctx context.Context, blockNum uint64) (Proposal, error) {
 	output, err := s.client.SuperRootAtTimestamp(ctx, hexutil.Uint64(blockNum))
 	if err != nil {
 		return Proposal{}, err

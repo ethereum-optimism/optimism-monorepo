@@ -38,7 +38,7 @@ func (r *RollupProposalSource) SyncStatus(ctx context.Context) (SyncStatus, erro
 	}, nil
 }
 
-func (r *RollupProposalSource) ProposalAtBlock(ctx context.Context, blockNum uint64) (Proposal, error) {
+func (r *RollupProposalSource) ProposalAtSequenceNum(ctx context.Context, blockNum uint64) (Proposal, error) {
 	client, err := r.provider.RollupClient(ctx)
 	if err != nil {
 		return Proposal{}, fmt.Errorf("failed to select active rollup client: %w", err)

@@ -314,7 +314,7 @@ func (l *L2OutputSubmitter) FetchCurrentBlockNumber(ctx context.Context) (uint64
 }
 
 func (l *L2OutputSubmitter) FetchOutput(ctx context.Context, block uint64) (source.Proposal, error) {
-	output, err := l.ProposalSource.ProposalAtBlock(ctx, block)
+	output, err := l.ProposalSource.ProposalAtSequenceNum(ctx, block)
 	if err != nil {
 		return source.Proposal{}, fmt.Errorf("fetching output at block %d: %w", block, err)
 	}
