@@ -62,7 +62,6 @@ import (
 // kurtosis or another testing framework could be implemented
 type SuperSystem interface {
 	L1() *geth.GethInstance
-	DisputeGameFactory(network string) common.Address
 
 	// Superchain level
 	L2IDs() []string
@@ -127,10 +126,6 @@ type interopE2ESystem struct {
 	superClient  *sources.SupervisorClient
 	supervisor   *supervisor.SupervisorService
 	config       *SuperSystemConfig
-}
-
-func (s *interopE2ESystem) DisputeGameFactory(network string) common.Address {
-	return s.worldDeployment.L2s[network].DisputeGameFactoryProxy
 }
 
 func (s *interopE2ESystem) L1() *geth.GethInstance {

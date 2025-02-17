@@ -7,11 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum-optimism/optimism/op-chain-ops/devkeys"
 	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/contracts"
 	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/contracts/metrics"
-	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/setuputils"
-	l2os "github.com/ethereum-optimism/optimism/op-proposer/proposer"
 	"github.com/ethereum-optimism/optimism/op-service/dial"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	oplog "github.com/ethereum-optimism/optimism/op-service/log"
@@ -62,6 +59,7 @@ func setupAndRun(t *testing.T, config SuperSystemConfig, fn func(*testing.T, Sup
 // a transaction is sent from Alice to Bob on Chain A,
 // and only Chain A is affected.
 func TestInterop_IsolatedChains(t *testing.T) {
+	t.Parallel()
 	test := func(t *testing.T, s2 SuperSystem) {
 		ids := s2.L2IDs()
 		chainA := ids[0]
@@ -117,6 +115,7 @@ func TestInterop_IsolatedChains(t *testing.T) {
 // TestInterop_SupervisorFinality tests that the supervisor updates its finality
 // It waits for the finalized block to advance past the genesis block.
 func TestInterop_SupervisorFinality(t *testing.T) {
+	t.Parallel()
 	test := func(t *testing.T, s2 SuperSystem) {
 		supervisor := s2.SupervisorClient()
 		require.Eventually(t, func() bool {
@@ -136,6 +135,7 @@ func TestInterop_SupervisorFinality(t *testing.T) {
 // Chains A and B exist, but no messages are sent between them.
 // A contract is deployed on each chain, and logs are emitted repeatedly.
 func TestInterop_EmitLogs(t *testing.T) {
+	t.Parallel()
 	test := func(t *testing.T, s2 SuperSystem) {
 		ids := s2.L2IDs()
 		chainA := ids[0]
@@ -246,6 +246,7 @@ func TestInterop_EmitLogs(t *testing.T) {
 }
 
 func TestInteropBlockBuilding(t *testing.T) {
+	t.Parallel()
 	logger := testlog.Logger(t, log.LevelInfo)
 	oplog.SetGlobalLogHandler(logger.Handler())
 
@@ -346,6 +347,7 @@ func TestInteropBlockBuilding(t *testing.T) {
 	}
 
 	t.Run("without mempool filtering", func(t *testing.T) {
+		t.Parallel()
 		config := SuperSystemConfig{
 			mempoolFiltering: false,
 		}
@@ -353,6 +355,7 @@ func TestInteropBlockBuilding(t *testing.T) {
 	})
 
 	t.Run("with mempool filtering", func(t *testing.T) {
+		t.Parallel()
 		config := SuperSystemConfig{
 			mempoolFiltering: true,
 		}
@@ -362,6 +365,7 @@ func TestInteropBlockBuilding(t *testing.T) {
 }
 
 func TestMultiNode(t *testing.T) {
+	t.Parallel()
 	test := func(t *testing.T, s2 SuperSystem) {
 		supervisor := s2.SupervisorClient()
 		require.Eventually(t, func() bool {
@@ -406,35 +410,17 @@ func TestMultiNode(t *testing.T) {
 }
 
 func TestProposals(t *testing.T) {
+	t.Parallel()
 	test := func(t *testing.T, s2 SuperSystem) {
 		logger := testlog.Logger(t, log.LvlInfo)
 		ids := s2.L2IDs()
 		chainA := ids[0]
-		gameFactoryAddr := s2.DisputeGameFactory(chainA)
-
-		key := s2.L2OperatorKey(chainA, devkeys.ProposerRole)
-		proposerCLIConfig := &l2os.CLIConfig{
-			L1EthRpc:          s2.L1().UserRPC().RPC(),
-			SupervisorRpc:     s2.Supervisor().RPC(),
-			DGFAddress:        gameFactoryAddr.Hex(),
-			ProposalInterval:  6 * time.Second,
-			DisputeGameType:   1, // Permissioned game type is the only one currently deployed
-			PollInterval:      500 * time.Millisecond,
-			TxMgrConfig:       setuputils.NewTxMgrConfig(s2.L1().UserRPC(), &key),
-			AllowNonFinalized: true,
-			LogConfig: oplog.CLIConfig{
-				Level:  log.LvlInfo,
-				Format: oplog.FormatText,
-			},
-		}
-		proposer, err := l2os.ProposerServiceFromCLIConfig(context.Background(), "0.0.1", proposerCLIConfig,
-			logger.New("role", "testProposer"))
+		proposer := s2.Proposer(chainA)
+		// Start the proposer as it isn't started by default.
+		err := proposer.Start(context.Background())
 		require.NoError(t, err)
-		t.Cleanup(func() {
-			require.NoError(t, proposer.Stop(context.Background()))
-		})
-		err = proposer.Start(context.Background())
-		require.NoError(t, err)
+		require.NotNil(t, proposer.DisputeGameFactoryAddr)
+		gameFactoryAddr := *proposer.DisputeGameFactoryAddr
 
 		rpcClient, err := dial.DialRPCClientWithTimeout(context.Background(), time.Minute, logger, s2.L1().UserRPC().RPC())
 		require.NoError(t, err)

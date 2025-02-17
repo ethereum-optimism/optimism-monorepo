@@ -101,14 +101,14 @@ func (s *interopE2ESystem) newL2(id string, l2Out *interopgen.L2Output) l2Net {
 	l2Geth := s.newGethForL2(id, "sequencer", l2Out)
 	opNode := s.newNodeForL2(id, "sequencer", l2Out, operatorKeys, l2Geth, true)
 	// TODO(#11886): proposer does not work with the generated world as there is no DisputeGameFactoryProxy
-	//proposer := s.newProposerForL2(id, operatorKeys, opNode)
+	proposer := s.newProposerForL2(id, operatorKeys)
 	batcher := s.newBatcherForL2(id, operatorKeys, l2Geth, opNode)
 
 	return l2Net{
 		l2Out:        l2Out,
 		chainID:      l2Out.Genesis.Config.ChainID,
 		nodes:        map[string]*l2Node{"sequencer": {name: "sequencer", opNode: opNode, l2Geth: l2Geth}},
-		proposer:     nil,
+		proposer:     proposer,
 		batcher:      batcher,
 		operatorKeys: operatorKeys,
 		userKeys:     make(map[string]ecdsa.PrivateKey),
@@ -213,6 +213,37 @@ func (s *interopE2ESystem) newGethForL2(id string, node string, l2Out *interopge
 		s.t.Logf("Closed L2 geth of chain %s: %v", id, closeErr)
 	})
 	return l2Geth
+}
+
+func (s *interopE2ESystem) newProposerForL2(
+	id string, operatorKeys map[devkeys.ChainOperatorRole]ecdsa.PrivateKey) *l2os.ProposerService {
+	key := operatorKeys[devkeys.ProposerRole]
+	logger := s.logger.New("role", "proposer"+id)
+	proposerCLIConfig := &l2os.CLIConfig{
+		L1EthRpc:          s.l1.UserRPC().RPC(),
+		SupervisorRpc:     s.Supervisor().RPC(),
+		DGFAddress:        s.worldDeployment.L2s[id].DisputeGameFactoryProxy.Hex(),
+		ProposalInterval:  6 * time.Second,
+		DisputeGameType:   1, // Permissioned game type is the only one currently deployed
+		PollInterval:      500 * time.Millisecond,
+		TxMgrConfig:       setuputils.NewTxMgrConfig(s.L1().UserRPC(), &key),
+		AllowNonFinalized: true,
+		LogConfig: oplog.CLIConfig{
+			Level:  log.LvlInfo,
+			Format: oplog.FormatText,
+		},
+	}
+	proposer, err := l2os.ProposerServiceFromCLIConfig(context.Background(), "0.0.1", proposerCLIConfig, logger)
+	require.NoError(s.t, err)
+	s.t.Cleanup(func() {
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel() // force-quit
+		s.t.Logf("Closing proposer of chain %s", id)
+		require.NoError(s.t, proposer.Stop(ctx))
+		s.t.Logf("Closed proposer of chain %s", id)
+	})
+	// Note that proposers are not started by default.
+	return proposer
 }
 
 // newBatcherForL2 creates a new Batcher for an L2 chain
