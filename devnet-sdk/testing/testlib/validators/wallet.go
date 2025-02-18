@@ -10,6 +10,8 @@ import (
 	"github.com/ethereum-optimism/optimism/devnet-sdk/types"
 )
 
+type WalletGetter = func(context.Context) system.Wallet
+
 func walletFundsValidator(chainIdx uint64, minFunds types.Balance, userMarker interface{}) systest.PreconditionValidator {
 	constraint := constraints.WithBalance(minFunds)
 	return func(t systest.T, sys system.System) (context.Context, error) {
@@ -30,7 +32,7 @@ func walletFundsValidator(chainIdx uint64, minFunds types.Balance, userMarker in
 	}
 }
 
-func AcquireL2WalletWithFunds(chainIdx uint64, minFunds types.Balance) (func(context.Context) system.Wallet, systest.PreconditionValidator) {
+func AcquireL2WalletWithFunds(chainIdx uint64, minFunds types.Balance) (WalletGetter, systest.PreconditionValidator) {
 	userMarker := &struct{}{}
 	validator := walletFundsValidator(chainIdx, minFunds, userMarker)
 	return func(ctx context.Context) system.Wallet {
