@@ -702,6 +702,137 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "FaultDisputeGame", _sel: _getSel("wasRespectedGameTypeWhenCreated()") });
         _addSpec({ _name: "FaultDisputeGame", _sel: _getSel("weth()") });
 
+        // SuperFaultDisputeGame
+        _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("absolutePrestate()") });
+        _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("addLocalData(uint256,uint256,uint256)") });
+        _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("anchorStateRegistry()") });
+        _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("attack(bytes32,uint256,bytes32)") });
+        _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("bondDistributionMode()") });
+        _addSpec({
+            _name: "SuperFaultDisputeGame",
+            _sel: _getSel("challengeRootL2Block((bytes32,bytes32,bytes32,bytes32),bytes)")
+        });
+        _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("claimCredit(address)") });
+        _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("claimData(uint256)") });
+        _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("claimDataLen()") });
+        _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("claims(bytes32)") });
+        _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("clockExtension()") });
+        _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("closeGame()") });
+        _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("createdAt()") });
+        _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("credit(address)") });
+        _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("defend(bytes32,uint256,bytes32)") });
+        _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("extraData()") });
+        _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("gameCreator()") });
+        _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("gameData()") });
+        _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("gameType()") });
+        _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("getChallengerDuration(uint256)") });
+        _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("getRequiredBond(uint128)") });
+        _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("hasUnlockedCredit(address)") });
+        _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("initialize()") });
+        _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("l1Head()") });
+        _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("l2BlockNumber()") });
+        _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("l2BlockNumberChallenged()") });
+        _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("l2BlockNumberChallenger()") });
+        _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("l2ChainId()") });
+        _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("maxClockDuration()") });
+        _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("maxGameDepth()") });
+        _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("move(bytes32,uint256,bytes32,bool)") });
+        _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("resolutionCheckpoints(uint256)") });
+        _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("resolve()") });
+        _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("getNumToResolve(uint256)") });
+        _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("normalModeCredit(address)") });
+        _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("refundModeCredit(address)") });
+        _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("resolveClaim(uint256,uint256)") });
+        _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("resolvedAt()") });
+        _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("resolvedSubgames(uint256)") });
+        _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("rootClaim()") });
+        _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("splitDepth()") });
+        _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("startingBlockNumber()") });
+        _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("startingOutputRoot()") });
+        _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("startingRootHash()") });
+        _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("status()") });
+        _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("step(uint256,bool,bytes,bytes)") });
+        _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("subgames(uint256,uint256)") });
+        _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("version()") });
+        _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("vm()") });
+        _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("wasRespectedGameTypeWhenCreated()") });
+        _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("weth()") });
+
+        // SuperPermissionedDisputeGame
+        _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("absolutePrestate()") });
+        _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("addLocalData(uint256,uint256,uint256)") });
+        _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("anchorStateRegistry()") });
+        _addSpec({
+            _name: "SuperPermissionedDisputeGame",
+            _sel: _getSel("attack(bytes32,uint256,bytes32)"),
+            _auth: Role.CHALLENGER
+        });
+        _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("bondDistributionMode()") });
+        _addSpec({
+            _name: "SuperPermissionedDisputeGame",
+            _sel: _getSel("challengeRootL2Block((bytes32,bytes32,bytes32,bytes32),bytes)"),
+            _auth: Role.CHALLENGER
+        });
+        _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("challenger()") });
+        _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("claimCredit(address)") });
+        _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("claimData(uint256)") });
+        _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("claimDataLen()") });
+        _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("claims(bytes32)") });
+        _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("clockExtension()") });
+        _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("closeGame()") });
+        _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("createdAt()") });
+        _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("credit(address)") });
+        _addSpec({
+            _name: "SuperPermissionedDisputeGame",
+            _sel: _getSel("defend(bytes32,uint256,bytes32)"),
+            _auth: Role.CHALLENGER
+        });
+        _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("extraData()") });
+        _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("gameCreator()") });
+        _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("gameData()") });
+        _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("gameType()") });
+        _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("getChallengerDuration(uint256)") });
+        _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("getNumToResolve(uint256)") });
+        _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("getRequiredBond(uint128)") });
+        _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("hasUnlockedCredit(address)") });
+        _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("initialize()") });
+        _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("l1Head()") });
+        _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("l2BlockNumber()") });
+        _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("l2BlockNumberChallenged()") });
+        _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("l2BlockNumberChallenger()") });
+        _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("l2ChainId()") });
+        _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("maxClockDuration()") });
+        _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("maxGameDepth()") });
+        _addSpec({
+            _name: "SuperPermissionedDisputeGame",
+            _sel: _getSel("move(bytes32,uint256,bytes32,bool)"),
+            _auth: Role.CHALLENGER
+        });
+        _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("proposer()") });
+        _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("normalModeCredit(address)") });
+        _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("refundModeCredit(address)") });
+        _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("resolutionCheckpoints(uint256)") });
+        _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("resolve()") });
+        _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("resolveClaim(uint256,uint256)") });
+        _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("resolvedAt()") });
+        _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("resolvedSubgames(uint256)") });
+        _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("rootClaim()") });
+        _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("splitDepth()") });
+        _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("startingBlockNumber()") });
+        _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("startingOutputRoot()") });
+        _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("startingRootHash()") });
+        _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("status()") });
+        _addSpec({
+            _name: "SuperPermissionedDisputeGame",
+            _sel: _getSel("step(uint256,bool,bytes,bytes)"),
+            _auth: Role.CHALLENGER
+        });
+        _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("subgames(uint256,uint256)") });
+        _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("version()") });
+        _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("vm()") });
+        _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("wasRespectedGameTypeWhenCreated()") });
+        _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("weth()") });
+
         // DisputeGameFactory
         _addSpec({ _name: "DisputeGameFactory", _sel: _getSel("create(uint32,bytes32,bytes)") });
         _addSpec({ _name: "DisputeGameFactory", _sel: _getSel("findLatestGames(uint32,uint256,uint256)") });

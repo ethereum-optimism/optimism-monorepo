@@ -93,6 +93,8 @@ ALLOWED_FILES=(
   # "src/dispute/DisputeGameFactory.sol"
   # "src/dispute/FaultDisputeGame.sol"
   # "src/dispute/PermissionedDisputeGame.sol"
+  "src/dispute/SuperFaultDisputeGame.sol"
+  "src/dispute/SuperPermissionedDisputeGame.sol"
   "src/legacy/DeployerWhitelist.sol"
   "src/legacy/L1BlockNumber.sol"
   "src/legacy/LegacyMessagePasser.sol"

@@ -9,7 +9,7 @@ import { Claim } from "src/dispute/lib/Types.sol";
 import { BadAuth } from "src/dispute/lib/Errors.sol";
 
 /// @title SuperPermissionedDisputeGame
-/// @notice SuperPermissionedDisputeGame is a contract that inherits from `FaultDisputeGame`, and contains two roles:
+/// @notice SuperPermissionedDisputeGame is a contract that inherits from `SuperFaultDisputeGame`, and contains two roles:
 ///         - The `challenger` role, which is allowed to challenge a dispute.
 ///         - The `proposer` role, which is allowed to create proposals and participate in their game.
 ///         This contract exists as a way for networks to support the fault proof iteration of the OptimismPortal
@@ -32,9 +32,9 @@ contract SuperPermissionedDisputeGame is SuperFaultDisputeGame {
     }
 
     /// @notice Semantic version.
-    /// @custom:semver 1.4.0
+    /// @custom:semver 0.1.0
     function version() public pure override returns (string memory) {
-        return "1.4.0";
+        return "0.1.0";
     }
 
     /// @param _params Parameters for creating a new FaultDisputeGame.
