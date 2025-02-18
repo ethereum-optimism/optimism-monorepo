@@ -73,11 +73,13 @@ func TestRewindL1(t *testing.T) {
 	// Make genesis block derived from l1Block0 and make it safe
 	s.makeBlockSafe(chainID, genesis, l1Block0, true)
 
+	s.makeBlockSafe(chainID, genesis, l1Block1A, true) // Bump scope
 	// Make block1 local-safe and cross-safe using l1Block1A
 	s.makeBlockSafe(chainID, block1, l1Block1A, true)
 
 	// Add block2A and make it local-safe and cross-safe using l1Block2A
 	s.sealBlocks(chainID, block2A)
+	s.makeBlockSafe(chainID, block1, l1Block2A, true) // Bump scope
 	s.makeBlockSafe(chainID, block2A, l1Block2A, true)
 
 	// Verify block2A is the latest sealed block and is cross-safe
@@ -145,6 +147,7 @@ func TestRewindL2(t *testing.T) {
 	// Make genesis safe and derived from L1 genesis
 	s.makeBlockSafe(chainID, genesis, l1Genesis, true)
 
+	s.makeBlockSafe(chainID, genesis, l1Block1, true) // Bump scope
 	// Make block1 local-safe and cross-safe
 	s.makeBlockSafe(chainID, block1, l1Block1, true)
 
@@ -237,9 +240,11 @@ func TestNoRewindNeeded(t *testing.T) {
 		},
 	})
 
+	s.makeBlockSafe(chainID, genesis, l1Block1, true) // Bump scope
 	// Make block1 local-safe and cross-safe
 	s.makeBlockSafe(chainID, block1, l1Block1, true)
 
+	s.makeBlockSafe(chainID, block1, l1Block2, true) // Bump scope
 	// Add block2A and make it local-safe and cross-safe
 	s.sealBlocks(chainID, block2A)
 	s.makeBlockSafe(chainID, block2A, l1Block2, true)
@@ -338,6 +343,9 @@ func TestRewindLongChain(t *testing.T) {
 	// Make blocks up to 95 safe
 	for i := uint64(1); i <= 95; i++ {
 		l1Index := i / 10
+		if (i-1)/10 != l1Index { // bump scope
+			s.makeBlockSafe(chainID, blocks[i-1], l1Blocks[l1Index], true)
+		}
 		s.makeBlockSafe(chainID, blocks[i], l1Blocks[l1Index], true)
 	}
 
@@ -409,6 +417,8 @@ func TestRewindMultiChain(t *testing.T) {
 
 		// Make genesis safe and derived from L1 genesis
 		s.makeBlockSafe(chainID, genesis, l1Genesis, true)
+
+		s.makeBlockSafe(chainID, genesis, l1Block1, true) // Bump scope
 
 		// Make block1 local-safe and cross-safe
 		s.makeBlockSafe(chainID, block1, l1Block1, true)
@@ -554,9 +564,12 @@ func TestRewindL2WalkBack(t *testing.T) {
 		FinalizedL1: l1Genesis,
 	})
 
+	s.makeBlockSafe(chainID, genesis, l1Block1, true) // bump scope
 	// Make blocks up to block3 safe
 	s.makeBlockSafe(chainID, block1, l1Block1, true)
+	s.makeBlockSafe(chainID, block1, l1Block2, true) // bump scope
 	s.makeBlockSafe(chainID, block2, l1Block2, true)
+	s.makeBlockSafe(chainID, block2, l1Block3, true) // bump scope
 	s.makeBlockSafe(chainID, block3, l1Block3, true)
 
 	// Create rewinder with all dependencies
@@ -680,12 +693,15 @@ func TestRewindL1PastCrossSafe(t *testing.T) {
 		FinalizedL1: l1Genesis,
 	})
 
+	s.makeBlockSafe(chainID, genesis, l1Block1, true) // bump scope
 	// Make block1 local-safe and cross-safe
 	s.makeBlockSafe(chainID, block1, l1Block1, true)
 
+	s.makeBlockSafe(chainID, block1, l1Block2, true) // bump scope
 	// Make block2 local-safe and cross-safe
 	s.makeBlockSafe(chainID, block2, l1Block2, true)
 
+	s.makeBlockSafe(chainID, block2, l1Block3A, false) // bump scope
 	// Make block3A only local-safe (not cross-safe)
 	s.makeBlockSafe(chainID, block3A, l1Block3A, false)
 
