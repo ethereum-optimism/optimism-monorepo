@@ -455,7 +455,7 @@ func TestInteropFaultProofs_CascadeInvalidBlock(gt *testing.T) {
 func TestInteropFaultProofs_MessageExpiry(gt *testing.T) {
 	t := helpers.NewDefaultTesting(gt)
 	// TODO(#14234): Check message expiry in op-supervisor
-	t.Skip("Message expiry not yet implemented")
+	//t.Skip("Message expiry not yet implemented")
 
 	system := dsl.NewInteropDSL(t)
 
@@ -471,20 +471,14 @@ func TestInteropFaultProofs_MessageExpiry(gt *testing.T) {
 	emitTx := emitterContract.LastEmittedMessage()
 
 	// Bring ChainB to the same height and timestamp
-	system.AddL2Block(actors.ChainB)
-	system.AddL2Block(actors.ChainB)
+	system.AddL2Block(actors.ChainB, dsl.WithL2BlocksUntilTimestamp(actors.ChainA.Sequencer.L2Unsafe().Time))
 	system.SubmitBatchData()
 
 	// Advance the chain until the init msg expires
 	msgExpiryTime := actors.ChainA.RollupCfg.GetMessageExpiryTimeInterop()
 	end := emitTx.Identifier().Timestamp.Uint64() + msgExpiryTime
-	for {
-		if system.Actors.ChainB.Sequencer.L2Unsafe().Time >= end {
-			break
-		}
-		system.AddL2Block(actors.ChainA)
-		system.AddL2Block(actors.ChainB)
-	}
+	system.AddL2Block(actors.ChainA, dsl.WithL2BlocksUntilTimestamp(end))
+	system.AddL2Block(actors.ChainB, dsl.WithL2BlocksUntilTimestamp(end))
 	system.SubmitBatchData()
 
 	system.AddL2Block(actors.ChainB, func(opts *dsl.AddL2BlockOpts) {
