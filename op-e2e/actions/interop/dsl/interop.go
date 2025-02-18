@@ -68,6 +68,10 @@ type InteropActors struct {
 	ChainB     *Chain
 }
 
+// messageExpiryTime is the time in seconds that a message will be valid for on the L2 chain.
+// At a 2 second block time, this should be small enough to cover all events buffered in the supervisor event queue.
+const messageExpiryTime = 120 // 2 minutes
+
 // SetupInterop creates an InteropSetup to instantiate actors on, with 2 L2 chains.
 func SetupInterop(t helpers.Testing) *InteropSetup {
 	logger := testlog.Logger(t, log.LevelDebug)
@@ -76,7 +80,7 @@ func SetupInterop(t helpers.Testing) *InteropSetup {
 		L1ChainID:         900100,
 		L2ChainIDs:        []uint64{900200, 900201},
 		GenesisTimestamp:  uint64(time.Now().Unix() + 3),
-		MessageExpiryTime: 300, // 5 minutes
+		MessageExpiryTime: messageExpiryTime,
 	}
 	hdWallet, err := devkeys.NewMnemonicDevKeys(devkeys.TestMnemonic)
 	require.NoError(t, err)
