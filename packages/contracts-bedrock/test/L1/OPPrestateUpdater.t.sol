@@ -15,7 +15,7 @@ import { Blueprint } from "src/libraries/Blueprint.sol";
 import { IL1ERC721Bridge } from "interfaces/L1/IL1ERC721Bridge.sol";
 import { IL1StandardBridge } from "interfaces/L1/IL1StandardBridge.sol";
 import { IL1CrossDomainMessenger } from "interfaces/L1/IL1CrossDomainMessenger.sol";
-import { IOptimismMintableERC20Factory } from "interfaces/Universal/IOptimismMintableERC20Factory.sol";
+import { IOptimismMintableERC20Factory } from "interfaces/universal/IOptimismMintableERC20Factory.sol";
 import { IAnchorStateRegistry } from "interfaces/dispute/IAnchorStateRegistry.sol";
 import { IMIPS } from "interfaces/cannon/IMIPS.sol";
 import { IOptimismPortal2 } from "interfaces/L1/IOptimismPortal2.sol";
