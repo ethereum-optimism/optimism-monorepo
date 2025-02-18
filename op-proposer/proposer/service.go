@@ -145,16 +145,10 @@ func (ps *ProposerService) initRPCClients(ctx context.Context, cfg *CLIConfig) e
 		}
 		ps.ProposalSource = source.NewRollupProposalSource(rollupProvider)
 	}
-	if cfg.SupervisorRpc != "" {
-		var supervisorUrls []string
-		if strings.Contains(cfg.SupervisorRpc, ",") {
-			supervisorUrls = strings.Split(cfg.SupervisorRpc, ",")
-		} else {
-			supervisorUrls = []string{cfg.SupervisorRpc}
-		}
+	if len(cfg.SupervisorRpcs) != 0 {
 		var clients []source.SupervisorClient
-		for _, url := range supervisorUrls {
-			supervisorRpc, err := dial.DialRPCClientWithTimeout(ctx, dial.DefaultDialTimeout, ps.Log, cfg.SupervisorRpc)
+		for _, url := range cfg.SupervisorRpcs {
+			supervisorRpc, err := dial.DialRPCClientWithTimeout(ctx, dial.DefaultDialTimeout, ps.Log, url)
 			if err != nil {
 				return fmt.Errorf("failed to dial supervisor RPC client (%v): %w", url, err)
 			}

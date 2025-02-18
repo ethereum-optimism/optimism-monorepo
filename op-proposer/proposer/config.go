@@ -43,8 +43,8 @@ type CLIConfig struct {
 	// RollupRpc is the HTTP provider URL for the rollup node. A comma-separated list enables the active rollup provider.
 	RollupRpc string
 
-	// SupervisorRpc is the HTTP provider URL for the supervisor node.
-	SupervisorRpc string
+	// SupervisorRpcs is the list of HTTP provider URLs for supervisor nodes.
+	SupervisorRpcs []string
 
 	// L2OOAddress is the L2OutputOracle contract address.
 	L2OOAddress string
@@ -109,7 +109,7 @@ func (c *CLIConfig) Check() error {
 	if c.ProposalInterval != 0 && c.DGFAddress == "" {
 		return errors.New("the `ProposalInterval` was provided but the `DisputeGameFactory` address was not set")
 	}
-	if c.RollupRpc != "" && c.SupervisorRpc != "" {
+	if c.RollupRpc != "" && len(c.SupervisorRpcs) != 0 {
 		return ErrConflictingSource
 	}
 	// Require rollup RPC for L2OO
@@ -121,7 +121,7 @@ func (c *CLIConfig) Check() error {
 		return ErrMissingRollupRpc
 	}
 	// Require supervisor RPC for post interop game types
-	if c.DGFAddress != "" && slices.Contains(postInteropGameTypes, c.DisputeGameType) && c.SupervisorRpc == "" {
+	if c.DGFAddress != "" && slices.Contains(postInteropGameTypes, c.DisputeGameType) && len(c.SupervisorRpcs) == 0 {
 		return ErrMissingSupervisorRpc
 	}
 
@@ -133,7 +133,7 @@ func NewConfig(ctx *cli.Context) *CLIConfig {
 	return &CLIConfig{
 		L1EthRpc:                     ctx.String(flags.L1EthRpcFlag.Name),
 		RollupRpc:                    ctx.String(flags.RollupRpcFlag.Name),
-		SupervisorRpc:                ctx.String(flags.SupervisorRpcFlag.Name),
+		SupervisorRpcs:               ctx.StringSlice(flags.SupervisorRpcFlag.Name),
 		L2OOAddress:                  ctx.String(flags.L2OOAddressFlag.Name),
 		PollInterval:                 ctx.Duration(flags.PollIntervalFlag.Name),
 		TxMgrConfig:                  txmgr.ReadCLIConfig(ctx),

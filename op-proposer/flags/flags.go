@@ -32,9 +32,9 @@ var (
 		Usage:   "HTTP provider URL for the rollup node. A comma-separated list enables the active rollup provider.",
 		EnvVars: prefixEnvVars("ROLLUP_RPC"),
 	}
-	SupervisorRpcFlag = &cli.StringFlag{
+	SupervisorRpcFlag = &cli.StringSliceFlag{
 		Name:    "supervisor-rpc",
-		Usage:   "HTTP provider URL for the supervisor node. A comma-separated list enables fallback mode.",
+		Usage:   "HTTP provider URL for the supervisor node. Multiple URLs can be provided to automatically fail over.",
 		EnvVars: prefixEnvVars("SUPERVISOR_RPC"),
 	}
 
