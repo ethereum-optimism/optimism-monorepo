@@ -326,13 +326,21 @@ func (db *ChainsDB) CandidateCrossSafe(chain eth.ChainID) (result types.DerivedB
 	}
 	candidateRef := candidate.Derived.MustWithParent(crossSafe.Derived.ID())
 
+	// attach the parent (or zero-block) to the cross-safe source
+	var crossSafeSourceRef eth.BlockRef
 	parentSource, err := lDB.PreviousSource(crossSafe.Source.ID())
 	if errors.Is(err, types.ErrPreviousToFirst) {
-		parentSource = types.BlockSeal{}
+		// if we are working with the first item in the database, PreviousSource will return ErrPreviousToFirst
+		// in which case we can attach a zero parent to the block, as the parent block is unknown
+		// ForceWithParent will not panic if the parent is not as expected (like a zero-block)
+		crossSafeSourceRef = crossSafe.Source.ForceWithParent(eth.BlockID{})
 	} else if err != nil {
 		return types.DerivedBlockRefPair{}, fmt.Errorf("failed to find parent-block of derived-from %s: %w", crossSafe.Source, err)
+	} else {
+		// if we have a parent, we can attach it to the cross-safe source
+		// MustWithParent will panic if the parent is not the previous block
+		crossSafeSourceRef = crossSafe.Source.MustWithParent(parentSource.ID())
 	}
-	crossSafeSourceRef := crossSafe.Source.MustWithParent(parentSource.ID())
 
 	result = types.DerivedBlockRefPair{
 		Source:  crossSafeSourceRef,
