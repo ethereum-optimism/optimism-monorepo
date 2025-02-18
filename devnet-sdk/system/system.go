@@ -45,9 +45,17 @@ func (s *system) Identifier() string {
 func (s *system) addChains(chains ...*descriptors.Chain) error {
 	for _, chainDesc := range chains {
 		if chainDesc.ID == "" {
-			s.l1 = chainFromDescriptor(chainDesc)
+			l1, err := chainFromDescriptor(chainDesc)
+			if err != nil {
+				return fmt.Errorf("failed to add L1 chain: %w", err)
+			}
+			s.l1 = l1
 		} else {
-			s.l2s = append(s.l2s, chainFromDescriptor(chainDesc))
+			l2, err := chainFromDescriptor(chainDesc)
+			if err != nil {
+				return fmt.Errorf("failed to add L2 chain: %w", err)
+			}
+			s.l2s = append(s.l2s, l2)
 		}
 	}
 	return nil

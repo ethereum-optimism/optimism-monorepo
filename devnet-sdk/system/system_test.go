@@ -38,7 +38,7 @@ func TestNewSystemFromEnv(t *testing.T) {
 			Wallets: descriptors.WalletMap{
 				"default": descriptors.Wallet{
 					Address:    common.HexToAddress("0x123"),
-					PrivateKey: "0xabc",
+					PrivateKey: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
 				},
 			},
 		},
@@ -60,7 +60,7 @@ func TestNewSystemFromEnv(t *testing.T) {
 			Wallets: descriptors.WalletMap{
 				"default": descriptors.Wallet{
 					Address:    common.HexToAddress("0x123"),
-					PrivateKey: "0xabc",
+					PrivateKey: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
 				},
 			},
 		}},
@@ -93,7 +93,7 @@ func TestSystemFromDevnet(t *testing.T) {
 
 	testWallet := descriptors.Wallet{
 		Address:    common.HexToAddress("0x123"),
-		PrivateKey: "0xabc",
+		PrivateKey: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
 	}
 
 	tests := []struct {
@@ -168,53 +168,58 @@ func TestWallet(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		privateKey  types.Key
+		privateKey  string
 		address     types.Address
 		wantAddr    types.Address
 		wantPrivKey types.Key
 	}{
 		{
-			name:        "valid wallet",
-			privateKey:  "0xabc",
-			address:     common.HexToAddress("0x123"),
-			wantAddr:    common.HexToAddress("0x123"),
-			wantPrivKey: "abc",
+			name:       "valid wallet",
+			privateKey: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+			address:    common.HexToAddress("0x123"),
+			wantAddr:   common.HexToAddress("0x123"),
 		},
 		{
-			name:        "empty wallet",
-			privateKey:  "",
-			address:     common.HexToAddress("0x123"),
-			wantAddr:    common.HexToAddress("0x123"),
-			wantPrivKey: "",
+			name:       "empty wallet",
+			privateKey: "",
+			address:    common.HexToAddress("0x123"),
+			wantAddr:   common.HexToAddress("0x123"),
 		},
 		{
-			name:        "only address",
-			privateKey:  "",
-			address:     common.HexToAddress("0x456"),
-			wantAddr:    common.HexToAddress("0x456"),
-			wantPrivKey: "",
+			name:       "only address",
+			privateKey: "",
+			address:    common.HexToAddress("0x456"),
+			wantAddr:   common.HexToAddress("0x456"),
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			w := newWallet(tt.privateKey, tt.address, chain)
+			w, err := newWallet(tt.privateKey, tt.address, chain)
+			assert.Nil(t, err)
+
 			assert.Equal(t, tt.wantAddr, w.Address())
-			assert.Equal(t, tt.wantPrivKey, w.PrivateKey())
 		})
 	}
 }
 
 func TestChainUser(t *testing.T) {
 	chain := newChain("1", "http://localhost:8545", nil)
-	testWallet := newWallet("0xabc", common.HexToAddress("0x123"), chain)
-	chain.users = map[string]types.Wallet{
+
+	testWallet, err := newWallet("0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef", common.HexToAddress("0x123"), chain)
+	assert.Nil(t, err)
+
+	chain.users = map[string]Wallet{
 		"l2Faucet": testWallet,
 	}
 
 	ctx := context.Background()
-	user, err := chain.Wallet(ctx)
-	assert.NoError(t, err)
-	assert.Equal(t, testWallet.Address(), user.Address())
-	assert.Equal(t, testWallet.PrivateKey(), user.PrivateKey())
+	for w := range chain.Wallets(ctx) {
+		if w.Address() == testWallet.Address() {
+			assert.Equal(t, testWallet.Address(), w.Address())
+			assert.Equal(t, testWallet.PrivateKey(), w.PrivateKey())
+			return
+		}
+	}
+	assert.Fail(t, "wallet not found")
 }
