@@ -93,9 +93,8 @@ func (m *mockFailingWallet) Transactor() *bind.TransactOpts {
 
 // mockFailingChain implements system.Chain with a failing SendETH
 type mockFailingChain struct {
-	id     types.ChainID
-	wallet system.Wallet
-	reg    interfaces.ContractsRegistry
+	id  types.ChainID
+	reg interfaces.ContractsRegistry
 }
 
 func (m *mockFailingChain) RPCURL() string                     { return "mock://failing" }
@@ -117,15 +116,6 @@ func (m *mockFailingChain) PendingNonceAt(ctx context.Context, address common.Ad
 func (m *mockFailingChain) SupportsEIP(ctx context.Context, eip uint64) bool {
 	return true
 }
-
-// mockFailingSystem implements system.System with a failing chain
-type mockFailingSystem struct {
-	chain *mockFailingChain
-}
-
-func (m *mockFailingSystem) Identifier() string     { return "mock-failing" }
-func (m *mockFailingSystem) L1() system.Chain       { return m.chain }
-func (m *mockFailingSystem) L2(uint64) system.Chain { return m.chain }
 
 // recordingT implements systest.T and records failures
 type RecordingT struct {
@@ -278,27 +268,4 @@ func (r *RecordingT) TestScenario(scenario systest.SystemTestFunc, sys system.Sy
 		scenario(r, sys)
 	}()
 	<-done
-}
-
-// mockBalance implements types.ReadInvocation[types.Balance]
-type mockBalance struct {
-	bal types.Balance
-}
-
-func (m *mockBalance) Call(ctx context.Context) (types.Balance, error) {
-	return m.bal, nil
-}
-
-// mockWETH implements interfaces.SuperchainWETH
-type mockWETH struct{}
-
-func (m *mockWETH) BalanceOf(addr types.Address) types.ReadInvocation[types.Balance] {
-	return &mockBalance{bal: types.NewBalance(big.NewInt(0))}
-}
-
-// mockRegistry implements interfaces.ContractsRegistry
-type mockRegistry struct{}
-
-func (m *mockRegistry) SuperchainWETH(addr types.Address) (interfaces.SuperchainWETH, error) {
-	return &mockWETH{}, nil
 }
