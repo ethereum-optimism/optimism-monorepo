@@ -36,7 +36,13 @@ _prestate-build PATH='.':
     docker buildx build --output {{PATH}} --progress plain -f ../op-program/Dockerfile.repro ../
 
 _docker_build TAG TARGET CONTEXT DOCKERFILE *ARGS:
-    docker buildx build --load -t {{TAG}} \
+    #!/usr/bin/env bash
+    # --load is needed to ensure the image ends up in the local registry
+    # --provenance=false is needed to make the build idempotent
+    docker buildx build \
+        --load \
+        --provenance=false \
+        -t {{TAG}} \
         -f {{CONTEXT}}/{{DOCKERFILE}} \
         {{ if TARGET != '' {  "--target " + TARGET } else { "" } }} \
         --build-arg GIT_COMMIT={git_commit} \
