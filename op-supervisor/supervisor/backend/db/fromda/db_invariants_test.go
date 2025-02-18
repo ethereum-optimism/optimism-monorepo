@@ -102,11 +102,8 @@ func invariantNumberIncrement(prev, current LinkEntry) error {
 	}
 	derivedIncrement := current.derived.Number == prev.derived.Number+1
 	derivedFromIncrement := current.source.Number == prev.source.Number+1
-	if derivedIncrement && derivedFromIncrement {
-		return errors.New("expected derivedFrom or derived to increment, but not both")
-	}
-	if !derivedIncrement && !derivedFromIncrement {
-		return errors.New("expected derivedFrom or derived to increment, but not neither")
+	if derivedIncrement == derivedFromIncrement { // one of the two must be true, the other false, to pass.
+		return errors.New("expected derivedFrom or (excl.) derived to increment")
 	}
 	return nil
 }
