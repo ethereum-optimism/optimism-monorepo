@@ -1172,47 +1172,47 @@ func TestEVM_SingleStep_Rot(t *testing.T) {
 	}{
 		// rotr
 		// No rotation (should return the same number)
-		{name: "rotr no shift", rt: Word(0x12345678), sa: 0, funct: 0b000010, expectVal: Word(0x12345678)},
+		{name: "rotr no shift", rt: Word(0x12345678), sa: 0, funct: 0b000010, expectVal: signExtend64(Word(0x12345678))},
 		// Rotate by 1 bit
-		{name: "rotr by 1", rt: Word(0x12345678), sa: 1, funct: 0b000010, expectVal: Word(0x091A2B3C)},
+		{name: "rotr by 1", rt: Word(0x12345678), sa: 1, funct: 0b000010, expectVal: signExtend64(Word(0x091A2B3C))},
 		// Rotate by 4 bits (nibble rotation)
-		{name: "rotr by 4", rt: Word(0x12345678), sa: 4, funct: 0b000010, expectVal: Word(0x81234567)},
+		{name: "rotr by 4", rt: Word(0x12345678), sa: 4, funct: 0b000010, expectVal: signExtend64(Word(0x81234567))},
 		// Rotate by 8 bits (byte rotation)
-		{name: "rotr by 8", rt: Word(0x12345678), sa: 8, funct: 0b000010, expectVal: Word(0x78123456)},
+		{name: "rotr by 8", rt: Word(0x12345678), sa: 8, funct: 0b000010, expectVal: signExtend64(Word(0x78123456))},
 		// Rotate by 16 bits (half-word rotation)
-		{name: "rotr by 16", rt: Word(0x12345678), sa: 16, funct: 0b000010, expectVal: Word(0x56781234)},
+		{name: "rotr by 16", rt: Word(0x12345678), sa: 16, funct: 0b000010, expectVal: signExtend64(Word(0x56781234))},
 		// Rotate by 24 bits
-		{name: "rotr by 24", rt: Word(0x12345678), sa: 24, funct: 0b000010, expectVal: Word(0x34567812)},
+		{name: "rotr by 24", rt: Word(0x12345678), sa: 24, funct: 0b000010, expectVal: signExtend64(Word(0x34567812))},
 		// Rotate by 31 bits (almost a full cycle)
-		{name: "rotr by 31", rt: Word(0x12345678), sa: 31, funct: 0b000010, expectVal: Word(0x2468ACF0)},
+		{name: "rotr by 31", rt: Word(0x12345678), sa: 31, funct: 0b000010, expectVal: signExtend64(Word(0x2468ACF0))},
 		// Rotate with MSB set
-		{name: "rotr MSB set", rt: Word(0x80000000), sa: 4, funct: 0b000010, expectVal: Word(0x08000000)},
+		{name: "rotr MSB set", rt: Word(0x80000000), sa: 4, funct: 0b000010, expectVal: signExtend64(Word(0x08000000))},
 		// Rotate all ones (0xFFFFFFFF) should remain unchanged
-		{name: "rotr all ones", rt: Word(0xFFFFFFFF), sa: 8, funct: 0b000010, expectVal: Word(0xFFFFFFFF)},
+		{name: "rotr all ones", rt: Word(0xFFFFFFFF), sa: 8, funct: 0b000010, expectVal: signExtend64(Word(0xFFFFFFFF))},
 		// Rotate zero (should remain zero)
-		{name: "rotr zero", rt: Word(0x00000000), sa: 5, funct: 0b000010, expectVal: Word(0x00000000)},
+		{name: "rotr zero", rt: Word(0x00000000), sa: 5, funct: 0b000010, expectVal: signExtend64(Word(0x00000000))},
 
 		// rotrv
 		// No rotation (should return the same number)
-		{name: "rotrv no shift", rt: Word(0x12345678), rs: Word(0), funct: 0b000110, expectVal: Word(0x12345678)},
+		{name: "rotrv no shift", rt: Word(0x12345678), rs: Word(0), funct: 0b000110, expectVal: signExtend64(Word(0x12345678))},
 		// Rotate by 1 bit
-		{name: "rotrv by 1", rt: Word(0x12345678), rs: Word(1), funct: 0b000110, expectVal: Word(0x091A2B3C)},
+		{name: "rotrv by 1", rt: Word(0x12345678), rs: Word(1), funct: 0b000110, expectVal: signExtend64(Word(0x091A2B3C))},
 		// Rotate by 4 bits (nibble rotation)
-		{name: "rotrv by 4", rt: Word(0x12345678), rs: Word(4), funct: 0b000110, expectVal: Word(0x81234567)},
+		{name: "rotrv by 4", rt: Word(0x12345678), rs: Word(4), funct: 0b000110, expectVal: signExtend64(Word(0x81234567))},
 		// Rotate by 8 bits (byte rotation)
-		{name: "rotrv by 8", rt: Word(0x12345678), rs: Word(8), funct: 0b000110, expectVal: Word(0x78123456)},
+		{name: "rotrv by 8", rt: Word(0x12345678), rs: Word(8), funct: 0b000110, expectVal: signExtend64(Word(0x78123456))},
 		// Rotate by 16 bits (half-word rotation)
-		{name: "rotrv by 16", rt: Word(0x12345678), rs: Word(16), funct: 0b000110, expectVal: Word(0x56781234)},
+		{name: "rotrv by 16", rt: Word(0x12345678), rs: Word(16), funct: 0b000110, expectVal: signExtend64(Word(0x56781234))},
 		// Rotate by 24 bits
-		{name: "rotrv by 24", rt: Word(0x12345678), rs: Word(24), funct: 0b000110, expectVal: Word(0x34567812)},
+		{name: "rotrv by 24", rt: Word(0x12345678), rs: Word(24), funct: 0b000110, expectVal: signExtend64(Word(0x34567812))},
 		// Rotate by 31 bits (almost a full cycle)
-		{name: "rotrv by 31", rt: Word(0x12345678), rs: Word(31), funct: 0b000110, expectVal: Word(0x2468ACF0)},
+		{name: "rotrv by 31", rt: Word(0x12345678), rs: Word(31), funct: 0b000110, expectVal: signExtend64(Word(0x2468ACF0))},
 		// Rotate with MSB set
-		{name: "rotrv MSB set", rt: Word(0x80000000), rs: Word(4), funct: 0b000110, expectVal: Word(0x08000000)},
+		{name: "rotrv MSB set", rt: Word(0x80000000), rs: Word(4), funct: 0b000110, expectVal: signExtend64(Word(0x08000000))},
 		// Rotate all ones (0xFFFFFFFF) should remain unchanged
-		{name: "rotrv all ones", rt: Word(0xFFFFFFFF), rs: Word(8), funct: 0b000110, expectVal: Word(0xFFFFFFFF)},
+		{name: "rotrv all ones", rt: Word(0xFFFFFFFF), rs: Word(8), funct: 0b000110, expectVal: signExtend64(Word(0xFFFFFFFF))},
 		// Rotate zero (should remain zero)
-		{name: "rotrv zero", rt: Word(0x00000000), rs: Word(5), funct: 0b000110, expectVal: Word(0x00000000)},
+		{name: "rotrv zero", rt: Word(0x00000000), rs: Word(5), funct: 0b000110, expectVal: signExtend64(Word(0x00000000))},
 	}
 
 	for _, v := range versions {
@@ -1267,27 +1267,27 @@ func TestEVM_SingleStep_SignExtend(t *testing.T) {
 	}{
 		// seb
 		// Sign-extend byte (positive value)
-		{name: "seb positive", rt: Word(0x0000007F), funct: 0b100000, special: 0b10000, expectVal: Word(0x0000007F)},
+		{name: "seb positive", rt: Word(0x0000007F), funct: 0b100000, special: 0b10000, expectVal: signExtend64(Word(0x0000007F))},
 		// Sign-extend byte (negative value)
-		{name: "seb negative", rt: Word(0x00000080), funct: 0b100000, special: 0b10000, expectVal: Word(0xFFFFFF80)},
+		{name: "seb negative", rt: Word(0x00000080), funct: 0b100000, special: 0b10000, expectVal: signExtend64(Word(0xFFFFFF80))},
 		// Sign-extend byte (mid-range)
-		{name: "seb mid-range", rt: Word(0x00000055), funct: 0b100000, special: 0b10000, expectVal: Word(0x00000055)},
+		{name: "seb mid-range", rt: Word(0x00000055), funct: 0b100000, special: 0b10000, expectVal: signExtend64(Word(0x00000055))},
 		// Sign-extend byte (full 8-bit set)
-		{name: "seb full-byte", rt: Word(0x000000FF), funct: 0b100000, special: 0b10000, expectVal: Word(0xFFFFFFFF)},
+		{name: "seb full-byte", rt: Word(0x000000FF), funct: 0b100000, special: 0b10000, expectVal: signExtend64(Word(0xFFFFFFFF))},
 		// Sign-extend byte with upper bits set
-		{name: "seb upper bits", rt: Word(0x123456FF), funct: 0b100000, special: 0b10000, expectVal: Word(0xFFFFFFFF)},
+		{name: "seb upper bits", rt: Word(0x123456FF), funct: 0b100000, special: 0b10000, expectVal: signExtend64(Word(0xFFFFFFFF))},
 
 		// seh
 		// Sign-extend halfword (positive value)
-		{name: "seh positive", rt: Word(0x00007FFF), funct: 0b100000, special: 0b11000, expectVal: Word(0x00007FFF)},
+		{name: "seh positive", rt: Word(0x00007FFF), funct: 0b100000, special: 0b11000, expectVal: signExtend64(Word(0x00007FFF))},
 		// Sign-extend halfword (negative value)
-		{name: "seh negative", rt: Word(0x00008000), funct: 0b100000, special: 0b11000, expectVal: Word(0xFFFF8000)},
+		{name: "seh negative", rt: Word(0x00008000), funct: 0b100000, special: 0b11000, expectVal: signExtend64(Word(0xFFFF8000))},
 		// Sign-extend halfword (mid-range)
-		{name: "seh mid-range", rt: Word(0x00005555), funct: 0b100000, special: 0b11000, expectVal: Word(0x00005555)},
+		{name: "seh mid-range", rt: Word(0x00005555), funct: 0b100000, special: 0b11000, expectVal: signExtend64(Word(0x00005555))},
 		// Sign-extend halfword (full 16-bit set)
-		{name: "seh full-halfword", rt: Word(0x0000FFFF), funct: 0b100000, special: 0b11000, expectVal: Word(0xFFFFFFFF)},
+		{name: "seh full-halfword", rt: Word(0x0000FFFF), funct: 0b100000, special: 0b11000, expectVal: signExtend64(Word(0xFFFFFFFF))},
 		// Sign-extend halfword with upper bits set
-		{name: "seh upper bits", rt: Word(0x1234FFFF), funct: 0b100000, special: 0b11000, expectVal: Word(0xFFFFFFFF)},
+		{name: "seh upper bits", rt: Word(0x1234FFFF), funct: 0b100000, special: 0b11000, expectVal: signExtend64(Word(0xFFFFFFFF))},
 	}
 
 	for _, v := range versions {
@@ -1336,15 +1336,15 @@ func TestEVM_SingleStep_Swap(t *testing.T) {
 	}{
 		// wsbh
 		// Swap bytes within halfwords (standard case)
-		{name: "wsbh", rt: Word(0x11223344), funct: 0b100000, special: 0b00010, expectedResult: Word(0x22114433)},
+		{name: "wsbh", rt: Word(0x11223344), funct: 0b100000, special: 0b00010, expectedResult: signExtend64(Word(0x22114433))},
 		// Swap bytes within halfwords (alternating pattern)
-		{name: "wsbh pattern", rt: Word(0xAABBCCDD), funct: 0b100000, special: 0b00010, expectedResult: Word(0xBBAADDCC)},
+		{name: "wsbh pattern", rt: Word(0xAABBCCDD), funct: 0b100000, special: 0b00010, expectedResult: signExtend64(Word(0xBBAADDCC))},
 		// Swap bytes within halfwords (all bits set)
-		{name: "wsbh all ones", rt: Word(0xFFFFFFFF), funct: 0b100000, special: 0b00010, expectedResult: Word(0xFFFFFFFF)},
+		{name: "wsbh all ones", rt: Word(0xFFFFFFFF), funct: 0b100000, special: 0b00010, expectedResult: signExtend64(Word(0xFFFFFFFF))},
 		// Swap bytes within halfwords (all bits zero)
-		{name: "wsbh all zero", rt: Word(0x00000000), funct: 0b100000, special: 0b00010, expectedResult: Word(0x00000000)},
+		{name: "wsbh all zero", rt: Word(0x00000000), funct: 0b100000, special: 0b00010, expectedResult: signExtend64(Word(0x00000000))},
 		// Swap bytes within halfwords (mixed values)
-		{name: "wsbh mixed", rt: Word(0x12345678), funct: 0b100000, special: 0b00010, expectedResult: Word(0x34127856)},
+		{name: "wsbh mixed", rt: Word(0x12345678), funct: 0b100000, special: 0b00010, expectedResult: signExtend64(Word(0x34127856))},
 	}
 
 	versions := GetMipsVersionTestCases(t)
@@ -1395,17 +1395,17 @@ func TestEVM_SingleStep_Ext(t *testing.T) {
 	}{
 		// ext
 		// Extract lower 8 bits (byte 0)
-		{name: "ext byte 0", rs: Word(0x12345678), msbd: 8 - 1, lsb: 0, funct: 0b000000, expectedResult: Word(0x78)},
+		{name: "ext byte 0", rs: Word(0x12345678), msbd: 8 - 1, lsb: 0, funct: 0b000000, expectedResult: signExtend64(Word(0x78))},
 		// Extract bits 8-15 (byte 1)
-		{name: "ext byte 1", rs: Word(0x12345678), msbd: 8 - 1, lsb: 8, funct: 0b000000, expectedResult: Word(0x56)},
+		{name: "ext byte 1", rs: Word(0x12345678), msbd: 8 - 1, lsb: 8, funct: 0b000000, expectedResult: signExtend64(Word(0x56))},
 		// Extract bits 16-23 (byte 2)
-		{name: "ext byte 2", rs: Word(0x12345678), msbd: 8 - 1, lsb: 16, funct: 0b000000, expectedResult: Word(0x34)},
+		{name: "ext byte 2", rs: Word(0x12345678), msbd: 8 - 1, lsb: 16, funct: 0b000000, expectedResult: signExtend64(Word(0x34))},
 		// Extract bits 24-31 (byte 3)
-		{name: "ext byte 3", rs: Word(0x12345678), msbd: 8 - 1, lsb: 24, funct: 0b000000, expectedResult: Word(0x12)},
+		{name: "ext byte 3", rs: Word(0x12345678), msbd: 8 - 1, lsb: 24, funct: 0b000000, expectedResult: signExtend64(Word(0x12))},
 		// Extract 16-bit halfword from bits 8-23
-		{name: "ext halfword", rs: Word(0x12345678), msbd: 16 - 1, lsb: 8, funct: 0b000000, expectedResult: Word(0x3456)},
+		{name: "ext halfword", rs: Word(0x12345678), msbd: 16 - 1, lsb: 8, funct: 0b000000, expectedResult: signExtend64(Word(0x3456))},
 		// Extract full 32-bit word (should return the same value)
-		{name: "ext full word", rs: Word(0x12345678), msbd: 32 - 1, lsb: 0, funct: 0b000000, expectedResult: Word(0x12345678)},
+		{name: "ext full word", rs: Word(0x12345678), msbd: 32 - 1, lsb: 0, funct: 0b000000, expectedResult: signExtend64(Word(0x12345678))},
 	}
 
 	versions := GetMipsVersionTestCases(t)
@@ -1457,17 +1457,17 @@ func TestEVM_SingleStep_Ins(t *testing.T) {
 	}{
 		// ins
 		// Insert 8-bit value from rs into rt at bit 0
-		{name: "ins byte 0", rs: Word(0x000000AA), rt: Word(0xFFFF0000), msb: 0 + (8 - 1), lsb: 0, funct: 0b000100, expectedResult: Word(0xFFFF00AA)},
+		{name: "ins byte 0", rs: Word(0x000000AA), rt: Word(0xFFFF0000), msb: 0 + (8 - 1), lsb: 0, funct: 0b000100, expectedResult: signExtend64(Word(0xFFFF00AA))},
 		// Insert 8-bit value from rs into rt at bit 8
-		{name: "ins byte 1", rs: Word(0x000000AA), rt: Word(0xFFFF0000), msb: 8 + (8 - 1), lsb: 8, funct: 0b000100, expectedResult: Word(0xFFFFAA00)},
+		{name: "ins byte 1", rs: Word(0x000000AA), rt: Word(0xFFFF0000), msb: 8 + (8 - 1), lsb: 8, funct: 0b000100, expectedResult: signExtend64(Word(0xFFFFAA00))},
 		// Insert 16-bit value from rs into rt at bit 0
-		{name: "ins halfword 0", rs: Word(0x0000AAAA), rt: Word(0xFFFF0000), msb: 0 + (16 - 1), lsb: 0, funct: 0b000100, expectedResult: Word(0xFFFFAAAA)},
+		{name: "ins halfword 0", rs: Word(0x0000AAAA), rt: Word(0xFFFF0000), msb: 0 + (16 - 1), lsb: 0, funct: 0b000100, expectedResult: signExtend64(Word(0xFFFFAAAA))},
 		// Insert 16-bit value from rs into rt at bit 8
-		{name: "ins halfword 1", rs: Word(0x0000AAAA), rt: Word(0xFFFF0000), msb: 8 + (16 - 1), lsb: 8, funct: 0b000100, expectedResult: Word(0xFFAAAA00)},
+		{name: "ins halfword 1", rs: Word(0x0000AAAA), rt: Word(0xFFFF0000), msb: 8 + (16 - 1), lsb: 8, funct: 0b000100, expectedResult: signExtend64(Word(0xFFAAAA00))},
 		// Insert 24-bit value from rs into rt at bit 4
-		{name: "ins 24-bit", rs: Word(0x00AAAAAA), rt: Word(0xFFFF0000), msb: 4 + (24 - 1), lsb: 4, funct: 0b000100, expectedResult: Word(0xFAAAAAA0)},
+		{name: "ins 24-bit", rs: Word(0x00AAAAAA), rt: Word(0xFFFF0000), msb: 4 + (24 - 1), lsb: 4, funct: 0b000100, expectedResult: signExtend64(Word(0xFAAAAAA0))},
 		// Insert full 32-bit value from rs into rt
-		{name: "ins full word", rs: Word(0xAAAAAAAA), rt: Word(0xFFFF0000), msb: 0 + (32 - 1), lsb: 0, funct: 0b000100, expectedResult: Word(0xAAAAAAAA)},
+		{name: "ins full word", rs: Word(0xAAAAAAAA), rt: Word(0xFFFF0000), msb: 0 + (32 - 1), lsb: 0, funct: 0b000100, expectedResult: signExtend64(Word(0xAAAAAAAA))},
 	}
 
 	versions := GetMipsVersionTestCases(t)
