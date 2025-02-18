@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"iter"
 	"math/big"
 	"os"
 	"runtime"
@@ -102,8 +101,8 @@ type mockFailingChain struct {
 func (m *mockFailingChain) RPCURL() string                     { return "mock://failing" }
 func (m *mockFailingChain) Client() (*ethclient.Client, error) { return ethclient.Dial(m.RPCURL()) }
 func (m *mockFailingChain) ID() types.ChainID                  { return m.id }
-func (m *mockFailingChain) Wallets(ctx context.Context) iter.Seq[system.Wallet] {
-	return nil
+func (m *mockFailingChain) Wallets(ctx context.Context) ([]system.Wallet, error) {
+	return nil, nil
 }
 func (m *mockFailingChain) ContractsRegistry() interfaces.ContractsRegistry { return m.reg }
 func (m *mockFailingChain) GasPrice(ctx context.Context) (*big.Int, error) {

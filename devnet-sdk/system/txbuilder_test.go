@@ -2,7 +2,6 @@ package system
 
 import (
 	"context"
-	"iter"
 	"math/big"
 	"testing"
 
@@ -116,8 +115,8 @@ func (m *mockChain) Client() (*ethclient.Client, error) {
 	return args.Get(0).(*ethclient.Client), nil
 }
 
-func (m *mockChain) Wallets(ctx context.Context) iter.Seq[Wallet] {
-	return nil
+func (m *mockChain) Wallets(ctx context.Context) ([]Wallet, error) {
+	return nil, nil
 }
 
 func TestNewTxBuilder(t *testing.T) {
