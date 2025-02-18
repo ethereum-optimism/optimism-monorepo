@@ -559,16 +559,12 @@ contract DeployImplementations is Script {
         // But for Blueprint, the initcode is stored as runtime code, that's why it's necessary to split into 2 parts.
         (blueprints.permissionedDisputeGame1, blueprints.permissionedDisputeGame2) = DeployUtils.createDeterministicBlueprint(vm.getCode("PermissionedDisputeGame"), _salt);
         (blueprints.permissionlessDisputeGame1, blueprints.permissionlessDisputeGame2) = DeployUtils.createDeterministicBlueprint(vm.getCode("FaultDisputeGame"), _salt);
-//        (blueprints.dummyRegistry, checkAddress) = DeployUtils.createDeterministicBlueprint(vm.getCode("DummyRegistry"), _salt);
-//        require(checkAddress == address(0), "OPCM-60");
+        (blueprints.dummyRegistry, checkAddress) = DeployUtils.createDeterministicBlueprint(vm.getCode("DummyRegistry"), _salt);
+        require(checkAddress == address(0), "OPCM-60");
         // forgefmt: disable-end
         vm.stopBroadcast();
 
-        console2.log("About to create OPContractsManager");
         IOPContractsManager opcm = createOPCMContract(_dii, _dio, blueprints, l1ContractsRelease);
-        console2.log("OPContractsManager created");
-        console2.log("dii.upgradeController", _dii.upgradeController());
-        console2.log("opcm.upgradeController", opcm.upgradeController());
         vm.label(address(opcm), "OPContractsManager");
         _dio.set(_dio.opcm.selector, address(opcm));
     }

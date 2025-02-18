@@ -58,6 +58,7 @@ interface IOPContractsManager {
 
     /// @notice The full set of outputs from deploying a new OP Stack chain.
     struct DeployOutput {
+        IDummyRegistry dummyRegistry;
         IProxyAdmin opChainProxyAdmin;
         IAddressManager addressManager;
         IL1ERC721Bridge l1ERC721BridgeProxy;
@@ -65,7 +66,6 @@ interface IOPContractsManager {
         IOptimismMintableERC20Factory optimismMintableERC20FactoryProxy;
         IL1StandardBridge l1StandardBridgeProxy;
         IL1CrossDomainMessenger l1CrossDomainMessengerProxy;
-        IDummyRegistry dummyRegistry;
         // Fault proof contracts below.
         IOptimismPortal2 optimismPortalProxy;
         IDisputeGameFactory disputeGameFactoryProxy;
@@ -82,6 +82,7 @@ interface IOPContractsManager {
     /// contain the bytecode of every contract it deploys. Therefore we instead use Blueprints to
     /// reduce the code size of this contract.
     struct Blueprints {
+        address dummyRegistry;
         address addressManager;
         address proxy;
         address proxyAdmin;
@@ -91,7 +92,6 @@ interface IOPContractsManager {
         address permissionedDisputeGame2;
         address permissionlessDisputeGame1;
         address permissionlessDisputeGame2;
-        address dummyRegistry;
     }
 
     /// @notice The latest implementation contracts for the OP Stack.

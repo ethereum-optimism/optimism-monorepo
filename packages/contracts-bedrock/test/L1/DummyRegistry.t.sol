@@ -11,6 +11,8 @@ import { IDummyRegistry } from "interfaces/L1/IDummyRegistry.sol";
 
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol"; /// We use DeployUtils to deploy contracts.
 
+import { console2 as console2 } from "forge-std/console2.sol";
+
 contract DummyRegistry_Init_Test is CommonTest { /// We inherit from CommonTest. One contract per function and outcome.
     /// @notice Emitted when a value is stored.
     /// @param key The key of the value stored.
@@ -24,8 +26,7 @@ contract DummyRegistry_Init_Test is CommonTest { /// We inherit from CommonTest.
 
     /// @dev Tests that it can be initialized as stored.
     /// Note do we use @dev for tests, and @notice for code?
-    function test_initialize_succeeds() external {
-
+    function test_initialize_succeeds() external view {
         assertEq(IDummyRegistry(address(dummyRegistry)).guardian(), opcm.upgradeController());
     }
 }
@@ -37,8 +38,6 @@ contract DummyRegistry_Store_TestFail is DummyRegistry_Init_Test {
         vm.expectRevert("DummyRegistry: only guardian can store");
         vm.prank(alice);
         dummyRegistry.store("key", "value");
-
-        assertEq(keccak256(abi.encodePacked(dummyRegistry.read("key"))), keccak256(abi.encodePacked("value"))); /// We probably have a library to compare strings.
     }
 }
 

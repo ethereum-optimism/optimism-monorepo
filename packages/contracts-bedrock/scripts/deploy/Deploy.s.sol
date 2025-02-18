@@ -49,6 +49,8 @@ import { IAnchorStateRegistry } from "interfaces/dispute/IAnchorStateRegistry.so
 import { IMIPS } from "interfaces/cannon/IMIPS.sol";
 import { IPreimageOracle } from "interfaces/cannon/IPreimageOracle.sol";
 
+import { console2 as console2 } from "forge-std/console2.sol";
+
 /// @title Deploy
 /// @notice Script used to deploy a bedrock system. The entire system is deployed within the `run` function.
 ///         To add a new contract to the system, add a public function that deploys that individual contract.
@@ -365,13 +367,13 @@ contract Deploy is Deployer {
 
         // Save all deploy outputs from the OPCM, in the order they are declared in the DeployOutput struct
         artifacts.save("ProxyAdmin", address(deployOutput.opChainProxyAdmin));
+        artifacts.save("DummyRegistry", address(deployOutput.dummyRegistry));
         artifacts.save("AddressManager", address(deployOutput.addressManager));
         artifacts.save("L1ERC721BridgeProxy", address(deployOutput.l1ERC721BridgeProxy));
         artifacts.save("SystemConfigProxy", address(deployOutput.systemConfigProxy));
         artifacts.save("OptimismMintableERC20FactoryProxy", address(deployOutput.optimismMintableERC20FactoryProxy));
         artifacts.save("L1StandardBridgeProxy", address(deployOutput.l1StandardBridgeProxy));
         artifacts.save("L1CrossDomainMessengerProxy", address(deployOutput.l1CrossDomainMessengerProxy));
-        artifacts.save("DummyRegistryProxy", address(deployOutput.dummyRegistry));
 
         // Fault Proof contracts
         artifacts.save("DisputeGameFactoryProxy", address(deployOutput.disputeGameFactoryProxy));

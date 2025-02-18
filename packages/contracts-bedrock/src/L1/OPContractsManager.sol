@@ -66,6 +66,7 @@ contract OPContractsManager is ISemver {
 
     /// @notice The full set of outputs from deploying a new OP Stack chain.
     struct DeployOutput {
+        IDummyRegistry dummyRegistry;
         IProxyAdmin opChainProxyAdmin;
         IAddressManager addressManager;
         IL1ERC721Bridge l1ERC721BridgeProxy;
@@ -81,7 +82,6 @@ contract OPContractsManager is ISemver {
         IPermissionedDisputeGame permissionedDisputeGame;
         IDelayedWETH delayedWETHPermissionedGameProxy;
         IDelayedWETH delayedWETHPermissionlessGameProxy;
-        IDummyRegistry dummyRegistry;
     }
 
     /// @notice Addresses of ERC-5202 Blueprint contracts. There are used for deploying full size
@@ -90,6 +90,7 @@ contract OPContractsManager is ISemver {
     /// contain the bytecode of every contract it deploys. Therefore we instead use Blueprints to
     /// reduce the code size of this contract.
     struct Blueprints {
+        address dummyRegistry;
         address addressManager;
         address proxy;
         address proxyAdmin;
@@ -272,9 +273,6 @@ contract OPContractsManager is ISemver {
         implementation = _implementations;
         thisOPCM = this;
         upgradeController = _upgradeController;
-
-        console2.log("OPContractsManager argument upgradeController", _upgradeController);
-        console2.log("OPContractsManager constructor upgradeController", upgradeController);
     }
 
     function deploy(DeployInput calldata _input) external virtual returns (DeployOutput memory) {
@@ -302,7 +300,7 @@ contract OPContractsManager is ISemver {
         // This is my own contract.
         output.dummyRegistry = IDummyRegistry(
             Blueprint.deployFrom(
-                blueprint.proxyAdmin, computeSalt(l2ChainId, saltMixer, "DummyRegistry"), abi.encode(upgradeController)
+                blueprint.dummyRegistry, computeSalt(l2ChainId, saltMixer, "DummyRegistry"), abi.encode(upgradeController)
             )
         );
         // Set the AddressManager on the ProxyAdmin.
