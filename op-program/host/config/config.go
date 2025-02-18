@@ -98,7 +98,7 @@ type Config struct {
 	// AgreedPrestate is the preimage of the agreed prestate claim. Required for interop.
 	AgreedPrestate []byte
 	// DependencySet is the dependency set for the interop host. Required for interop.
-	DependencySet *depset.StaticConfigDependencySet
+	DependencySet depset.DependencySet
 }
 
 func (c *Config) Check() error {
@@ -332,7 +332,7 @@ func NewConfigFromCLI(log log.Logger, ctx *cli.Context) (*Config, error) {
 		return nil, fmt.Errorf("invalid %w: %v", ErrInvalidDataFormat, dbFormat)
 	}
 
-	var dependencySet *depset.StaticConfigDependencySet
+	var dependencySet depset.DependencySet
 	if interopEnabled {
 		depsetConfigPath := ctx.Path(flags.DepsetConfig.Name)
 		if depsetConfigPath == "" {
