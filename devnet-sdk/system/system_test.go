@@ -214,7 +214,10 @@ func TestChainUser(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	for w := range chain.Wallets(ctx) {
+	wallets, err := chain.Wallets(ctx)
+	require.NoError(t, err)
+
+	for _, w := range wallets {
 		if w.Address() == testWallet.Address() {
 			assert.Equal(t, testWallet.Address(), w.Address())
 			assert.Equal(t, testWallet.PrivateKey(), w.PrivateKey())

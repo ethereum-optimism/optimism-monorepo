@@ -8,6 +8,7 @@ import (
 	"github.com/ethereum-optimism/optimism/devnet-sdk/descriptors"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestClientManager(t *testing.T) {
@@ -92,8 +93,10 @@ func TestChainWallet(t *testing.T) {
 
 	t.Run("finds wallet meeting constraints", func(t *testing.T) {
 		constraint := &addressConstraint{addr: testAddr}
+		wallets, err := chain.Wallets(ctx)
+		require.NoError(t, err)
 
-		for w := range chain.Wallets(ctx) {
+		for _, w := range wallets {
 			if constraint.CheckWallet(w) {
 				assert.NotNil(t, w)
 				assert.Equal(t, testAddr, w.Address())
@@ -106,7 +109,10 @@ func TestChainWallet(t *testing.T) {
 	t.Run("returns error when no wallet meets constraints", func(t *testing.T) {
 		wrongAddr := common.HexToAddress("0x0987654321098765432109876543210987654321")
 		constraint := &addressConstraint{addr: wrongAddr}
-		for w := range chain.Wallets(ctx) {
+		wallets, err := chain.Wallets(ctx)
+		require.NoError(t, err)
+
+		for _, w := range wallets {
 			if constraint.CheckWallet(w) {
 				t.Fatalf("wallet found")
 			}
