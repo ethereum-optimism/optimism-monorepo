@@ -12,7 +12,7 @@ import (
 type SafeFrontierCheckDeps interface {
 	CandidateCrossSafe(chain eth.ChainID) (candidate types.DerivedBlockRefPair, err error)
 
-	CrossDerivedToSource(chainID eth.ChainID, derived eth.BlockID) (derivedFrom types.BlockSeal, err error)
+	CrossDerivedToSource(chainID eth.ChainID, derived eth.BlockID) (source types.BlockSeal, err error)
 
 	DependencySet() depset.DependencySet
 }

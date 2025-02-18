@@ -77,6 +77,10 @@ func (o *CanonicalBlockHeaderOracle) SetCanonical(head *types.Header) common.Has
 			break
 		}
 		o.hashByNum[h.Number.Uint64()] = newHash
+		if h.Number.Uint64() == 0 {
+			// Reachable if there aren't any cached blocks at or before the common ancestor
+			break
+		}
 		h = o.blockByHashFn(h.ParentHash).Header()
 	}
 	o.earliestIndexedBlock = h

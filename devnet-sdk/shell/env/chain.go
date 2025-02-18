@@ -4,21 +4,22 @@ import (
 	"bytes"
 	"fmt"
 	"html/template"
+	"net/url"
 	"path/filepath"
 
 	"github.com/ethereum-optimism/optimism/devnet-sdk/descriptors"
 )
 
 const (
-	EnvFileVar             = "DEVNET_ENV_FILE"
+	EnvURLVar              = "DEVNET_ENV_URL"
 	ChainNameVar           = "DEVNET_CHAIN_NAME"
 	ExpectPreconditionsMet = "DEVNET_EXPECT_PRECONDITIONS_MET"
 )
 
 type ChainConfig struct {
-	chain      *descriptors.Chain
-	devnetFile string
-	name       string
+	chain     *descriptors.Chain
+	devnetURL string
+	name      string
 }
 
 type ChainEnv struct {
@@ -124,11 +125,16 @@ func (c *ChainConfig) GetEnv(opts ...ChainConfigOption) (*ChainEnv, error) {
 	}
 
 	// To allow commands within the shell to know which devnet and chain they are in
-	absPath, err := filepath.Abs(c.devnetFile)
-	if err != nil {
-		absPath = c.devnetFile // Fallback to original path if abs fails
+	absPath := c.devnetURL
+	if u, err := url.Parse(c.devnetURL); err == nil {
+		if u.Scheme == "" || u.Scheme == "file" {
+			// make sure the path is absolute
+			if abs, err := filepath.Abs(u.Path); err == nil {
+				absPath = abs
+			}
+		}
 	}
-	o.extraEnvVars[EnvFileVar] = absPath
+	o.extraEnvVars[EnvURLVar] = absPath
 	o.extraEnvVars[ChainNameVar] = c.name
 
 	return &ChainEnv{

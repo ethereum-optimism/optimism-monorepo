@@ -9,6 +9,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum-optimism/optimism/op-program/chainconfig"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/params"
 )
@@ -29,6 +30,7 @@ type BootInfoInterop struct {
 type ConfigSource interface {
 	RollupConfig(chainID eth.ChainID) (*rollup.Config, error)
 	ChainConfig(chainID eth.ChainID) (*params.ChainConfig, error)
+	DependencySet(chainID eth.ChainID) (depset.DependencySet, error)
 }
 type OracleConfigSource struct {
 	oracle oracleClient
@@ -37,6 +39,7 @@ type OracleConfigSource struct {
 
 	l2ChainConfigs map[eth.ChainID]*params.ChainConfig
 	rollupConfigs  map[eth.ChainID]*rollup.Config
+	depset         *depset.StaticConfigDependencySet
 }
 
 func (c *OracleConfigSource) RollupConfig(chainID eth.ChainID) (*rollup.Config, error) {
@@ -77,6 +80,15 @@ func (c *OracleConfigSource) ChainConfig(chainID eth.ChainID) (*params.ChainConf
 	return cfg, nil
 }
 
+func (c *OracleConfigSource) DependencySet(chainID eth.ChainID) (depset.DependencySet, error) {
+	if c.depset != nil {
+		return c.depset, nil
+	}
+	// TODO(#13887): The embedded depset must be loaded first before falling back to using custom configs
+	c.loadCustomConfigs()
+	return c.depset, nil
+}
+
 func (c *OracleConfigSource) loadCustomConfigs() {
 	var rollupConfigs []*rollup.Config
 	err := json.Unmarshal(c.oracle.Get(RollupConfigLocalIndex), &rollupConfigs)
@@ -95,6 +107,13 @@ func (c *OracleConfigSource) loadCustomConfigs() {
 	for _, config := range chainConfigs {
 		c.l2ChainConfigs[eth.ChainIDFromBig(config.ChainID)] = config
 	}
+
+	var depset depset.StaticConfigDependencySet
+	err = json.Unmarshal(c.oracle.Get(DependencySetLocalIndex), &depset)
+	if err != nil {
+		panic("failed to bootstrap dependency set")
+	}
+	c.depset = &depset
 	c.customConfigsLoaded = true
 }
 

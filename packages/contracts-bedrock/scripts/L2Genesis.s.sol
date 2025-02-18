@@ -331,9 +331,9 @@ contract L2Genesis is Deployer {
     /// @notice This predeploy is following the safety invariant #2,
     function setSequencerFeeVault() public {
         ISequencerFeeVault vault = ISequencerFeeVault(
-            DeployUtils.create1(
-                "SequencerFeeVault",
-                DeployUtils.encodeConstructor(
+            DeployUtils.create1({
+                _name: "SequencerFeeVault",
+                _args: DeployUtils.encodeConstructor(
                     abi.encodeCall(
                         ISequencerFeeVault.__constructor__,
                         (
@@ -343,7 +343,7 @@ contract L2Genesis is Deployer {
                         )
                     )
                 )
-            )
+            })
         );
 
         address impl = Predeploys.predeployToCodeNamespace(Predeploys.SEQUENCER_FEE_WALLET);
@@ -369,14 +369,14 @@ contract L2Genesis is Deployer {
     /// @notice This predeploy is following the safety invariant #2,
     function setOptimismMintableERC721Factory() public {
         IOptimismMintableERC721Factory factory = IOptimismMintableERC721Factory(
-            DeployUtils.create1(
-                "OptimismMintableERC721Factory",
-                DeployUtils.encodeConstructor(
+            DeployUtils.create1({
+                _name: "OptimismMintableERC721Factory",
+                _args: DeployUtils.encodeConstructor(
                     abi.encodeCall(
                         IOptimismMintableERC721Factory.__constructor__, (Predeploys.L2_ERC721_BRIDGE, cfg.l1ChainID())
                     )
                 )
-            )
+            })
         );
 
         address impl = Predeploys.predeployToCodeNamespace(Predeploys.OPTIMISM_MINTABLE_ERC721_FACTORY);
@@ -433,9 +433,9 @@ contract L2Genesis is Deployer {
     /// @notice This predeploy is following the safety invariant #2.
     function setBaseFeeVault() public {
         IBaseFeeVault vault = IBaseFeeVault(
-            DeployUtils.create1(
-                "BaseFeeVault",
-                DeployUtils.encodeConstructor(
+            DeployUtils.create1({
+                _name: "BaseFeeVault",
+                _args: DeployUtils.encodeConstructor(
                     abi.encodeCall(
                         IBaseFeeVault.__constructor__,
                         (
@@ -445,7 +445,7 @@ contract L2Genesis is Deployer {
                         )
                     )
                 )
-            )
+            })
         );
 
         address impl = Predeploys.predeployToCodeNamespace(Predeploys.BASE_FEE_VAULT);
@@ -460,9 +460,9 @@ contract L2Genesis is Deployer {
     /// @notice This predeploy is following the safety invariant #2.
     function setL1FeeVault() public {
         IL1FeeVault vault = IL1FeeVault(
-            DeployUtils.create1(
-                "L1FeeVault",
-                DeployUtils.encodeConstructor(
+            DeployUtils.create1({
+                _name: "L1FeeVault",
+                _args: DeployUtils.encodeConstructor(
                     abi.encodeCall(
                         IL1FeeVault.__constructor__,
                         (
@@ -472,7 +472,7 @@ contract L2Genesis is Deployer {
                         )
                     )
                 )
-            )
+            })
         );
 
         address impl = Predeploys.predeployToCodeNamespace(Predeploys.L1_FEE_VAULT);
@@ -492,9 +492,10 @@ contract L2Genesis is Deployer {
         }
 
         IGovernanceToken token = IGovernanceToken(
-            DeployUtils.create1(
-                "GovernanceToken", DeployUtils.encodeConstructor(abi.encodeCall(IGovernanceToken.__constructor__, ()))
-            )
+            DeployUtils.create1({
+                _name: "GovernanceToken",
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(IGovernanceToken.__constructor__, ()))
+            })
         );
         console.log("Setting %s implementation at: %s", "GovernanceToken", Predeploys.GOVERNANCE_TOKEN);
         vm.etch(Predeploys.GOVERNANCE_TOKEN, address(token).code);

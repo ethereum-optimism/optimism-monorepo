@@ -35,13 +35,6 @@ library DeployUtils {
         assertValidContractAddress(addr_);
     }
 
-    /// @notice Deploys a contract with the given name via CREATE.
-    /// @param _name Name of the contract to deploy.
-    /// @return Address of the deployed contract.
-    function create1(string memory _name) internal returns (address payable) {
-        return create1(_name, hex"");
-    }
-
     /// @notice Deploys a contract with the given name and arguments via CREATE and saves the result.
     /// @param _save Artifacts contract.
     /// @param _name Name of the contract to deploy.
@@ -61,22 +54,6 @@ library DeployUtils {
         addr_ = create1(_name, _args);
         _save.save(_nick, addr_);
         console.log("%s deployed at %s", _nick, addr_);
-    }
-
-    /// @notice Deploys a contract with the given name via CREATE and saves the result.
-    /// @param _save Artifacts contract.
-    /// @param _name Name of the contract to deploy.
-    /// @param _nickname Nickname to save the address to.
-    /// @return addr_ Address of the deployed contract.
-    function create1AndSave(
-        Artifacts _save,
-        string memory _name,
-        string memory _nickname
-    )
-        internal
-        returns (address payable addr_)
-    {
-        return create1AndSave(_save, _name, _nickname, hex"");
     }
 
     /// @notice Deploys a contract with the given name and arguments via CREATE and saves the result.
@@ -107,15 +84,7 @@ library DeployUtils {
         return create2asm(initCode, _salt);
     }
 
-    /// @notice Deploys a contract with the given name via CREATE2.
-    /// @param _name Name of the contract to deploy.
-    /// @param _salt Salt for the CREATE2 operation.
-    /// @return Address of the deployed contract.
-    function create2(string memory _name, bytes32 _salt) internal returns (address payable) {
-        return create2(_name, hex"", _salt);
-    }
-
-    function create2asm(bytes memory _initCode, bytes32 _salt) internal returns (address payable addr_) {
+    function create2asm(bytes memory _initCode, bytes32 _salt) private returns (address payable addr_) {
         assembly {
             addr_ := create2(0, add(_initCode, 0x20), mload(_initCode), _salt)
             if iszero(addr_) {
@@ -150,24 +119,6 @@ library DeployUtils {
         console.log("%s deployed at %s", _nick, addr_);
     }
 
-    /// @notice Deploys a contract with the given name via CREATE2 and saves the result.
-    /// @param _save Artifacts contract.
-    /// @param _name Name of the contract to deploy.
-    /// @param _nick Nickname to save the address to.
-    /// @param _salt Salt for the CREATE2 operation.
-    /// @return addr_ Address of the deployed contract.
-    function create2AndSave(
-        Artifacts _save,
-        string memory _name,
-        string memory _nick,
-        bytes32 _salt
-    )
-        internal
-        returns (address payable addr_)
-    {
-        return create2AndSave(_save, _name, _nick, hex"", _salt);
-    }
-
     /// @notice Deploys a contract with the given name and arguments via CREATE2 and saves the result.
     /// @param _save Artifacts contract.
     /// @param _name Name of the contract to deploy.
@@ -184,22 +135,6 @@ library DeployUtils {
         returns (address payable addr_)
     {
         return create2AndSave(_save, _name, _name, _args, _salt);
-    }
-
-    /// @notice Deploys a contract with the given name via CREATE2 and saves the result.
-    /// @param _save Artifacts contract.
-    /// @param _name Name of the contract to deploy.
-    /// @param _salt Salt for the CREATE2 operation.
-    /// @return addr_ Address of the deployed contract.
-    function create2AndSave(
-        Artifacts _save,
-        string memory _name,
-        bytes32 _salt
-    )
-        internal
-        returns (address payable addr_)
-    {
-        return create2AndSave(_save, _name, _name, hex"", _salt);
     }
 
     /// @notice Deploys a contract with the given name using CREATE2. If the contract is already deployed, this method
@@ -220,7 +155,7 @@ library DeployUtils {
             addr_ = payable(preComputedAddress);
         } else {
             vm.broadcast(msg.sender);
-            addr_ = DeployUtils.create2asm(initCode, _salt);
+            addr_ = create2asm(initCode, _salt);
         }
     }
 

@@ -8,7 +8,6 @@ import (
 
 	"github.com/ethereum-optimism/optimism/devnet-sdk/types"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	coreTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 )
@@ -64,6 +63,20 @@ func (w *wallet) Balance() types.Balance {
 	return types.NewBalance(balance)
 }
 
+func (w *wallet) Nonce() uint64 {
+	client, err := w.chain.getClient()
+	if err != nil {
+		return 0
+	}
+
+	nonce, err := client.PendingNonceAt(context.Background(), w.address)
+	if err != nil {
+		return 0
+	}
+
+	return nonce
+}
+
 type sendImpl struct {
 	chain  internalChain
 	pk     types.Key
@@ -72,42 +85,35 @@ type sendImpl struct {
 }
 
 func (i *sendImpl) Call(ctx context.Context) (any, error) {
-	client, err := i.chain.getClient()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get client: %w", err)
-	}
-
 	pk, err := crypto.HexToECDSA(string(i.pk))
 	if err != nil {
 		return nil, fmt.Errorf("invalid private key: %w", err)
 	}
 
 	from := crypto.PubkeyToAddress(pk.PublicKey)
-	nonce, err := client.PendingNonceAt(ctx, from)
+	toAddr := i.to
+
+	builder := NewTxBuilder(ctx, i.chain)
+	tx, err := builder.BuildTx(
+		WithFrom(from),
+		WithTo(toAddr),
+		WithValue(i.amount.Int),
+		WithData(nil),
+	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get nonce: %w", err)
+		return nil, fmt.Errorf("failed to build transaction: %w", err)
 	}
 
-	gasPrice, err := client.SuggestGasPrice(ctx)
+	processor, err := i.chain.TransactionProcessor()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get gas price: %w", err)
+		return nil, fmt.Errorf("failed to get transaction processor: %w", err)
 	}
-
-	// TODO: compute an accurate gas limit
-	gasLimit := uint64(210000) // 10x Standard ETH transfer gas limit
-	tx := coreTypes.NewTransaction(nonce, i.to, i.amount.Int, gasLimit, gasPrice, nil)
-
-	chainID, err := client.NetworkID(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get chain id: %w", err)
-	}
-
-	signedTx, err := coreTypes.SignTx(tx, coreTypes.NewEIP155Signer(chainID), pk)
+	tx, err = processor.Sign(tx, string(i.pk))
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign transaction: %w", err)
 	}
 
-	return signedTx, nil
+	return tx, nil
 }
 
 func (i *sendImpl) Send(ctx context.Context) types.InvocationResult {
@@ -121,7 +127,7 @@ func (i *sendImpl) Send(ctx context.Context) types.InvocationResult {
 
 type sendResult struct {
 	chain internalChain
-	tx    *coreTypes.Transaction
+	tx    Transaction
 	err   error
 }
 
@@ -142,57 +148,51 @@ func (r *sendResult) Wait() error {
 		return fmt.Errorf("no transaction to wait for")
 	}
 
-	receipt, err := bind.WaitMined(context.Background(), client, r.tx)
-	if err != nil {
-		return fmt.Errorf("failed waiting for transaction confirmation: %w", err)
-	}
+	if tx, ok := r.tx.(RawTransaction); ok {
+		receipt, err := bind.WaitMined(context.Background(), client, tx.Raw())
+		if err != nil {
+			return fmt.Errorf("failed waiting for transaction confirmation: %w", err)
+		}
 
-	if receipt.Status == 0 {
-		return fmt.Errorf("transaction failed")
+		if receipt.Status == 0 {
+			return fmt.Errorf("transaction failed")
+		}
 	}
 
 	return nil
 }
 
-func sendETH(ctx context.Context, chain internalChain, privateKey string, to types.Address, amount types.Balance) (*coreTypes.Transaction, error) {
-	client, err := chain.getClient()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get client: %w", err)
-	}
-
+func sendETH(ctx context.Context, chain internalChain, privateKey string, to types.Address, amount types.Balance) (Transaction, error) {
 	pk, err := crypto.HexToECDSA(privateKey)
 	if err != nil {
 		return nil, fmt.Errorf("invalid private key: %w", err)
 	}
 
 	from := crypto.PubkeyToAddress(pk.PublicKey)
-	nonce, err := client.PendingNonceAt(ctx, from)
+
+	builder := NewTxBuilder(ctx, chain)
+	tx, err := builder.BuildTx(
+		WithFrom(from),
+		WithTo(to),
+		WithValue(amount.Int),
+		WithData(nil),
+	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get nonce: %w", err)
+		return nil, fmt.Errorf("failed to build transaction: %w", err)
 	}
 
-	gasPrice, err := client.SuggestGasPrice(ctx)
+	processor, err := chain.TransactionProcessor()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get gas price: %w", err)
+		return nil, fmt.Errorf("failed to get transaction processor: %w", err)
 	}
-
-	gasLimit := uint64(210000) // 10x Standard ETH transfer gas limit
-	tx := coreTypes.NewTransaction(nonce, to, amount.Int, gasLimit, gasPrice, nil)
-
-	chainID, err := client.NetworkID(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get chain id: %w", err)
-	}
-
-	signedTx, err := coreTypes.SignTx(tx, coreTypes.NewEIP155Signer(chainID), pk)
+	tx, err = processor.Sign(tx, privateKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign transaction: %w", err)
 	}
 
-	err = client.SendTransaction(ctx, signedTx)
-	if err != nil {
+	if err := processor.Send(ctx, tx); err != nil {
 		return nil, fmt.Errorf("failed to send transaction: %w", err)
 	}
 
-	return signedTx, nil
+	return tx, nil
 }

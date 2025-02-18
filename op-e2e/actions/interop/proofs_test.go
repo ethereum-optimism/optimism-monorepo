@@ -16,6 +16,8 @@ import (
 	"github.com/ethereum-optimism/optimism/op-program/client/interop/types"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
+	supervisortypes "github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/require"
@@ -536,8 +538,6 @@ func TestInteropFaultProofsInvalidBlock(gt *testing.T) {
 			disputedClaim:      step2Expected,
 			disputedTraceIndex: 1,
 			expectValid:        true,
-			// skipChallenger because the challenger's reorg view won't match the pre-reorg disputed claim
-			skipChallenger: true,
 		},
 		{
 			name:               "FirstPaddingStep",
@@ -545,8 +545,6 @@ func TestInteropFaultProofsInvalidBlock(gt *testing.T) {
 			disputedClaim:      paddingStep(3),
 			disputedTraceIndex: 2,
 			expectValid:        true,
-			// skipChallenger because the challenger's reorg view won't match the pre-reorg disputed claim
-			skipChallenger: true,
 		},
 		{
 			name:               "SecondPaddingStep",
@@ -554,8 +552,6 @@ func TestInteropFaultProofsInvalidBlock(gt *testing.T) {
 			disputedClaim:      paddingStep(4),
 			disputedTraceIndex: 3,
 			expectValid:        true,
-			// skipChallenger because the challenger's reorg view won't match the pre-reorg disputed claim
-			skipChallenger: true,
 		},
 		{
 			name:               "LastPaddingStep",
@@ -563,8 +559,6 @@ func TestInteropFaultProofsInvalidBlock(gt *testing.T) {
 			disputedClaim:      paddingStep(1023),
 			disputedTraceIndex: 1022,
 			expectValid:        true,
-			// skipChallenger because the challenger's reorg view won't match the pre-reorg disputed claim
-			skipChallenger: true,
 		},
 		{
 			name:               "Consolidate-ExpectInvalidPendingBlock",
@@ -572,8 +566,6 @@ func TestInteropFaultProofsInvalidBlock(gt *testing.T) {
 			disputedClaim:      end.Marshal(),
 			disputedTraceIndex: 1023,
 			expectValid:        false,
-			skipProgram:        true,
-			skipChallenger:     true,
 		},
 		{
 			name:               "Consolidate-ReplaceInvalidBlock",
@@ -581,8 +573,6 @@ func TestInteropFaultProofsInvalidBlock(gt *testing.T) {
 			disputedClaim:      crossSafeSuperRootEnd.Marshal(),
 			disputedTraceIndex: 1023,
 			expectValid:        true,
-			skipProgram:        true,
-			skipChallenger:     true,
 		},
 		{
 			name:               "AlreadyAtClaimedTimestamp",
@@ -661,7 +651,7 @@ func runFppTest(gt *testing.T, test *transitionTest, actors *dsl.InteropActors) 
 		logger,
 		actors.L1Miner,
 		checkResult,
-		WithInteropEnabled(actors, test.agreedClaim, crypto.Keccak256Hash(test.disputedClaim), proposalTimestamp),
+		WithInteropEnabled(t, actors, test.agreedClaim, crypto.Keccak256Hash(test.disputedClaim), proposalTimestamp),
 		fpHelpers.WithL1Head(l1Head),
 	)
 }
@@ -709,13 +699,29 @@ func runChallengerTest(gt *testing.T, test *transitionTest, actors *dsl.InteropA
 	}
 }
 
-func WithInteropEnabled(actors *dsl.InteropActors, agreedPrestate []byte, disputedClaim common.Hash, claimTimestamp uint64) fpHelpers.FixtureInputParam {
+func WithInteropEnabled(t helpers.StatefulTesting, actors *dsl.InteropActors, agreedPrestate []byte, disputedClaim common.Hash, claimTimestamp uint64) fpHelpers.FixtureInputParam {
 	return func(f *fpHelpers.FixtureInputs) {
 		f.InteropEnabled = true
 		f.AgreedPrestate = agreedPrestate
 		f.L2OutputRoot = crypto.Keccak256Hash(agreedPrestate)
 		f.L2Claim = disputedClaim
 		f.L2BlockNumber = claimTimestamp
+
+		deps := map[eth.ChainID]*depset.StaticConfigDependency{
+			actors.ChainA.ChainID: {
+				ChainIndex:     supervisortypes.ChainIndex(0),
+				ActivationTime: 0,
+				HistoryMinTime: 0,
+			},
+			actors.ChainB.ChainID: {
+				ChainIndex:     supervisortypes.ChainIndex(1),
+				ActivationTime: 0,
+				HistoryMinTime: 0,
+			},
+		}
+		var err error
+		f.DependencySet, err = depset.NewStaticConfigDependencySet(deps)
+		require.NoError(t, err)
 
 		for _, chain := range []*dsl.Chain{actors.ChainA, actors.ChainB} {
 			f.L2Sources = append(f.L2Sources, &fpHelpers.FaultProofProgramL2Source{

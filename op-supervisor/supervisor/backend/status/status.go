@@ -19,9 +19,13 @@ type NodeSyncStatus struct {
 	LocalUnsafe eth.BlockRef
 }
 
-func NewStatusTracker() *StatusTracker {
+func NewStatusTracker(chains []eth.ChainID) *StatusTracker {
+	statuses := make(map[eth.ChainID]*NodeSyncStatus)
+	for _, chain := range chains {
+		statuses[chain] = new(NodeSyncStatus)
+	}
 	return &StatusTracker{
-		statuses: make(map[eth.ChainID]*NodeSyncStatus),
+		statuses: statuses,
 	}
 }
 

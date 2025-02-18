@@ -18,5 +18,5 @@ To disable a code freeze, comment out the path and filename of the file/s you wa
 
 ## Exceptions
 
-To bypass the freeze you can apply the "S-exempt-frozen-files" label on affected PRs. This should be done upon agreement with the code owner. Expected uses of this exception are to fix issues found on audits or to add comments to frozen files.
+To bypass the freeze you can apply the "M-exempt-frozen-files" label on affected PRs. This should be done upon agreement with the code owner. Expected uses of this exception are to fix issues found on audits or to add comments to frozen files.
 

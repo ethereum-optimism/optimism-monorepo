@@ -892,8 +892,37 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "LivenessModule", _sel: _getSel("thresholdPercentage()") });
         _addSpec({ _name: "LivenessModule", _sel: _getSel("version()") });
 
-        _addSpec({ _name: "StandardValidator", _sel: _getSel("validate((address,address,bytes32,uint256),bool)") });
-        _addSpec({ _name: "StandardValidator", _sel: _getSel("implementations()") });
+        _addSpec({ _name: "StandardValidator", _sel: _getSel("superchainConfig()") });
+        _addSpec({ _name: "StandardValidator", _sel: _getSel("protocolVersions()") });
+        _addSpec({ _name: "StandardValidator", _sel: _getSel("l1PAOMultisig()") });
+        _addSpec({ _name: "StandardValidator", _sel: _getSel("mips()") });
+        _addSpec({ _name: "StandardValidator", _sel: _getSel("challenger()") });
+        _addSpec({ _name: "StandardValidator", _sel: _getSel("superchainConfigImpl()") });
+        _addSpec({ _name: "StandardValidator", _sel: _getSel("protocolVersionsImpl()") });
+        _addSpec({ _name: "StandardValidator", _sel: _getSel("l1ERC721BridgeImpl()") });
+        _addSpec({ _name: "StandardValidator", _sel: _getSel("optimismPortalImpl()") });
+        _addSpec({ _name: "StandardValidator", _sel: _getSel("systemConfigImpl()") });
+        _addSpec({ _name: "StandardValidator", _sel: _getSel("optimismMintableERC20FactoryImpl()") });
+        _addSpec({ _name: "StandardValidator", _sel: _getSel("l1CrossDomainMessengerImpl()") });
+        _addSpec({ _name: "StandardValidator", _sel: _getSel("l1StandardBridgeImpl()") });
+        _addSpec({ _name: "StandardValidator", _sel: _getSel("disputeGameFactoryImpl()") });
+        _addSpec({ _name: "StandardValidator", _sel: _getSel("anchorStateRegistryImpl()") });
+        _addSpec({ _name: "StandardValidator", _sel: _getSel("delayedWETHImpl()") });
+        _addSpec({ _name: "StandardValidator", _sel: _getSel("mipsImpl()") });
+        _addSpec({ _name: "StandardValidator", _sel: _getSel("superchainConfigVersion()") });
+        _addSpec({ _name: "StandardValidator", _sel: _getSel("protocolVersionsVersion()") });
+        _addSpec({ _name: "StandardValidator", _sel: _getSel("systemConfigVersion()") });
+        _addSpec({ _name: "StandardValidator", _sel: _getSel("permissionedDisputeGameVersion()") });
+        _addSpec({ _name: "StandardValidator", _sel: _getSel("mipsVersion()") });
+        _addSpec({ _name: "StandardValidator", _sel: _getSel("optimismPortalVersion()") });
+        _addSpec({ _name: "StandardValidator", _sel: _getSel("anchorStateRegistryVersion()") });
+        _addSpec({ _name: "StandardValidator", _sel: _getSel("delayedWETHVersion()") });
+        _addSpec({ _name: "StandardValidator", _sel: _getSel("disputeGameFactoryVersion()") });
+        _addSpec({ _name: "StandardValidator", _sel: _getSel("l1CrossDomainMessengerVersion()") });
+        _addSpec({ _name: "StandardValidator", _sel: _getSel("l1ERC721BridgeVersion()") });
+        _addSpec({ _name: "StandardValidator", _sel: _getSel("l1StandardBridgeVersion()") });
+        _addSpec({ _name: "StandardValidator", _sel: _getSel("optimismMintableERC20FactoryVersion()") });
+        _addSpec({ _name: "StandardValidator", _sel: _getSel("preimageOracleVersion()") });
     }
 
     /// @dev Computes the selector from a function signature.

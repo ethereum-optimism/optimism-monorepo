@@ -8,6 +8,9 @@
 !op-node/
 !op-preimage/
 !op-program/
-op-program/bin/
 !op-service/
 !op-supervisor/
+
+**/bin
+**/testdata
+**/tests

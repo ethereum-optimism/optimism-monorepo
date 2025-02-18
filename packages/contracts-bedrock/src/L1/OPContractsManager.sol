@@ -28,6 +28,7 @@ import { IL1CrossDomainMessenger } from "interfaces/L1/IL1CrossDomainMessenger.s
 import { IL1ERC721Bridge } from "interfaces/L1/IL1ERC721Bridge.sol";
 import { IL1StandardBridge } from "interfaces/L1/IL1StandardBridge.sol";
 import { IOptimismMintableERC20Factory } from "interfaces/universal/IOptimismMintableERC20Factory.sol";
+import { IHasSuperchainConfig } from "interfaces/L1/IHasSuperchainConfig.sol";
 
 contract OPContractsManager is ISemver {
     // -------- Structs --------
@@ -144,9 +145,9 @@ contract OPContractsManager is ISemver {
 
     // -------- Constants and Variables --------
 
-    /// @custom:semver 1.2.2
+    /// @custom:semver 1.5.0
     function version() public pure virtual returns (string memory) {
-        return "1.2.2";
+        return "1.5.0";
     }
 
     /// @notice Address of the SuperchainConfig contract shared by all chains.
@@ -197,6 +198,15 @@ contract OPContractsManager is ISemver {
     /// @param systemConfig Address of the chain's SystemConfig contract
     /// @param upgrader Address that initiated the upgrade
     event Upgraded(uint256 indexed l2ChainId, ISystemConfig indexed systemConfig, address indexed upgrader);
+
+    /// @notice Emitted when a new game type is added to a chain
+    /// @param l2ChainId Chain ID of the chain
+    /// @param gameType Type of the game being
+    /// @param newDisputeGame Address of the deployed dispute game
+    /// @param oldDisputeGame Address of the old dispute game
+    event GameTypeAdded(
+        uint256 indexed l2ChainId, GameType indexed gameType, IDisputeGame newDisputeGame, IDisputeGame oldDisputeGame
+    );
 
     // -------- Errors --------
 
@@ -440,6 +450,12 @@ contract OPContractsManager is ISemver {
         return output;
     }
 
+    /// @notice Verifies that all OpChainConfig inputs are valid and reverts if any are invalid.
+    function assertValidOpChainConfig(OpChainConfig memory _config) internal view {
+        assertValidContractAddress(address(_config.systemConfigProxy));
+        assertValidContractAddress(address(_config.proxyAdmin));
+    }
+
     /// @notice Upgrades a set of chains to the latest implementation contracts
     /// @param _opChainConfigs Array of OpChain structs, one per chain to upgrade
     /// @dev This function is intended to be called via DELEGATECALL from the Upgrade Controller Safe
@@ -468,6 +484,8 @@ contract OPContractsManager is ISemver {
         }
 
         for (uint256 i = 0; i < _opChainConfigs.length; i++) {
+            assertValidOpChainConfig(_opChainConfigs[i]);
+
             // After Upgrade 13, we will be able to use systemConfigProxy.getAddresses() here.
             ISystemConfig.Addresses memory opChainAddrs = ISystemConfig.Addresses({
                 l1CrossDomainMessenger: _opChainConfigs[i].systemConfigProxy.l1CrossDomainMessenger(),
@@ -478,7 +496,13 @@ contract OPContractsManager is ISemver {
                 optimismMintableERC20Factory: _opChainConfigs[i].systemConfigProxy.optimismMintableERC20Factory()
             });
 
-            if (IOptimismPortal2(payable(opChainAddrs.optimismPortal)).superchainConfig() != superchainConfig) {
+            // Check that all contracts have the correct superchainConfig
+            if (
+                getSuperchainConfig(opChainAddrs.optimismPortal) != superchainConfig
+                    || getSuperchainConfig(opChainAddrs.l1CrossDomainMessenger) != superchainConfig
+                    || getSuperchainConfig(opChainAddrs.l1ERC721Bridge) != superchainConfig
+                    || getSuperchainConfig(opChainAddrs.l1StandardBridge) != superchainConfig
+            ) {
                 revert SuperchainConfigMismatch(_opChainConfigs[i].systemConfigProxy);
             }
 
@@ -528,10 +552,7 @@ contract OPContractsManager is ISemver {
                     deployProxy({
                         _l2ChainId: l2ChainId,
                         _proxyAdmin: _opChainConfigs[i].proxyAdmin,
-                        _saltMixer: string.concat(
-                            "v2.0.0-",
-                            string(bytes.concat(bytes32(uint256(uint160(address(_opChainConfigs[i].systemConfigProxy))))))
-                        ),
+                        _saltMixer: reusableSaltMixer(_opChainConfigs[i]),
                         _contractName: "AnchorStateRegistry"
                     })
                 );
@@ -623,14 +644,15 @@ contract OPContractsManager is ISemver {
             if (lastGameConfig >= gameTypeInt) revert InvalidGameConfigs();
             lastGameConfig = gameTypeInt;
 
-            // Grab the FDG from the SystemConfig.
-            IFaultDisputeGame fdg = IFaultDisputeGame(
+            // Grab the permissioned and fault dispute games from the SystemConfig.
+            // We keep the FDG type as it reduces casting below.
+            IFaultDisputeGame pdg = IFaultDisputeGame(
                 address(
                     getGameImplementation(getDisputeGameFactory(gameConfig.systemConfig), GameTypes.PERMISSIONED_CANNON)
                 )
             );
             // Pull out the chain ID.
-            uint256 l2ChainId = getL2ChainId(fdg);
+            uint256 l2ChainId = getL2ChainId(pdg);
 
             // Deploy a new DelayedWETH proxy for this game if one hasn't already been specified. Leaving
             /// gameConfig.delayedWETH as the zero address will cause a new DelayedWETH to be deployed for this game.
@@ -650,10 +672,13 @@ contract OPContractsManager is ISemver {
                 outputs[i].delayedWETH = gameConfig.delayedWETH;
             }
 
+            // The FDG is only used for the event below, and only if it is being replaced,
+            // so we declare it here, but only assign it below if needed.
+            IFaultDisputeGame fdg;
+
             // The below sections are functionally the same. Both deploy a new dispute game. The dispute game type is
             // either permissioned or permissionless depending on game config.
             if (gameConfig.permissioned) {
-                IPermissionedDisputeGame pdg = IPermissionedDisputeGame(address(fdg));
                 outputs[i].faultDisputeGame = IFaultDisputeGame(
                     Blueprint.deployFrom(
                         bps.permissionedDisputeGame1,
@@ -669,15 +694,18 @@ contract OPContractsManager is ISemver {
                                 gameConfig.disputeMaxClockDuration,
                                 gameConfig.vm,
                                 outputs[i].delayedWETH,
-                                getAnchorStateRegistry(IFaultDisputeGame(address(pdg))),
+                                getAnchorStateRegistry(pdg),
                                 l2ChainId
                             ),
-                            getProposer(pdg),
-                            getChallenger(pdg)
+                            getProposer(IPermissionedDisputeGame(address(pdg))),
+                            getChallenger(IPermissionedDisputeGame(address(pdg)))
                         )
                     )
                 );
             } else {
+                fdg = IFaultDisputeGame(
+                    address(getGameImplementation(getDisputeGameFactory(gameConfig.systemConfig), GameTypes.CANNON))
+                );
                 outputs[i].faultDisputeGame = IFaultDisputeGame(
                     Blueprint.deployFrom(
                         bps.permissionlessDisputeGame1,
@@ -693,7 +721,9 @@ contract OPContractsManager is ISemver {
                                 gameConfig.disputeMaxClockDuration,
                                 gameConfig.vm,
                                 outputs[i].delayedWETH,
-                                getAnchorStateRegistry(fdg),
+                                // We can't assume that there is an existing fault dispute game,
+                                // so get the Anchor State Registry from the permissioned game.
+                                getAnchorStateRegistry(pdg),
                                 l2ChainId
                             )
                         )
@@ -706,6 +736,18 @@ contract OPContractsManager is ISemver {
             IDisputeGameFactory dgf = getDisputeGameFactory(gameConfig.systemConfig);
             setDGFImplementation(dgf, gameConfig.disputeGameType, IDisputeGame(address(outputs[i].faultDisputeGame)));
             dgf.setInitBond(gameConfig.disputeGameType, gameConfig.initialBond);
+
+            if (gameConfig.permissioned) {
+                // Emit event for the newly added game type with the old permissioned dispute game
+                emit GameTypeAdded(
+                    l2ChainId, gameConfig.disputeGameType, outputs[i].faultDisputeGame, IDisputeGame(address(pdg))
+                );
+            } else {
+                // Emit event for the newly added game type with the old fault dispute game
+                emit GameTypeAdded(
+                    l2ChainId, gameConfig.disputeGameType, outputs[i].faultDisputeGame, IDisputeGame(address(fdg))
+                );
+            }
         }
 
         return outputs;
@@ -726,6 +768,7 @@ contract OPContractsManager is ISemver {
         if (_input.roles.challenger == address(0)) revert InvalidRoleAddress("challenger");
 
         if (_input.startingAnchorRoot.length == 0) revert InvalidStartingAnchorRoot();
+        if (bytes32(_input.startingAnchorRoot) == bytes32(0)) revert InvalidStartingAnchorRoot();
     }
 
     /// @notice Maps an L2 chain ID to an L1 batch inbox address as defined by the standard
@@ -753,6 +796,14 @@ contract OPContractsManager is ISemver {
         returns (bytes32)
     {
         return keccak256(abi.encode(_l2ChainId, _saltMixer, _contractName));
+    }
+
+    /// @notice Helper method for computing a reusable salt mixer
+    /// This method should be used as the salt mixer when deploying contracts when there is no user
+    /// provided salt mixer. This protects against a situation where multiple chains with the same
+    /// L2 chain ID exist, which would otherwise result in address collisions.
+    function reusableSaltMixer(OpChainConfig memory _opChainConfig) internal pure returns (string memory) {
+        return string(bytes.concat(bytes32(uint256(uint160(address(_opChainConfig.systemConfigProxy))))));
     }
 
     /// @notice Deterministically deploys a new proxy contract owned by the provided ProxyAdmin.
@@ -1028,6 +1079,11 @@ contract OPContractsManager is ISemver {
         return params;
     }
 
+    /// @notice Retrieves the Superchain Config for a bridge contract
+    function getSuperchainConfig(address _hasSuperchainConfig) internal view returns (ISuperchainConfig) {
+        return IHasSuperchainConfig(_hasSuperchainConfig).superchainConfig();
+    }
+
     /// @notice Retrieves the Anchor State Registry for a given game
     function getAnchorStateRegistry(IFaultDisputeGame _disputeGame) internal view returns (IAnchorStateRegistry) {
         return _disputeGame.anchorStateRegistry();
@@ -1120,7 +1176,7 @@ contract OPContractsManager is ISemver {
                 Blueprint.deployFrom(
                     _blueprints.permissionedDisputeGame1,
                     _blueprints.permissionedDisputeGame2,
-                    computeSalt(_l2ChainId, "v2.0.0", "PermissionedDisputeGame"),
+                    computeSalt(_l2ChainId, reusableSaltMixer(_opChainConfig), "PermissionedDisputeGame"),
                     encodePermissionedFDGConstructor(params, proposer, challenger)
                 )
             );
@@ -1129,7 +1185,7 @@ contract OPContractsManager is ISemver {
                 Blueprint.deployFrom(
                     _blueprints.permissionlessDisputeGame1,
                     _blueprints.permissionlessDisputeGame2,
-                    computeSalt(_l2ChainId, "v2.0.0", "PermissionlessDisputeGame"),
+                    computeSalt(_l2ChainId, reusableSaltMixer(_opChainConfig), "PermissionlessDisputeGame"),
                     encodePermissionlessFDGConstructor(params)
                 )
             );

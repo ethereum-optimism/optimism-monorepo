@@ -45,8 +45,11 @@ func (fn BlockProcessorFn) ProcessBlock(ctx context.Context, block eth.BlockRef)
 type ChainProcessor struct {
 	log log.Logger
 
-	client     Source
-	clientLock sync.Mutex
+	clients      []Source
+	activeClient Source
+	clientIndex  int
+	clientsTried int
+	clientLock   sync.Mutex
 
 	chain eth.ChainID
 
@@ -67,7 +70,6 @@ func NewChainProcessor(systemContext context.Context, log log.Logger, chain eth.
 	out := &ChainProcessor{
 		systemContext:     systemContext,
 		log:               log.New("chain", chain),
-		client:            nil,
 		chain:             chain,
 		processor:         processor,
 		rewinder:          rewinder,
@@ -80,10 +82,13 @@ func (s *ChainProcessor) AttachEmitter(em event.Emitter) {
 	s.emitter = em
 }
 
-func (s *ChainProcessor) SetSource(cl Source) {
+func (s *ChainProcessor) AddSource(cl Source) {
 	s.clientLock.Lock()
 	defer s.clientLock.Unlock()
-	s.client = cl
+	s.clients = append(s.clients, cl)
+	if s.activeClient == nil {
+		s.activeClient = s.clients[0]
+	}
 }
 
 func (s *ChainProcessor) nextNum() uint64 {
@@ -108,7 +113,7 @@ func (s *ChainProcessor) OnEvent(ev event.Event) bool {
 }
 
 func (s *ChainProcessor) onRequest(target uint64) {
-	_, err := s.rangeUpdate(target)
+	processed, err := s.rangeUpdate(target)
 	if err != nil {
 		if errors.Is(err, ethereum.NotFound) {
 			s.log.Debug("Event-indexer cannot find next block yet", "target", target, "err", err)
@@ -117,21 +122,51 @@ func (s *ChainProcessor) onRequest(target uint64) {
 		} else {
 			s.log.Error("Failed to process new block", "err", err)
 		}
+		// if the client failed to get *any* blocks, it probably isn't the source of this sync request
+		// so we should try the next client. Clients will be tried in round-robin order until one succeeds.
+		if processed == 0 {
+			if s.clientsTried < len(s.clients) {
+				s.log.Debug("Active client found no blocks, trying again with next client", "activeClient", s.activeClient)
+				s.nextActiveClient()
+				s.emitter.Emit(superevents.ChainProcessEvent{
+					ChainID: s.chain,
+					Target:  target,
+				})
+			} else {
+				s.log.Debug("All clients failed to process blocks", "target", target)
+				s.clientsTried = 0 // reset the counter
+			}
+		}
 	} else if x := s.nextNum(); x <= target {
+		s.clientsTried = 0 // reset the counter
 		s.log.Debug("Continuing with next block", "target", target, "next", x)
 		s.emitter.Emit(superevents.ChainProcessEvent{
 			ChainID: s.chain,
 			Target:  target,
 		}) // instantly continue processing, no need to idle
 	} else {
+		s.clientsTried = 0 // reset the counter
 		s.log.Debug("Idling block-processing, reached latest block", "head", target)
 	}
+}
+
+// nextActiveClient advances the client index and sets the active client.
+func (s *ChainProcessor) nextActiveClient() {
+	s.clientLock.Lock()
+	defer s.clientLock.Unlock()
+	if len(s.clients) == 0 {
+		return
+	}
+	s.clientIndex = (s.clientIndex + 1) % len(s.clients)
+	s.activeClient = s.clients[s.clientIndex]
+	// track that we have advanced the client index
+	s.clientsTried++
 }
 
 func (s *ChainProcessor) rangeUpdate(target uint64) (int, error) {
 	s.clientLock.Lock()
 	defer s.clientLock.Unlock()
-	if s.client == nil {
+	if len(s.clients) == 0 {
 		return 0, types.ErrNoRPCSource
 	}
 
@@ -175,7 +210,7 @@ func (s *ChainProcessor) rangeUpdate(target uint64) (int, error) {
 
 		// fetch the block ref
 		ctx, cancel := context.WithTimeout(s.systemContext, time.Second*10)
-		next, err := s.client.BlockRefByNumber(ctx, num)
+		next, err := s.activeClient.BlockRefByNumber(ctx, num)
 		cancel()
 		if err != nil {
 			result.err = err
@@ -190,7 +225,7 @@ func (s *ChainProcessor) rangeUpdate(target uint64) (int, error) {
 
 		// fetch receipts
 		ctx, cancel = context.WithTimeout(s.systemContext, time.Second*10)
-		receipts, err := s.client.FetchReceipts(ctx, next.Hash)
+		receipts, err := s.activeClient.FetchReceipts(ctx, next.Hash)
 		cancel()
 		if err != nil {
 			result.err = err

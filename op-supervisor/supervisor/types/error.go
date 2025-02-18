@@ -33,4 +33,6 @@ var (
 	ErrUnknownChain = errors.New("unknown chain")
 	// ErrNoRPCSource happens when a sub-service needs an RPC data source, but is not configured with one.
 	ErrNoRPCSource = errors.New("no RPC client configured")
+	// ErrUninitialized happens when a chain database is not initialized yet
+	ErrUninitialized = errors.New("uninitialized chain database")
 )

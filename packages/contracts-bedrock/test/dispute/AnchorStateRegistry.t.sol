@@ -12,24 +12,32 @@ import { IFaultDisputeGame } from "interfaces/dispute/IFaultDisputeGame.sol";
 import { IAnchorStateRegistry } from "interfaces/dispute/IAnchorStateRegistry.sol";
 
 contract AnchorStateRegistry_Init is FaultDisputeGame_Init {
+    /// @dev A valid l2BlockNumber that comes after the current anchor root block.
+    uint256 validL2BlockNumber;
+
     event AnchorNotUpdated(IFaultDisputeGame indexed game);
     event AnchorUpdated(IFaultDisputeGame indexed game);
 
     function setUp() public virtual override {
         // Duplicating the initialization/setup logic of FaultDisputeGame_Test.
-        // See that test for more information, actual values here not really important.
-        Claim rootClaim = Claim.wrap(bytes32((uint256(1) << 248) | uint256(10)));
         bytes memory absolutePrestateData = abi.encode(0);
         Claim absolutePrestate = _changeClaimStatus(Claim.wrap(keccak256(absolutePrestateData)), VMStatuses.UNFINISHED);
 
         super.setUp();
-        super.init({ rootClaim: rootClaim, absolutePrestate: absolutePrestate, l2BlockNumber: 0x10 });
+
+        // Get the actual anchor roots
+        (Hash root, uint256 l2BlockNumber) = anchorStateRegistry.getAnchorRoot();
+        validL2BlockNumber = l2BlockNumber + 1;
+        Claim rootClaim = Claim.wrap(Hash.unwrap(root));
+        super.init({ rootClaim: rootClaim, absolutePrestate: absolutePrestate, l2BlockNumber: validL2BlockNumber });
     }
 }
 
 contract AnchorStateRegistry_Initialize_Test is AnchorStateRegistry_Init {
     /// @dev Tests that initialization is successful.
-    function test_initialize_succeeds() public view {
+    function test_initialize_succeeds() public {
+        skipIfForkTest("State has changed since initialization on a forked network.");
+
         // Verify starting anchor root.
         (Hash root, uint256 l2BlockNumber) = anchorStateRegistry.getAnchorRoot();
         assertEq(root.raw(), 0xDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEF);
@@ -68,7 +76,9 @@ contract AnchorStateRegistry_Version_Test is AnchorStateRegistry_Init {
 contract AnchorStateRegistry_GetAnchorRoot_Test is AnchorStateRegistry_Init {
     /// @notice Tests that getAnchorRoot will return the value of the starting anchor root when no
     ///         anchor game exists yet.
-    function test_getAnchorRoot_noAnchorGame_succeeds() public view {
+    function test_getAnchorRoot_noAnchorGame_succeeds() public {
+        skipIfForkTest("On a forked network, there would most likely be an anchor game already.");
+
         // Assert that we nave no anchor game yet.
         assert(address(anchorStateRegistry.anchorGame()) == address(0));
 
@@ -513,7 +523,7 @@ contract AnchorStateRegistry_SetAnchorState_Test is AnchorStateRegistry_Init {
         (Hash root, uint256 l2BlockNumber) = anchorStateRegistry.getAnchorRoot();
 
         // Bound the new block number.
-        _l2BlockNumber = bound(_l2BlockNumber, l2BlockNumber + 1, type(uint256).max);
+        _l2BlockNumber = bound(_l2BlockNumber, validL2BlockNumber, type(uint256).max);
 
         // Mock the l2BlockNumber call.
         vm.mockCall(address(gameProxy), abi.encodeCall(gameProxy.l2BlockNumber, ()), abi.encode(_l2BlockNumber));
@@ -729,7 +739,7 @@ contract AnchorStateRegistry_SetAnchorState_TestFail is AnchorStateRegistry_Init
         (Hash root, uint256 l2BlockNumber) = anchorStateRegistry.getAnchorRoot();
 
         // Bound the new block number.
-        _l2BlockNumber = bound(_l2BlockNumber, l2BlockNumber + 1, type(uint256).max);
+        _l2BlockNumber = bound(_l2BlockNumber, validL2BlockNumber, type(uint256).max);
 
         // Mock the DEFENDER_WINS state.
         vm.mockCall(address(gameProxy), abi.encodeCall(gameProxy.status, ()), abi.encode(GameStatus.DEFENDER_WINS));
@@ -767,7 +777,7 @@ contract AnchorStateRegistry_SetAnchorState_TestFail is AnchorStateRegistry_Init
         (Hash root, uint256 l2BlockNumber) = anchorStateRegistry.getAnchorRoot();
 
         // Bound the new block number.
-        _l2BlockNumber = bound(_l2BlockNumber, l2BlockNumber + 1, type(uint256).max);
+        _l2BlockNumber = bound(_l2BlockNumber, validL2BlockNumber, type(uint256).max);
 
         // Mock the DEFENDER_WINS state.
         vm.mockCall(address(gameProxy), abi.encodeCall(gameProxy.status, ()), abi.encode(GameStatus.DEFENDER_WINS));
