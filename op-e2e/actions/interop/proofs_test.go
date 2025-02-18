@@ -536,8 +536,6 @@ func TestInteropFaultProofsInvalidBlock(gt *testing.T) {
 			disputedClaim:      step2Expected,
 			disputedTraceIndex: 1,
 			expectValid:        true,
-			// skipChallenger because the challenger's reorg view won't match the pre-reorg disputed claim
-			skipChallenger: true,
 		},
 		{
 			name:               "FirstPaddingStep",
@@ -545,8 +543,6 @@ func TestInteropFaultProofsInvalidBlock(gt *testing.T) {
 			disputedClaim:      paddingStep(3),
 			disputedTraceIndex: 2,
 			expectValid:        true,
-			// skipChallenger because the challenger's reorg view won't match the pre-reorg disputed claim
-			skipChallenger: true,
 		},
 		{
 			name:               "SecondPaddingStep",
@@ -554,8 +550,6 @@ func TestInteropFaultProofsInvalidBlock(gt *testing.T) {
 			disputedClaim:      paddingStep(4),
 			disputedTraceIndex: 3,
 			expectValid:        true,
-			// skipChallenger because the challenger's reorg view won't match the pre-reorg disputed claim
-			skipChallenger: true,
 		},
 		{
 			name:               "LastPaddingStep",
@@ -563,8 +557,6 @@ func TestInteropFaultProofsInvalidBlock(gt *testing.T) {
 			disputedClaim:      paddingStep(1023),
 			disputedTraceIndex: 1022,
 			expectValid:        true,
-			// skipChallenger because the challenger's reorg view won't match the pre-reorg disputed claim
-			skipChallenger: true,
 		},
 		{
 			name:               "Consolidate-ExpectInvalidPendingBlock",
@@ -572,7 +564,6 @@ func TestInteropFaultProofsInvalidBlock(gt *testing.T) {
 			disputedClaim:      end.Marshal(),
 			disputedTraceIndex: 1023,
 			expectValid:        false,
-			skipChallenger:     true,
 		},
 		{
 			name:               "Consolidate-ReplaceInvalidBlock",
@@ -580,7 +571,6 @@ func TestInteropFaultProofsInvalidBlock(gt *testing.T) {
 			disputedClaim:      crossSafeSuperRootEnd.Marshal(),
 			disputedTraceIndex: 1023,
 			expectValid:        true,
-			skipChallenger:     true,
 		},
 		{
 			name:               "AlreadyAtClaimedTimestamp",
