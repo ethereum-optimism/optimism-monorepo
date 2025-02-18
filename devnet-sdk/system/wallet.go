@@ -2,20 +2,27 @@ package system
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
-	"math/big"
 	"strings"
 
 	"github.com/ethereum-optimism/optimism/devnet-sdk/types"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
+
+	coreTypes "github.com/ethereum/go-ethereum/core/types"
+)
+
+var (
+	// This will make sure that we implement the Chain interface
+	_ Wallet = (*wallet)(nil)
 )
 
 // internalChain provides access to internal chain functionality
 type internalChain interface {
 	Chain
-	getClient() (*ethclient.Client, error)
+	Client() (*ethclient.Client, error)
 }
 
 type wallet struct {
@@ -24,16 +31,42 @@ type wallet struct {
 	chain      internalChain
 }
 
-func newWallet(pk types.Key, addr types.Address, chain *chain) *wallet {
+func newWallet(pk string, addr types.Address, chain *chain) (*wallet, error) {
+	privateKey, err := privateKeyFromString(pk)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert private from string: %w", err)
+	}
+
 	return &wallet{
-		privateKey: pk,
+		privateKey: privateKey,
 		address:    addr,
 		chain:      chain,
+	}, nil
+}
+
+func privateKeyFromString(pk string) (types.Key, error) {
+	var privateKey types.Key
+	if pk != "" {
+		pk = strings.TrimPrefix(pk, "0x")
+		if len(pk)%2 == 1 {
+			pk = "0" + pk
+		}
+		pkBytes, err := hex.DecodeString(pk)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode private key: %w", err)
+		}
+		key, err := crypto.ToECDSA(pkBytes)
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert private key to ECDSA: %w", err)
+		}
+		privateKey = key
 	}
+
+	return privateKey, nil
 }
 
 func (w *wallet) PrivateKey() types.Key {
-	return strings.TrimPrefix(w.privateKey, "0x")
+	return w.privateKey
 }
 
 func (w *wallet) Address() types.Address {
@@ -42,29 +75,30 @@ func (w *wallet) Address() types.Address {
 
 func (w *wallet) SendETH(to types.Address, amount types.Balance) types.WriteInvocation[any] {
 	return &sendImpl{
-		chain:  w.chain,
-		pk:     w.PrivateKey(),
-		to:     to,
-		amount: amount,
+		chain:     w.chain,
+		processor: w,
+		from:      w.address,
+		to:        to,
+		amount:    amount,
 	}
 }
 
 func (w *wallet) Balance() types.Balance {
-	client, err := w.chain.getClient()
+	client, err := w.chain.Client()
 	if err != nil {
-		return types.NewBalance(new(big.Int))
+		return types.Balance{}
 	}
 
 	balance, err := client.BalanceAt(context.Background(), w.address, nil)
 	if err != nil {
-		return types.NewBalance(new(big.Int))
+		return types.Balance{}
 	}
 
 	return types.NewBalance(balance)
 }
 
 func (w *wallet) Nonce() uint64 {
-	client, err := w.chain.getClient()
+	client, err := w.chain.Client()
 	if err != nil {
 		return 0
 	}
@@ -77,26 +111,72 @@ func (w *wallet) Nonce() uint64 {
 	return nonce
 }
 
+func (w *wallet) Transactor() *bind.TransactOpts {
+	transactor, err := bind.NewKeyedTransactorWithChainID(w.PrivateKey(), w.chain.ID())
+	if err != nil {
+		panic(fmt.Sprintf("could not create transactor for address %s and chainID %v", w.Address(), w.chain.ID()))
+	}
+
+	return transactor
+}
+
+func (w *wallet) Sign(tx Transaction) (Transaction, error) {
+	pk := w.privateKey
+
+	var signer coreTypes.Signer
+	switch tx.Type() {
+	case coreTypes.DynamicFeeTxType:
+		signer = coreTypes.NewLondonSigner(w.chain.ID())
+	case coreTypes.AccessListTxType:
+		signer = coreTypes.NewEIP2930Signer(w.chain.ID())
+	default:
+		signer = coreTypes.NewEIP155Signer(w.chain.ID())
+	}
+
+	if rt, ok := tx.(RawTransaction); ok {
+		signedTx, err := coreTypes.SignTx(rt.Raw(), signer, pk)
+		if err != nil {
+			return nil, fmt.Errorf("failed to sign transaction: %w", err)
+		}
+
+		return &EthTx{
+			tx:     signedTx,
+			from:   tx.From(),
+			txType: tx.Type(),
+		}, nil
+	}
+
+	return nil, fmt.Errorf("transaction does not support signing")
+}
+
+func (w *wallet) Send(ctx context.Context, tx Transaction) error {
+	if st, ok := tx.(RawTransaction); ok {
+		client, err := w.chain.Client()
+		if err != nil {
+			return fmt.Errorf("failed to get client: %w", err)
+		}
+		if err := client.SendTransaction(ctx, st.Raw()); err != nil {
+			return fmt.Errorf("failed to send transaction: %w", err)
+		}
+		return nil
+	}
+
+	return fmt.Errorf("transaction is not signed")
+}
+
 type sendImpl struct {
-	chain  internalChain
-	pk     types.Key
-	to     types.Address
-	amount types.Balance
+	chain     internalChain
+	processor TransactionProcessor
+	from      types.Address
+	to        types.Address
+	amount    types.Balance
 }
 
 func (i *sendImpl) Call(ctx context.Context) (any, error) {
-	pk, err := crypto.HexToECDSA(string(i.pk))
-	if err != nil {
-		return nil, fmt.Errorf("invalid private key: %w", err)
-	}
-
-	from := crypto.PubkeyToAddress(pk.PublicKey)
-	toAddr := i.to
-
 	builder := NewTxBuilder(ctx, i.chain)
 	tx, err := builder.BuildTx(
-		WithFrom(from),
-		WithTo(toAddr),
+		WithFrom(i.from),
+		WithTo(i.to),
 		WithValue(i.amount.Int),
 		WithData(nil),
 	)
@@ -104,11 +184,7 @@ func (i *sendImpl) Call(ctx context.Context) (any, error) {
 		return nil, fmt.Errorf("failed to build transaction: %w", err)
 	}
 
-	processor, err := i.chain.TransactionProcessor()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get transaction processor: %w", err)
-	}
-	tx, err = processor.Sign(tx, string(i.pk))
+	tx, err = i.processor.Sign(tx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign transaction: %w", err)
 	}
@@ -117,7 +193,24 @@ func (i *sendImpl) Call(ctx context.Context) (any, error) {
 }
 
 func (i *sendImpl) Send(ctx context.Context) types.InvocationResult {
-	tx, err := sendETH(ctx, i.chain, i.pk, i.to, i.amount)
+	builder := NewTxBuilder(ctx, i.chain)
+	tx, err := builder.BuildTx(
+		WithFrom(i.from),
+		WithTo(i.to),
+		WithValue(i.amount.Int),
+		WithData(nil),
+	)
+
+	// Sign the transaction if it's built okay
+	if err == nil {
+		tx, err = i.processor.Sign(tx)
+	}
+
+	// Send the transaction if it's signed okay
+	if err == nil {
+		err = i.processor.Send(ctx, tx)
+	}
+
 	return &sendResult{
 		chain: i.chain,
 		tx:    tx,
@@ -136,7 +229,7 @@ func (r *sendResult) Error() error {
 }
 
 func (r *sendResult) Wait() error {
-	client, err := r.chain.getClient()
+	client, err := r.chain.Client()
 	if err != nil {
 		return fmt.Errorf("failed to get client: %w", err)
 	}
@@ -160,39 +253,4 @@ func (r *sendResult) Wait() error {
 	}
 
 	return nil
-}
-
-func sendETH(ctx context.Context, chain internalChain, privateKey string, to types.Address, amount types.Balance) (Transaction, error) {
-	pk, err := crypto.HexToECDSA(privateKey)
-	if err != nil {
-		return nil, fmt.Errorf("invalid private key: %w", err)
-	}
-
-	from := crypto.PubkeyToAddress(pk.PublicKey)
-
-	builder := NewTxBuilder(ctx, chain)
-	tx, err := builder.BuildTx(
-		WithFrom(from),
-		WithTo(to),
-		WithValue(amount.Int),
-		WithData(nil),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to build transaction: %w", err)
-	}
-
-	processor, err := chain.TransactionProcessor()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get transaction processor: %w", err)
-	}
-	tx, err = processor.Sign(tx, privateKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to sign transaction: %w", err)
-	}
-
-	if err := processor.Send(ctx, tx); err != nil {
-		return nil, fmt.Errorf("failed to send transaction: %w", err)
-	}
-
-	return tx, nil
 }
