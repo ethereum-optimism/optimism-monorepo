@@ -175,6 +175,14 @@
     "initCodeHash": "0x77f51a5cc73ee6e3a1b2f8d406daccd0d4e0fb20751532e9a48f398183c99f94",
     "sourceCodeHash": "0x73b6788068565814ac516055269910e0c44273edd17978f421d05ba8431ef60b"
   },
+  "src/dispute/SuperFaultDisputeGame.sol": {
+    "initCodeHash": "0xcf52f355fb87ea97d077e74e7c2288bf6aab6ff00c62ccbacc3acb1c1066d2b6",
+    "sourceCodeHash": "0xf41801ca51100906f25eb0377b7151afd3e0a33383eaf1da8eaa0e610739e3d7"
+  },
+  "src/dispute/SuperPermissionedDisputeGame.sol": {
+    "initCodeHash": "0xbd05415cb0b4fc4a95d49af37b50163933b6e535233f34942fbfd27991e7374e",
+    "sourceCodeHash": "0xb0080cd6c39cce32edc253cae7fcc1cc06494173b951d90c44d75eb416368ef3"
+  },
   "src/legacy/DeployerWhitelist.sol": {
     "initCodeHash": "0x53099379ed48b87f027d55712dbdd1da7d7099925426eb0531da9c0012e02c29",
     "sourceCodeHash": "0xf22c94ed20c32a8ed2705a22d12c6969c3c3bad409c4efe2f95b0db74f210e10"
