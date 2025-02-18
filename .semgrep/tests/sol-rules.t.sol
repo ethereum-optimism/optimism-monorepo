@@ -105,9 +105,9 @@ contract SemgrepTest__sol_safety_deployutils_args {
     }
 }
 
-contract SemgrepTest__sol_safety_deployutils_named_args {
+contract SemgrepTest__sol_safety_deployutils_named_args_parameter {
     function test() {
-        // ruleid: sol-safety-deployutils-named-args
+        // ruleid: sol-safety-deployutils-named-args-parameter
         DeployUtils.create1AndSave(
             this,
             "Proxy",
@@ -115,14 +115,14 @@ contract SemgrepTest__sol_safety_deployutils_named_args {
             DeployUtils.encodeConstructor(abi.encodeCall(IProxy.__constructor__, (proxyAdmin)))
         );
 
-        // ruleid: sol-safety-deployutils-named-args
+        // ruleid: sol-safety-deployutils-named-args-parameter
         DeployUtils.create1(
             "Proxy",
             "DataAvailabilityChallengeProxy",
             DeployUtils.encodeConstructor(abi.encodeCall(IProxy.__constructor__, (proxyAdmin)))
         );
 
-        // ruleid: sol-safety-deployutils-named-args
+        // ruleid: sol-safety-deployutils-named-args-parameter
         DeployUtils.create2AndSave(
             this,
             _implSalt(),
@@ -131,7 +131,7 @@ contract SemgrepTest__sol_safety_deployutils_named_args {
             DeployUtils.encodeConstructor(abi.encodeCall(IProxy.__constructor__, (proxyAdmin)))
         );
 
-        // ruleid: sol-safety-deployutils-named-args
+        // ruleid: sol-safety-deployutils-named-args-parameter
         DeployUtils.create2(
             _implSalt(),
             "Proxy",
@@ -139,12 +139,27 @@ contract SemgrepTest__sol_safety_deployutils_named_args {
             DeployUtils.encodeConstructor(abi.encodeCall(IProxy.__constructor__, (proxyAdmin)))
         );
 
-        // ruleid: sol-safety-deployutils-named-args
+        // ruleid: sol-safety-deployutils-named-args-parameter
+        DeployUtils.create1({ _save: _args, _name: "Proxy", _nick: "DataAvailabilityChallengeProxy" });
+
+        // ruleid: sol-safety-deployutils-named-args-parameter
         DeployUtils.createDeterministic(
             "Proxy", DeployUtils.encodeConstructor(abi.encodeCall(IProxy.__constructor__, (proxyAdmin))), _implSalt()
         );
 
-        // ok: sol-safety-deployutils-named-args
+        // ruleid: sol-safety-deployutils-named-args-parameter
+        DeployUtils.create1AndSave({ _save: this, _name: "Proxy", _nick: "DataAvailabilityChallengeProxy" });
+
+        // ruleid: sol-safety-deployutils-named-args-parameter
+        DeployUtils.create1({ _save: this, _name: "Proxy", _nick: "DataAvailabilityChallengeProxy" });
+
+        // ruleid: sol-safety-deployutils-named-args-parameter
+        DeployUtils.create2AndSave({ _save: this, _name: "Proxy", _nick: "DataAvailabilityChallengeProxy" });
+
+        // ruleid: sol-safety-deployutils-named-args-parameter
+        DeployUtils.create2({ _save: this, _name: "Proxy", _nick: "DataAvailabilityChallengeProxy" });
+
+        // ok: sol-safety-deployutils-named-args-parameter
         DeployUtils.create1AndSave({
             _save: this,
             _name: "Proxy",
@@ -152,14 +167,14 @@ contract SemgrepTest__sol_safety_deployutils_named_args {
             _args: DeployUtils.encodeConstructor(abi.encodeCall(IProxy.__constructor__, (proxyAdmin)))
         });
 
-        // ok: sol-safety-deployutils-named-args
+        // ok: sol-safety-deployutils-named-args-parameter
         DeployUtils.create1({
             _name: "Proxy",
             _nick: "DataAvailabilityChallengeProxy",
             _args: DeployUtils.encodeConstructor(abi.encodeCall(IProxy.__constructor__, (proxyAdmin)))
         });
 
-        // ok: sol-safety-deployutils-named-args
+        // ok: sol-safety-deployutils-named-args-parameter
         DeployUtils.create2AndSave({
             _save: this,
             _salt: _implSalt(),
@@ -168,7 +183,7 @@ contract SemgrepTest__sol_safety_deployutils_named_args {
             _args: DeployUtils.encodeConstructor(abi.encodeCall(IProxy.__constructor__, (proxyAdmin)))
         });
 
-        // ok: sol-safety-deployutils-named-args
+        // ok: sol-safety-deployutils-named-args-parameter
         DeployUtils.create2({
             _salt: _implSalt(),
             _name: "Proxy",
@@ -176,7 +191,7 @@ contract SemgrepTest__sol_safety_deployutils_named_args {
             _args: DeployUtils.encodeConstructor(abi.encodeCall(IProxy.__constructor__, (proxyAdmin)))
         });
 
-        // ok: sol-safety-deployutils-named-args
+        // ok: sol-safety-deployutils-named-args-parameter
         DeployUtils.createDeterministic({
             _name: "Proxy",
             _args: DeployUtils.encodeConstructor(abi.encodeCall(IProxy.__constructor__, (proxyAdmin))),
