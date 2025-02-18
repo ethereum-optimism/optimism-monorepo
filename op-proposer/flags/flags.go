@@ -34,7 +34,7 @@ var (
 	}
 	SupervisorRpcFlag = &cli.StringFlag{
 		Name:    "supervisor-rpc",
-		Usage:   "HTTP provider URL for the supervisor node",
+		Usage:   "HTTP provider URL for the supervisor node. A comma-separated list enables fallback mode.",
 		EnvVars: prefixEnvVars("SUPERVISOR_RPC"),
 	}
 
