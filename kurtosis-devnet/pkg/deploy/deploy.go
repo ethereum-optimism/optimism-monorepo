@@ -203,12 +203,14 @@ func (d *Deployer) Deploy(ctx context.Context, r io.Reader) (*kurtosis.KurtosisE
 		deployer: d.ktDeployer,
 	}
 
+	ch := srv.getState(ctx)
+
 	buf, err := d.renderTemplate(tmpDir, srv.URL)
 	if err != nil {
 		return nil, fmt.Errorf("error rendering template: %w", err)
 	}
 
-	if err := srv.Deploy(ctx, tmpDir); err != nil {
+	if err := srv.Deploy(ctx, tmpDir, ch); err != nil {
 		return nil, fmt.Errorf("error deploying fileserver: %w", err)
 	}
 
