@@ -31,6 +31,9 @@ import { IProxyAdmin } from "interfaces/universal/IProxyAdmin.sol";
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 import { Solarray } from "scripts/libraries/Solarray.sol";
 import { BaseDeployIO } from "scripts/deploy/BaseDeployIO.sol";
+import { IDummyRegistry } from "interfaces/L1/IDummyRegistry.sol";
+
+import "forge-std/console2.sol";
 
 // See DeploySuperchain.s.sol for detailed comments on the script architecture used here.
 contract DeployImplementationsInput is BaseDeployIO {
@@ -458,6 +461,7 @@ contract DeployImplementations is Script {
         deployDisputeGameFactoryImpl(_dio);
         deployAnchorStateRegistryImpl(_dio);
 
+        console2.log("About to deploy OPContractsManager");
         // Deploy the OP Contracts Manager with the new implementations set.
         deployOPContractsManager(_dii, _dio);
 
@@ -498,6 +502,8 @@ contract DeployImplementations is Script {
             mipsImpl: address(_dio.mipsSingleton())
         });
 
+        console2.log("upgradeController passed on to the constructor", upgradeController);
+
         opcm_ = IOPContractsManager(
             DeployUtils.createDeterministic({
                 _name: "OPContractsManager",
@@ -518,6 +524,8 @@ contract DeployImplementations is Script {
                 _salt: _salt
             })
         );
+
+        console2.log("opcm_.upgradeController", opcm_.upgradeController());
 
         vm.label(address(opcm_), "OPContractsManager");
         _dio.set(_dio.opcm.selector, address(opcm_));
@@ -551,13 +559,16 @@ contract DeployImplementations is Script {
         // But for Blueprint, the initcode is stored as runtime code, that's why it's necessary to split into 2 parts.
         (blueprints.permissionedDisputeGame1, blueprints.permissionedDisputeGame2) = DeployUtils.createDeterministicBlueprint(vm.getCode("PermissionedDisputeGame"), _salt);
         (blueprints.permissionlessDisputeGame1, blueprints.permissionlessDisputeGame2) = DeployUtils.createDeterministicBlueprint(vm.getCode("FaultDisputeGame"), _salt);
-        (blueprints.dummyRegistry, checkAddress) = DeployUtils.createDeterministicBlueprint(vm.getCode("DummyRegistry"), _salt);
-        require(checkAddress == address(0), "OPCM-60");
+//        (blueprints.dummyRegistry, checkAddress) = DeployUtils.createDeterministicBlueprint(vm.getCode("DummyRegistry"), _salt);
+//        require(checkAddress == address(0), "OPCM-60");
         // forgefmt: disable-end
         vm.stopBroadcast();
 
+        console2.log("About to create OPContractsManager");
         IOPContractsManager opcm = createOPCMContract(_dii, _dio, blueprints, l1ContractsRelease);
-
+        console2.log("OPContractsManager created");
+        console2.log("dii.upgradeController", _dii.upgradeController());
+        console2.log("opcm.upgradeController", opcm.upgradeController());
         vm.label(address(opcm), "OPContractsManager");
         _dio.set(_dio.opcm.selector, address(opcm));
     }

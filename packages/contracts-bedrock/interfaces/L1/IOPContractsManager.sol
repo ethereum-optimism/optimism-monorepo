@@ -65,6 +65,7 @@ interface IOPContractsManager {
         IOptimismMintableERC20Factory optimismMintableERC20FactoryProxy;
         IL1StandardBridge l1StandardBridgeProxy;
         IL1CrossDomainMessenger l1CrossDomainMessengerProxy;
+        IDummyRegistry dummyRegistry;
         // Fault proof contracts below.
         IOptimismPortal2 optimismPortalProxy;
         IDisputeGameFactory disputeGameFactoryProxy;
@@ -73,7 +74,6 @@ interface IOPContractsManager {
         IPermissionedDisputeGame permissionedDisputeGame;
         IDelayedWETH delayedWETHPermissionedGameProxy;
         IDelayedWETH delayedWETHPermissionlessGameProxy;
-        IDummyRegistry dummyRegistry;
     }
 
     /// @notice Addresses of ERC-5202 Blueprint contracts. There are used for deploying full size

@@ -371,6 +371,7 @@ contract Deploy is Deployer {
         artifacts.save("OptimismMintableERC20FactoryProxy", address(deployOutput.optimismMintableERC20FactoryProxy));
         artifacts.save("L1StandardBridgeProxy", address(deployOutput.l1StandardBridgeProxy));
         artifacts.save("L1CrossDomainMessengerProxy", address(deployOutput.l1CrossDomainMessengerProxy));
+        artifacts.save("DummyRegistryProxy", address(deployOutput.dummyRegistry));
 
         // Fault Proof contracts
         artifacts.save("DisputeGameFactoryProxy", address(deployOutput.disputeGameFactoryProxy));
@@ -379,9 +380,6 @@ contract Deploy is Deployer {
         artifacts.save("PermissionedDisputeGame", address(deployOutput.permissionedDisputeGame));
         artifacts.save("OptimismPortalProxy", address(deployOutput.optimismPortalProxy));
         artifacts.save("OptimismPortal2Proxy", address(deployOutput.optimismPortalProxy));
-
-        // Save the dummy registry
-        artifacts.save("DummyRegistryProxy", address(deployOutput.dummyRegistry));
 
         // Check if the permissionless game implementation is already set
         IDisputeGameFactory factory = IDisputeGameFactory(artifacts.mustGetAddress("DisputeGameFactoryProxy"));

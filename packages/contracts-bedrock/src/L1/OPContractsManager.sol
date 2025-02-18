@@ -30,7 +30,7 @@ import { IL1StandardBridge } from "interfaces/L1/IL1StandardBridge.sol";
 import { IOptimismMintableERC20Factory } from "interfaces/universal/IOptimismMintableERC20Factory.sol";
 import { IHasSuperchainConfig } from "interfaces/L1/IHasSuperchainConfig.sol";
 import { IDummyRegistry } from "interfaces/L1/IDummyRegistry.sol";
-
+import "forge-std/console2.sol";
 contract OPContractsManager is ISemver {
     // -------- Structs --------
 
@@ -272,6 +272,9 @@ contract OPContractsManager is ISemver {
         implementation = _implementations;
         thisOPCM = this;
         upgradeController = _upgradeController;
+
+        console2.log("OPContractsManager argument upgradeController", _upgradeController);
+        console2.log("OPContractsManager constructor upgradeController", upgradeController);
     }
 
     function deploy(DeployInput calldata _input) external virtual returns (DeployOutput memory) {
