@@ -19,8 +19,22 @@ Supported 63 instructions:
 | `Conditional Branch` | `bne`         | Branch on not equal.                         |
 | `Logical`            | `clo`         | Count leading ones.                          |
 | `Logical`            | `clz`         | Count leading zeros.                         |
+| `Logical`            | `dclz`        | Count Leading Zeros in Doubleword.           |
+| `Bit Manipulation`   | `dext`        | Doubleword Extract Bit Field.                |
+| `Bit Manipulation`   | `dextm`       | Doubleword Extract Bit Field Middle.         |
+| `Bit Manipulation`   | `dextu`       | Doubleword Extract Bit Field Upper.          |
+| `Bit Manipulation`   | `dins`        | Doubleword Insert Bit Field.                 |
+| `Bit Manipulation`   | `dinsm`       | Doubleword Insert Bit Field Middle.          |
+| `Bit Manipulation`   | `dinsu`       | Doubleword Insert Bit Field Upper.           |
 | `Arithmetic`         | `div`         | Divide.                                      |
 | `Arithmetic`         | `divu`        | Divide unsigned.                             |
+| `Logical`            | `drotr`       | Doubleword Rotate Right.                     |
+| `Logical`            | `drotr32`     | Doubleword Rotate Right Plus 32.             |
+| `Logical`            | `drotrv`      | Doubleword Rotate Right Variable.            |
+| `Bit Manipulation`   | `dsbh`        | Doubleword Swap Bytes Within Halfwords.      |
+| `Bit Manipulation`   | `dshd`        | Doubleword Swap Halfwords Within Doublewords.|
+| `Bit Manipulation`   | `ext`         | Extract Bit Field.                           |
+| `Bit Manipulation`   | `ins`         | Insert Bit Field.                            |
 | `Unconditional Jump` | `j`           | Jump.                                        |
 | `Unconditional Jump` | `jal`         | Jump and link.                               |
 | `Unconditional Jump` | `jalr`        | Jump and link register.                      |
@@ -46,8 +60,12 @@ Supported 63 instructions:
 | `Logical`            | `nor`         | Bitwise NOR.                                 |
 | `Logical`            | `or`          | Bitwise OR.                                  |
 | `Logical`            | `ori`         | Bitwise OR immediate.                        |
+| `Logical`            | `rotr`        | Rotate Word Right.                           |
+| `Logical`            | `rotrv`       | Rotate Word Right Variable.                  |
 | `Data Transfer`      | `sb`          | Store byte.                                  |
 | `Data Transfer`      | `sc`          | Store conditional.                           |
+| `Arithmetic`         | `seb`         | Sign-Extend Byte.                            |
+| `Arithmetic`         | `seh`         | Sign-Extend Halfword.                        |
 | `Data Transfer`      | `sh`          | Store halfword.                              |
 | `Logical`            | `sll`         | Shift left logical.                          |
 | `Logical`            | `sllv`        | Shift left logical variable.                 |
@@ -66,6 +84,7 @@ Supported 63 instructions:
 | `Data Transfer`      | `swr`         | Store word right.                            |
 | `Serialization`      | `sync`        | Synchronize shared memory.                   |
 | `System Calls`       | `syscall`     | System call.                                 |
+| `Bit Manipulation`   | `wsbh`        | Word Swap Bytes Within Halfwords.            |
 | `Logical`            | `xor`         | Bitwise XOR.                                 |
 | `Logical`            | `xori`        | Bitwise XOR immediate.                       |
 
