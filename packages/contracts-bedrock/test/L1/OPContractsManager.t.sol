@@ -19,6 +19,11 @@ import { ForgeArtifacts } from "scripts/libraries/ForgeArtifacts.sol";
 import { Bytes } from "src/libraries/Bytes.sol";
 
 // Interfaces
+import { IAnchorStateRegistry } from "interfaces/dispute/IAnchorStateRegistry.sol";
+import { IL1ERC721Bridge } from "interfaces/L1/IL1ERC721Bridge.sol";
+import { IL1StandardBridge } from "interfaces/L1/IL1StandardBridge.sol";
+import { IOptimismMintableERC20Factory } from "interfaces/Universal/IOptimismMintableERC20Factory.sol";
+import { IL1CrossDomainMessenger } from "interfaces/L1/IL1CrossDomainMessenger.sol";
 import { IMIPS } from "interfaces/cannon/IMIPS.sol";
 import { IOptimismPortal2 } from "interfaces/L1/IOptimismPortal2.sol";
 import { IProxyAdmin } from "interfaces/universal/IProxyAdmin.sol";
@@ -561,19 +566,46 @@ contract OPContractsManager_AddGameType_Test is Test {
         );
 
         IOPContractsManager.Implementations memory impls = IOPContractsManager.Implementations({
-            superchainConfigImpl: DeployUtils.create1({ _name: "SuperchainConfig" }),
-            protocolVersionsImpl: DeployUtils.create1({ _name: "ProtocolVersions" }),
-            l1ERC721BridgeImpl: DeployUtils.create1({ _name: "L1ERC721Bridge" }),
+            superchainConfigImpl: DeployUtils.create1({
+                _name: "SuperchainConfig",
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(ISuperchainConfig.__constructor__, ()))
+            }),
+            protocolVersionsImpl: DeployUtils.create1({
+                _name: "ProtocolVersions",
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(IProtocolVersions.__constructor__, ()))
+            }),
+            l1ERC721BridgeImpl: DeployUtils.create1({
+                _name: "L1ERC721Bridge",
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(IL1ERC721Bridge.__constructor__, ()))
+            }),
             optimismPortalImpl: DeployUtils.create1({
                 _name: "OptimismPortal2",
                 _args: DeployUtils.encodeConstructor(abi.encodeCall(IOptimismPortal2.__constructor__, (1, 1)))
             }),
-            systemConfigImpl: DeployUtils.create1({ _name: "SystemConfig" }),
-            optimismMintableERC20FactoryImpl: DeployUtils.create1({ _name: "OptimismMintableERC20Factory" }),
-            l1CrossDomainMessengerImpl: DeployUtils.create1({ _name: "L1CrossDomainMessenger" }),
-            l1StandardBridgeImpl: DeployUtils.create1({ _name: "L1StandardBridge" }),
-            disputeGameFactoryImpl: DeployUtils.create1({ _name: "DisputeGameFactory" }),
-            anchorStateRegistryImpl: DeployUtils.create1({ _name: "AnchorStateRegistry" }),
+            systemConfigImpl: DeployUtils.create1({
+                _name: "SystemConfig",
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(ISystemConfig.__constructor__, ()))
+            }),
+            optimismMintableERC20FactoryImpl: DeployUtils.create1({
+                _name: "OptimismMintableERC20Factory",
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(IOptimismMintableERC20Factory.__constructor__, ()))
+            }),
+            l1CrossDomainMessengerImpl: DeployUtils.create1({
+                _name: "L1CrossDomainMessenger",
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(IL1CrossDomainMessenger.__constructor__, ()))
+            }),
+            l1StandardBridgeImpl: DeployUtils.create1({
+                _name: "L1StandardBridge",
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(IL1StandardBridge.__constructor__, ()))
+            }),
+            disputeGameFactoryImpl: DeployUtils.create1({
+                _name: "DisputeGameFactory",
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(IDisputeGameFactory.__constructor__, ()))
+            }),
+            anchorStateRegistryImpl: DeployUtils.create1({
+                _name: "AnchorStateRegistry",
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(IAnchorStateRegistry.__constructor__, ()))
+            }),
             delayedWETHImpl: DeployUtils.create1({
                 _name: "DelayedWETH",
                 _args: DeployUtils.encodeConstructor(abi.encodeCall(IDelayedWETH.__constructor__, (3)))
