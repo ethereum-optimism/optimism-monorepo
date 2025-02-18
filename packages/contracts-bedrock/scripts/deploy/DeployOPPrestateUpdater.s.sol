@@ -87,7 +87,7 @@ contract DeployOPPrestateUpdater is Script {
 
         require(oppu.upgradeController() == address(0), "OPPUI-40");
 
-        // encode decode because oppu.implementations returns IOPPrestateUpdater.Implmentations
+        // encode decode because oppu.implementations returns IOPPrestateUpdater.Implementations
         IOPContractsManager.Implementations memory implementations =
             abi.decode(abi.encode(oppu.implementations()), (IOPContractsManager.Implementations));
         require(implementations.l1CrossDomainMessengerImpl == address(0), "OPPUI-120");
@@ -100,5 +100,18 @@ contract DeployOPPrestateUpdater is Script {
         require(implementations.anchorStateRegistryImpl == address(0), "OPPUI-190");
         require(implementations.delayedWETHImpl == address(0), "OPPUI-200");
         require(implementations.mipsImpl == address(0), "OPPUI-210");
+
+        IOPContractsManager.Blueprints memory actualBluePrints = abi.decode(abi.encode(oppu.blueprints()), (IOPContractsManager.Blueprints));
+        require(actualBluePrints.addressManager == address(0), "OPPUI-300");
+        require(actualBluePrints.proxy == address(0), "OPPUI-310");
+        require(actualBluePrints.proxyAdmin == address(0), "OPPUI-320");
+        require(actualBluePrints.l1ChugSplashProxy == address(0), "OPPUI-330");
+        require(actualBluePrints.resolvedDelegateProxy == address(0), "OPPUI-340");
+        require(actualBluePrints.permissionedDisputeGame1 == blueprints180.permissionedDisputeGame1, "OPPUI-350");
+        require(actualBluePrints.permissionedDisputeGame2 == blueprints180.permissionedDisputeGame2, "OPPUI-360");
+        require(actualBluePrints.permissionlessDisputeGame1 == blueprints.permissionlessDisputeGame1, "OPPUI-370");
+        require(actualBluePrints.permissionlessDisputeGame2 == blueprints.permissionlessDisputeGame2, "OPPUI-380");
+
+        return oppu;
     }
 }
