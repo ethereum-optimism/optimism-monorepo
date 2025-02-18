@@ -31,7 +31,6 @@ func ReceiptsToExecutingMessages(depset depset.ChainIndexFromID, receipts ethtyp
 			if err != nil {
 				return nil, 0, err
 			}
-			// TODO: e2e test for both executing and non-executing messages in the logs
 			if execMsg != nil {
 				execMsgs = append(execMsgs, execMsg)
 			}
@@ -207,7 +206,7 @@ func newConsolidateCheckDeps(
 	chains []eth.ChainIDAndOutput,
 	oracle l2.Oracle,
 ) (*consolidateCheckDeps, error) {
-	// TODO: handle case where dep set changes in a given timestamp
+	// TODO(#14415): handle case where dep set changes in a given timestamp
 	canonBlocks := make(map[eth.ChainID]*l2.FastCanonicalBlockHeaderOracle)
 	for i, chain := range chains {
 		progress := transitionState.PendingProgress[i]

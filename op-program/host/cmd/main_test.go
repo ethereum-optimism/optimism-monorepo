@@ -257,7 +257,7 @@ func TestL2Head(t *testing.T) {
 		delete(req, "--l2.head")
 		delete(req, "--l2.outputroot")
 		args := append(toArgList(req), "--l2.agreed-prestate", "0x1234")
-		// TODO: Remove the --depset.config flag once there's a depset defined for sepolia.
+		// TODO(#14416): Remove the --depset.config flag once there's a depset defined for sepolia.
 		// For now we stub a depset path to ensure the run succeeds
 		depsetFile := writeDepset(t)
 		args = append(args, "--depset.config", depsetFile)
@@ -279,7 +279,7 @@ func TestL2OutputRoot(t *testing.T) {
 
 	t.Run("NotRequiredWhenAgreedPrestateProvided", func(t *testing.T) {
 		optionalArgs := []string{"--l2.agreed-prestate", "0x1234"}
-		// TODO: Remove the --depset.config flag once there's a depset defined for sepolia.
+		// TODO(#14416): Remove the --depset.config flag once there's a depset defined for sepolia.
 		depsetFile := writeDepset(t)
 		optionalArgs = append(optionalArgs, "--depset.config", depsetFile)
 		configForArgs(t, addRequiredArgsExceptMultiple([]string{"--l2.outputroot", "--l2.head"}, optionalArgs...))
@@ -298,7 +298,7 @@ func TestL2OutputRoot(t *testing.T) {
 func TestL2AgreedPrestate(t *testing.T) {
 	t.Run("NotRequiredWhenL2OutputRootProvided", func(t *testing.T) {
 		optionalArgs := []string{"--l2.agreed-prestate", "0x1234"}
-		// TODO: Remove the --depset.config flag once there's a depset defined for sepolia.
+		// TODO(#14416): Remove the --depset.config flag once there's a depset defined for sepolia.
 		depsetFile := writeDepset(t)
 		optionalArgs = append(optionalArgs, "--depset.config", depsetFile)
 		configForArgs(t, addRequiredArgsExceptMultiple([]string{"--l2.outputroot", "--l2.head"}, optionalArgs...))
@@ -309,7 +309,7 @@ func TestL2AgreedPrestate(t *testing.T) {
 		prestateBytes := common.FromHex(prestate)
 		expectedOutputRoot := crypto.Keccak256Hash(prestateBytes)
 		optionalArgs := []string{"--l2.agreed-prestate", prestate}
-		// TODO: Remove the --depset.config flag once there's a depset defined for sepolia.
+		// TODO(#14416): Remove the --depset.config flag once there's a depset defined for sepolia.
 		depsetFile := writeDepset(t)
 		optionalArgs = append(optionalArgs, "--depset.config", depsetFile)
 		cfg := configForArgs(t, addRequiredArgsExceptMultiple([]string{"--l2.outputroot", "--l2.head"}, optionalArgs...))

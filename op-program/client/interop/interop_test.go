@@ -595,6 +595,6 @@ func (s *staticConfigSource) ChainConfig(chainID eth.ChainID) (*params.ChainConf
 	return nil, fmt.Errorf("no chain config found for chain %d", chainID)
 }
 
-func (s *staticConfigSource) DependencySet(chainID eth.ChainID) (*depset.StaticConfigDependencySet, error) {
+func (s *staticConfigSource) DependencySet(chainID eth.ChainID) (depset.DependencySet, error) {
 	return s.depset, nil
 }

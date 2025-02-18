@@ -30,7 +30,7 @@ type BootInfoInterop struct {
 type ConfigSource interface {
 	RollupConfig(chainID eth.ChainID) (*rollup.Config, error)
 	ChainConfig(chainID eth.ChainID) (*params.ChainConfig, error)
-	DependencySet(chainID eth.ChainID) (*depset.StaticConfigDependencySet, error)
+	DependencySet(chainID eth.ChainID) (depset.DependencySet, error)
 }
 type OracleConfigSource struct {
 	oracle oracleClient
@@ -80,7 +80,7 @@ func (c *OracleConfigSource) ChainConfig(chainID eth.ChainID) (*params.ChainConf
 	return cfg, nil
 }
 
-func (c *OracleConfigSource) DependencySet(chainID eth.ChainID) (*depset.StaticConfigDependencySet, error) {
+func (c *OracleConfigSource) DependencySet(chainID eth.ChainID) (depset.DependencySet, error) {
 	if c.depset != nil {
 		return c.depset, nil
 	}
