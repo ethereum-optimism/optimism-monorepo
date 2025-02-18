@@ -472,7 +472,6 @@ func ExecuteMipsInstruction(insn uint32, opcode uint32, fun uint32, rs, rt, mem 
 				return UpdateSubWord(rs, mem, 4, Word(swrResult))
 			}
 
-		// MIPS64
 		case 0x1A: // ldl
 			assertMips64(insn)
 			sl := (rs & 0x7) << 3
