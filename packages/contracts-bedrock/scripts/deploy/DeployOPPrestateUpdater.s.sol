@@ -42,7 +42,7 @@ contract DeployOPPrestateUpdater is Script {
         string memory _baseChain
     )
         public
-        returns (OPPrestateUpdater oppu)
+        returns (OPPrestateUpdater)
     {
         string memory superchainBasePath = "./lib/superchain-registry/superchain/configs/";
         string memory superchainToml = vm.readFile(string.concat(superchainBasePath, _baseChain, "/superchain.toml"));
@@ -71,7 +71,7 @@ contract DeployOPPrestateUpdater is Script {
         vm.stopBroadcast();
         // forgefmt: disable-end
 
-        oppu = OPPrestateUpdater(
+        OPPrestateUpdater oppu = OPPrestateUpdater(
             DeployUtils.createDeterministic({
                 _name: "OPPrestateUpdater",
                 _args: DeployUtils.encodeConstructor(
