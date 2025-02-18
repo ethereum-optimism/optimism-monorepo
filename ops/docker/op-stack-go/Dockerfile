@@ -22,30 +22,24 @@ FROM --platform=$BUILDPLATFORM golang:1.22.7-alpine3.20 AS builder
 RUN apk add --no-cache curl tar gzip make gcc musl-dev linux-headers git jq bash
 
 # Install yq based on architecture
-RUN ARCH=$(uname -m) && \
-    if [ "$ARCH" = "x86_64" ]; then \
+ARG TARGETARCH
+RUN if [ "$TARGETARCH" = "amd64" ]; then \
         wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/local/bin/yq; \
-    elif [ "$ARCH" = "aarch64" ]; then \
+    elif [ "$TARGETARCH" = "arm64" ]; then \
         wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_arm64 -O /usr/local/bin/yq; \
-    else \
-        echo "Unsupported architecture: $ARCH"; \
-        exit 1; \
     fi && \
     chmod +x /usr/local/bin/yq
 
 # Install versioned toolchain based on architecture
 COPY ./mise.toml .
-RUN ARCH=$(uname -m) && \
-    JUST_VERSION=$(yq '.tools.just' mise.toml) && \
-    if [ "$ARCH" = "x86_64" ]; then \
+ARG TARGETARCH
+RUN JUST_VERSION=$(yq '.tools.just' mise.toml) && \
+    if [ "$TARGETARCH" = "amd64" ]; then \
         curl -L https://github.com/casey/just/releases/download/$JUST_VERSION/just-$JUST_VERSION-x86_64-unknown-linux-musl.tar.gz | \
         tar xz -C /usr/local/bin just; \
-    elif [ "$ARCH" = "aarch64" ]; then \
+    elif [ "$TARGETARCH" = "arm64" ]; then \
         curl -L https://github.com/casey/just/releases/download/$JUST_VERSION/just-$JUST_VERSION-aarch64-unknown-linux-musl.tar.gz | \
         tar xz -C /usr/local/bin just; \
-    else \
-        echo "Unsupported architecture: $ARCH"; \
-        exit 1; \
     fi
 
 # We copy the go.mod/sum first, so the `go mod download` does not have to re-run if dependencies do not change.
