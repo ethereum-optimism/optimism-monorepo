@@ -1,4 +1,4 @@
-package builder
+package l2remote
 
 import (
 	"fmt"

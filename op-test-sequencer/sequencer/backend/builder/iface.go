@@ -6,9 +6,16 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/ethereum/go-ethereum/log"
+
 	"github.com/ethereum-optimism/optimism/op-service/eth"
+	"github.com/ethereum-optimism/optimism/op-test-sequencer/metrics"
 	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/seqtypes"
 )
+
+// ErrNoRegistry is returned by Builder.NewJob when a Registry has
+// not yet been attached to the Builder with Builder.Attach.
+var ErrNoRegistry = errors.New("no registry attached")
 
 // Builder provides access to block-building work.
 // Different implementations are available, e.g. for local or remote block-building.
@@ -17,6 +24,7 @@ type Builder interface {
 	NewJob(ctx context.Context, id seqtypes.JobID, opts *seqtypes.BuildOpts) (BuildJob, error)
 	io.Closer
 	String() string
+	ID() seqtypes.BuilderID
 }
 
 // BuildJob provides access to the building work of a single protocol block.
@@ -39,9 +47,14 @@ type Loader interface {
 	Load(ctx context.Context) (Starter, error)
 }
 
+type StartOpts struct {
+	Log     log.Logger
+	Metrics metrics.Metricer
+}
+
 // Starter starts a group of builders from some form of setup.
 type Starter interface {
-	Start(ctx context.Context) (Builders, error)
+	Start(ctx context.Context, opts *StartOpts) (Builders, error)
 }
 
 // Builders represents a group of active builder implementations.
@@ -57,7 +70,7 @@ func (bs Builders) Load(ctx context.Context) (Starter, error) {
 var _ Starter = Builders(nil)
 
 // Start is a short-cut to skip the start phase, and use an existing group of Builders.
-func (bs Builders) Start(ctx context.Context) (Builders, error) {
+func (bs Builders) Start(ctx context.Context, opts *StartOpts) (Builders, error) {
 	return bs, nil
 }
 
