@@ -71,7 +71,7 @@ diff-%-cannon: cannon elf
 	# Load an elf file to create a prestate, and check that both cannon versions generate the same prestate
 	@VM=$*; \
 	echo "Running diff for VM type $${VM}"; \
-	if [ "$${VM#multithreaded64}" != "$${VM}" ]; then \
+	if echo "$$VM" | grep -q '^multithreaded64'; then \
 		echo "Loading 64-bit program"; \
 		ELF_SUFFIX="64.elf"; \
 	else \
