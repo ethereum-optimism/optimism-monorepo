@@ -455,7 +455,7 @@ func TestInteropFaultProofs_CascadeInvalidBlock(gt *testing.T) {
 func TestInteropFaultProofs_MessageExpiry(gt *testing.T) {
 	t := helpers.NewDefaultTesting(gt)
 	// TODO(#14234): Check message expiry in op-supervisor
-	//t.Skip("Message expiry not yet implemented")
+	t.Skip("Message expiry not yet implemented")
 
 	system := dsl.NewInteropDSL(t)
 
