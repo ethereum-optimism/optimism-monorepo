@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"math/big"
 
+	sdkTypes "github.com/ethereum-optimism/optimism/devnet-sdk/types"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
@@ -17,8 +17,9 @@ type EthClient interface {
 
 // TransactionProcessor handles signing and sending transactions
 type transactionProcessor struct {
-	client  EthClient
-	chainID *big.Int
+	client     EthClient
+	chainID    *big.Int
+	privateKey sdkTypes.Key
 }
 
 // NewTransactionProcessor creates a new transaction processor
@@ -35,10 +36,10 @@ func NewEthTransactionProcessor(client *ethclient.Client, chainID *big.Int) Tran
 }
 
 // Sign signs a transaction with the given private key
-func (p *transactionProcessor) Sign(tx Transaction, privateKey string) (Transaction, error) {
-	pk, err := crypto.HexToECDSA(privateKey)
-	if err != nil {
-		return nil, fmt.Errorf("invalid private key: %w", err)
+func (p *transactionProcessor) Sign(tx Transaction) (Transaction, error) {
+	pk := p.privateKey
+	if pk == nil {
+		return nil, fmt.Errorf("private key is nil")
 	}
 
 	var signer types.Signer

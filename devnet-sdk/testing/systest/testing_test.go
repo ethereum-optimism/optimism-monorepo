@@ -98,16 +98,6 @@ func (m *mockChain) SupportsEIP(ctx context.Context, eip uint64) bool {
 	return true
 }
 
-type mockTransactionProcessor struct{}
-
-func (m *mockTransactionProcessor) Sign(tx system.Transaction, privateKey string) (system.Transaction, error) {
-	return tx, nil
-}
-
-func (m *mockTransactionProcessor) Send(ctx context.Context, tx system.Transaction) error {
-	return nil
-}
-
 // mockSystem implements a minimal system.System for testing
 type mockSystem struct{}
 
