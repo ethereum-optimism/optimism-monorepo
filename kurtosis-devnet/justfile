@@ -74,9 +74,18 @@ devnet-test DEVNET *TEST:
 # Devnet recipes
 
 # EigenDA devnet that uses eigenda-proxy connected to eigenda holesky testnet network
+[group('eigenda')]
 eigenda-holesky-devnet: (devnet "eigenda-holesky.yaml" "eigenda-secrets.json" "eigenda-holesky")
+[group('eigenda')]
 eigenda-holesky-devnet-clean:
   kurtosis enclave rm eigenda-holesky-devnet --force
+# EigenDA devnet that uses the eigenda-proxy in memstore mode (simulates an eigenda network but generates random certs)
+[group('eigenda')]
+eigenda-memstore-devnet: (devnet "eigenda-memstore.yaml")
+[group('eigenda')]
+eigenda-memstore-devnet-clean:
+  kurtosis enclave rm eigenda-memstore-devnet --force
+
 
 # Simple devnet
 simple-devnet: (devnet "simple.yaml")
