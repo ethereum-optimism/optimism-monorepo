@@ -162,6 +162,8 @@ func (p *Prefetcher) bulkPrefetch(ctx context.Context, hint string) error {
 			return err
 		}
 
+		// We request a proof of storage slot 0x00...00 because that will include the preimage of the storage root
+		// which is actually all that's required.
 		result, err := cl.GetProof(ctx, address, []common.Hash{{}}, blockHash.Hex())
 		if err != nil {
 			return fmt.Errorf("failed to fetch account proof for address %s: %w", address, err)
