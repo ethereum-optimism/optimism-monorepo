@@ -1,7 +1,6 @@
 package mipsevm
 
 import (
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/log"
 )
 
@@ -22,11 +21,6 @@ func logAsText(b string) bool {
 }
 
 func (lw *LoggingWriter) Write(b []byte) (int, error) {
-	t := string(b)
-	if logAsText(t) {
-		lw.Log.Info("", "text", t)
-	} else {
-		lw.Log.Info("", "data", hexutil.Bytes(b))
-	}
+	lw.Log.Info("", "text", string(b))
 	return len(b), nil
 }
