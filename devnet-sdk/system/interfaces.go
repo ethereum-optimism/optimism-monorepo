@@ -4,11 +4,12 @@ import (
 	"context"
 	"math/big"
 
-	"github.com/ethereum-optimism/optimism/devnet-sdk/constraints"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/interfaces"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/types"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	coreTypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/ethclient"
 )
 
 // System represents a complete Optimism system with L1 and L2 chains
@@ -23,11 +24,10 @@ type System interface {
 type Chain interface {
 	RPCURL() string
 	ID() types.ChainID
-	Wallet(ctx context.Context, constraints ...constraints.WalletConstraint) (types.Wallet, error)
+	Client() (*ethclient.Client, error)
+	Wallets(ctx context.Context) ([]Wallet, error)
 	ContractsRegistry() interfaces.ContractsRegistry
 	SupportsEIP(ctx context.Context, eip uint64) bool
-
-	TransactionProcessor() (TransactionProcessor, error)
 
 	GasPrice(ctx context.Context) (*big.Int, error)
 	GasLimit(ctx context.Context, tx TransactionData) (uint64, error)
@@ -35,7 +35,7 @@ type Chain interface {
 }
 
 type TransactionProcessor interface {
-	Sign(tx Transaction, privateKey string) (Transaction, error)
+	Sign(tx Transaction) (Transaction, error)
 	Send(ctx context.Context, tx Transaction) error
 }
 
@@ -69,4 +69,17 @@ type Transaction interface {
 // on the transaction.
 type RawTransaction interface {
 	Raw() *coreTypes.Transaction
+}
+
+type Wallet interface {
+	PrivateKey() types.Key
+	Address() types.Address
+	SendETH(to types.Address, amount types.Balance) types.WriteInvocation[any]
+	Balance() types.Balance
+	Nonce() uint64
+
+	Sign(tx Transaction) (Transaction, error)
+	Send(ctx context.Context, tx Transaction) error
+
+	Transactor() *bind.TransactOpts
 }
