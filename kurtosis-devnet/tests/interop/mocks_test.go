@@ -14,6 +14,7 @@ import (
 	"github.com/ethereum-optimism/optimism/devnet-sdk/system"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/testing/systest"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/types"
+	"github.com/ethereum/go-ethereum/common"
 )
 
 // mockFailingTx implements types.WriteInvocation[any] that always fails
@@ -58,6 +59,10 @@ func (m *mockFailingWallet) SendETH(to types.Address, amount types.Balance) type
 	return &mockFailingTx{}
 }
 
+func (m *mockFailingWallet) Nonce() uint64 {
+	return 0
+}
+
 // mockFailingChain implements system.Chain with a failing SendETH
 type mockFailingChain struct {
 	id     types.ChainID
@@ -71,6 +76,31 @@ func (m *mockFailingChain) Wallet(ctx context.Context, constraints ...constraint
 	return m.wallet, nil
 }
 func (m *mockFailingChain) ContractsRegistry() interfaces.ContractsRegistry { return m.reg }
+func (m *mockFailingChain) GasPrice(ctx context.Context) (*big.Int, error) {
+	return big.NewInt(1), nil
+}
+func (m *mockFailingChain) GasLimit(ctx context.Context, tx system.TransactionData) (uint64, error) {
+	return 1000000, nil
+}
+func (m *mockFailingChain) PendingNonceAt(ctx context.Context, address common.Address) (uint64, error) {
+	return 0, nil
+}
+func (m *mockFailingChain) TransactionProcessor() (system.TransactionProcessor, error) {
+	return &mockTransactionProcessor{}, nil
+}
+func (m *mockFailingChain) SupportsEIP(ctx context.Context, eip uint64) bool {
+	return true
+}
+
+type mockTransactionProcessor struct{}
+
+func (m *mockTransactionProcessor) Sign(tx system.Transaction, privateKey string) (system.Transaction, error) {
+	return tx, nil
+}
+
+func (m *mockTransactionProcessor) Send(ctx context.Context, tx system.Transaction) error {
+	return fmt.Errorf("transaction failure")
+}
 
 // mockFailingSystem implements system.System with a failing chain
 type mockFailingSystem struct {

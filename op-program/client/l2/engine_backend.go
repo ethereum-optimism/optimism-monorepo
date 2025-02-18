@@ -30,7 +30,7 @@ type OracleBackedL2Chain struct {
 	finalized  *types.Header
 	vmCfg      vm.Config
 
-	canon *CanonicalBlockHeaderOracle
+	canon *FastCanonicalBlockHeaderOracle
 
 	// Inserted blocks
 	blocks map[common.Hash]*types.Block
@@ -92,7 +92,8 @@ func NewOracleBackedL2ChainFromHead(
 	blockByHash := func(hash common.Hash) *types.Block {
 		return chain.GetBlockByHash(hash)
 	}
-	chain.canon = NewCanonicalBlockHeaderOracle(head.Header(), blockByHash)
+	fallback := NewCanonicalBlockHeaderOracle(head.Header(), blockByHash)
+	chain.canon = NewFastCanonicalBlockHeaderOracle(head.Header(), blockByHash, chainCfg, oracle, db, fallback)
 	return chain
 }
 

@@ -83,10 +83,9 @@ ALLOWED_FILES=(
   "src/L2/SuperchainTokenBridge.sol"
   "src/L2/SuperchainWETH.sol"
   "src/L2/WETH.sol"
-  "src/cannon/MIPS.sol"
-  "src/cannon/MIPS2.sol"
-  # TODO(#14116): Disallow MIPS64 back when development is finished
-  "src/cannon/MIPS64.sol"
+#  "src/cannon/MIPS.sol"
+#  "src/cannon/MIPS2.sol"
+#  "src/cannon/MIPS64.sol"
   "src/cannon/PreimageOracle.sol"
   # "src/dispute/AnchorStateRegistry.sol"
   # "src/dispute/DelayedWETH.sol"

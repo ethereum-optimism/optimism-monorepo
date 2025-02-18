@@ -145,9 +145,9 @@ contract OPContractsManager is ISemver {
 
     // -------- Constants and Variables --------
 
-    /// @custom:semver 1.4.0
+    /// @custom:semver 1.5.0
     function version() public pure virtual returns (string memory) {
-        return "1.4.0";
+        return "1.5.0";
     }
 
     /// @notice Address of the SuperchainConfig contract shared by all chains.
@@ -552,10 +552,7 @@ contract OPContractsManager is ISemver {
                     deployProxy({
                         _l2ChainId: l2ChainId,
                         _proxyAdmin: _opChainConfigs[i].proxyAdmin,
-                        _saltMixer: string.concat(
-                            "v2.0.0-",
-                            string(bytes.concat(bytes32(uint256(uint160(address(_opChainConfigs[i].systemConfigProxy))))))
-                        ),
+                        _saltMixer: reusableSaltMixer(_opChainConfigs[i]),
                         _contractName: "AnchorStateRegistry"
                     })
                 );
@@ -799,6 +796,14 @@ contract OPContractsManager is ISemver {
         returns (bytes32)
     {
         return keccak256(abi.encode(_l2ChainId, _saltMixer, _contractName));
+    }
+
+    /// @notice Helper method for computing a reusable salt mixer
+    /// This method should be used as the salt mixer when deploying contracts when there is no user
+    /// provided salt mixer. This protects against a situation where multiple chains with the same
+    /// L2 chain ID exist, which would otherwise result in address collisions.
+    function reusableSaltMixer(OpChainConfig memory _opChainConfig) internal pure returns (string memory) {
+        return string(bytes.concat(bytes32(uint256(uint160(address(_opChainConfig.systemConfigProxy))))));
     }
 
     /// @notice Deterministically deploys a new proxy contract owned by the provided ProxyAdmin.
@@ -1171,7 +1176,7 @@ contract OPContractsManager is ISemver {
                 Blueprint.deployFrom(
                     _blueprints.permissionedDisputeGame1,
                     _blueprints.permissionedDisputeGame2,
-                    computeSalt(_l2ChainId, "v2.0.0", "PermissionedDisputeGame"),
+                    computeSalt(_l2ChainId, reusableSaltMixer(_opChainConfig), "PermissionedDisputeGame"),
                     encodePermissionedFDGConstructor(params, proposer, challenger)
                 )
             );
@@ -1180,7 +1185,7 @@ contract OPContractsManager is ISemver {
                 Blueprint.deployFrom(
                     _blueprints.permissionlessDisputeGame1,
                     _blueprints.permissionlessDisputeGame2,
-                    computeSalt(_l2ChainId, "v2.0.0", "PermissionlessDisputeGame"),
+                    computeSalt(_l2ChainId, reusableSaltMixer(_opChainConfig), "PermissionlessDisputeGame"),
                     encodePermissionlessFDGConstructor(params)
                 )
             );

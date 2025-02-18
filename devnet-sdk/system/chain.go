@@ -11,6 +11,9 @@ import (
 	"github.com/ethereum-optimism/optimism/devnet-sdk/descriptors"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/interfaces"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/types"
+	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/common"
+	coreTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
@@ -126,6 +129,80 @@ func (c *chain) ID() types.ChainID {
 		return types.ChainID(big.NewInt(0))
 	}
 	return types.ChainID(id)
+}
+
+func (c *chain) GasPrice(ctx context.Context) (*big.Int, error) {
+	client, err := c.getClient()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client: %w", err)
+	}
+	return client.SuggestGasPrice(ctx)
+}
+
+func (c *chain) GasLimit(ctx context.Context, tx TransactionData) (uint64, error) {
+	client, err := c.getClient()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get client: %w", err)
+	}
+
+	msg := ethereum.CallMsg{
+		From:  tx.From(),
+		To:    tx.To(),
+		Value: tx.Value(),
+		Data:  tx.Data(),
+	}
+	estimated, err := client.EstimateGas(ctx, msg)
+	if err != nil {
+		return 0, fmt.Errorf("failed to estimate gas: %w", err)
+	}
+
+	return estimated, nil
+}
+
+func (c *chain) PendingNonceAt(ctx context.Context, address common.Address) (uint64, error) {
+	client, err := c.getClient()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get client: %w", err)
+	}
+	return client.PendingNonceAt(ctx, address)
+}
+
+func (c *chain) TransactionProcessor() (TransactionProcessor, error) {
+	client, err := c.getClient()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client: %w", err)
+	}
+	return &transactionProcessor{
+		client:  client,
+		chainID: c.ID(),
+	}, nil
+}
+
+func checkHeader(ctx context.Context, client *ethclient.Client, check func(*coreTypes.Header) bool) bool {
+	head, err := client.HeaderByNumber(ctx, nil)
+	if err != nil {
+		return false
+	}
+	return check(head)
+}
+
+func (c *chain) SupportsEIP(ctx context.Context, eip uint64) bool {
+	client, err := c.getClient()
+	if err != nil {
+		return false
+	}
+
+	switch eip {
+	case 1559:
+		return checkHeader(ctx, client, func(h *coreTypes.Header) bool {
+			return h.BaseFee != nil
+		})
+	case 4844:
+		return checkHeader(ctx, client, func(h *coreTypes.Header) bool {
+			return h.ExcessBlobGas != nil
+		})
+	}
+	return false
 }
 
 func chainFromDescriptor(d *descriptors.Chain) Chain {

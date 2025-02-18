@@ -15,6 +15,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/processors"
 	supervisortypes "github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/rawdb"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
@@ -61,7 +62,7 @@ func RunConsolidation(
 	superRoot *eth.SuperV1,
 	tasks taskExecutor,
 ) (eth.Bytes32, error) {
-	deps, err := newConsolidateCheckDeps(transitionState, superRoot.Chains, l2PreimageOracle)
+	deps, err := newConsolidateCheckDeps(bootInfo, transitionState, superRoot.Chains, l2PreimageOracle)
 	if err != nil {
 		return eth.Bytes32{}, fmt.Errorf("failed to create consolidate check deps: %w", err)
 	}
@@ -191,10 +192,10 @@ func checkHazards(
 type consolidateCheckDeps struct {
 	oracle      l2.Oracle
 	depset      depset.DependencySet
-	canonBlocks map[eth.ChainID]*l2.CanonicalBlockHeaderOracle
+	canonBlocks map[eth.ChainID]*l2.FastCanonicalBlockHeaderOracle
 }
 
-func newConsolidateCheckDeps(transitionState *types.TransitionState, chains []eth.ChainIDAndOutput, oracle l2.Oracle) (*consolidateCheckDeps, error) {
+func newConsolidateCheckDeps(bootInfo *boot.BootInfoInterop, transitionState *types.TransitionState, chains []eth.ChainIDAndOutput, oracle l2.Oracle) (*consolidateCheckDeps, error) {
 	// TODO: handle case where dep set changes in a given timestamp
 	// TODO: Also replace dep set stubs with the actual dependency set in the RollupConfig.
 	deps := make(map[eth.ChainID]*depset.StaticConfigDependency)
@@ -206,7 +207,7 @@ func newConsolidateCheckDeps(transitionState *types.TransitionState, chains []et
 		}
 	}
 
-	canonBlocks := make(map[eth.ChainID]*l2.CanonicalBlockHeaderOracle)
+	canonBlocks := make(map[eth.ChainID]*l2.FastCanonicalBlockHeaderOracle)
 	for i, chain := range chains {
 		progress := transitionState.PendingProgress[i]
 		// This is the optimistic head. It's OK if it's replaced by a deposits-only block.
@@ -216,7 +217,12 @@ func newConsolidateCheckDeps(transitionState *types.TransitionState, chains []et
 		blockByHash := func(hash common.Hash) *ethtypes.Block {
 			return oracle.BlockByHash(hash, chain.ChainID)
 		}
-		canonBlocks[chain.ChainID] = l2.NewCanonicalBlockHeaderOracle(head.Header(), blockByHash)
+		l2ChainConfig, err := bootInfo.Configs.ChainConfig(chain.ChainID)
+		if err != nil {
+			return nil, fmt.Errorf("no chain config available for chain ID %v: %w", chain.ChainID, err)
+		}
+		fallback := l2.NewCanonicalBlockHeaderOracle(head.Header(), blockByHash)
+		canonBlocks[chain.ChainID] = l2.NewFastCanonicalBlockHeaderOracle(head.Header(), blockByHash, l2ChainConfig, oracle, rawdb.NewMemoryDatabase(), fallback)
 	}
 
 	depset, err := depset.NewStaticConfigDependencySet(deps)
@@ -233,7 +239,7 @@ func newConsolidateCheckDeps(transitionState *types.TransitionState, chains []et
 
 func (d *consolidateCheckDeps) Contains(chain eth.ChainID, query supervisortypes.ContainsQuery) (includedIn supervisortypes.BlockSeal, err error) {
 	// We can assume the oracle has the block the executing message is in
-	block, err := d.BlockByNumber(d.oracle, query.BlockNum, chain)
+	block, err := d.CanonBlockByNumber(d.oracle, query.BlockNum, chain)
 	if err != nil {
 		return supervisortypes.BlockSeal{}, err
 	}
@@ -277,7 +283,7 @@ func (d *consolidateCheckDeps) IsLocalUnsafe(chainID eth.ChainID, block eth.Bloc
 }
 
 func (d *consolidateCheckDeps) ParentBlock(chainID eth.ChainID, parentOf eth.BlockID) (parent eth.BlockID, err error) {
-	block, err := d.BlockByNumber(d.oracle, parentOf.Number-1, chainID)
+	block, err := d.CanonBlockByNumber(d.oracle, parentOf.Number-1, chainID)
 	if err != nil {
 		return eth.BlockID{}, err
 	}
@@ -291,7 +297,7 @@ func (d *consolidateCheckDeps) OpenBlock(
 	chainID eth.ChainID,
 	blockNum uint64,
 ) (ref eth.BlockRef, logCount uint32, execMsgs map[uint32]*supervisortypes.ExecutingMessage, err error) {
-	block, err := d.BlockByNumber(d.oracle, blockNum, chainID)
+	block, err := d.CanonBlockByNumber(d.oracle, blockNum, chainID)
 	if err != nil {
 		return eth.BlockRef{}, 0, nil, err
 	}
@@ -315,7 +321,7 @@ func (d *consolidateCheckDeps) DependencySet() depset.DependencySet {
 	return d.depset
 }
 
-func (d *consolidateCheckDeps) BlockByNumber(oracle l2.Oracle, blockNum uint64, chainID eth.ChainID) (*ethtypes.Block, error) {
+func (d *consolidateCheckDeps) CanonBlockByNumber(oracle l2.Oracle, blockNum uint64, chainID eth.ChainID) (*ethtypes.Block, error) {
 	head := d.canonBlocks[chainID].GetHeaderByNumber(blockNum)
 	if head == nil {
 		return nil, fmt.Errorf("head not found for chain %v", chainID)
