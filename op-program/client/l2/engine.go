@@ -116,7 +116,7 @@ func (o *OracleEngine) GetPayload(ctx context.Context, payloadInfo eth.PayloadIn
 
 func (o *OracleEngine) ForkchoiceUpdate(ctx context.Context, state *eth.ForkchoiceState, attr *eth.PayloadAttributes) (*eth.ForkchoiceUpdatedResult, error) {
 	if attr != nil {
-		chainID := eth.ChainIDFromUInt64(o.rollupCfg.L2ChainID.Uint64())
+		chainID := eth.ChainIDFromBig(o.rollupCfg.L2ChainID)
 		if o.hinter != nil {
 			o.hinter.HintBlockExecution(state.HeadBlockHash, *attr, chainID)
 		}
