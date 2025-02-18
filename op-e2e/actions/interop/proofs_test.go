@@ -707,22 +707,19 @@ func WithInteropEnabled(t helpers.StatefulTesting, actors *dsl.InteropActors, ag
 		f.L2Claim = disputedClaim
 		f.L2BlockNumber = claimTimestamp
 
-		chainIndexA, err := actors.ChainA.ChainID.ToUInt32()
-		require.NoError(t, err)
-		chainIndexB, err := actors.ChainB.ChainID.ToUInt32()
-		require.NoError(t, err)
 		deps := map[eth.ChainID]*depset.StaticConfigDependency{
 			actors.ChainA.ChainID: {
-				ChainIndex:     supervisortypes.ChainIndex(chainIndexA),
+				ChainIndex:     supervisortypes.ChainIndex(0),
 				ActivationTime: 0,
 				HistoryMinTime: 0,
 			},
 			actors.ChainB.ChainID: {
-				ChainIndex:     supervisortypes.ChainIndex(chainIndexB),
+				ChainIndex:     supervisortypes.ChainIndex(1),
 				ActivationTime: 0,
 				HistoryMinTime: 0,
 			},
 		}
+		var err error
 		f.DependencySet, err = depset.NewStaticConfigDependencySet(deps)
 		require.NoError(t, err)
 

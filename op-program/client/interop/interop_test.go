@@ -50,8 +50,8 @@ func setupTwoChains() (*staticConfigSource, *eth.SuperV1, *stubTasks) {
 		},
 	}
 	depset, _ := depset.NewStaticConfigDependencySet(map[eth.ChainID]*depset.StaticConfigDependency{
-		eth.ChainIDFromBig(rollupCfg1.L2ChainID): {ChainIndex: supervisortypes.ChainIndex(rollupCfg1.L2ChainID.Uint64()), ActivationTime: 0, HistoryMinTime: 0},
-		eth.ChainIDFromBig(rollupCfg2.L2ChainID): {ChainIndex: supervisortypes.ChainIndex(rollupCfg2.L2ChainID.Uint64()), ActivationTime: 0, HistoryMinTime: 0},
+		eth.ChainIDFromBig(rollupCfg1.L2ChainID): {ChainIndex: chainA, ActivationTime: 0, HistoryMinTime: 0},
+		eth.ChainIDFromBig(rollupCfg2.L2ChainID): {ChainIndex: chainB, ActivationTime: 0, HistoryMinTime: 0},
 	})
 	configSource := &staticConfigSource{
 		rollupCfgs:   []*rollup.Config{rollupCfg1, &rollupCfg2},
