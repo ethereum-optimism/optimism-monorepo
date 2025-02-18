@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/kurtosis-tech/kurtosis/api/golang/core/kurtosis_core_rpc_api_bindings"
 	"github.com/kurtosis-tech/kurtosis/api/golang/core/lib/services"
 	"github.com/stretchr/testify/require"
 )
@@ -52,6 +53,12 @@ func (m *mockEnclaveContext) UploadFiles(pathToUpload string, artifactName strin
 
 	return "test-uuid", services.FileArtifactName(artifactName), err
 }
+
+func (m *mockEnclaveContext) GetAllFilesArtifactNamesAndUuids(ctx context.Context) ([]*kurtosis_core_rpc_api_bindings.FilesArtifactNameAndUuid, error) {
+	return nil, nil
+}
+
+var _ EnclaveContextIface = (*mockEnclaveContext)(nil)
 
 func createTarGzArtifact(t *testing.T, files map[string]string) []byte {
 	var buf bytes.Buffer

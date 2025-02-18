@@ -5,16 +5,19 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 
+	"github.com/kurtosis-tech/kurtosis/api/golang/core/kurtosis_core_rpc_api_bindings"
 	"github.com/kurtosis-tech/kurtosis/api/golang/core/lib/services"
 	"github.com/kurtosis-tech/kurtosis/api/golang/engine/lib/kurtosis_context"
 )
 
 // EnclaveContextIface abstracts the EnclaveContext for testing
 type EnclaveContextIface interface {
+	GetAllFilesArtifactNamesAndUuids(ctx context.Context) ([]*kurtosis_core_rpc_api_bindings.FilesArtifactNameAndUuid, error)
 	DownloadFilesArtifact(ctx context.Context, name string) ([]byte, error)
 	UploadFiles(pathToUpload string, artifactName string) (services.FilesArtifactUUID, services.FileArtifactName, error)
 }
@@ -46,6 +49,20 @@ type Artifact struct {
 	reader *tar.Reader
 }
 
+func (fs *EnclaveFS) GetAllArtifactNames(ctx context.Context) ([]string, error) {
+	artifacts, err := fs.enclaveCtx.GetAllFilesArtifactNamesAndUuids(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	names := make([]string, len(artifacts))
+	for i, artifact := range artifacts {
+		names[i] = artifact.GetFileName()
+	}
+
+	return names, nil
+}
+
 func (fs *EnclaveFS) GetArtifact(ctx context.Context, name string) (*Artifact, error) {
 	artifact, err := fs.enclaveCtx.DownloadFilesArtifact(ctx, name)
 	if err != nil {
@@ -70,6 +87,47 @@ func NewArtifactFileWriter(path string, writer io.Writer) *ArtifactFileWriter {
 	return &ArtifactFileWriter{
 		path:   path,
 		writer: writer,
+	}
+}
+
+func (a *Artifact) Download(path string) error {
+	for {
+		header, err := a.reader.Next()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("failed to read tar header: %w", err)
+		}
+
+		fpath := filepath.Join(path, filepath.Clean(header.Name))
+
+		switch header.Typeflag {
+		case tar.TypeDir:
+			if err := os.MkdirAll(fpath, os.FileMode(header.Mode)); err != nil {
+				return fmt.Errorf("failed to create directory %s: %w", fpath, err)
+			}
+		case tar.TypeReg:
+			// Create parent directories if they don't exist
+			if err := os.MkdirAll(filepath.Dir(fpath), 0755); err != nil {
+				return fmt.Errorf("failed to create directory for %s: %w", fpath, err)
+			}
+
+			// Create the file
+			f, err := os.OpenFile(fpath, os.O_CREATE|os.O_WRONLY, os.FileMode(header.Mode))
+			if err != nil {
+				return fmt.Errorf("failed to create file %s: %w", fpath, err)
+			}
+
+			// Copy contents from tar reader to file
+			if _, err := io.Copy(f, a.reader); err != nil {
+				f.Close()
+				return fmt.Errorf("failed to write contents to %s: %w", fpath, err)
+			}
+			f.Close()
+		default:
+			return fmt.Errorf("unsupported file type %d for %s", header.Typeflag, header.Name)
+		}
 	}
 }
 
