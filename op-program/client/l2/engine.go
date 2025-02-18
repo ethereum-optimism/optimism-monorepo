@@ -73,7 +73,7 @@ func (o *OracleEngine) l2OutputAtHeader(header *types.Header) (*eth.OutputV0, er
 		}
 		storageRoot = *header.WithdrawalsHash
 	} else {
-		chainID := eth.ChainIDFromUInt64(o.rollupCfg.L2ChainID.Uint64())
+		chainID := eth.ChainIDFromBig(o.rollupCfg.L2ChainID)
 		if o.hinter != nil {
 			o.hinter.HintWithdrawalsRoot(blockHash, chainID)
 		}
