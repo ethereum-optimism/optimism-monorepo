@@ -8,6 +8,12 @@ import (
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 )
 
+// ForceInitialized marks the chain database as initialized, even if it is not.
+// This function is for testing purposes only and should not be used in production code.
+func (db *ChainsDB) ForceInitialized(id eth.ChainID) {
+	db.initialized.Set(id, struct{}{})
+}
+
 func (db *ChainsDB) isInitialized(id eth.ChainID) bool {
 	_, ok := db.initialized.Get(id)
 	return ok
@@ -82,10 +88,12 @@ func (db *ChainsDB) maybeInitEventsDB(id eth.ChainID, anchor types.DerivedBlockR
 		return fmt.Errorf("failed to check if logDB is initialized: %w", err)
 	} else {
 		logger.Debug("Events database already initialized")
-		return fmt.Errorf("events database (%s) does not match anchor point (%s): %w",
-			seal,
-			anchor,
-			types.ErrConflict)
+		if seal.Hash != anchor.Derived.Hash {
+			return fmt.Errorf("events database (%s) does not match anchor point (%s): %w",
+				seal,
+				anchor,
+				types.ErrConflict)
+		}
 	}
 	return nil
 }

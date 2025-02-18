@@ -85,7 +85,7 @@ func (db *ChainsDB) Rewind(chain eth.ChainID, headBlock eth.BlockID) error {
 func (db *ChainsDB) UpdateLocalSafe(chain eth.ChainID, derivedFrom eth.BlockRef, lastDerived eth.BlockRef) {
 	logger := db.logger.New("chain", chain, "derivedFrom", derivedFrom, "lastDerived", lastDerived)
 	if !db.isInitialized(chain) {
-		logger.Error("cannot UpdateLocalSafe on uninitialized database: %s", chain)
+		logger.Error("cannot UpdateLocalSafe on uninitialized database", "chain", chain)
 		return
 	}
 	db.initializedUpdateLocalSafe(chain, derivedFrom, lastDerived)
@@ -96,10 +96,6 @@ func (db *ChainsDB) initializedUpdateLocalSafe(chain eth.ChainID, derivedFrom et
 	localDB, ok := db.localDBs.Get(chain)
 	if !ok {
 		logger.Error("Cannot update local-safe DB, unknown chain")
-		return
-	}
-	if !db.isInitialized(chain) {
-		logger.Error("cannot UpdateLocalSafe on uninitialized database: %s", chain)
 		return
 	}
 	logger.Debug("Updating local safe DB")

@@ -57,6 +57,7 @@ func TestRewindL1(t *testing.T) {
 		Time:       901,
 		ParentHash: l1Block1A.Hash,
 	}
+	s.chainsDB.ForceInitialized(chainID) // force init for test
 
 	// Setup the L1 node with initial chain
 	chain.l1Node.blocks[l1Block0.Number] = l1Block0
@@ -138,6 +139,7 @@ func TestRewindL2(t *testing.T) {
 	chain.l1Node.blocks[l1Genesis.Number] = l1Genesis
 	chain.l1Node.blocks[l1Block1.Number] = l1Block1
 	chain.l1Node.blocks[l1Block2.Number] = l1Block2
+	s.chainsDB.ForceInitialized(chainID) // force init for test
 
 	// Seal genesis and block1
 	s.sealBlocks(chainID, genesis, block1)
@@ -217,6 +219,7 @@ func TestNoRewindNeeded(t *testing.T) {
 	}
 	chain.l1Node.blocks[l1Block1.Number] = l1Block1
 	chain.l1Node.blocks[l1Block2.Number] = l1Block2
+	s.chainsDB.ForceInitialized(chainID) // force init for test
 
 	// Seal genesis and block1
 	s.sealBlocks(chainID, genesis, block1)
@@ -284,6 +287,7 @@ func TestRewindLongChain(t *testing.T) {
 
 	chainID := eth.ChainID{1}
 	chain := s.chains[chainID]
+	s.chainsDB.ForceInitialized(chainID) // force init for test
 
 	// Create a chain with blocks 0-100
 	var blocks []eth.L2BlockRef
@@ -380,6 +384,8 @@ func TestRewindMultiChain(t *testing.T) {
 	chain2ID := eth.ChainID{2}
 	s := setupTestChains(t, chain1ID, chain2ID)
 	defer s.Close()
+	s.chainsDB.ForceInitialized(chain1ID) // force init for test
+	s.chainsDB.ForceInitialized(chain2ID) // force init for test
 
 	// Create common blocks for both chains
 	genesis, block1, block2A, block2B := createTestBlocks()
@@ -454,6 +460,7 @@ func TestRewindL2WalkBack(t *testing.T) {
 	defer s.Close()
 	chainID := eth.ChainID{1}
 	chain := s.chains[chainID]
+	s.chainsDB.ForceInitialized(chainID)
 	// Create a chain of blocks: genesis -> block1 -> block2 -> block3 -> block4A
 	genesis := eth.L2BlockRef{
 		Hash:           common.HexToHash("0x1110"),
@@ -588,6 +595,7 @@ func TestRewindL1PastCrossSafe(t *testing.T) {
 
 	chainID := eth.ChainID{1}
 	chain := s.chains[chainID]
+	s.chainsDB.ForceInitialized(chainID) // force init for test
 
 	// Create blocks: genesis -> block1 -> block2 -> block3A/3B
 	genesis := eth.L2BlockRef{
