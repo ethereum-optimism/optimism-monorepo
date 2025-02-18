@@ -1246,6 +1246,7 @@ func TestEVM_SingleStep_Rot(t *testing.T) {
 
 				// Check expectations
 				expected.Validate(t, state)
+				// TODO(pcw109550): Implement onchaim VM for mips64r2
 				// testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
 			})
 		}
@@ -1314,6 +1315,7 @@ func TestEVM_SingleStep_SignExtend(t *testing.T) {
 
 				// Check expectations
 				expected.Validate(t, state)
+				// TODO(pcw109550): Implement onchaim VM for mips64r2
 				// testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
 			})
 		}
@@ -1371,7 +1373,7 @@ func TestEVM_SingleStep_Swap(t *testing.T) {
 
 				// Check expectations
 				expected.Validate(t, state)
-
+				// TODO(pcw109550): Implement onchaim VM for mips64r2
 				// testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
 			})
 		}
@@ -1432,7 +1434,7 @@ func TestEVM_SingleStep_Ext(t *testing.T) {
 
 				// Check expectations
 				expected.Validate(t, state)
-
+				// TODO(pcw109550): Implement onchaim VM for mips64r2
 				// testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
 			})
 		}
@@ -1495,7 +1497,7 @@ func TestEVM_SingleStep_Ins(t *testing.T) {
 
 				// Check expectations
 				expected.Validate(t, state)
-
+				// TODO(pcw109550): Implement onchaim VM for mips64r2
 				// testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
 			})
 		}
