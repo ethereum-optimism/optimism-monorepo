@@ -32,7 +32,7 @@ contract SuperPermissionedDisputeGame is SuperFaultDisputeGame {
     }
 
     /// @notice Semantic version.
-    /// @custom:semver 0.1.0
+    /// @custom:semver 0.1.0-beta.0
     function version() public pure override returns (string memory) {
         return "0.1.0";
     }
