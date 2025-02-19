@@ -19,15 +19,9 @@ func TestParseKurtosisNativeURL(t *testing.T) {
 	}{
 		{
 			name:        "absolute file path",
-			urlStr:      "ktnative://myenclave//absolute/path/args.yaml",
+			urlStr:      "ktnative://myenclave/path/args.yaml",
 			wantEnclave: "myenclave",
-			wantFile:    "/absolute/path/args.yaml",
-		},
-		{
-			name:        "relative file path",
-			urlStr:      "ktnative://myenclave/relative/path/args.yaml",
-			wantEnclave: "myenclave",
-			wantFile:    "relative/path/args.yaml",
+			wantFile:    "/path/args.yaml",
 		},
 		{
 			name:           "invalid url",

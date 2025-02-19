@@ -17,7 +17,7 @@ import (
 // If file is omitted, it defaults to "env.json"
 func parseKurtosisNativeURL(u *url.URL) (enclave, argsFileName string) {
 	enclave = u.Host
-	argsFileName = strings.TrimPrefix(u.Path, "/")
+	argsFileName = "/" + strings.Trim(u.Path, "/")
 
 	return
 }
