@@ -31,17 +31,34 @@ func (id *genericID) UnmarshalText(data []byte) error {
 	return nil
 }
 
-type JobID genericID
+// BuildJobID identifies a block-building job.
+// Multiple alternative blocks may be built in parallel.
+type BuildJobID genericID
 
-func (id JobID) String() string {
+func (id BuildJobID) String() string {
 	return genericID(id).String()
 }
 
-func (id JobID) MarshalText() ([]byte, error) {
+func (id BuildJobID) MarshalText() ([]byte, error) {
 	return genericID(id).MarshalText()
 }
 
-func (id *JobID) UnmarshalText(data []byte) error {
+func (id *BuildJobID) UnmarshalText(data []byte) error {
+	return (*genericID)(id).UnmarshalText(data)
+}
+
+// SequenceJobID TODO
+type SequenceJobID genericID
+
+func (id SequenceJobID) String() string {
+	return genericID(id).String()
+}
+
+func (id SequenceJobID) MarshalText() ([]byte, error) {
+	return genericID(id).MarshalText()
+}
+
+func (id *SequenceJobID) UnmarshalText(data []byte) error {
 	return (*genericID)(id).UnmarshalText(data)
 }
 
@@ -70,6 +87,48 @@ func (id SignerID) MarshalText() ([]byte, error) {
 }
 
 func (id *SignerID) UnmarshalText(data []byte) error {
+	return (*genericID)(id).UnmarshalText(data)
+}
+
+type CommitterID genericID
+
+func (id CommitterID) String() string {
+	return genericID(id).String()
+}
+
+func (id CommitterID) MarshalText() ([]byte, error) {
+	return genericID(id).MarshalText()
+}
+
+func (id *CommitterID) UnmarshalText(data []byte) error {
+	return (*genericID)(id).UnmarshalText(data)
+}
+
+type PublisherID genericID
+
+func (id PublisherID) String() string {
+	return genericID(id).String()
+}
+
+func (id PublisherID) MarshalText() ([]byte, error) {
+	return genericID(id).MarshalText()
+}
+
+func (id *PublisherID) UnmarshalText(data []byte) error {
+	return (*genericID)(id).UnmarshalText(data)
+}
+
+type SequencerID genericID
+
+func (id SequencerID) String() string {
+	return genericID(id).String()
+}
+
+func (id SequencerID) MarshalText() ([]byte, error) {
+	return genericID(id).MarshalText()
+}
+
+func (id *SequencerID) UnmarshalText(data []byte) error {
 	return (*genericID)(id).UnmarshalText(data)
 }
 

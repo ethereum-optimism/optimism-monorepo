@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/backend/work"
 	"sync/atomic"
 
 	"github.com/google/uuid"
@@ -28,8 +29,8 @@ type Backend struct {
 	logger log.Logger
 	m      metrics.Metricer
 
-	builders *locks.RWMap[seqtypes.BuilderID, builder.Builder]
-	jobs     *locks.RWMap[seqtypes.JobID, builder.BuildJob]
+	builders *locks.RWMap[seqtypes.BuilderID, work.Builder]
+	jobs     *locks.RWMap[seqtypes.BuildJobID, work.BuildJob]
 }
 
 var _ frontend.BuildBackend = (*Backend)(nil)
@@ -40,16 +41,16 @@ func NewBackend(log log.Logger, m metrics.Metricer, builders builder.Builders) *
 		logger:   log,
 		m:        m,
 		builders: locks.RWMapFromMap(builders),
-		jobs:     &locks.RWMap[seqtypes.JobID, builder.BuildJob]{},
+		jobs:     &locks.RWMap[seqtypes.BuildJobID, work.BuildJob]{},
 	}
-	b.builders.Range(func(id seqtypes.BuilderID, bu builder.Builder) bool {
+	b.builders.Range(func(id seqtypes.BuilderID, bu work.Builder) bool {
 		bu.Attach(b)
 		return true
 	})
 	return b
 }
 
-func (ba *Backend) CreateJob(ctx context.Context, id seqtypes.BuilderID, opts *seqtypes.BuildOpts) (builder.BuildJob, error) {
+func (ba *Backend) CreateJob(ctx context.Context, id seqtypes.BuilderID, opts *seqtypes.BuildOpts) (work.BuildJob, error) {
 	if !ba.active.Load() {
 		return nil, errInactive
 	}
@@ -57,7 +58,7 @@ func (ba *Backend) CreateJob(ctx context.Context, id seqtypes.BuilderID, opts *s
 	if !ok {
 		return nil, seqtypes.ErrUnknownBuilder
 	}
-	jobID := seqtypes.JobID("job-" + uuid.New().String())
+	jobID := seqtypes.BuildJobID("job-" + uuid.New().String())
 	job, err := bu.NewJob(ctx, jobID, opts)
 	if err != nil {
 		return nil, err
@@ -67,12 +68,12 @@ func (ba *Backend) CreateJob(ctx context.Context, id seqtypes.BuilderID, opts *s
 }
 
 // GetJob returns nil if the job isn't known.
-func (ba *Backend) GetJob(id seqtypes.JobID) builder.BuildJob {
+func (ba *Backend) GetJob(id seqtypes.BuildJobID) work.BuildJob {
 	job, _ := ba.jobs.Get(id)
 	return job
 }
 
-func (ba *Backend) UnregisterJob(id seqtypes.JobID) {
+func (ba *Backend) UnregisterJob(id seqtypes.BuildJobID) {
 	ba.jobs.Delete(id)
 }
 
@@ -90,7 +91,7 @@ func (ba *Backend) Stop(ctx context.Context) error {
 	}
 	ba.logger.Info("Stopping sequencer backend")
 	var result error
-	ba.builders.Range(func(id seqtypes.BuilderID, bu builder.Builder) bool {
+	ba.builders.Range(func(id seqtypes.BuilderID, bu work.Builder) bool {
 		ba.logger.Info("Closing builder", "builder", id)
 		if err := bu.Close(); err != nil {
 			result = errors.Join(result, fmt.Errorf("failed to close builder %q: %w", id, err))

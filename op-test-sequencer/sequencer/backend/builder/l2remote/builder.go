@@ -2,31 +2,23 @@ package l2remote
 
 import (
 	"context"
+	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/backend/work"
 
 	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum-optimism/optimism/op-test-sequencer/metrics"
-	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/backend/builder"
 	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/seqtypes"
 )
 
 type Builder struct {
-	id       seqtypes.BuilderID
-	registry builder.Registry
-	log      log.Logger
-	m        metrics.Metricer
+	id  seqtypes.BuilderID
+	log log.Logger
+	m   metrics.Metricer
 }
 
-var _ builder.Builder = (*Builder)(nil)
+var _ work.Builder = (*Builder)(nil)
 
-func (b *Builder) Attach(registry builder.Registry) {
-	b.registry = registry
-}
-
-func (b *Builder) NewJob(ctx context.Context, id seqtypes.JobID, opts *seqtypes.BuildOpts) (builder.BuildJob, error) {
-	if b.registry == nil {
-		return nil, builder.ErrNoRegistry
-	}
+func (b *Builder) NewJob(ctx context.Context, id seqtypes.BuildJobID, opts *seqtypes.BuildOpts) (work.BuildJob, error) {
 	// TODO
 	return nil, nil
 }

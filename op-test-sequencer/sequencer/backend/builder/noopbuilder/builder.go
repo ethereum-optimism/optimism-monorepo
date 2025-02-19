@@ -3,8 +3,7 @@ package noopbuilder
 import (
 	"context"
 	"errors"
-
-	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/backend/builder"
+	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/backend/work"
 
 	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/seqtypes"
 )
@@ -12,21 +11,13 @@ import (
 var ErrNoBuild = errors.New("no building supported")
 
 type Builder struct {
-	id       seqtypes.BuilderID
-	registry builder.Registry
+	id seqtypes.BuilderID
 }
 
-var _ builder.Builder = (*Builder)(nil)
+var _ work.Builder = (*Builder)(nil)
 
-func (n *Builder) Attach(registry builder.Registry) {
-	n.registry = registry
-}
-
-func (n *Builder) NewJob(ctx context.Context, id seqtypes.JobID, opts *seqtypes.BuildOpts) (builder.BuildJob, error) {
-	if n.registry == nil {
-		return nil, builder.ErrNoRegistry
-	}
-	return &Job{id: id, registry: n.registry}, nil
+func (n *Builder) NewJob(ctx context.Context, id seqtypes.BuildJobID, opts *seqtypes.BuildOpts) (work.BuildJob, error) {
+	return &Job{id: id}, nil
 }
 
 func (n *Builder) Close() error {

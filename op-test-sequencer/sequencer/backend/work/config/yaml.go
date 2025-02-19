@@ -7,7 +7,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/backend/builder"
+	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/backend/work"
 )
 
 // YamlLoader is a Loader that loads a builders configuration from a YAML file path.
@@ -15,9 +15,9 @@ type YamlLoader struct {
 	Path string
 }
 
-var _ builder.Loader = (*YamlLoader)(nil)
+var _ work.Loader = (*YamlLoader)(nil)
 
-func (l *YamlLoader) Load(ctx context.Context) (builder.Starter, error) {
+func (l *YamlLoader) Load(ctx context.Context) (work.Starter, error) {
 	data, err := os.ReadFile(l.Path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file: %w", err)

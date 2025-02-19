@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/backend/work"
 
 	oplog "github.com/ethereum-optimism/optimism/op-service/log"
 	opmetrics "github.com/ethereum-optimism/optimism/op-service/metrics"
@@ -24,7 +25,7 @@ type Config struct {
 
 	JWTSecretPath string
 
-	Builders builder.Loader
+	Builders work.Loader
 
 	MockRun bool
 }

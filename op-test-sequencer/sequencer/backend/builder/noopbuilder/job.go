@@ -2,25 +2,23 @@ package noopbuilder
 
 import (
 	"context"
+	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/backend/work"
 
 	"github.com/ethereum-optimism/optimism/op-service/eth"
-	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/backend/builder"
 	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/seqtypes"
 )
 
 type Job struct {
-	id       seqtypes.JobID
-	registry builder.Registry
+	id seqtypes.BuildJobID
 }
 
-var _ builder.BuildJob = (*Job)(nil)
+var _ work.BuildJob = (*Job)(nil)
 
-func (job *Job) ID() seqtypes.JobID {
+func (job *Job) ID() seqtypes.BuildJobID {
 	return job.id
 }
 
 func (job *Job) Cancel(ctx context.Context) error {
-	job.registry.UnregisterJob(job.id)
 	return nil
 }
 

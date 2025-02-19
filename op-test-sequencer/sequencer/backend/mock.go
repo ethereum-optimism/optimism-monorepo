@@ -2,6 +2,7 @@ package backend
 
 import (
 	"context"
+	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/backend/work"
 
 	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/backend/builder"
 	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/frontend"
@@ -17,11 +18,11 @@ func NewMockBackend() *MockBackend {
 	return &MockBackend{}
 }
 
-func (ba *MockBackend) CreateJob(ctx context.Context, id seqtypes.BuilderID, opts *seqtypes.BuildOpts) (builder.BuildJob, error) {
+func (ba *MockBackend) CreateJob(ctx context.Context, id seqtypes.BuilderID, opts *seqtypes.BuildOpts) (work.BuildJob, error) {
 	return nil, builder.ErrNoBuild
 }
 
-func (ba *MockBackend) GetJob(id seqtypes.JobID) builder.BuildJob {
+func (ba *MockBackend) GetJob(id seqtypes.BuildJobID) work.BuildJob {
 	return nil
 }
 

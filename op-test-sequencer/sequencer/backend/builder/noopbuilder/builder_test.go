@@ -2,28 +2,20 @@ package noopbuilder
 
 import (
 	"context"
+	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/backend/work"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/backend/builder"
 	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/seqtypes"
 )
-
-type noopRegistry struct{}
-
-func (m *noopRegistry) UnregisterJob(id seqtypes.JobID) {}
-
-var _ builder.Registry = (*noopRegistry)(nil)
 
 func TestNoopBuilder(t *testing.T) {
 	x := &Builder{id: seqtypes.BuilderID("noop")}
 	_, err := x.NewJob(context.Background(), "123", nil)
-	require.ErrorIs(t, err, builder.ErrNoRegistry)
+	require.ErrorIs(t, err, work.ErrNoRegistry)
 
-	x.Attach(&noopRegistry{})
-
-	jobID := seqtypes.JobID("foo")
+	jobID := seqtypes.BuildJobID("foo")
 	job, err := x.NewJob(context.Background(), jobID, nil)
 	require.NoError(t, err)
 	require.Equal(t, "foo", job.String())
