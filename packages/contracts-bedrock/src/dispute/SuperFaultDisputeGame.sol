@@ -5,9 +5,6 @@ pragma solidity 0.8.15;
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { FixedPointMathLib } from "@solady/utils/FixedPointMathLib.sol";
 import { Clone } from "@solady/utils/Clone.sol";
-import { Types } from "src/libraries/Types.sol";
-import { Hashing } from "src/libraries/Hashing.sol";
-import { RLPReader } from "src/libraries/rlp/RLPReader.sol";
 import {
     GameStatus,
     GameType,
@@ -45,12 +42,9 @@ import {
     CannotDefendRootClaim,
     IncorrectBondAmount,
     InvalidLocalIdent,
-    BlockNumberMatches,
-    InvalidHeaderRLP,
     ClockNotExpired,
     BondTransferFailed,
     NoCreditToClaim,
-    InvalidOutputRootProof,
     ClaimAboveSplit,
     GameNotFinalized,
     InvalidBondDistributionMode,
