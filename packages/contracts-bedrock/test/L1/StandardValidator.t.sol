@@ -997,7 +997,7 @@ abstract contract StandardValidatorTest is Test {
 
     function _mockDelayedWETH(address _weth) public {
         vm.mockCall(address(_weth), abi.encodeCall(ISemver.version, ()), abi.encode("1.1.0"));
-        vm.mockCall(address(_weth), abi.encodeCall(IDelayedWETH.owner, ()), abi.encode(challenger));
+        vm.mockCall(address(_weth), abi.encodeCall(IDelayedWETH.owner, ()), abi.encode(l1PAOMultisig));
         vm.mockCall(address(_weth), abi.encodeCall(IDelayedWETH.delay, ()), abi.encode(1 weeks));
     }
 }
@@ -1084,8 +1084,9 @@ contract StandardValidatorV180_Test is StandardValidatorTest {
         });
 
         // OP Mainnet has a different expected root than the default one, so we expect to see ANCHORP-40.
+        // OP Mainnet also has an incorrect delayed WETH owner, so we expect to see DWETH-30.
         string memory errors = mainnetValidator.validate(input, true);
-        assertEq(errors, "PDDG-ANCHORP-40,PLDG-ANCHORP-40");
+        assertEq(errors, "PDDG-DWETH-30,PDDG-ANCHORP-40,PLDG-DWETH-30,PLDG-ANCHORP-40");
     }
 
     /// @notice Tests that validation reverts with error message when allowFailure is false

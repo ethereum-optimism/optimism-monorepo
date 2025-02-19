@@ -504,7 +504,7 @@ contract StandardValidatorBase {
             string.concat(_errorPrefix, "-20"),
             _errors
         );
-        _errors = internalRequire(_weth.owner() == challenger, string.concat(_errorPrefix, "-30"), _errors);
+        _errors = internalRequire(_weth.owner() == l1PAOMultisig, string.concat(_errorPrefix, "-30"), _errors);
         _errors = internalRequire(_weth.delay() == 1 weeks, string.concat(_errorPrefix, "-40"), _errors);
         return _errors;
     }
