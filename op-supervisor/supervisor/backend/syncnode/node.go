@@ -24,6 +24,8 @@ import (
 type backend interface {
 	LocalSafe(ctx context.Context, chainID eth.ChainID) (pair types.DerivedIDPair, err error)
 	LocalUnsafe(ctx context.Context, chainID eth.ChainID) (eth.BlockID, error)
+	IsLocalSafe(ctx context.Context, chainID eth.ChainID, block eth.BlockID) error
+	IsLocalUnsafe(ctx context.Context, chainID eth.ChainID, block eth.BlockID) error
 	CrossSafe(ctx context.Context, chainID eth.ChainID) (pair types.DerivedIDPair, err error)
 	SafeDerivedAt(ctx context.Context, chainID eth.ChainID, source eth.BlockID) (derived eth.BlockID, err error)
 	Finalized(ctx context.Context, chainID eth.ChainID) (eth.BlockID, error)
@@ -57,18 +59,7 @@ type ManagedNode struct {
 	cancel context.CancelFunc
 	wg     sync.WaitGroup
 
-	// We remember the last unsafe values.
-	// Whenever we see a new value that isn't the same or the next,
-	// then we know a reorg may have occurred.
-	// If so, then we do the recovery routine over again, to find where the node may safely continue from.
-	lastSupervisorUnsafe    eth.BlockID
-	lastSupervisorLocalSafe eth.BlockID
-	lastLocalUnsafe         eth.BlockID
-	lastLocalSafe           eth.BlockID
-
-	// These are reset to empty values whenever we detect a reorg
-	lastCommonBlock      eth.BlockID
-	lastConflictingBlock eth.BlockID
+	lastState consistencyState
 }
 
 var _ event.AttachEmitter = (*ManagedNode)(nil)
@@ -285,6 +276,9 @@ func (m *ManagedNode) onUnsafeBlock(unsafeRef eth.BlockRef) {
 		ChainID:        m.chainID,
 		NewLocalUnsafe: unsafeRef,
 	})
+	// this new unsafe block may conflict with the supervisor's unsafe block
+	m.lastState.lastNodeLocalUnsafe = unsafeRef.ID()
+	m.checkConsistencyState()
 }
 
 func (m *ManagedNode) onDerivationUpdate(pair types.DerivedBlockRefPair) {
@@ -294,6 +288,8 @@ func (m *ManagedNode) onDerivationUpdate(pair types.DerivedBlockRefPair) {
 		ChainID: m.chainID,
 		Derived: pair,
 	})
+	m.lastState.lastNodeLocalSafe = pair.Derived.ID()
+	m.checkConsistencyState()
 }
 
 func (m *ManagedNode) onDerivationOriginUpdate(origin eth.BlockRef) {
@@ -304,11 +300,16 @@ func (m *ManagedNode) onDerivationOriginUpdate(origin eth.BlockRef) {
 	})
 }
 
+func (m *ManagedNode) maybeRecover() {
+	m.recovery()
+}
+
 func (m *ManagedNode) recovery() {
-	m.lastConflictingBlock = eth.BlockID{}
-	m.lastCommonBlock = eth.BlockID{}
 	// TODO: trigger event to continue reducing of search space,
 	//  which then triggers eventual reset.
+	// -- I'm not sure triggering events is a good idea here, since the OnEvent handlers
+	// -- still need to filter down to which host is being referenced. Maybe this can just be
+	// -- an async job that is triggered and then sets a recovery flag when ready
 }
 
 func (m *ManagedNode) onNodeLocalSafeUpdate(update eth.BlockRef) {
