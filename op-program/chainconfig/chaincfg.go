@@ -90,18 +90,23 @@ func DependencySetByChainID(chainID eth.ChainID) (depset.DependencySet, error) {
 
 func dependencySetByChainID(chainID eth.ChainID, customChainFS embed.FS) (depset.DependencySet, error) {
 	// Load custom dependency set configs from embed FS
-	data, err := customChainFS.ReadFile(fmt.Sprintf("configs/%v-depset.json", chainID))
+	data, err := customChainFS.ReadFile("configs/depsets.json")
 	if errors.Is(err, os.ErrNotExist) {
 		return nil, fmt.Errorf("no dependency set available for chain ID: %d", chainID)
 	} else if err != nil {
 		return nil, fmt.Errorf("failed to get dependency set for chain ID %v: %w", chainID, err)
 	}
 
-	var depSet depset.StaticConfigDependencySet
+	var depSets []*depset.StaticConfigDependencySet
 
-	err = json.Unmarshal(data, &depSet)
+	err = json.Unmarshal(data, &depSets)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse dependency set for chain ID %v: %w", chainID, err)
 	}
-	return &depSet, nil
+	for _, depSet := range depSets {
+		if depSet.HasChain(chainID) {
+			return depSet, nil
+		}
+	}
+	return nil, fmt.Errorf("no dependency set config includes chain ID: %d", chainID)
 }
