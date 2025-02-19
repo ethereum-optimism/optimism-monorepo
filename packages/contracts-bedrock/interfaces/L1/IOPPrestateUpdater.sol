@@ -60,7 +60,7 @@ interface IOPPrestateUpdater {
     error ReservedBitsSet();
     error UnexpectedPreambleData(bytes data);
     error UnsupportedERCVersion(uint8 version);
-    error OnlyUpgradeController();
+    error OnlyProxyAdminOwner();
     error PrestateNotSet();
 
     /// @notice Thrown when an address is the zero address.
@@ -132,7 +132,7 @@ interface IOPPrestateUpdater {
     /// @notice Returns the implementation contract addresses.
     function implementations() external view returns (IOPContractsManager.Implementations memory);
 
-    function upgradeController() external view returns (address);
+    function proxyAdminOwner() external view returns (address);
 
     function isRC() external view returns (bool);
 

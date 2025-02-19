@@ -18,7 +18,7 @@ contract DeployOPCMInput is BaseDeployIO {
     IProtocolVersions internal _protocolVersions;
     IProxyAdmin internal _superchainProxyAdmin;
     string internal _l1ContractsRelease;
-    address internal _upgradeController;
+    address internal _proxyAdminOwner;
 
     address internal _addressManagerBlueprint;
     address internal _proxyBlueprint;
@@ -51,7 +51,7 @@ contract DeployOPCMInput is BaseDeployIO {
         else if (_sel == this.superchainProxyAdmin.selector) _superchainProxyAdmin = IProxyAdmin(_addr);
         else if (_sel == this.superchainConfigImpl.selector) _superchainConfigImpl = _addr;
         else if (_sel == this.protocolVersionsImpl.selector) _protocolVersionsImpl = _addr;
-        else if (_sel == this.upgradeController.selector) _upgradeController = _addr;
+        else if (_sel == this.proxyAdminOwner.selector) _proxyAdminOwner = _addr;
         else if (_sel == this.addressManagerBlueprint.selector) _addressManagerBlueprint = _addr;
         else if (_sel == this.proxyBlueprint.selector) _proxyBlueprint = _addr;
         else if (_sel == this.proxyAdminBlueprint.selector) _proxyAdminBlueprint = _addr;
@@ -101,9 +101,9 @@ contract DeployOPCMInput is BaseDeployIO {
         return _l1ContractsRelease;
     }
 
-    function upgradeController() public view returns (address) {
-        require(_upgradeController != address(0), "DeployOPCMInput: not set");
-        return _upgradeController;
+    function proxyAdminOwner() public view returns (address) {
+        require(_proxyAdminOwner != address(0), "DeployOPCMInput: not set");
+        return _proxyAdminOwner;
     }
 
     function addressManagerBlueprint() public view returns (address) {
@@ -254,7 +254,7 @@ contract DeployOPCM is Script {
             blueprints,
             implementations,
             _doi.l1ContractsRelease(),
-            _doi.upgradeController()
+            _doi.proxyAdminOwner()
         );
         _doo.set(_doo.opcm.selector, address(opcm_));
 
@@ -268,7 +268,7 @@ contract DeployOPCM is Script {
         IOPContractsManager.Blueprints memory _blueprints,
         IOPContractsManager.Implementations memory _implementations,
         string memory _l1ContractsRelease,
-        address _upgradeController
+        address _proxyAdminOwner
     )
         public
         returns (IOPContractsManager opcm_)
@@ -286,7 +286,7 @@ contract DeployOPCM is Script {
                             _l1ContractsRelease,
                             _blueprints,
                             _implementations,
-                            _upgradeController
+                            _proxyAdminOwner
                         )
                     )
                 ),
@@ -302,7 +302,7 @@ contract DeployOPCM is Script {
         require(address(impl.protocolVersions()) == address(_doi.protocolVersions()), "OPCMI-20");
         require(LibString.eq(impl.l1ContractsRelease(), string.concat(_doi.l1ContractsRelease(), "-rc")), "OPCMI-30");
 
-        require(impl.upgradeController() == _doi.upgradeController(), "OPCMI-40");
+        require(impl.proxyAdminOwner() == _doi.proxyAdminOwner(), "OPCMI-40");
 
         IOPContractsManager.Blueprints memory blueprints = impl.blueprints();
         require(blueprints.addressManager == _doi.addressManagerBlueprint(), "OPCMI-40");

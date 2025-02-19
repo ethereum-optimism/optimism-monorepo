@@ -316,7 +316,7 @@ contract DeployOPChain_TestBase is Test {
     ISuperchainConfig superchainConfigProxy;
     IProtocolVersions protocolVersionsProxy;
     IProxyAdmin superchainProxyAdmin;
-    address upgradeController;
+    address proxyAdminOwner;
     // Define default inputs for DeployOPChain.
     // `opcm` is set during `setUp` since it is an output of the previous step.
     address opChainProxyAdminOwner = makeAddr("defaultOPChainProxyAdminOwner");
@@ -358,7 +358,7 @@ contract DeployOPChain_TestBase is Test {
         superchainConfigProxy = dso.superchainConfigProxy();
         protocolVersionsProxy = dso.protocolVersionsProxy();
         superchainProxyAdmin = dso.superchainProxyAdmin();
-        upgradeController = superchainProxyAdmin.owner();
+        proxyAdminOwner = superchainProxyAdmin.owner();
 
         // Configure and deploy Implementation contracts
         DeployImplementations deployImplementations = createDeployImplementationsContract();
@@ -374,7 +374,7 @@ contract DeployOPChain_TestBase is Test {
         dii.set(dii.superchainConfigProxy.selector, address(superchainConfigProxy));
         dii.set(dii.protocolVersionsProxy.selector, address(protocolVersionsProxy));
         dii.set(dii.superchainProxyAdmin.selector, address(superchainProxyAdmin));
-        dii.set(dii.upgradeController.selector, upgradeController);
+        dii.set(dii.proxyAdminOwner.selector, proxyAdminOwner);
 
         deployImplementations.run(dii, dio);
 

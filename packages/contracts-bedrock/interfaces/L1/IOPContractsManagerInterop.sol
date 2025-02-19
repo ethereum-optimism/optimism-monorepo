@@ -14,7 +14,7 @@ interface IOPContractsManagerInterop is IOPContractsManager {
         string memory _l1ContractsRelease,
         Blueprints memory _blueprints,
         Implementations memory _implementations,
-        address _upgradeController
+        address _proxyAdminOwner
     )
         external;
 }

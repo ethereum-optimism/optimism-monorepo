@@ -49,7 +49,7 @@ contract DeployImplementationsInput is BaseDeployIO {
     ISuperchainConfig internal _superchainConfigProxy;
     IProtocolVersions internal _protocolVersionsProxy;
     IProxyAdmin internal _superchainProxyAdmin;
-    address internal _upgradeController;
+    address internal _proxyAdminOwner;
 
     function set(bytes4 _sel, uint256 _value) public {
         require(_value != 0, "DeployImplementationsInput: cannot set zero value");
@@ -83,7 +83,7 @@ contract DeployImplementationsInput is BaseDeployIO {
         if (_sel == this.superchainConfigProxy.selector) _superchainConfigProxy = ISuperchainConfig(_addr);
         else if (_sel == this.protocolVersionsProxy.selector) _protocolVersionsProxy = IProtocolVersions(_addr);
         else if (_sel == this.superchainProxyAdmin.selector) _superchainProxyAdmin = IProxyAdmin(_addr);
-        else if (_sel == this.upgradeController.selector) _upgradeController = _addr;
+        else if (_sel == this.proxyAdminOwner.selector) _proxyAdminOwner = _addr;
         else revert("DeployImplementationsInput: unknown selector");
     }
 
@@ -140,9 +140,9 @@ contract DeployImplementationsInput is BaseDeployIO {
         return _superchainProxyAdmin;
     }
 
-    function upgradeController() public view returns (address) {
-        require(address(_upgradeController) != address(0), "DeployImplementationsInput: not set");
-        return _upgradeController;
+    function proxyAdminOwner() public view returns (address) {
+        require(address(_proxyAdminOwner) != address(0), "DeployImplementationsInput: not set");
+        return _proxyAdminOwner;
     }
 }
 
@@ -302,7 +302,7 @@ contract DeployImplementationsOutput is BaseDeployIO {
         IOPContractsManager impl = IOPContractsManager(address(opcm()));
         require(address(impl.superchainConfig()) == address(_dii.superchainConfigProxy()), "OPCMI-10");
         require(address(impl.protocolVersions()) == address(_dii.protocolVersionsProxy()), "OPCMI-20");
-        require(impl.upgradeController() == _dii.upgradeController(), "OPCMI-30");
+        require(impl.proxyAdminOwner() == _dii.proxyAdminOwner(), "OPCMI-30");
     }
 
     function assertValidOptimismPortalImpl(DeployImplementationsInput) internal view {
@@ -481,7 +481,7 @@ contract DeployImplementations is Script {
         ISuperchainConfig superchainConfigProxy = _dii.superchainConfigProxy();
         IProtocolVersions protocolVersionsProxy = _dii.protocolVersionsProxy();
         IProxyAdmin superchainProxyAdmin = _dii.superchainProxyAdmin();
-        address upgradeController = _dii.upgradeController();
+        address proxyAdminOwner = _dii.proxyAdminOwner();
 
         IOPContractsManager.Implementations memory implementations = IOPContractsManager.Implementations({
             superchainConfigImpl: address(_dio.superchainConfigImpl()),
@@ -511,7 +511,7 @@ contract DeployImplementations is Script {
                             _l1ContractsRelease,
                             _blueprints,
                             implementations,
-                            upgradeController
+                            proxyAdminOwner
                         )
                     )
                 ),
@@ -859,7 +859,7 @@ contract DeployImplementationsInterop is DeployImplementations {
         ISuperchainConfig superchainConfigProxy = _dii.superchainConfigProxy();
         IProtocolVersions protocolVersionsProxy = _dii.protocolVersionsProxy();
         IProxyAdmin superchainProxyAdmin = _dii.superchainProxyAdmin();
-        address upgradeController = _dii.upgradeController();
+        address proxyAdminOwner = _dii.proxyAdminOwner();
 
         IOPContractsManager.Implementations memory implementations = IOPContractsManager.Implementations({
             superchainConfigImpl: address(_dio.superchainConfigImpl()),
@@ -889,7 +889,7 @@ contract DeployImplementationsInterop is DeployImplementations {
                             _l1ContractsRelease,
                             _blueprints,
                             implementations,
-                            upgradeController
+                            proxyAdminOwner
                         )
                     )
                 ),

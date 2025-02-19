@@ -26,7 +26,7 @@ contract DeployOPPrestateUpdaterInput is BaseDeployIO {
     IProtocolVersions internal _protocolVersions;
     IProxyAdmin internal _superchainProxyAdmin;
     string internal _l1ContractsRelease;
-    address internal _upgradeController;
+    address internal _proxyAdminOwner;
 
     address internal _addressManagerBlueprint;
     address internal _proxyBlueprint;
@@ -58,7 +58,7 @@ contract DeployOPPrestateUpdaterInput is BaseDeployIO {
         // forgefmt: disable-start
         if (_sel == this.superchainConfig.selector) _superchainConfig = ISuperchainConfig(_addr);
         else if (_sel == this.protocolVersions.selector) _protocolVersions = IProtocolVersions(_addr);
-        else if (_sel == this.upgradeController.selector) _upgradeController = _addr;
+        else if (_sel == this.proxyAdminOwner.selector) _proxyAdminOwner = _addr;
         else if (_sel == this.addressManagerBlueprint.selector) _addressManagerBlueprint = _addr;
         else if (_sel == this.proxyBlueprint.selector) _proxyBlueprint = _addr;
         else if (_sel == this.proxyAdminBlueprint.selector) _proxyAdminBlueprint = _addr;
@@ -110,9 +110,9 @@ contract DeployOPPrestateUpdaterInput is BaseDeployIO {
         return _l1ContractsRelease;
     }
 
-    function upgradeController() public view returns (address) {
-        require(_upgradeController != address(0), "DeployOPPrestateUpdaterInput: not set");
-        return _upgradeController;
+    function proxyAdminOwner() public view returns (address) {
+        require(_proxyAdminOwner != address(0), "DeployOPPrestateUpdaterInput: not set");
+        return _proxyAdminOwner;
     }
 
     function addressManagerBlueprint() public view returns (address) {
@@ -293,7 +293,7 @@ contract DeployOPPrestateUpdater is Script {
         require(address(impl.protocolVersions()) == address(_doi.protocolVersions()), "OPPUI-20");
         require(LibString.eq(impl.l1ContractsRelease(), string.concat(_doi.l1ContractsRelease(), "-rc")), "OPPUI-30");
 
-        require(impl.upgradeController() == _doi.upgradeController(), "OPPUI-40");
+        require(impl.proxyAdminOwner() == _doi.proxyAdminOwner(), "OPPUI-40");
 
         IOPContractsManager.Blueprints memory blueprints = impl.blueprints();
         require(blueprints.addressManager == _doi.addressManagerBlueprint(), "OPPUI-40");

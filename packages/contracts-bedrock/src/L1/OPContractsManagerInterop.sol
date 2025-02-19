@@ -25,7 +25,7 @@ contract OPContractsManagerInterop is OPContractsManager {
         string memory _l1ContractsRelease,
         Blueprints memory _blueprints,
         Implementations memory _implementations,
-        address _upgradeController
+        address _proxyAdminOwner
     )
         OPContractsManager(
             _superchainConfig,
@@ -34,7 +34,7 @@ contract OPContractsManagerInterop is OPContractsManager {
             _l1ContractsRelease,
             _blueprints,
             _implementations,
-            _upgradeController
+            _proxyAdminOwner
         )
     { }
 

@@ -293,7 +293,7 @@ contract Deploy is Deployer {
         dii.set(dii.superchainProxyAdmin.selector, address(superchainProxyAdmin));
 
         // I think this was a bug
-        dii.set(dii.upgradeController.selector, superchainProxyAdmin.owner());
+        dii.set(dii.proxyAdminOwner.selector, superchainProxyAdmin.owner());
 
         if (_isInterop) {
             di = DeployImplementations(new DeployImplementationsInterop());

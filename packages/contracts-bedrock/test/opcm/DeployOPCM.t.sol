@@ -85,7 +85,7 @@ contract DeployOPCMInput_Test is Test {
         IProtocolVersions protocolVersions = IProtocolVersions(makeAddr("protocolVersions"));
         address superchainConfigImpl = makeAddr("superchainConfigImpl");
         address protocolVersionsImpl = makeAddr("protocolVersionsImpl");
-        address upgradeController = makeAddr("upgradeController");
+        address proxyAdminOwner = makeAddr("proxyAdminOwner");
         address addressManagerBlueprint = makeAddr("addressManagerBlueprint");
         address proxyBlueprint = makeAddr("proxyBlueprint");
         address proxyAdminBlueprint = makeAddr("proxyAdminBlueprint");
@@ -99,7 +99,7 @@ contract DeployOPCMInput_Test is Test {
         dii.set(dii.superchainConfigImpl.selector, superchainConfigImpl);
         dii.set(dii.protocolVersionsImpl.selector, protocolVersionsImpl);
         dii.set(dii.l1ContractsRelease.selector, release);
-        dii.set(dii.upgradeController.selector, upgradeController);
+        dii.set(dii.proxyAdminOwner.selector, proxyAdminOwner);
         dii.set(dii.addressManagerBlueprint.selector, addressManagerBlueprint);
         dii.set(dii.proxyBlueprint.selector, proxyBlueprint);
         dii.set(dii.proxyAdminBlueprint.selector, proxyAdminBlueprint);
@@ -118,7 +118,7 @@ contract DeployOPCMInput_Test is Test {
         assertEq(dii.resolvedDelegateProxyBlueprint(), resolvedDelegateProxyBlueprint, "400");
         assertEq(dii.permissionedDisputeGame1Blueprint(), permissionedDisputeGame1Blueprint, "500");
         assertEq(dii.permissionedDisputeGame2Blueprint(), permissionedDisputeGame2Blueprint, "550");
-        assertEq(dii.upgradeController(), upgradeController, "600");
+        assertEq(dii.proxyAdminOwner(), proxyAdminOwner, "600");
     }
 
     function test_set_part2_succeeds() public {
@@ -218,7 +218,7 @@ contract DeployOPCMTest is Test {
     IProxyAdmin superchainProxyAdmin = IProxyAdmin(makeAddr("superchainProxyAdmin"));
     address superchainConfigImpl = makeAddr("superchainConfigImpl");
     address protocolVersionsImpl = makeAddr("protocolVersionsImpl");
-    address upgradeController = makeAddr("upgradeController");
+    address proxyAdminOwner = makeAddr("proxyAdminOwner");
 
     function setUp() public virtual {
         deployOPCM = new DeployOPCM();
@@ -232,7 +232,7 @@ contract DeployOPCMTest is Test {
         doi.set(doi.superchainConfigImpl.selector, address(superchainConfigImpl));
         doi.set(doi.protocolVersionsImpl.selector, address(protocolVersionsImpl));
         doi.set(doi.l1ContractsRelease.selector, "1.0.0");
-        doi.set(doi.upgradeController.selector, upgradeController);
+        doi.set(doi.proxyAdminOwner.selector, proxyAdminOwner);
 
         // Set and etch blueprints
         doi.set(doi.addressManagerBlueprint.selector, makeAddr("addressManagerBlueprint"));
@@ -258,7 +258,7 @@ contract DeployOPCMTest is Test {
         // Etch all addresses with dummy bytecode
         vm.etch(address(doi.superchainConfig()), hex"01");
         vm.etch(address(doi.protocolVersions()), hex"01");
-        vm.etch(address(doi.upgradeController()), hex"01");
+        vm.etch(address(doi.proxyAdminOwner()), hex"01");
 
         vm.etch(doi.addressManagerBlueprint(), hex"01");
         vm.etch(doi.proxyBlueprint(), hex"01");

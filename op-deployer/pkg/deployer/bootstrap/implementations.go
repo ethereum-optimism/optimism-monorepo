@@ -41,7 +41,7 @@ type ImplementationsConfig struct {
 	DisputeGameFinalityDelaySeconds uint64             `cli:"dispute-game-finality-delay-seconds"`
 	SuperchainConfigProxy           common.Address     `cli:"superchain-config-proxy"`
 	ProtocolVersionsProxy           common.Address     `cli:"protocol-versions-proxy"`
-	UpgradeController               common.Address     `cli:"upgrade-controller"`
+	ProxyAdminOwner               common.Address     `cli:"upgrade-controller"`
 	UseInterop                      bool               `cli:"use-interop"`
 
 	Logger log.Logger
@@ -96,7 +96,7 @@ func (c *ImplementationsConfig) Check() error {
 	if c.ProtocolVersionsProxy == (common.Address{}) {
 		return errors.New("protocol versions proxy must be specified")
 	}
-	if c.UpgradeController == (common.Address{}) {
+	if c.ProxyAdminOwner == (common.Address{}) {
 		return errors.New("upgrade controller must be specified")
 	}
 	return nil
@@ -197,7 +197,7 @@ func Implementations(ctx context.Context, cfg ImplementationsConfig) (opcm.Deplo
 			SuperchainConfigProxy:           cfg.SuperchainConfigProxy,
 			ProtocolVersionsProxy:           cfg.ProtocolVersionsProxy,
 			SuperchainProxyAdmin:            superProxyAdmin,
-			UpgradeController:               cfg.UpgradeController,
+			ProxyAdminOwner:               cfg.ProxyAdminOwner,
 			UseInterop:                      cfg.UseInterop,
 		},
 	); err != nil {

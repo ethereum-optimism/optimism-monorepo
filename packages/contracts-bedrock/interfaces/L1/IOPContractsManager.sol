@@ -183,7 +183,7 @@ interface IOPContractsManager {
     error ReservedBitsSet();
     error UnexpectedPreambleData(bytes data);
     error UnsupportedERCVersion(uint8 version);
-    error OnlyUpgradeController();
+    error OnlyProxyAdminOwner();
 
     /// @notice Thrown when an address is the zero address.
     error AddressNotFound(address who);
@@ -228,7 +228,7 @@ interface IOPContractsManager {
         string memory _l1ContractsRelease,
         Blueprints memory _blueprints,
         Implementations memory _implementations,
-        address _upgradeController
+        address _proxyAdminOwner
     )
         external;
 
@@ -254,7 +254,7 @@ interface IOPContractsManager {
     /// @notice Returns the implementation contract addresses.
     function implementations() external view returns (Implementations memory);
 
-    function upgradeController() external view returns (address);
+    function proxyAdminOwner() external view returns (address);
 
     function isRC() external view returns (bool);
 

@@ -76,7 +76,7 @@ func testImplementations(t *testing.T, forkRPCURL string) {
 			MIPSVersion:                     1,
 			SuperchainConfigProxy:           superchain.SuperchainConfigAddr,
 			ProtocolVersionsProxy:           superchain.ProtocolVersionsAddr,
-			UpgradeController:               proxyAdminOwner,
+			ProxyAdminOwner:               proxyAdminOwner,
 			UseInterop:                      false,
 		})
 		require.NoError(t, err)

@@ -55,7 +55,7 @@ contract OPContractsManager_Harness is OPContractsManager {
         string memory _l1ContractsRelease,
         Blueprints memory _blueprints,
         Implementations memory _implementations,
-        address _upgradeController
+        address _proxyAdminOwner
     )
         OPContractsManager(
             _superchainConfig,
@@ -64,7 +64,7 @@ contract OPContractsManager_Harness is OPContractsManager {
             _l1ContractsRelease,
             _blueprints,
             _implementations,
-            _upgradeController
+            _proxyAdminOwner
         )
     { }
 
@@ -168,7 +168,7 @@ contract OPContractsManager_InternalMethods_Test is Test {
         ISuperchainConfig superchainConfigProxy = ISuperchainConfig(makeAddr("superchainConfig"));
         IProtocolVersions protocolVersionsProxy = IProtocolVersions(makeAddr("protocolVersions"));
         IProxyAdmin superchainProxyAdmin = IProxyAdmin(makeAddr("superchainProxyAdmin"));
-        address upgradeController = makeAddr("upgradeController");
+        address proxyAdminOwner = makeAddr("proxyAdminOwner");
         OPContractsManager.Blueprints memory emptyBlueprints;
         OPContractsManager.Implementations memory emptyImpls;
         vm.etch(address(superchainConfigProxy), hex"01");
@@ -181,7 +181,7 @@ contract OPContractsManager_InternalMethods_Test is Test {
             _l1ContractsRelease: "dev",
             _blueprints: emptyBlueprints,
             _implementations: emptyImpls,
-            _upgradeController: upgradeController
+            _proxyAdminOwner: proxyAdminOwner
         });
     }
 
@@ -393,36 +393,33 @@ contract OPContractsManager_Upgrade_Test is OPContractsManager_Upgrade_Harness {
         assertNotEq(Bytes.slice(releaseBytes, releaseBytes.length - 3, 3), "-rc", "release should not end with '-rc'");
     }
 
-    function testFuzz_upgrade_nonUpgradeControllerDelegatecallerShouldNotSetIsRCToFalse_works(
-        address _nonUpgradeController
-    )
+    function testFuzz_upgrade_nonProxyAdminOwnerDelegatecallerShouldNotSetIsRCToFalse_works(address _nonProxyAdminOwner)
         public
     {
         if (
-            _nonUpgradeController == upgrader || _nonUpgradeController == address(0)
-                || _nonUpgradeController < address(0x4200000000000000000000000000000000000000)
-                || _nonUpgradeController > address(0x4200000000000000000000000000000000000800)
-                || _nonUpgradeController == address(vm)
-                || _nonUpgradeController == 0x000000000000000000636F6e736F6c652e6c6f67
-                || _nonUpgradeController == 0x4e59b44847b379578588920cA78FbF26c0B4956C
+            _nonProxyAdminOwner == upgrader || _nonProxyAdminOwner == address(0)
+                || _nonProxyAdminOwner < address(0x4200000000000000000000000000000000000000)
+                || _nonProxyAdminOwner > address(0x4200000000000000000000000000000000000800)
+                || _nonProxyAdminOwner == address(vm) || _nonProxyAdminOwner == 0x000000000000000000636F6e736F6c652e6c6f67
+                || _nonProxyAdminOwner == 0x4e59b44847b379578588920cA78FbF26c0B4956C
         ) {
-            _nonUpgradeController = makeAddr("nonUpgradeController");
+            _nonProxyAdminOwner = makeAddr("nonProxyAdminOwner");
         }
 
         // Set the proxy admin owner to be the non-upgrade controller
         vm.store(
             address(proxyAdmin),
             bytes32(ForgeArtifacts.getSlot("ProxyAdmin", "_owner").slot),
-            bytes32(uint256(uint160(_nonUpgradeController)))
+            bytes32(uint256(uint160(_nonProxyAdminOwner)))
         );
         vm.store(
             address(disputeGameFactory),
             bytes32(ForgeArtifacts.getSlot("DisputeGameFactory", "_owner").slot),
-            bytes32(uint256(uint160(_nonUpgradeController)))
+            bytes32(uint256(uint160(_nonProxyAdminOwner)))
         );
 
         // Run the upgrade test and checks
-        runUpgradeTestAndChecks(_nonUpgradeController);
+        runUpgradeTestAndChecks(_nonProxyAdminOwner);
     }
 
     function test_upgrade_duplicateL2ChainId_succeeds() public {
@@ -511,23 +508,21 @@ contract OPContractsManager_SetRC_Test is OPContractsManager_Upgrade_Harness {
     }
 
     /// @notice Tests the setRC function can not be set by non-upgrade controller.
-    function test_setRC_nonUpgradeController_reverts(address _nonUpgradeController) public {
+    function test_setRC_nonProxyAdminOwner_reverts(address _nonProxyAdminOwner) public {
         // Disallow the upgrade controller to have code, or be a 'special' address.
         if (
-            _nonUpgradeController == upgrader || _nonUpgradeController == address(0)
-                || _nonUpgradeController < address(0x4200000000000000000000000000000000000000)
-                || _nonUpgradeController > address(0x4200000000000000000000000000000000000800)
-                || _nonUpgradeController == address(vm)
-                || _nonUpgradeController == 0x000000000000000000636F6e736F6c652e6c6f67
-                || _nonUpgradeController == 0x4e59b44847b379578588920cA78FbF26c0B4956C
-                || _nonUpgradeController.code.length > 0
+            _nonProxyAdminOwner == upgrader || _nonProxyAdminOwner == address(0)
+                || _nonProxyAdminOwner < address(0x4200000000000000000000000000000000000000)
+                || _nonProxyAdminOwner > address(0x4200000000000000000000000000000000000800)
+                || _nonProxyAdminOwner == address(vm) || _nonProxyAdminOwner == 0x000000000000000000636F6e736F6c652e6c6f67
+                || _nonProxyAdminOwner == 0x4e59b44847b379578588920cA78FbF26c0B4956C || _nonProxyAdminOwner.code.length > 0
         ) {
-            _nonUpgradeController = makeAddr("nonUpgradeController");
+            _nonProxyAdminOwner = makeAddr("nonProxyAdminOwner");
         }
 
-        vm.prank(_nonUpgradeController);
+        vm.prank(_nonProxyAdminOwner);
 
-        vm.expectRevert(IOPContractsManager.OnlyUpgradeController.selector);
+        vm.expectRevert(IOPContractsManager.OnlyProxyAdminOwner.selector);
         opcm.setRC(true);
     }
 }
