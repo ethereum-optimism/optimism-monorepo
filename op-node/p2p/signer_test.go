@@ -4,9 +4,10 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	opsigner "github.com/ethereum-optimism/optimism/op-service/signer"
-	"github.com/stretchr/testify/require"
 )
 
 func TestSigningHash_DifferentDomain(t *testing.T) {

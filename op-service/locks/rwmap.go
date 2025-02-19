@@ -35,6 +35,14 @@ func (m *RWMap[K, V]) Default(key K, fn func() V) (changed bool) {
 	return !ok // if it exists, nothing changed
 }
 
+// SetIfMissing is a convenience function to set a missing value if it does not already exist.
+// To lazy-init the value, see Default.
+func (m *RWMap[K, V]) SetIfMissing(key K, v V) (changed bool) {
+	return m.Default(key, func() V {
+		return v
+	})
+}
+
 func (m *RWMap[K, V]) Has(key K) (ok bool) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -80,6 +88,17 @@ func (m *RWMap[K, V]) Range(f func(key K, value V) bool) {
 			break
 		}
 	}
+}
+
+// Keys returns an unsorted list of keys of the map.
+func (m *RWMap[K, V]) Keys() (out []K) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	out = make([]K, 0, len(m.inner))
+	for k := range m.inner {
+		out = append(out, k)
+	}
+	return out
 }
 
 // Clear removes all key-value pairs from the map.

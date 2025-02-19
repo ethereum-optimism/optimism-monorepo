@@ -2,13 +2,13 @@ package config
 
 import (
 	"errors"
-	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/backend/work"
 
 	oplog "github.com/ethereum-optimism/optimism/op-service/log"
 	opmetrics "github.com/ethereum-optimism/optimism/op-service/metrics"
 	"github.com/ethereum-optimism/optimism/op-service/oppprof"
 	oprpc "github.com/ethereum-optimism/optimism/op-service/rpc"
-	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/backend/builder"
+	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/backend/work"
+	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/backend/work/config"
 )
 
 const (
@@ -25,7 +25,7 @@ type Config struct {
 
 	JWTSecretPath string
 
-	Builders work.Loader
+	Ensemble work.Loader
 
 	MockRun bool
 }
@@ -45,7 +45,7 @@ func DefaultCLIConfig() *Config {
 		MetricsConfig: opmetrics.DefaultCLIConfig(),
 		PprofConfig:   oppprof.DefaultCLIConfig(),
 		RPC:           oprpc.DefaultCLIConfig(),
-		Builders:      &builder.YamlLoader{Path: DefaultConfigYaml},
+		Ensemble:      &config.YamlLoader{Path: DefaultConfigYaml},
 		MockRun:       false,
 	}
 }

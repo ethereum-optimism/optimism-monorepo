@@ -8,18 +8,6 @@ import (
 	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/seqtypes"
 )
 
-type AdminBackend interface {
-	Hello(ctx context.Context, name string) (string, error)
-}
-
-type AdminFrontend struct {
-	Backend AdminBackend
-}
-
-func (af *AdminFrontend) Hello(ctx context.Context, name string) (string, error) {
-	return af.Backend.Hello(ctx, name)
-}
-
 type BuildBackend interface {
 	CreateJob(ctx context.Context, id seqtypes.BuilderID, opts *seqtypes.BuildOpts) (work.BuildJob, error)
 	GetJob(id seqtypes.BuildJobID) work.BuildJob
@@ -42,33 +30,17 @@ func (bf *BuildFrontend) Cancel(ctx context.Context, jobID seqtypes.BuildJobID) 
 	if job == nil {
 		return nil
 	}
-	return job.Cancel(ctx)
+	return toJsonError(job.Cancel(ctx))
 }
 
-func (bf *BuildFrontend) Seal(ctx context.Context, jobID seqtypes.BuildJobID) (eth.BlockRef, error) {
+func (bf *BuildFrontend) Seal(ctx context.Context, jobID seqtypes.BuildJobID) (work.Block, error) {
 	job := bf.Backend.GetJob(jobID)
 	if job == nil {
 		return eth.BlockRef{}, seqtypes.ErrUnknownJob
 	}
-	return job.Seal(ctx)
+	result, err := job.Seal(ctx)
+	if err != nil {
+		return nil, toJsonError(err)
+	}
+	return result, nil
 }
-
-func (bf *BuildFrontend) Sign(ctx context.Context, jobID seqtypes.BuildJobID) error {
-	return nil
-}
-
-func (bf *BuildFrontend) Publish(ctx context.Context, jobID seqtypes.BuildJobID) error {
-	return nil
-}
-
-// TODO api:
-// as builder:
-//   Open
-//   Cancel
-//   Seal
-// as sequencer:
-//   Start
-//   Sign
-//   Commit
-//   Publish
-//   Finish

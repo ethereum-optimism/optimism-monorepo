@@ -10,10 +10,9 @@ import (
 
 // BlockPayloadArgs represents the arguments to sign a new block payload from the sequencer.
 type BlockPayloadArgs struct {
-	Domain        [32]byte `json:"domain"`
-	ChainID       *big.Int `json:"chainId"`
-	PayloadHash   []byte   `json:"payloadHash"`
-	PayloadBytes  []byte
+	Domain        [32]byte        `json:"domain"`
+	ChainID       *big.Int        `json:"chainId"`
+	PayloadHash   []byte          `json:"payloadHash"`
 	SenderAddress *common.Address `json:"senderAddress"`
 }
 
@@ -24,7 +23,6 @@ func NewBlockPayloadArgs(domain [32]byte, chainId *big.Int, payloadBytes []byte,
 		Domain:        domain,
 		ChainID:       chainId,
 		PayloadHash:   payloadHash,
-		PayloadBytes:  payloadBytes,
 		SenderAddress: senderAddress,
 	}
 	return args

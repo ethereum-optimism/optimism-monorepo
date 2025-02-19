@@ -1,12 +1,12 @@
-package l1eng
+package l2eng
 
 import (
 	"context"
-	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/backend/work"
 
 	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum-optimism/optimism/op-test-sequencer/metrics"
+	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/backend/work"
 	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/seqtypes"
 )
 
@@ -29,7 +29,7 @@ func (b *Builder) Close() error {
 }
 
 func (b *Builder) String() string {
-	return b.id.String()
+	return "l2-eng-builder-" + b.id.String()
 }
 
 func (b *Builder) ID() seqtypes.BuilderID {

@@ -1,6 +1,7 @@
 package config
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -22,8 +23,10 @@ func (l *YamlLoader) Load(ctx context.Context) (work.Starter, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
-	var out Config
-	if err := yaml.Unmarshal(data, &out); err != nil {
+	var out Ensemble
+	dec := yaml.NewDecoder(bytes.NewReader(data))
+	dec.KnownFields(true) // ensure all the fields are known. Config correctness is critical.
+	if err := dec.Decode(&out); err != nil {
 		return nil, fmt.Errorf("failed to parse config YAML: %w", err)
 	}
 	return &out, nil

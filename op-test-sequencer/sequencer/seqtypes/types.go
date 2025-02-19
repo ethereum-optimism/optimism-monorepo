@@ -2,6 +2,8 @@ package seqtypes
 
 import (
 	"errors"
+	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/google/uuid"
 
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -132,8 +134,25 @@ func (id *SequencerID) UnmarshalText(data []byte) error {
 	return (*genericID)(id).UnmarshalText(data)
 }
 
-var ErrUnknownBuilder = errors.New("unknown builder")
-var ErrUnknownJob = errors.New("unknown job")
+var (
+	ErrGeneric                = &rpc.JsonError{Code: -38500, Message: "sequencer error"}
+	ErrUnknownKind            = &rpc.JsonError{Code: -38501, Message: "unknown kind"}
+	ErrUnknownBuilder         = &rpc.JsonError{Code: -38502, Message: "unknown builder"}
+	ErrUnknownJob             = &rpc.JsonError{Code: -38510, Message: "unknown job"}
+	ErrConflictingJob         = &rpc.JsonError{Code: -38511, Message: "conflicting job"}
+	ErrNotSealed              = &rpc.JsonError{Code: -38520, Message: "block not yet sealed"}
+	ErrAlreadySealed          = &rpc.JsonError{Code: -38521, Message: "block already sealed"}
+	ErrUnsigned               = &rpc.JsonError{Code: -38530, Message: "block not yet signed"}
+	ErrAlreadySigned          = &rpc.JsonError{Code: -38531, Message: "block already signed"}
+	ErrUncommitted            = &rpc.JsonError{Code: -38540, Message: "block not yet committed"}
+	ErrAlreadyCommitted       = &rpc.JsonError{Code: -38541, Message: "block already committed"}
+	ErrSequencerInactive      = &rpc.JsonError{Code: -38550, Message: "sequencer inactive"}
+	ErrSequencerAlreadyActive = &rpc.JsonError{Code: -38551, Message: "sequencer already active"}
+)
+
+func RandomJobID() BuildJobID {
+	return BuildJobID("job-" + uuid.New().String())
+}
 
 type BuildOpts struct {
 	// Parent block to build on top of

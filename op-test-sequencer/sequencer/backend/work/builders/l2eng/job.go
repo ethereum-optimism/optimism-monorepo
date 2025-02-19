@@ -2,11 +2,11 @@ package l2eng
 
 import (
 	"context"
-	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/backend/work"
 
 	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/ethereum-optimism/optimism/op-service/eth"
+	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/backend/work"
 	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/seqtypes"
 )
 
@@ -37,14 +37,12 @@ func (job *Job) Cancel(ctx context.Context) error {
 	return nil
 }
 
-func (job *Job) Seal(ctx context.Context) (eth.BlockRef, error) {
+func (job *Job) Seal(ctx context.Context) (work.Block, error) {
 	envelope, err := job.eng.GetPayload(ctx, job.payloadInfo)
 	if err != nil {
-		return eth.BlockRef{}, err
+		return nil, err
 	}
-	// TODO handle envelope
-	_ = envelope
-	return eth.BlockRef{}, nil
+	return envelope, nil
 }
 
 func (job *Job) String() string {

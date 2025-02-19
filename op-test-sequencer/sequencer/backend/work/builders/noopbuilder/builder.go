@@ -3,8 +3,8 @@ package noopbuilder
 import (
 	"context"
 	"errors"
-	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/backend/work"
 
+	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/backend/work"
 	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/seqtypes"
 )
 
@@ -16,6 +16,10 @@ type Builder struct {
 
 var _ work.Builder = (*Builder)(nil)
 
+func NewBuilder(id seqtypes.BuilderID) *Builder {
+	return &Builder{id: id}
+}
+
 func (n *Builder) NewJob(ctx context.Context, id seqtypes.BuildJobID, opts *seqtypes.BuildOpts) (work.BuildJob, error) {
 	return &Job{id: id}, nil
 }
@@ -25,7 +29,7 @@ func (n *Builder) Close() error {
 }
 
 func (n *Builder) String() string {
-	return n.id.String()
+	return "noop-builder-" + n.id.String()
 }
 
 func (n *Builder) ID() seqtypes.BuilderID {

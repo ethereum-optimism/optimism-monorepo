@@ -3,17 +3,13 @@ package backend
 import (
 	"context"
 	"errors"
-	"fmt"
-	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/backend/work"
 	"sync/atomic"
-
-	"github.com/google/uuid"
 
 	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum-optimism/optimism/op-service/locks"
 	"github.com/ethereum-optimism/optimism/op-test-sequencer/metrics"
-	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/backend/builder"
+	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/backend/work"
 	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/frontend"
 	"github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/seqtypes"
 )
@@ -29,24 +25,20 @@ type Backend struct {
 	logger log.Logger
 	m      metrics.Metricer
 
-	builders *locks.RWMap[seqtypes.BuilderID, work.Builder]
+	ensemble *work.Ensemble
 	jobs     *locks.RWMap[seqtypes.BuildJobID, work.BuildJob]
 }
 
 var _ frontend.BuildBackend = (*Backend)(nil)
 var _ frontend.AdminBackend = (*Backend)(nil)
 
-func NewBackend(log log.Logger, m metrics.Metricer, builders builder.Builders) *Backend {
+func NewBackend(log log.Logger, m metrics.Metricer, ensemble *work.Ensemble) *Backend {
 	b := &Backend{
 		logger:   log,
 		m:        m,
-		builders: locks.RWMapFromMap(builders),
+		ensemble: ensemble,
 		jobs:     &locks.RWMap[seqtypes.BuildJobID, work.BuildJob]{},
 	}
-	b.builders.Range(func(id seqtypes.BuilderID, bu work.Builder) bool {
-		bu.Attach(b)
-		return true
-	})
 	return b
 }
 
@@ -54,11 +46,11 @@ func (ba *Backend) CreateJob(ctx context.Context, id seqtypes.BuilderID, opts *s
 	if !ba.active.Load() {
 		return nil, errInactive
 	}
-	bu, ok := ba.builders.Get(id)
-	if !ok {
+	bu := ba.ensemble.Builder(id)
+	if bu == nil {
 		return nil, seqtypes.ErrUnknownBuilder
 	}
-	jobID := seqtypes.BuildJobID("job-" + uuid.New().String())
+	jobID := seqtypes.RandomJobID()
 	job, err := bu.NewJob(ctx, jobID, opts)
 	if err != nil {
 		return nil, err
@@ -82,6 +74,11 @@ func (ba *Backend) Start(ctx context.Context) error {
 		return errAlreadyStarted
 	}
 	ba.logger.Info("Starting sequencer backend")
+
+	//for _, seq := range ba.ensemble.Sequencers() {
+	//	TODO: setup RPC server route for the sequencer
+	//}
+
 	return nil
 }
 
@@ -90,15 +87,10 @@ func (ba *Backend) Stop(ctx context.Context) error {
 		return errAlreadyStopped
 	}
 	ba.logger.Info("Stopping sequencer backend")
-	var result error
-	ba.builders.Range(func(id seqtypes.BuilderID, bu work.Builder) bool {
-		ba.logger.Info("Closing builder", "builder", id)
-		if err := bu.Close(); err != nil {
-			result = errors.Join(result, fmt.Errorf("failed to close builder %q: %w", id, err))
-		}
-		return true
-	})
-	ba.builders.Clear()
+
+	// TODO stop sequencer RPC routes
+
+	result := ba.ensemble.Close()
 	// builders should have closed the build jobs gracefully where needed. We can clear the jobs now.
 	ba.jobs.Clear()
 	return result
