@@ -23,8 +23,8 @@ import { IOptimismPortal2 } from "interfaces/L1/IOptimismPortal2.sol";
 ///         be initialized with a more recent starting state which reduces the amount of required offchain computation.
 contract AnchorStateRegistry is Initializable, ISemver {
     /// @notice Semantic version.
-    /// @custom:semver 2.2.1
-    string public constant version = "2.2.1";
+    /// @custom:semver 2.2.2
+    string public constant version = "2.2.2";
 
     /// @notice Address of the SuperchainConfig contract.
     ISuperchainConfig public superchainConfig;
