@@ -94,6 +94,9 @@ var (
 			state.IntentTypeStandardOverrides),
 		EnvVars: PrefixEnvVar("INTENT_TYPE"),
 		Value:   string(state.IntentTypeStandard),
+		Aliases: []string{
+			"intent-config-type",
+		},
 	}
 )
 
