@@ -32,9 +32,9 @@ import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 import { Solarray } from "scripts/libraries/Solarray.sol";
 import { BaseDeployIO } from "scripts/deploy/BaseDeployIO.sol";
 import { ISingletonExample } from "interfaces/L1/ISingletonExample.sol";
-
-
+import { IProxiedExample } from "interfaces/L1/IProxiedExample.sol";
 // See DeploySuperchain.s.sol for detailed comments on the script architecture used here.
+
 contract DeployImplementationsInput is BaseDeployIO {
     uint256 internal _withdrawalDelaySeconds;
     uint256 internal _minProposalSizeBytes;
@@ -163,6 +163,7 @@ contract DeployImplementationsOutput is BaseDeployIO {
     IAnchorStateRegistry internal _anchorStateRegistryImpl;
     ISuperchainConfig internal _superchainConfigImpl;
     IProtocolVersions internal _protocolVersionsImpl;
+    IProxiedExample internal _proxiedExampleImpl;
 
     function set(bytes4 _sel, address _addr) public {
         require(_addr != address(0), "DeployImplementationsOutput: cannot set zero address");
@@ -182,6 +183,7 @@ contract DeployImplementationsOutput is BaseDeployIO {
         else if (_sel == this.optimismMintableERC20FactoryImpl.selector) _optimismMintableERC20FactoryImpl = IOptimismMintableERC20Factory(_addr);
         else if (_sel == this.disputeGameFactoryImpl.selector) _disputeGameFactoryImpl = IDisputeGameFactory(_addr);
         else if (_sel == this.anchorStateRegistryImpl.selector) _anchorStateRegistryImpl = IAnchorStateRegistry(_addr);
+        else if (_sel == this.proxiedExampleImpl.selector) _proxiedExampleImpl = IProxiedExample(_addr);
         else revert("DeployImplementationsOutput: unknown selector");
         // forgefmt: disable-end
     }
@@ -284,6 +286,11 @@ contract DeployImplementationsOutput is BaseDeployIO {
         return _anchorStateRegistryImpl;
     }
 
+    function proxiedExampleImpl() public view returns (IProxiedExample) {
+        DeployUtils.assertValidContractAddress(address(_proxiedExampleImpl));
+        return _proxiedExampleImpl;
+    }
+
     // -------- Deployment Assertions --------
     function assertValidDeploy(DeployImplementationsInput _dii) public view {
         assertValidDelayedWETHImpl(_dii);
@@ -298,6 +305,7 @@ contract DeployImplementationsOutput is BaseDeployIO {
         assertValidOptimismPortalImpl(_dii);
         assertValidPreimageOracleSingleton(_dii);
         assertValidSystemConfigImpl(_dii);
+        assertValidProxiedExampleImpl(_dii);
     }
 
     function assertValidOpcm(DeployImplementationsInput _dii) internal view {
@@ -437,6 +445,12 @@ contract DeployImplementationsOutput is BaseDeployIO {
 
         DeployUtils.assertInitialized({ _contractAddress: address(registry), _isProxy: false, _slot: 0, _offset: 0 });
     }
+
+    function assertValidProxiedExampleImpl(DeployImplementationsInput) internal view {
+        IProxiedExample example = proxiedExampleImpl();
+
+        DeployUtils.assertInitialized({ _contractAddress: address(example), _isProxy: false, _slot: 0, _offset: 0 });
+    }
 }
 
 contract DeployImplementations is Script {
@@ -459,7 +473,7 @@ contract DeployImplementations is Script {
         deployMipsSingleton(_dii, _dio);
         deployDisputeGameFactoryImpl(_dio);
         deployAnchorStateRegistryImpl(_dio);
-
+        deployProxiedExampleImpl(_dii, _dio);
         // Deploy the OP Contracts Manager with the new implementations set.
         deployOPContractsManager(_dii, _dio);
 
@@ -497,7 +511,8 @@ contract DeployImplementations is Script {
             disputeGameFactoryImpl: address(_dio.disputeGameFactoryImpl()),
             anchorStateRegistryImpl: address(_dio.anchorStateRegistryImpl()),
             delayedWETHImpl: address(_dio.delayedWETHImpl()),
-            mipsImpl: address(_dio.mipsSingleton())
+            mipsImpl: address(_dio.mipsSingleton()),
+            proxiedExampleImpl: address(_dio.proxiedExampleImpl())
         });
 
         opcm_ = IOPContractsManager(
@@ -723,6 +738,24 @@ contract DeployImplementations is Script {
         _dio.set(_dio.delayedWETHImpl.selector, address(impl));
     }
 
+    function deployProxiedExampleImpl(
+        DeployImplementationsInput _dii,
+        DeployImplementationsOutput _dio
+    )
+        public
+        virtual
+    {
+        IProxiedExample impl = IProxiedExample(
+            DeployUtils.createDeterministic({
+                _name: "ProxiedExample",
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(IProxiedExample.__constructor__, ())),
+                _salt: _salt
+            })
+        );
+        vm.label(address(impl), "ProxiedExampleImpl");
+        _dio.set(_dio.proxiedExampleImpl.selector, address(impl));
+    }
+
     function deployPreimageOracleSingleton(
         DeployImplementationsInput _dii,
         DeployImplementationsOutput _dio
@@ -876,7 +909,8 @@ contract DeployImplementationsInterop is DeployImplementations {
             disputeGameFactoryImpl: address(_dio.disputeGameFactoryImpl()),
             anchorStateRegistryImpl: address(_dio.anchorStateRegistryImpl()),
             delayedWETHImpl: address(_dio.delayedWETHImpl()),
-            mipsImpl: address(_dio.mipsSingleton())
+            mipsImpl: address(_dio.mipsSingleton()),
+            proxiedExampleImpl: address(_dio.proxiedExampleImpl())
         });
 
         opcm_ = IOPContractsManager(

@@ -565,7 +565,8 @@ contract OPContractsManager_AddGameType_Test is Test {
             disputeGameFactoryImpl: DeployUtils.create1("DisputeGameFactory"),
             anchorStateRegistryImpl: DeployUtils.create1("AnchorStateRegistry"),
             delayedWETHImpl: DeployUtils.create1("DelayedWETH", abi.encode(3)),
-            mipsImpl: DeployUtils.create1("MIPS64", abi.encode(oracle))
+            mipsImpl: DeployUtils.create1("MIPS64", abi.encode(oracle)),
+            proxiedExampleImpl: DeployUtils.create1("ProxiedExample")
         });
 
         vm.etch(address(superchainConfigProxy), hex"01");

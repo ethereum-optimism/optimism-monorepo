@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
+// Contracts
+import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+
+// Libraries
+import { Storage } from "src/libraries/Storage.sol";
+
 // Interfaces
 import { ISemver } from "interfaces/universal/ISemver.sol";
 
@@ -9,8 +15,8 @@ import { ISemver } from "interfaces/universal/ISemver.sol";
 /// Note the two tags above mentioning the audit status and whether the contract is proxied.
 /// @title SingletonExample
 /// @notice The SingletonExample contract is a test of what is required for an L1 contract.
-contract SingletonExample is ISemver {
-    /// We always implement ISemver for all contracts.
+contract ProxiedExample is Initializable, ISemver {
+    /// We always implement ISemver for all contracts. We use OZ Initializable for upgradable contracts.
     /// @notice Enum representing different types of updates.
     /// @custom:value GUARDIAN            Represents an update to the guardian.
     enum UpdateType {
@@ -20,7 +26,8 @@ contract SingletonExample is ISemver {
 
     /// @notice The address of the guardian, which can pause withdrawals from the System.
     ///         It can only be modified by an upgrade.
-    address public _guardian;
+    bytes32 public constant GUARDIAN_SLOT = bytes32(uint256(keccak256("superchainConfig.guardian")) - 1);
+    /// We allocate storage slots ourselves to avoid collisions during upgrades.
 
     /// @notice A mapping of keys to values. We use @notice to document code elements.
     mapping(string => string) public _stored;
@@ -42,15 +49,20 @@ contract SingletonExample is ISemver {
     string public constant version = "1.2.0";
     /// All individual contracts are versioned. Note the @custom:semver tag.
 
-    /// @notice Constructs the SingletonExample contract.
-    /// @param guardian_    Address of the guardian, can store new values.
-    constructor(address guardian_) {
-        _setGuardian(guardian_);
+    /// @notice Constructs the ProxiedExample contract.
+    constructor() {
+        _disableInitializers();
+    }
+
+    /// @notice Initializer.
+    /// @param _guardian    Address of the guardian, can store values.
+    function initialize(address _guardian) external initializer {
+        _setGuardian(_guardian);
     }
 
     /// @notice Getter for the guardian address.
     function guardian() public view returns (address guardian_) {
-        guardian_ = _guardian;
+        guardian_ = Storage.getAddress(GUARDIAN_SLOT);
     }
 
     /// @notice Store a value in the registry.
@@ -74,7 +86,7 @@ contract SingletonExample is ISemver {
     ///         will be required to change the guardian.
     /// @param guardian_ The new guardian address.
     function _setGuardian(address guardian_) internal {
-        _guardian = guardian_;
-        emit ConfigUpdate(UpdateType.GUARDIAN, abi.encode(_guardian));
+        Storage.setAddress(GUARDIAN_SLOT, guardian_);
+        emit ConfigUpdate(UpdateType.GUARDIAN, abi.encode(guardian_));
     }
 }

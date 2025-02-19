@@ -59,7 +59,8 @@ contract OPPrestateUpdater is OPContractsManager {
                 address(0), // l1ERC721Bridge
                 address(0), // disputeGameFactory
                 address(0), // permissionedDisputeGame
-                address(0) // faultDisputeGame
+                address(0), // faultDisputeGame
+                address(0) // proxiedExample
             ),
             address(0)
         )

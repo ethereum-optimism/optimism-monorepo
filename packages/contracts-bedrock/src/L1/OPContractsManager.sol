@@ -30,6 +30,7 @@ import { IL1StandardBridge } from "interfaces/L1/IL1StandardBridge.sol";
 import { IOptimismMintableERC20Factory } from "interfaces/universal/IOptimismMintableERC20Factory.sol";
 import { IHasSuperchainConfig } from "interfaces/L1/IHasSuperchainConfig.sol";
 import { ISingletonExample } from "interfaces/L1/ISingletonExample.sol";
+import { IProxiedExample } from "interfaces/L1/IProxiedExample.sol";
 
 contract OPContractsManager is ISemver {
     // -------- Structs --------
@@ -82,6 +83,7 @@ contract OPContractsManager is ISemver {
         IPermissionedDisputeGame permissionedDisputeGame;
         IDelayedWETH delayedWETHPermissionedGameProxy;
         IDelayedWETH delayedWETHPermissionlessGameProxy;
+        IProxiedExample proxiedExampleProxy;
     }
 
     /// @notice Addresses of ERC-5202 Blueprint contracts. There are used for deploying full size
@@ -116,6 +118,7 @@ contract OPContractsManager is ISemver {
         address anchorStateRegistryImpl;
         address delayedWETHImpl;
         address mipsImpl;
+        address proxiedExampleImpl;
     }
 
     /// @notice The input required to identify a chain for upgrading, along with new prestate hashes
@@ -300,7 +303,9 @@ contract OPContractsManager is ISemver {
         // This is my own contract.
         output.singletonExample = ISingletonExample(
             Blueprint.deployFrom(
-                blueprint.singletonExample, computeSalt(l2ChainId, saltMixer, "SingletonExample"), abi.encode(upgradeController)
+                blueprint.singletonExample,
+                computeSalt(l2ChainId, saltMixer, "SingletonExample"),
+                abi.encode(upgradeController)
             )
         );
         // Set the AddressManager on the ProxyAdmin.
@@ -324,6 +329,8 @@ contract OPContractsManager is ISemver {
             IDisputeGameFactory(deployProxy(l2ChainId, output.opChainProxyAdmin, saltMixer, "DisputeGameFactory"));
         output.anchorStateRegistryProxy =
             IAnchorStateRegistry(deployProxy(l2ChainId, output.opChainProxyAdmin, saltMixer, "AnchorStateRegistry"));
+        output.proxiedExampleProxy =
+            IProxiedExample(deployProxy(l2ChainId, output.opChainProxyAdmin, saltMixer, "ProxiedExample"));
 
         // Deploy legacy proxied contracts.
         output.l1StandardBridgeProxy = IL1StandardBridge(
@@ -435,6 +442,12 @@ contract OPContractsManager is ISemver {
             implementation.disputeGameFactoryImpl,
             data
         );
+
+        data = encodeExampleProxiedInitializer();
+        upgradeToAndCall(
+            output.opChainProxyAdmin, address(output.proxiedExampleProxy), implementation.proxiedExampleImpl, data
+        );
+
         setDGFImplementation(
             output.disputeGameFactoryProxy,
             GameTypes.PERMISSIONED_CANNON,
@@ -502,7 +515,8 @@ contract OPContractsManager is ISemver {
                 l1StandardBridge: _opChainConfigs[i].systemConfigProxy.l1StandardBridge(),
                 disputeGameFactory: address(getDisputeGameFactory(_opChainConfigs[i].systemConfigProxy)),
                 optimismPortal: _opChainConfigs[i].systemConfigProxy.optimismPortal(),
-                optimismMintableERC20Factory: _opChainConfigs[i].systemConfigProxy.optimismMintableERC20Factory()
+                optimismMintableERC20Factory: _opChainConfigs[i].systemConfigProxy.optimismMintableERC20Factory(),
+                proxiedExample: _opChainConfigs[i].systemConfigProxy.proxiedExample()
             });
 
             // Check that all contracts have the correct superchainConfig
@@ -531,6 +545,7 @@ contract OPContractsManager is ISemver {
                 opChainAddrs.optimismMintableERC20Factory,
                 impls.optimismMintableERC20FactoryImpl
             );
+            upgradeTo(_opChainConfigs[i].proxyAdmin, opChainAddrs.proxiedExample, impls.proxiedExampleImpl);
 
             // -------- Discover and Upgrade Proofs Contracts --------
             // Note that, the code below uses several independently scoped blocks to avoid stack too deep errors.
@@ -966,6 +981,10 @@ contract OPContractsManager is ISemver {
         return Bytes.slice(dataWithSelector, 4);
     }
 
+    function encodeExampleProxiedInitializer() internal view virtual returns (bytes memory) {
+        return abi.encodeCall(IProxiedExample.initialize, (upgradeController));
+    }
+
     /// @notice Returns default, standard config arguments for the SystemConfig initializer.
     /// This is used by subclasses to reduce code duplication.
     function defaultSystemConfigParams(
@@ -985,7 +1004,8 @@ contract OPContractsManager is ISemver {
             l1StandardBridge: address(_output.l1StandardBridgeProxy),
             disputeGameFactory: address(_output.disputeGameFactoryProxy),
             optimismPortal: address(_output.optimismPortalProxy),
-            optimismMintableERC20Factory: address(_output.optimismMintableERC20FactoryProxy)
+            optimismMintableERC20Factory: address(_output.optimismMintableERC20FactoryProxy),
+            proxiedExample: address(_output.proxiedExampleProxy)
         });
 
         assertValidContractAddress(opChainAddrs_.l1CrossDomainMessenger);

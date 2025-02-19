@@ -9,11 +9,14 @@ import { IProxy } from "interfaces/universal/IProxy.sol";
 // Target contract
 import { ISingletonExample } from "interfaces/L1/ISingletonExample.sol";
 
-import { DeployUtils } from "scripts/libraries/DeployUtils.sol"; /// We use DeployUtils to deploy contracts.
+import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
+
+/// We use DeployUtils to deploy contracts.
 
 import { console2 as console2 } from "forge-std/console2.sol";
 
-contract SingletonExample_Init_Test is CommonTest { /// We inherit from CommonTest. One contract per function and outcome.
+contract SingletonExample_Init_Test is CommonTest {
+    /// We inherit from CommonTest. One contract per function and outcome.
     /// @notice Emitted when a value is stored.
     /// @param key The key of the value stored.
     /// @param value The value stored.

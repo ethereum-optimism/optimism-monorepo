@@ -179,7 +179,8 @@ contract Initializer_Test is CommonTest {
                             l1StandardBridge: address(0),
                             disputeGameFactory: address(0),
                             optimismPortal: address(0),
-                            optimismMintableERC20Factory: address(0)
+                            optimismMintableERC20Factory: address(0),
+                            proxiedExample: address(0)
                         })
                     )
                 )
@@ -214,7 +215,8 @@ contract Initializer_Test is CommonTest {
                             l1StandardBridge: address(0),
                             disputeGameFactory: address(0),
                             optimismPortal: address(0),
-                            optimismMintableERC20Factory: address(0)
+                            optimismMintableERC20Factory: address(0),
+                            proxiedExample: address(0)
                         })
                     )
                 )

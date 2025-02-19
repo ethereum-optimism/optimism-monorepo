@@ -41,6 +41,7 @@ contract SystemConfig is OwnableUpgradeable, ISemver {
         address disputeGameFactory;
         address optimismPortal;
         address optimismMintableERC20Factory;
+        address proxiedExample;
     }
 
     /// @notice Version identifier, used for upgrades.
@@ -82,6 +83,9 @@ contract SystemConfig is OwnableUpgradeable, ISemver {
     /// @notice Storage slot for the DisputeGameFactory address.
     bytes32 public constant DISPUTE_GAME_FACTORY_SLOT =
         bytes32(uint256(keccak256("systemconfig.disputegamefactory")) - 1);
+
+    /// @notice Storage slot for the ProxiedExample address.
+    bytes32 public constant PROXIED_EXAMPLE_SLOT = bytes32(uint256(keccak256("systemconfig.proxiedexample")) - 1);
 
     /// @notice The maximum gas limit that can be set for L2 blocks. This limit is used to enforce that the blocks
     ///         on L2 are not too large to process and prove. Over time, this value can be increased as various
@@ -184,6 +188,7 @@ contract SystemConfig is OwnableUpgradeable, ISemver {
         Storage.setAddress(DISPUTE_GAME_FACTORY_SLOT, _addresses.disputeGameFactory);
         Storage.setAddress(OPTIMISM_PORTAL_SLOT, _addresses.optimismPortal);
         Storage.setAddress(OPTIMISM_MINTABLE_ERC20_FACTORY_SLOT, _addresses.optimismMintableERC20Factory);
+        Storage.setAddress(PROXIED_EXAMPLE_SLOT, _addresses.proxiedExample);
 
         _setStartBlock();
 
@@ -246,6 +251,11 @@ contract SystemConfig is OwnableUpgradeable, ISemver {
         addr_ = Storage.getAddress(OPTIMISM_MINTABLE_ERC20_FACTORY_SLOT);
     }
 
+    /// @notice Getter for the ProxiedExample address.
+    function proxiedExample() public view returns (address addr_) {
+        addr_ = Storage.getAddress(PROXIED_EXAMPLE_SLOT);
+    }
+
     /// @notice Consolidated getter for the Addresses struct.
     function getAddresses() external view returns (Addresses memory) {
         return Addresses({
@@ -254,7 +264,8 @@ contract SystemConfig is OwnableUpgradeable, ISemver {
             l1StandardBridge: l1StandardBridge(),
             disputeGameFactory: disputeGameFactory(),
             optimismPortal: optimismPortal(),
-            optimismMintableERC20Factory: optimismMintableERC20Factory()
+            optimismMintableERC20Factory: optimismMintableERC20Factory(),
+            proxiedExample: proxiedExample()
         });
     }
 

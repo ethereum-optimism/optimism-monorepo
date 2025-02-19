@@ -18,5 +18,6 @@ library Types {
         address L1ERC721Bridge;
         address ProtocolVersions;
         address SuperchainConfig;
+        address ProxiedExample;
     }
 }

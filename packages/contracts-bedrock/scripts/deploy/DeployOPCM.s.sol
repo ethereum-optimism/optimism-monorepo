@@ -40,6 +40,7 @@ contract DeployOPCMInput is BaseDeployIO {
     address internal _anchorStateRegistryImpl;
     address internal _delayedWETHImpl;
     address internal _mipsImpl;
+    address internal _proxiedExampleImpl;
 
     address internal _singletonExampleBlueprint;
 
@@ -72,6 +73,7 @@ contract DeployOPCMInput is BaseDeployIO {
         else if (_sel == this.delayedWETHImpl.selector) _delayedWETHImpl = _addr;
         else if (_sel == this.mipsImpl.selector) _mipsImpl = _addr;
         else if (_sel == this.singletonExampleBlueprint.selector) _singletonExampleBlueprint = _addr;
+        else if (_sel == this.proxiedExampleImpl.selector) _proxiedExampleImpl = _addr;
         else revert("DeployOPCMInput: unknown selector");
         // forgefmt: disable-end
     }
@@ -208,6 +210,11 @@ contract DeployOPCMInput is BaseDeployIO {
         require(_mipsImpl != address(0), "DeployOPCMInput: not set");
         return _mipsImpl;
     }
+
+    function proxiedExampleImpl() public view returns (address) {
+        require(_proxiedExampleImpl != address(0), "DeployOPCMInput: not set");
+        return _proxiedExampleImpl;
+    }
 }
 
 contract DeployOPCMOutput is BaseDeployIO {
@@ -253,7 +260,8 @@ contract DeployOPCM is Script {
             disputeGameFactoryImpl: address(_doi.disputeGameFactoryImpl()),
             anchorStateRegistryImpl: address(_doi.anchorStateRegistryImpl()),
             delayedWETHImpl: address(_doi.delayedWETHImpl()),
-            mipsImpl: address(_doi.mipsImpl())
+            mipsImpl: address(_doi.mipsImpl()),
+            proxiedExampleImpl: address(_doi.proxiedExampleImpl())
         });
 
         IOPContractsManager opcm_ = deployOPCM(

@@ -121,7 +121,8 @@ contract Deploy is Deployer {
             SystemConfig: artifacts.getAddress("SystemConfigProxy"),
             L1ERC721Bridge: artifacts.getAddress("L1ERC721BridgeProxy"),
             ProtocolVersions: artifacts.getAddress("ProtocolVersionsProxy"),
-            SuperchainConfig: artifacts.getAddress("SuperchainConfigProxy")
+            SuperchainConfig: artifacts.getAddress("SuperchainConfigProxy"),
+            ProxiedExample: artifacts.getAddress("ProxiedExampleProxy")
         });
     }
 
@@ -140,7 +141,8 @@ contract Deploy is Deployer {
             SystemConfig: artifacts.getAddress("SystemConfigImpl"),
             L1ERC721Bridge: artifacts.getAddress("L1ERC721BridgeImpl"),
             ProtocolVersions: artifacts.getAddress("ProtocolVersionsImpl"),
-            SuperchainConfig: artifacts.getAddress("SuperchainConfigImpl")
+            SuperchainConfig: artifacts.getAddress("SuperchainConfigImpl"),
+            ProxiedExample: artifacts.getAddress("ProxiedExampleImpl")
         });
     }
 
@@ -320,7 +322,8 @@ contract Deploy is Deployer {
             SystemConfig: address(dio.systemConfigImpl()),
             L1ERC721Bridge: address(dio.l1ERC721BridgeImpl()),
             ProtocolVersions: address(dio.protocolVersionsImpl()),
-            SuperchainConfig: address(dio.superchainConfigImpl())
+            SuperchainConfig: address(dio.superchainConfigImpl()),
+            ProxiedExample: address(dio.proxiedExampleImpl())
         });
 
         ChainAssertions.checkL1CrossDomainMessenger({ _contracts: impls, _vm: vm, _isProxy: false });
@@ -521,7 +524,8 @@ contract Deploy is Deployer {
                         l1StandardBridge: artifacts.mustGetAddress("L1StandardBridgeProxy"),
                         disputeGameFactory: artifacts.mustGetAddress("DisputeGameFactoryProxy"),
                         optimismPortal: artifacts.mustGetAddress("OptimismPortalProxy"),
-                        optimismMintableERC20Factory: artifacts.mustGetAddress("OptimismMintableERC20FactoryProxy")
+                        optimismMintableERC20Factory: artifacts.mustGetAddress("OptimismMintableERC20FactoryProxy"),
+                        proxiedExample: artifacts.mustGetAddress("ProxiedExampleProxy")
                     })
                 )
             )

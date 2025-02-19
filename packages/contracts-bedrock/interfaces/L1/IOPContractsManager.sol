@@ -23,6 +23,7 @@ import { IL1ERC721Bridge } from "interfaces/L1/IL1ERC721Bridge.sol";
 import { IL1StandardBridge } from "interfaces/L1/IL1StandardBridge.sol";
 import { IOptimismMintableERC20Factory } from "interfaces/universal/IOptimismMintableERC20Factory.sol";
 import { ISingletonExample } from "interfaces/L1/ISingletonExample.sol";
+import { IProxiedExample } from "interfaces/L1/IProxiedExample.sol";
 interface IOPContractsManager {
     // -------- Structs --------
 
@@ -74,6 +75,7 @@ interface IOPContractsManager {
         IPermissionedDisputeGame permissionedDisputeGame;
         IDelayedWETH delayedWETHPermissionedGameProxy;
         IDelayedWETH delayedWETHPermissionlessGameProxy;
+        IProxiedExample proxiedExampleProxy;
     }
 
     /// @notice Addresses of ERC-5202 Blueprint contracts. There are used for deploying full size
@@ -108,6 +110,7 @@ interface IOPContractsManager {
         address anchorStateRegistryImpl;
         address delayedWETHImpl;
         address mipsImpl;
+        address proxiedExampleImpl;
     }
 
     /// @notice The input required to identify a chain for upgrading.

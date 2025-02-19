@@ -19,6 +19,7 @@ interface ISystemConfig {
         address disputeGameFactory;
         address optimismPortal;
         address optimismMintableERC20Factory;
+        address proxiedExample;
     }
 
     event ConfigUpdate(uint256 indexed version, UpdateType indexed updateType, bytes data);
@@ -32,6 +33,7 @@ interface ISystemConfig {
     function L1_STANDARD_BRIDGE_SLOT() external view returns (bytes32);
     function OPTIMISM_MINTABLE_ERC20_FACTORY_SLOT() external view returns (bytes32);
     function OPTIMISM_PORTAL_SLOT() external view returns (bytes32);
+    function PROXIED_EXAMPLE_SLOT() external view returns (bytes32);
     function START_BLOCK_SLOT() external view returns (bytes32);
     function UNSAFE_BLOCK_SIGNER_SLOT() external view returns (bytes32);
     function VERSION() external view returns (uint256);
@@ -65,6 +67,7 @@ interface ISystemConfig {
     function optimismPortal() external view returns (address addr_);
     function overhead() external view returns (uint256);
     function owner() external view returns (address);
+    function proxiedExample() external view returns (address addr_);
     function renounceOwnership() external;
     function resourceConfig() external view returns (IResourceMetering.ResourceConfig memory);
     function scalar() external view returns (uint256);
