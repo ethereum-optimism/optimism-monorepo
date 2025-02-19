@@ -54,7 +54,7 @@ import { ILegacyMessagePasser } from "interfaces/legacy/ILegacyMessagePasser.sol
 import { ISuperchainTokenBridge } from "interfaces/L2/ISuperchainTokenBridge.sol";
 import { IPermissionedDisputeGame } from "interfaces/dispute/IPermissionedDisputeGame.sol";
 import { IFaultDisputeGame } from "interfaces/dispute/IFaultDisputeGame.sol";
-import { IDummyRegistry } from "interfaces/L1/IDummyRegistry.sol";
+import { ISingletonExample } from "interfaces/L1/ISingletonExample.sol";
 
 /// @title Setup
 /// @dev This contact is responsible for setting up the contracts in state. It currently
@@ -107,7 +107,7 @@ contract Setup {
     ISuperchainConfig superchainConfig;
     IDataAvailabilityChallenge dataAvailabilityChallenge;
     IOPContractsManager opcm;
-    IDummyRegistry dummyRegistry;
+    ISingletonExample singletonExample;
 
     // L2 contracts
     IL2CrossDomainMessenger l2CrossDomainMessenger =
@@ -245,7 +245,7 @@ contract Setup {
         disputeGameFactory = IDisputeGameFactory(artifacts.mustGetAddress("DisputeGameFactoryProxy"));
         delayedWeth = IDelayedWETH(artifacts.mustGetAddress("DelayedWETHProxy"));
         opcm = IOPContractsManager(artifacts.mustGetAddress("OPContractsManager"));
-        dummyRegistry = IDummyRegistry(artifacts.mustGetAddress("DummyRegistry"));
+        singletonExample = ISingletonExample(artifacts.mustGetAddress("SingletonExample"));
 
         if (deploy.cfg().useAltDA()) {
             dataAvailabilityChallenge =

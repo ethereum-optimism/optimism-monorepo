@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 /// Note the interface is not inherited by the relevant contract. We just make sure it matches.
-interface IDummyRegistry {
+interface ISingletonExample {
     /// Note we repeat enums and events.
     enum UpdateType {
         GUARDIAN

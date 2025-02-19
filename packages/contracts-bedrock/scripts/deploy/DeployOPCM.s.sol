@@ -41,7 +41,7 @@ contract DeployOPCMInput is BaseDeployIO {
     address internal _delayedWETHImpl;
     address internal _mipsImpl;
 
-    address internal _dummyRegistryBlueprint;
+    address internal _singletonExampleBlueprint;
 
     // Setter for address type
     function set(bytes4 _sel, address _addr) public {
@@ -71,7 +71,7 @@ contract DeployOPCMInput is BaseDeployIO {
         else if (_sel == this.anchorStateRegistryImpl.selector) _anchorStateRegistryImpl = _addr;
         else if (_sel == this.delayedWETHImpl.selector) _delayedWETHImpl = _addr;
         else if (_sel == this.mipsImpl.selector) _mipsImpl = _addr;
-        else if (_sel == this.dummyRegistryBlueprint.selector) _dummyRegistryBlueprint = _addr;
+        else if (_sel == this.singletonExampleBlueprint.selector) _singletonExampleBlueprint = _addr;
         else revert("DeployOPCMInput: unknown selector");
         // forgefmt: disable-end
     }
@@ -114,9 +114,9 @@ contract DeployOPCMInput is BaseDeployIO {
         return _addressManagerBlueprint;
     }
 
-    function dummyRegistryBlueprint() public view returns (address) {
-        require(_dummyRegistryBlueprint != address(0), "DeployOPCMInput: not set");
-        return _dummyRegistryBlueprint;
+    function singletonExampleBlueprint() public view returns (address) {
+        require(_singletonExampleBlueprint != address(0), "DeployOPCMInput: not set");
+        return _singletonExampleBlueprint;
     }
 
     function proxyBlueprint() public view returns (address) {
@@ -239,7 +239,7 @@ contract DeployOPCM is Script {
             permissionedDisputeGame2: _doi.permissionedDisputeGame2Blueprint(),
             permissionlessDisputeGame1: address(0),
             permissionlessDisputeGame2: address(0),
-            dummyRegistry: _doi.dummyRegistryBlueprint()
+            singletonExample: _doi.singletonExampleBlueprint()
         });
         IOPContractsManager.Implementations memory implementations = IOPContractsManager.Implementations({
             superchainConfigImpl: address(_doi.superchainConfigImpl()),
@@ -336,7 +336,7 @@ contract DeployOPCM is Script {
         require(implementations.delayedWETHImpl == _doi.delayedWETHImpl(), "OPCMI-200");
         require(implementations.mipsImpl == _doi.mipsImpl(), "OPCMI-210");
 
-        require(blueprints.dummyRegistry == _doi.dummyRegistryBlueprint(), "OPCMI-220");
+        require(blueprints.singletonExample == _doi.singletonExampleBlueprint(), "OPCMI-220");
     }
 
     function etchIOContracts() public returns (DeployOPCMInput doi_, DeployOPCMOutput doo_) {

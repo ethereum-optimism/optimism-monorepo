@@ -51,7 +51,7 @@ contract DeployOPPrestateUpdaterInput is BaseDeployIO {
     address internal _delayedWETHImpl;
     address internal _mipsImpl;
 
-    address internal _dummyRegistryBlueprint;
+    address internal _singletonExampleBlueprint;
 
     // Setter for address type
     function set(bytes4 _sel, address _addr) public {
@@ -80,7 +80,7 @@ contract DeployOPPrestateUpdaterInput is BaseDeployIO {
         else if (_sel == this.anchorStateRegistryImpl.selector) _anchorStateRegistryImpl = _addr;
         else if (_sel == this.delayedWETHImpl.selector) _delayedWETHImpl = _addr;
         else if (_sel == this.mipsImpl.selector) _mipsImpl = _addr;
-        else if (_sel == this.dummyRegistryBlueprint.selector) _dummyRegistryBlueprint = _addr;
+        else if (_sel == this.singletonExampleBlueprint.selector) _singletonExampleBlueprint = _addr;
         else revert("DeployOPPrestateUpdaterInput: unknown selector");
         // forgefmt: disable-end
     }
@@ -223,9 +223,9 @@ contract DeployOPPrestateUpdaterInput is BaseDeployIO {
         return _mipsImpl;
     }
 
-    function dummyRegistryBlueprint() public view returns (address) {
-        require(_dummyRegistryBlueprint != address(0), "DeployOPPrestateUpdaterInput: not set");
-        return _dummyRegistryBlueprint;
+    function singletonExampleBlueprint() public view returns (address) {
+        require(_singletonExampleBlueprint != address(0), "DeployOPPrestateUpdaterInput: not set");
+        return _singletonExampleBlueprint;
     }
 }
 
@@ -260,7 +260,7 @@ contract DeployOPPrestateUpdater is Script {
             permissionedDisputeGame2: _doi.permissionedDisputeGame2Blueprint(),
             permissionlessDisputeGame1: _doi.permissionlessDisputeGame1Blueprint(),
             permissionlessDisputeGame2: _doi.permissionlessDisputeGame2Blueprint(),
-            dummyRegistry: _doi.dummyRegistryBlueprint()
+            singletonExample: _doi.singletonExampleBlueprint()
         });
 
         OPPrestateUpdater oppu_ = deployOPPrestateUpdater(_doi.superchainConfig(), _doi.protocolVersions(), blueprints);

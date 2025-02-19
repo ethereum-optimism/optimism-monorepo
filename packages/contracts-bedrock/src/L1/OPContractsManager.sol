@@ -29,7 +29,7 @@ import { IL1ERC721Bridge } from "interfaces/L1/IL1ERC721Bridge.sol";
 import { IL1StandardBridge } from "interfaces/L1/IL1StandardBridge.sol";
 import { IOptimismMintableERC20Factory } from "interfaces/universal/IOptimismMintableERC20Factory.sol";
 import { IHasSuperchainConfig } from "interfaces/L1/IHasSuperchainConfig.sol";
-import { IDummyRegistry } from "interfaces/L1/IDummyRegistry.sol";
+import { ISingletonExample } from "interfaces/L1/ISingletonExample.sol";
 
 contract OPContractsManager is ISemver {
     // -------- Structs --------
@@ -66,7 +66,7 @@ contract OPContractsManager is ISemver {
 
     /// @notice The full set of outputs from deploying a new OP Stack chain.
     struct DeployOutput {
-        IDummyRegistry dummyRegistry;
+        ISingletonExample singletonExample;
         IProxyAdmin opChainProxyAdmin;
         IAddressManager addressManager;
         IL1ERC721Bridge l1ERC721BridgeProxy;
@@ -90,7 +90,7 @@ contract OPContractsManager is ISemver {
     /// contain the bytecode of every contract it deploys. Therefore we instead use Blueprints to
     /// reduce the code size of this contract.
     struct Blueprints {
-        address dummyRegistry;
+        address singletonExample;
         address addressManager;
         address proxy;
         address proxyAdmin;
@@ -298,9 +298,9 @@ contract OPContractsManager is ISemver {
             )
         );
         // This is my own contract.
-        output.dummyRegistry = IDummyRegistry(
+        output.singletonExample = ISingletonExample(
             Blueprint.deployFrom(
-                blueprint.dummyRegistry, computeSalt(l2ChainId, saltMixer, "DummyRegistry"), abi.encode(upgradeController)
+                blueprint.singletonExample, computeSalt(l2ChainId, saltMixer, "SingletonExample"), abi.encode(upgradeController)
             )
         );
         // Set the AddressManager on the ProxyAdmin.

@@ -13,9 +13,9 @@ import { ISemver } from "interfaces/universal/ISemver.sol";
 /// @custom:proxied true
 /// @custom:audit none This contracts is not yet audited.
 /// Note the two tags above mentioning the audit status and whether the contract is proxied.
-/// @title DummyRegistry
-/// @notice The DummyRegistry contract is a test of what is required for an L1 contract.
-contract DummyRegistry is Initializable, ISemver { /// We always implement ISemver for all contracts. We use OZ Initializable for upgradable contracts.
+/// @title SingletonExample
+/// @notice The SingletonExample contract is a test of what is required for an L1 contract.
+contract SingletonExample is Initializable, ISemver { /// We always implement ISemver for all contracts. We use OZ Initializable for upgradable contracts.
     /// @notice Enum representing different types of updates.
     /// @custom:value GUARDIAN            Represents an update to the guardian.
     enum UpdateType {
@@ -47,7 +47,7 @@ contract DummyRegistry is Initializable, ISemver { /// We always implement ISemv
     string public constant version = "1.2.0";
     /// All individual contracts are versioned. Note the @custom:semver tag.
 
-    /// @notice Constructs the DummyRegistry contract.
+    /// @notice Constructs the SingletonExample contract.
     /// @param guardian_    Address of the guardian, can store new values.
     constructor(address guardian_) {
         _setGuardian(guardian_);
@@ -62,7 +62,7 @@ contract DummyRegistry is Initializable, ISemver { /// We always implement ISemv
     /// @param _key The key of the value to store.
     /// @param _value The value to store.
     function store(string memory _key, string memory _value) public {
-        require(msg.sender == guardian(), "DummyRegistry: only guardian can store");
+        require(msg.sender == guardian(), "SingletonExample: only guardian can store");
         _stored[_key] = _value;
         emit Stored(_key, _value);
     }
