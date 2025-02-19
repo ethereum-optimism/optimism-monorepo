@@ -265,23 +265,21 @@ contract DeployStandardValidator is Script {
     }
 
     function deployValidatorV180(DeployStandardValidatorInput _si) internal returns (address) {
-        bytes memory constructorArgs = DeployUtils.encodeConstructor(
-            abi.encodeCall(
-                IStandardValidatorV180.__constructor__,
-                (
-                    getImplementations(_si),
-                    _si.superchainConfig(),
-                    _si.protocolVersions(),
-                    _si.l1PAOMultisig(),
-                    _si.mips(),
-                    _si.challenger()
-                )
-            )
-        );
-
         address validator = DeployUtils.createDeterministic({
             _name: "StandardValidator.sol:StandardValidatorV180",
-            _args: constructorArgs,
+            _args: DeployUtils.encodeConstructor(
+                abi.encodeCall(
+                    IStandardValidatorV180.__constructor__,
+                    (
+                        getImplementations(_si),
+                        _si.superchainConfig(),
+                        _si.protocolVersions(),
+                        _si.l1PAOMultisig(),
+                        _si.mips(),
+                        _si.challenger()
+                    )
+                )
+            ),
             _salt: DeployUtils.DEFAULT_SALT
         });
 
@@ -290,23 +288,21 @@ contract DeployStandardValidator is Script {
     }
 
     function deployValidatorV200(DeployStandardValidatorInput _si) internal returns (address) {
-        bytes memory constructorArgs = DeployUtils.encodeConstructor(
-            abi.encodeCall(
-                IStandardValidatorV200.__constructor__,
-                (
-                    getImplementations(_si),
-                    _si.superchainConfig(),
-                    _si.protocolVersions(),
-                    _si.l1PAOMultisig(),
-                    _si.mips(),
-                    _si.challenger()
-                )
-            )
-        );
-
         address validator = DeployUtils.createDeterministic({
             _name: "StandardValidator.sol:StandardValidatorV200",
-            _args: constructorArgs,
+            _args: DeployUtils.encodeConstructor(
+                abi.encodeCall(
+                    IStandardValidatorV200.__constructor__,
+                    (
+                        getImplementations(_si),
+                        _si.superchainConfig(),
+                        _si.protocolVersions(),
+                        _si.l1PAOMultisig(),
+                        _si.mips(),
+                        _si.challenger()
+                    )
+                )
+            ),
             _salt: DeployUtils.DEFAULT_SALT
         });
 
