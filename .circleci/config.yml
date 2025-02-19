@@ -843,12 +843,6 @@ jobs:
           name: Prepare env to get correct block number
           command: just prepare-upgrade-env
           working_directory: packages/contracts-bedrock
-      - run:
-          name: Write pinned block number for cache key
-          command: |
-            echo $FORK_BLOCK_NUMBER > ./pinnedBlockNumber.txt
-            cat pinnedBlockNumber.txt
-          working_directory: packages/contracts-bedrock
       - restore_cache:
           name: Restore forked state
           key: forked-state-contracts-bedrock-tests-upgrade-<<parameters.fork_op_chain>>-<<parameters.fork_base_chain>>-{{ checksum "packages/contracts-bedrock/pinnedBlockNumber.txt" }}
