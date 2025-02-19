@@ -92,7 +92,7 @@ contract SuperFaultDisputeGame is Clone, ISemver {
         address counteredBy;
     }
 
-    /// @notice Parameters for creating a new FaultDisputeGame. We place this into a struct to
+    /// @notice Parameters for creating a new SuperFaultDisputeGame. We place this into a struct to
     ///         avoid stack-too-deep errors when compiling without the optimizer enabled.
     struct GameConstructorParams {
         GameType gameType;
@@ -171,8 +171,8 @@ contract SuperFaultDisputeGame is Clone, ISemver {
 
     /// @notice Semantic version.
     /// @custom:semver 0.1.0-beta.0
-    function version() public pure virtual returns (string memory) {
-        return "0.1.0";
+    function version() public pure override returns (string memory) {
+        return "0.1.0-beta.0";
     }
 
     /// @notice The starting timestamp of the game
@@ -227,7 +227,7 @@ contract SuperFaultDisputeGame is Clone, ISemver {
     /// @notice The bond distribution mode of the game.
     BondDistributionMode public bondDistributionMode;
 
-    /// @param _params Parameters for creating a new FaultDisputeGame.
+    /// @param _params Parameters for creating a new SuperFaultDisputeGame.
     constructor(GameConstructorParams memory _params) {
         // The max game depth may not be greater than `LibPosition.MAX_POSITION_BITLEN - 1`.
         if (_params.maxGameDepth > LibPosition.MAX_POSITION_BITLEN - 1) revert MaxDepthTooLarge();
