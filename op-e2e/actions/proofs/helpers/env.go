@@ -222,5 +222,6 @@ func NewOpProgramCfg(
 		dfault.AgreedPrestate = fi.AgreedPrestate
 	}
 	dfault.InteropEnabled = fi.InteropEnabled
+	dfault.DependencySet = fi.DependencySet
 	return dfault
 }

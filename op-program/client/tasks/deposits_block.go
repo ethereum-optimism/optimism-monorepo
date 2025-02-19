@@ -34,7 +34,7 @@ func BuildDepositOnlyBlock(
 	if err != nil {
 		return common.Hash{}, eth.Bytes32{}, fmt.Errorf("failed to create oracle-backed L2 chain: %w", err)
 	}
-	l2Source := l2.NewOracleEngine(cfg, logger, engineBackend)
+	l2Source := l2.NewOracleEngine(cfg, logger, engineBackend, l2Oracle.Hinter())
 	l2Head := l2Oracle.BlockByHash(optimisticBlock.ParentHash(), eth.ChainIDFromBig(l2Cfg.ChainID))
 	l2HeadHash := l2Head.Hash()
 
@@ -90,7 +90,7 @@ func BuildDepositOnlyBlock(
 
 func getL2Output(logger log.Logger, cfg *rollup.Config, l2Cfg *params.ChainConfig, l2Oracle l2.Oracle, l1Oracle l1.Oracle, block *types.Block) (*eth.OutputV0, error) {
 	backend := l2.NewOracleBackedL2ChainFromHead(logger, l2Oracle, l1Oracle, l2Cfg, block, memorydb.New())
-	engine := l2.NewOracleEngine(cfg, logger, backend)
+	engine := l2.NewOracleEngine(cfg, logger, backend, l2Oracle.Hinter())
 	output, err := engine.L2OutputAtBlockHash(block.Hash())
 	if err != nil {
 		return nil, fmt.Errorf("failed to get L2 output: %w", err)

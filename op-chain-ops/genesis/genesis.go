@@ -114,6 +114,9 @@ func NewL2Genesis(config *DeployConfig, l1StartHeader *types.Header) (*core.Gene
 	if optimismChainConfig.IsHolocene(genesis.Timestamp) {
 		genesis.ExtraData = HoloceneExtraData
 	}
+	if optimismChainConfig.IsIsthmus(genesis.Timestamp) {
+		genesis.Alloc[params.HistoryStorageAddress] = types.Account{Nonce: 1, Code: params.HistoryStorageCode, Balance: common.Big0}
+	}
 
 	return genesis, nil
 }

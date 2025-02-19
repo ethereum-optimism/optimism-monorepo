@@ -53,8 +53,9 @@ type RegisterTask struct {
 func NewSuperCannonRegisterTask(gameType faultTypes.GameType, cfg *config.Config, m caching.Metrics, serverExecutor vm.OracleServerExecutor, rootProvider super.RootProvider, syncValidator *super.SyncValidator) *RegisterTask {
 	stateConverter := cannon.NewStateConverter(cfg.Cannon)
 	return &RegisterTask{
-		gameType:      gameType,
-		syncValidator: syncValidator,
+		gameType:               gameType,
+		syncValidator:          syncValidator,
+		skipPrestateValidation: gameType == faultTypes.SuperPermissionedGameType,
 		getTopPrestateProvider: func(ctx context.Context, prestateTimestamp uint64) (faultTypes.PrestateProvider, error) {
 			return super.NewSuperRootPrestateProvider(rootProvider, prestateTimestamp), nil
 		},

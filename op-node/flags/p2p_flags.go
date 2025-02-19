@@ -206,11 +206,10 @@ func P2PFlags(envPrefix string) []cli.Flag {
 			EnvVars:  p2pEnv(envPrefix, "ADVERTISE_UDP"),
 			Category: P2PCategory,
 		},
-		&cli.StringFlag{
+		&cli.StringSliceFlag{
 			Name:     BootnodesName,
 			Usage:    "Comma-separated base64-format ENR list. Bootnodes to start discovering other node records from.",
 			Required: false,
-			Value:    "",
 			EnvVars:  p2pEnv(envPrefix, "BOOTNODES"),
 			Category: P2PCategory,
 		},

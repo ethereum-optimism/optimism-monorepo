@@ -1,6 +1,7 @@
 package fromda
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -93,19 +94,16 @@ func invariantDerivedTimestamp(prev, current LinkEntry) error {
 func invariantNumberIncrement(prev, current LinkEntry) error {
 	// derived stays the same if the new L1 block is empty.
 	derivedSame := current.derived.Number == prev.derived.Number
-	// derivedFrom stays the same if this L2 block is derived from the same L1 block as the last L2 block
-	derivedFromSame := current.source.Number == prev.source.Number
+	// source stays the same if this L2 block is derived from the same L1 block as the last L2 block
+	sourceSame := current.source.Number == prev.source.Number
 	// At least one of the two must increment, otherwise we are just repeating data in the DB.
-	if derivedSame && derivedFromSame {
-		return fmt.Errorf("expected at least either derivedFrom or derived to increment, but both have same number")
+	if derivedSame && sourceSame {
+		return errors.New("expected at least either source or derived to increment, but both have same number")
 	}
 	derivedIncrement := current.derived.Number == prev.derived.Number+1
-	derivedFromIncrement := current.source.Number == prev.source.Number+1
-	if !(derivedSame || derivedIncrement) {
-		return fmt.Errorf("expected derived to either stay the same or increment, got prev %s current %s", prev.derived, current.derived)
-	}
-	if !(derivedFromSame || derivedFromIncrement) {
-		return fmt.Errorf("expected derivedFrom to either stay the same or increment, got prev %s current %s", prev.source, current.source)
+	sourceIncrement := current.source.Number == prev.source.Number+1
+	if derivedIncrement == sourceIncrement { // one of the two must be true, the other false, to pass.
+		return errors.New("expected source or (excl.) derived to increment")
 	}
 	return nil
 }

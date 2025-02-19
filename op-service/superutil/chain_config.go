@@ -16,9 +16,5 @@ func LoadOPStackChainConfigFromChainID(chainID uint64) (*params.ChainConfig, err
 	if err != nil {
 		return nil, fmt.Errorf("unable to retrieve chain %d config: %w", chainID, err)
 	}
-	executionConfig, err := params.LoadOPStackChainConfig(chainCfg)
-	if err == nil {
-		return executionConfig, err
-	}
-	return executionConfig, nil
+	return params.LoadOPStackChainConfig(chainCfg)
 }

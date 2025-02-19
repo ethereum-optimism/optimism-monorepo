@@ -401,7 +401,7 @@ func CheckRequired(ctx *cli.Context, traceTypes []types.TraceType) error {
 			if err := CheckAsteriscKonaFlags(ctx); err != nil {
 				return err
 			}
-		case types.TraceTypeSuperCannon:
+		case types.TraceTypeSuperCannon, types.TraceTypeSuperPermissioned:
 			if err := CheckSuperCannonFlags(ctx); err != nil {
 				return err
 			}

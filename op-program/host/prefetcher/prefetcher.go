@@ -3,6 +3,7 @@ package prefetcher
 import (
 	"context"
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"slices"
@@ -13,6 +14,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-program/client/l1"
 	"github.com/ethereum-optimism/optimism/op-program/client/l2"
 	"github.com/ethereum-optimism/optimism/op-program/client/mpt"
+	hostcommon "github.com/ethereum-optimism/optimism/op-program/host/common"
 	"github.com/ethereum-optimism/optimism/op-program/host/kvstore"
 	hosttypes "github.com/ethereum-optimism/optimism/op-program/host/types"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
@@ -63,6 +65,7 @@ type Prefetcher struct {
 	defaultChainID eth.ChainID
 	l2Sources      hosttypes.L2Sources
 	lastHint       string
+	lastBulkHint   string
 	kvStore        kvstore.KV
 	// l2Head is the L2 block hash to retrieve output root from if interop is disabled
 	l2Head common.Hash
@@ -98,11 +101,19 @@ func NewPrefetcher(
 
 func (p *Prefetcher) Hint(hint string) error {
 	p.logger.Trace("Received hint", "hint", hint)
-	p.lastHint = hint
+
+	hintType, _, err := parseHint(hint)
 
 	// This is a special case to force block execution in order to populate the cache with preimage data
-	if hintType, _, err := parseHint(hint); err == nil && hintType == l2.HintL2BlockData {
+	if hintType == l2.HintL2BlockData {
 		return p.prefetch(context.Background(), hint)
+	}
+
+	// ignore parsing error, and assume non-bulk hint
+	if err == nil && (hintType == l2.HintL2AccountProof || hintType == l2.HintL2PayloadWitness) {
+		p.lastBulkHint = hint
+	} else {
+		p.lastHint = hint
 	}
 	return nil
 }
@@ -115,7 +126,8 @@ func (p *Prefetcher) GetPreimage(ctx context.Context, key common.Hash) ([]byte, 
 	// before we get to read it.
 	for errors.Is(err, kvstore.ErrNotFound) && p.lastHint != "" {
 		hint := p.lastHint
-		if err := p.prefetch(ctx, hint); err != nil {
+		// ignore ErrExperimentalPrefetchFailed as we will retry with the canonical source
+		if err := p.prefetch(ctx, hint); err != nil && !errors.Is(err, hostcommon.ErrExperimentalPrefetchFailed) {
 			return nil, fmt.Errorf("prefetch failed: %w", err)
 		}
 		pre, err = p.kvStore.Get(key)
@@ -126,6 +138,148 @@ func (p *Prefetcher) GetPreimage(ctx context.Context, key common.Hash) ([]byte, 
 	return pre, err
 }
 
+// bulkPrefetch prefetches multiple preimages at once. This is used for execution witness and account proof hints.
+func (p *Prefetcher) bulkPrefetch(ctx context.Context, hint string) error {
+	hintType, hintBytes, err := parseHint(hint)
+	if err != nil {
+		return err
+	}
+
+	p.logger.Debug("Prefetching", "type", hintType, "bytes", hexutil.Bytes(hintBytes))
+	switch hintType {
+	case l2.HintL2AccountProof:
+		// account proofs include the block hash and requested address in the hint
+		if len(hintBytes) != 32+20+8 {
+			return fmt.Errorf("invalid L2 account proof hint: %x", hintBytes)
+		}
+
+		blockHash := common.Hash(hintBytes[:32])
+		address := common.Address(hintBytes[32:52])
+		chainID := eth.ChainIDFromUInt64(binary.BigEndian.Uint64(hintBytes[52:]))
+
+		cl, err := p.l2Sources.ForChainID(chainID)
+		if err != nil {
+			return err
+		}
+
+		// We request a proof of storage slot 0x00...00 because that will include the preimage of the storage root
+		// which is actually all that's required.
+		result, err := cl.GetProof(ctx, address, []common.Hash{{}}, blockHash.Hex())
+		if err != nil {
+			return fmt.Errorf("failed to fetch account proof for address %s: %w", address, err)
+		}
+
+		if len(result.StorageProof) == 0 {
+			return fmt.Errorf("no storage proof found for address: %s", address)
+		}
+
+		if err := p.storeNodes(result.AccountProof); err != nil {
+			return fmt.Errorf("failed to store account proof state: %w", err)
+		}
+
+		// set the preimage for the account storage root
+		if err := p.storeNodes(result.StorageProof[0].Proof); err != nil {
+			return fmt.Errorf("failed to store storage proof state: %w", err)
+		}
+
+		return nil
+
+	case l2.HintL2PayloadWitness:
+		var hint l2.PayloadWitnessHint
+		if err := json.Unmarshal(hintBytes, &hint); err != nil {
+			return fmt.Errorf("failed to unmarshal payload witness hint: %w", err)
+		}
+
+		chainID := p.defaultChainID
+		if hint.ChainID != nil {
+			chainID = *hint.ChainID
+		}
+
+		cl, err := p.l2Sources.ForChainID(chainID)
+		if err != nil {
+			return err
+		}
+
+		result, err := cl.PayloadExecutionWitness(ctx, hint.ParentBlockHash, *hint.PayloadAttributes)
+		if err != nil {
+			return fmt.Errorf("failed to fetch L2 execution witness for block with parent %v: %w", hint.ParentBlockHash, err)
+		}
+
+		// ignore keys because we want to rehash all of the values for safety
+		values := make([]hexutil.Bytes, 0, len(result.State)+len(result.Codes))
+		for _, value := range result.State {
+			values = append(values, value)
+		}
+
+		for _, value := range result.Codes {
+			values = append(values, value)
+		}
+
+		return p.storeNodes(values)
+	default:
+	}
+	return fmt.Errorf("unknown bulk hint type: %v", hintType)
+}
+
+func (p *Prefetcher) prefetchState(ctx context.Context, hint string) error {
+	hintType, hintBytes, err := parseHint(hint)
+	if err != nil {
+		return err
+	}
+
+	_, chainID, err := p.parseHashAndChainID("L2 state/code", hintBytes)
+	if err != nil {
+		return err
+	}
+
+	cl, err := p.l2Sources.ForChainID(chainID)
+	if err != nil {
+		return err
+	}
+
+	// some L2 state data can be fetched in bulk from block execution witnesses instead of direction from the MPT
+	// if we have a bulk hint, we should use it instead of the last hint (will fallback to last hint after bulk hint is cleared and request is retried)
+	if p.lastBulkHint != "" && cl.ExperimentalEnabled() {
+		bulkHint := p.lastBulkHint
+		p.lastBulkHint = ""
+		return p.bulkPrefetch(ctx, bulkHint)
+	}
+
+	// if we don't have a bulk hint, we should just fetch state normally by MPT hash
+	switch hintType {
+	case l2.HintL2StateNode:
+		hash, chainID, err := p.parseHashAndChainID("L2 state node", hintBytes)
+		if err != nil {
+			return err
+		}
+		source, err := p.l2Sources.ForChainID(chainID)
+		if err != nil {
+			return err
+		}
+		node, err := source.NodeByHash(ctx, hash)
+		if err != nil {
+			return fmt.Errorf("failed to fetch L2 state node %s: %w", hash, err)
+		}
+		return p.kvStore.Put(preimage.Keccak256Key(hash).PreimageKey(), node)
+	case l2.HintL2Code:
+		hash, chainID, err := p.parseHashAndChainID("L2 code", hintBytes)
+		if err != nil {
+			return err
+		}
+		source, err := p.l2Sources.ForChainID(chainID)
+		if err != nil {
+			return err
+		}
+		code, err := source.CodeByHash(ctx, hash)
+		if err != nil {
+			return fmt.Errorf("failed to fetch L2 contract code %s: %w", hash, err)
+		}
+		return p.kvStore.Put(preimage.Keccak256Key(hash).PreimageKey(), code)
+	}
+	return fmt.Errorf("unknown state hint type: %v", hintType)
+}
+
+// prefetch fetches the lastHint and stores the preimages in the kv store. This may call bulkPrefetch if available which will store multiple preimages at a time.
 func (p *Prefetcher) prefetch(ctx context.Context, hint string) error {
 	hintType, hintBytes, err := parseHint(hint)
 	if err != nil {
@@ -287,20 +441,6 @@ func (p *Prefetcher) prefetch(ctx context.Context, hint string) error {
 			return err
 		}
 		return p.storeTransactions(txs)
-	case l2.HintL2StateNode:
-		hash, chainID, err := p.parseHashAndChainID("L2 state node", hintBytes)
-		if err != nil {
-			return err
-		}
-		source, err := p.l2Sources.ForChainID(chainID)
-		if err != nil {
-			return err
-		}
-		node, err := source.NodeByHash(ctx, hash)
-		if err != nil {
-			return fmt.Errorf("failed to fetch L2 state node %s: %w", hash, err)
-		}
-		return p.kvStore.Put(preimage.Keccak256Key(hash).PreimageKey(), node)
 	case l2.HintL2Receipts:
 		hash, chainID, err := p.parseHashAndChainID("L2 receipts", hintBytes)
 		if err != nil {
@@ -315,20 +455,6 @@ func (p *Prefetcher) prefetch(ctx context.Context, hint string) error {
 			return fmt.Errorf("failed to fetch L1 block %s receipts: %w", hash, err)
 		}
 		return p.storeReceipts(receipts)
-	case l2.HintL2Code:
-		hash, chainID, err := p.parseHashAndChainID("L2 code", hintBytes)
-		if err != nil {
-			return err
-		}
-		source, err := p.l2Sources.ForChainID(chainID)
-		if err != nil {
-			return err
-		}
-		code, err := source.CodeByHash(ctx, hash)
-		if err != nil {
-			return fmt.Errorf("failed to fetch L2 contract code %s: %w", hash, err)
-		}
-		return p.kvStore.Put(preimage.Keccak256Key(hash).PreimageKey(), code)
 	case l2.HintL2Output:
 		requestedHash, chainID, err := p.parseHashAndChainID("L2 output", hintBytes)
 		if err != nil {
@@ -395,6 +521,9 @@ func (p *Prefetcher) prefetch(ctx context.Context, hint string) error {
 		}
 		hash := crypto.Keccak256Hash(p.agreedPrestate)
 		return p.kvStore.Put(preimage.Keccak256Key(hash).PreimageKey(), p.agreedPrestate)
+	case l2.HintL2StateNode, l2.HintL2Code:
+		// handle state access hints separately to allow for bulk fetching
+		return p.prefetchState(ctx, hint)
 	}
 	return fmt.Errorf("unknown hint type: %v", hintType)
 }
@@ -434,6 +563,10 @@ func (p *Prefetcher) storeTransactions(txs types.Transactions) error {
 
 func (p *Prefetcher) storeTrieNodes(values []hexutil.Bytes) error {
 	_, nodes := mpt.WriteTrie(values)
+	return p.storeNodes(nodes)
+}
+
+func (p *Prefetcher) storeNodes(nodes []hexutil.Bytes) error {
 	for _, node := range nodes {
 		key := preimage.Keccak256Key(crypto.Keccak256Hash(node)).PreimageKey()
 		if err := p.kvStore.Put(key, node); err != nil {

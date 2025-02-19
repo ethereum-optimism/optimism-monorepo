@@ -81,6 +81,13 @@ func RegisterGameTypes(
 		}
 		registerTasks = append(registerTasks, NewCannonRegisterTask(faultTypes.PermissionedGameType, cfg, m, vm.NewOpProgramServerExecutor(logger), l2HeaderSource, rollupClient, syncValidator))
 	}
+	if cfg.TraceTypeEnabled(faultTypes.TraceTypeSuperPermissioned) {
+		rootProvider, syncValidator, err := clients.SuperchainClients()
+		if err != nil {
+			return nil, err
+		}
+		registerTasks = append(registerTasks, NewSuperCannonRegisterTask(faultTypes.SuperPermissionedGameType, cfg, m, vm.NewOpProgramServerExecutor(logger), rootProvider, syncValidator))
+	}
 	if cfg.TraceTypeEnabled(faultTypes.TraceTypeAsterisc) {
 		l2HeaderSource, rollupClient, syncValidator, err := clients.SingleChainClients()
 		if err != nil {

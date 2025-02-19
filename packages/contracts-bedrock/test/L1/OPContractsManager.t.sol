@@ -19,6 +19,13 @@ import { ForgeArtifacts } from "scripts/libraries/ForgeArtifacts.sol";
 import { Bytes } from "src/libraries/Bytes.sol";
 
 // Interfaces
+import { IAnchorStateRegistry } from "interfaces/dispute/IAnchorStateRegistry.sol";
+import { IL1ERC721Bridge } from "interfaces/L1/IL1ERC721Bridge.sol";
+import { IL1StandardBridge } from "interfaces/L1/IL1StandardBridge.sol";
+import { IOptimismMintableERC20Factory } from "interfaces/universal/IOptimismMintableERC20Factory.sol";
+import { IL1CrossDomainMessenger } from "interfaces/L1/IL1CrossDomainMessenger.sol";
+import { IMIPS } from "interfaces/cannon/IMIPS.sol";
+import { IOptimismPortal2 } from "interfaces/L1/IOptimismPortal2.sol";
 import { IProxyAdmin } from "interfaces/universal/IProxyAdmin.sol";
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 import { IProtocolVersions } from "interfaces/L1/IProtocolVersions.sol";
@@ -273,7 +280,6 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
             abi.encode(
                 l2ChainId,
                 string.concat(
-                    "v2.0.0-",
                     string(bytes.concat(bytes32(uint256(uint160(address(opChainConfigs[0].systemConfigProxy))))))
                 ),
                 "AnchorStateRegistry"
@@ -340,7 +346,7 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
         // the correct anchor state and has the mipsImpl.
         IPermissionedDisputeGame pdg =
             IPermissionedDisputeGame(address(disputeGameFactory.gameImpls(GameTypes.PERMISSIONED_CANNON)));
-        assertEq(ISemver(address(pdg)).version(), "1.4.0");
+        assertEq(ISemver(address(pdg)).version(), "1.4.1");
         assertEq(address(pdg.anchorStateRegistry()), address(newAnchorStateRegistryProxy));
         assertEq(address(pdg.vm()), impls.mipsImpl);
 
@@ -350,7 +356,7 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
             assertEq(impls.delayedWETHImpl, EIP1967Helper.getImplementation(address(delayedWeth)));
             // Check that the PermissionlessDisputeGame is upgraded to the expected version
             IFaultDisputeGame fdg = IFaultDisputeGame(address(disputeGameFactory.gameImpls(GameTypes.CANNON)));
-            assertEq(ISemver(address(fdg)).version(), "1.4.0");
+            assertEq(ISemver(address(fdg)).version(), "1.4.1");
             assertEq(address(fdg.anchorStateRegistry()), address(newAnchorStateRegistryProxy));
             assertEq(address(fdg.vm()), impls.mipsImpl);
         }
@@ -551,21 +557,62 @@ contract OPContractsManager_AddGameType_Test is Test {
         (blueprints.permissionlessDisputeGame1, blueprints.permissionlessDisputeGame2) =
             Blueprint.create(vm.getCode("FaultDisputeGame"), salt);
 
-        IPreimageOracle oracle = IPreimageOracle(DeployUtils.create1("PreimageOracle", abi.encode(126000, 86400)));
+        IPreimageOracle oracle = IPreimageOracle(
+            DeployUtils.create1({
+                _name: "PreimageOracle",
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(IPreimageOracle.__constructor__, (126000, 86400)))
+            })
+        );
 
         IOPContractsManager.Implementations memory impls = IOPContractsManager.Implementations({
-            superchainConfigImpl: DeployUtils.create1("SuperchainConfig"),
-            protocolVersionsImpl: DeployUtils.create1("ProtocolVersions"),
-            l1ERC721BridgeImpl: DeployUtils.create1("L1ERC721Bridge"),
-            optimismPortalImpl: DeployUtils.create1("OptimismPortal2", abi.encode(1, 1)),
-            systemConfigImpl: DeployUtils.create1("SystemConfig"),
-            optimismMintableERC20FactoryImpl: DeployUtils.create1("OptimismMintableERC20Factory"),
-            l1CrossDomainMessengerImpl: DeployUtils.create1("L1CrossDomainMessenger"),
-            l1StandardBridgeImpl: DeployUtils.create1("L1StandardBridge"),
-            disputeGameFactoryImpl: DeployUtils.create1("DisputeGameFactory"),
-            anchorStateRegistryImpl: DeployUtils.create1("AnchorStateRegistry"),
-            delayedWETHImpl: DeployUtils.create1("DelayedWETH", abi.encode(3)),
-            mipsImpl: DeployUtils.create1("MIPS64", abi.encode(oracle))
+            superchainConfigImpl: DeployUtils.create1({
+                _name: "SuperchainConfig",
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(ISuperchainConfig.__constructor__, ()))
+            }),
+            protocolVersionsImpl: DeployUtils.create1({
+                _name: "ProtocolVersions",
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(IProtocolVersions.__constructor__, ()))
+            }),
+            l1ERC721BridgeImpl: DeployUtils.create1({
+                _name: "L1ERC721Bridge",
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(IL1ERC721Bridge.__constructor__, ()))
+            }),
+            optimismPortalImpl: DeployUtils.create1({
+                _name: "OptimismPortal2",
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(IOptimismPortal2.__constructor__, (1, 1)))
+            }),
+            systemConfigImpl: DeployUtils.create1({
+                _name: "SystemConfig",
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(ISystemConfig.__constructor__, ()))
+            }),
+            optimismMintableERC20FactoryImpl: DeployUtils.create1({
+                _name: "OptimismMintableERC20Factory",
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(IOptimismMintableERC20Factory.__constructor__, ()))
+            }),
+            l1CrossDomainMessengerImpl: DeployUtils.create1({
+                _name: "L1CrossDomainMessenger",
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(IL1CrossDomainMessenger.__constructor__, ()))
+            }),
+            l1StandardBridgeImpl: DeployUtils.create1({
+                _name: "L1StandardBridge",
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(IL1StandardBridge.__constructor__, ()))
+            }),
+            disputeGameFactoryImpl: DeployUtils.create1({
+                _name: "DisputeGameFactory",
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(IDisputeGameFactory.__constructor__, ()))
+            }),
+            anchorStateRegistryImpl: DeployUtils.create1({
+                _name: "AnchorStateRegistry",
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(IAnchorStateRegistry.__constructor__, ()))
+            }),
+            delayedWETHImpl: DeployUtils.create1({
+                _name: "DelayedWETH",
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(IDelayedWETH.__constructor__, (3)))
+            }),
+            mipsImpl: DeployUtils.create1({
+                _name: "MIPS64",
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(IMIPS.__constructor__, (oracle)))
+            })
         });
 
         vm.etch(address(superchainConfigProxy), hex"01");
@@ -645,7 +692,16 @@ contract OPContractsManager_AddGameType_Test is Test {
     }
 
     function test_addGameType_reusedDelayedWETH_succeeds() public {
-        IDelayedWETH delayedWETH = IDelayedWETH(payable(address(DeployUtils.create1("DelayedWETH", abi.encode(1)))));
+        IDelayedWETH delayedWETH = IDelayedWETH(
+            payable(
+                address(
+                    DeployUtils.create1({
+                        _name: "DelayedWETH",
+                        _args: DeployUtils.encodeConstructor(abi.encodeCall(IDelayedWETH.__constructor__, (1)))
+                    })
+                )
+            )
+        );
         vm.etch(address(delayedWETH), hex"01");
         IOPContractsManager.AddGameInput memory input = newGameInputFactory(false);
         input.delayedWETH = delayedWETH;

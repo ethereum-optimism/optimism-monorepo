@@ -16,6 +16,8 @@ import (
 	"github.com/ethereum-optimism/optimism/op-program/client/interop/types"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
+	supervisortypes "github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/require"
@@ -450,6 +452,81 @@ func TestInteropFaultProofs_CascadeInvalidBlock(gt *testing.T) {
 	runFppAndChallengerTests(gt, system, tests)
 }
 
+func TestInteropFaultProofs_MessageExpiry(gt *testing.T) {
+	t := helpers.NewDefaultTesting(gt)
+	// TODO(#14234): Check message expiry in op-supervisor
+	t.Skip("Message expiry not yet implemented")
+
+	system := dsl.NewInteropDSL(t)
+
+	actors := system.Actors
+	alice := system.CreateUser()
+	emitterContract := dsl.NewEmitterContract(t)
+	system.AddL2Block(actors.ChainA, dsl.WithL2BlockTransactions(
+		emitterContract.Deploy(alice),
+	))
+	system.AddL2Block(actors.ChainA, dsl.WithL2BlockTransactions(
+		emitterContract.EmitMessage(alice, "test message"),
+	))
+	emitTx := emitterContract.LastEmittedMessage()
+
+	// Bring ChainB to the same height and timestamp
+	system.AddL2Block(actors.ChainB, dsl.WithL2BlocksUntilTimestamp(actors.ChainA.Sequencer.L2Unsafe().Time))
+	system.SubmitBatchData()
+
+	// Advance the chain until the init msg expires
+	msgExpiryTime := actors.ChainA.RollupCfg.GetMessageExpiryTimeInterop()
+	end := emitTx.Identifier().Timestamp.Uint64() + msgExpiryTime
+	system.AddL2Block(actors.ChainA, dsl.WithL2BlocksUntilTimestamp(end))
+	system.AddL2Block(actors.ChainB, dsl.WithL2BlocksUntilTimestamp(end))
+	system.SubmitBatchData()
+
+	system.AddL2Block(actors.ChainB, func(opts *dsl.AddL2BlockOpts) {
+		opts.TransactionCreators = []dsl.TransactionCreator{system.InboxContract.Execute(alice, emitTx.Identifier(), emitTx.MessagePayload())}
+		opts.BlockIsNotCrossUnsafe = true
+	})
+	system.AddL2Block(actors.ChainA)
+
+	system.SubmitBatchData(func(opts *dsl.SubmitBatchDataOpts) {
+		opts.SkipCrossSafeUpdate = true
+	})
+	execTx := system.InboxContract.LastTransaction()
+	execTx.CheckIncluded()
+
+	endTimestamp := actors.ChainB.Sequencer.L2Unsafe().Time
+	startTimestamp := endTimestamp - 1
+	optimisticEnd := system.Outputs.SuperRoot(endTimestamp)
+
+	preConsolidation := system.Outputs.TransitionState(startTimestamp, 1023,
+		system.Outputs.OptimisticBlockAtTimestamp(actors.ChainA, endTimestamp),
+		system.Outputs.OptimisticBlockAtTimestamp(actors.ChainB, endTimestamp),
+	).Marshal()
+
+	// Induce block replacement
+	system.ProcessCrossSafe()
+	// assert that the invalid message txs were reorged out
+	execTx.CheckNotIncluded()
+	crossSafeEnd := system.Outputs.SuperRoot(endTimestamp)
+
+	tests := []*transitionTest{
+		{
+			name:               "Consolidate-ExpectInvalidPendingBlock",
+			agreedClaim:        preConsolidation,
+			disputedClaim:      optimisticEnd.Marshal(),
+			disputedTraceIndex: 1023,
+			expectValid:        false,
+		},
+		{
+			name:               "Consolidate-ReplaceInvalidBlocks",
+			agreedClaim:        preConsolidation,
+			disputedClaim:      crossSafeEnd.Marshal(),
+			disputedTraceIndex: 1023,
+			expectValid:        true,
+		},
+	}
+	runFppAndChallengerTests(gt, system, tests)
+}
+
 func TestInteropFaultProofsInvalidBlock(gt *testing.T) {
 	t := helpers.NewDefaultTesting(gt)
 
@@ -536,8 +613,6 @@ func TestInteropFaultProofsInvalidBlock(gt *testing.T) {
 			disputedClaim:      step2Expected,
 			disputedTraceIndex: 1,
 			expectValid:        true,
-			// skipChallenger because the challenger's reorg view won't match the pre-reorg disputed claim
-			skipChallenger: true,
 		},
 		{
 			name:               "FirstPaddingStep",
@@ -545,8 +620,6 @@ func TestInteropFaultProofsInvalidBlock(gt *testing.T) {
 			disputedClaim:      paddingStep(3),
 			disputedTraceIndex: 2,
 			expectValid:        true,
-			// skipChallenger because the challenger's reorg view won't match the pre-reorg disputed claim
-			skipChallenger: true,
 		},
 		{
 			name:               "SecondPaddingStep",
@@ -554,8 +627,6 @@ func TestInteropFaultProofsInvalidBlock(gt *testing.T) {
 			disputedClaim:      paddingStep(4),
 			disputedTraceIndex: 3,
 			expectValid:        true,
-			// skipChallenger because the challenger's reorg view won't match the pre-reorg disputed claim
-			skipChallenger: true,
 		},
 		{
 			name:               "LastPaddingStep",
@@ -563,8 +634,6 @@ func TestInteropFaultProofsInvalidBlock(gt *testing.T) {
 			disputedClaim:      paddingStep(1023),
 			disputedTraceIndex: 1022,
 			expectValid:        true,
-			// skipChallenger because the challenger's reorg view won't match the pre-reorg disputed claim
-			skipChallenger: true,
 		},
 		{
 			name:               "Consolidate-ExpectInvalidPendingBlock",
@@ -572,7 +641,6 @@ func TestInteropFaultProofsInvalidBlock(gt *testing.T) {
 			disputedClaim:      end.Marshal(),
 			disputedTraceIndex: 1023,
 			expectValid:        false,
-			skipChallenger:     true,
 		},
 		{
 			name:               "Consolidate-ReplaceInvalidBlock",
@@ -580,7 +648,6 @@ func TestInteropFaultProofsInvalidBlock(gt *testing.T) {
 			disputedClaim:      crossSafeSuperRootEnd.Marshal(),
 			disputedTraceIndex: 1023,
 			expectValid:        true,
-			skipChallenger:     true,
 		},
 		{
 			name:               "AlreadyAtClaimedTimestamp",
@@ -659,7 +726,7 @@ func runFppTest(gt *testing.T, test *transitionTest, actors *dsl.InteropActors) 
 		logger,
 		actors.L1Miner,
 		checkResult,
-		WithInteropEnabled(actors, test.agreedClaim, crypto.Keccak256Hash(test.disputedClaim), proposalTimestamp),
+		WithInteropEnabled(t, actors, test.agreedClaim, crypto.Keccak256Hash(test.disputedClaim), proposalTimestamp),
 		fpHelpers.WithL1Head(l1Head),
 	)
 }
@@ -676,7 +743,7 @@ func runChallengerTest(gt *testing.T, test *transitionTest, actors *dsl.InteropA
 		endTimestamp = actors.ChainA.Sequencer.L2Unsafe().Time
 	}
 	startTimestamp := actors.ChainA.Sequencer.L2Unsafe().Time - 1
-	prestateProvider := super.NewSuperRootPrestateProvider(&actors.Supervisor.QueryFrontend, startTimestamp)
+	prestateProvider := super.NewSuperRootPrestateProvider(actors.Supervisor, startTimestamp)
 	var l1Head eth.BlockID
 	if test.l1Head == (common.Hash{}) {
 		l1Head = eth.ToBlockID(eth.HeaderBlockInfo(actors.L1Miner.L1Chain().CurrentBlock()))
@@ -686,7 +753,7 @@ func runChallengerTest(gt *testing.T, test *transitionTest, actors *dsl.InteropA
 	gameDepth := challengerTypes.Depth(30)
 	rollupCfgs, err := super.NewRollupConfigsFromParsed(actors.ChainA.RollupCfg, actors.ChainB.RollupCfg)
 	require.NoError(t, err)
-	provider := super.NewSuperTraceProvider(logger, rollupCfgs, prestateProvider, &actors.Supervisor.QueryFrontend, l1Head, gameDepth, startTimestamp, endTimestamp)
+	provider := super.NewSuperTraceProvider(logger, rollupCfgs, prestateProvider, actors.Supervisor, l1Head, gameDepth, startTimestamp, endTimestamp)
 	var agreedPrestate []byte
 	if test.disputedTraceIndex > 0 {
 		agreedPrestate, err = provider.GetPreimageBytes(t.Ctx(), challengerTypes.NewPosition(gameDepth, big.NewInt(test.disputedTraceIndex-1)))
@@ -707,13 +774,29 @@ func runChallengerTest(gt *testing.T, test *transitionTest, actors *dsl.InteropA
 	}
 }
 
-func WithInteropEnabled(actors *dsl.InteropActors, agreedPrestate []byte, disputedClaim common.Hash, claimTimestamp uint64) fpHelpers.FixtureInputParam {
+func WithInteropEnabled(t helpers.StatefulTesting, actors *dsl.InteropActors, agreedPrestate []byte, disputedClaim common.Hash, claimTimestamp uint64) fpHelpers.FixtureInputParam {
 	return func(f *fpHelpers.FixtureInputs) {
 		f.InteropEnabled = true
 		f.AgreedPrestate = agreedPrestate
 		f.L2OutputRoot = crypto.Keccak256Hash(agreedPrestate)
 		f.L2Claim = disputedClaim
 		f.L2BlockNumber = claimTimestamp
+
+		deps := map[eth.ChainID]*depset.StaticConfigDependency{
+			actors.ChainA.ChainID: {
+				ChainIndex:     supervisortypes.ChainIndex(0),
+				ActivationTime: 0,
+				HistoryMinTime: 0,
+			},
+			actors.ChainB.ChainID: {
+				ChainIndex:     supervisortypes.ChainIndex(1),
+				ActivationTime: 0,
+				HistoryMinTime: 0,
+			},
+		}
+		var err error
+		f.DependencySet, err = depset.NewStaticConfigDependencySet(deps)
+		require.NoError(t, err)
 
 		for _, chain := range []*dsl.Chain{actors.ChainA, actors.ChainB} {
 			f.L2Sources = append(f.L2Sources, &fpHelpers.FaultProofProgramL2Source{

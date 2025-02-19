@@ -229,7 +229,7 @@ func TestCrossSafeHazards(t *testing.T) {
 		ssd.checkFn = func() (includedIn types.BlockSeal, err error) {
 			return sampleBlockSeal, nil
 		}
-		ssd.derivedToSrcFn = func() (derivedFrom types.BlockSeal, err error) {
+		ssd.derivedToSrcFn = func() (source types.BlockSeal, err error) {
 			return types.BlockSeal{}, errors.New("some error")
 		}
 		ssd.deps = mockDependencySet{}
@@ -252,7 +252,7 @@ func TestCrossSafeHazards(t *testing.T) {
 			return sampleBlockSeal, nil
 		}
 		sampleSource := types.BlockSeal{Number: 4, Hash: common.BytesToHash([]byte{0x03})}
-		ssd.derivedToSrcFn = func() (derivedFrom types.BlockSeal, err error) {
+		ssd.derivedToSrcFn = func() (source types.BlockSeal, err error) {
 			return sampleSource, nil
 		}
 		ssd.deps = mockDependencySet{}
@@ -275,7 +275,7 @@ func TestCrossSafeHazards(t *testing.T) {
 			return sampleBlockSeal, nil
 		}
 		sampleSource := types.BlockSeal{Number: 1, Hash: common.BytesToHash([]byte{0x03})}
-		ssd.derivedToSrcFn = func() (derivedFrom types.BlockSeal, err error) {
+		ssd.derivedToSrcFn = func() (source types.BlockSeal, err error) {
 			return sampleSource, nil
 		}
 		ssd.deps = mockDependencySet{}
@@ -298,7 +298,7 @@ func TestCrossSafeHazards(t *testing.T) {
 			return sampleBlockSeal, nil
 		}
 		sampleSource := types.BlockSeal{Number: 1, Hash: common.BytesToHash([]byte{0x03})}
-		ssd.derivedToSrcFn = func() (derivedFrom types.BlockSeal, err error) {
+		ssd.derivedToSrcFn = func() (source types.BlockSeal, err error) {
 			return sampleSource, nil
 		}
 		ssd.deps = mockDependencySet{}
@@ -319,7 +319,7 @@ func TestCrossSafeHazards(t *testing.T) {
 type mockSafeStartDeps struct {
 	deps           mockDependencySet
 	checkFn        func() (includedIn types.BlockSeal, err error)
-	derivedToSrcFn func() (derivedFrom types.BlockSeal, err error)
+	derivedToSrcFn func() (source types.BlockSeal, err error)
 }
 
 func (m *mockSafeStartDeps) Contains(chain eth.ChainID, q types.ContainsQuery) (includedIn types.BlockSeal, err error) {
@@ -329,7 +329,7 @@ func (m *mockSafeStartDeps) Contains(chain eth.ChainID, q types.ContainsQuery) (
 	return types.BlockSeal{}, nil
 }
 
-func (m *mockSafeStartDeps) CrossDerivedToSource(chainID eth.ChainID, derived eth.BlockID) (derivedFrom types.BlockSeal, err error) {
+func (m *mockSafeStartDeps) CrossDerivedToSource(chainID eth.ChainID, derived eth.BlockID) (source types.BlockSeal, err error) {
 	if m.derivedToSrcFn != nil {
 		return m.derivedToSrcFn()
 	}

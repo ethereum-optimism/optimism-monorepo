@@ -8,6 +8,7 @@ import (
 	"slices"
 
 	"github.com/ethereum-optimism/optimism/op-service/superutil"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
 
 	"github.com/ethereum-optimism/optimism/op-node/chaincfg"
 	"github.com/ethereum-optimism/optimism/op-program/chainconfig"
@@ -96,6 +97,8 @@ type Config struct {
 	InteropEnabled bool
 	// AgreedPrestate is the preimage of the agreed prestate claim. Required for interop.
 	AgreedPrestate []byte
+	// DependencySet is the dependency set for the interop host. Required for interop.
+	DependencySet depset.DependencySet
 }
 
 func (c *Config) Check() error {
@@ -328,6 +331,20 @@ func NewConfigFromCLI(log log.Logger, ctx *cli.Context) (*Config, error) {
 	if !slices.Contains(types.SupportedDataFormats, dbFormat) {
 		return nil, fmt.Errorf("invalid %w: %v", ErrInvalidDataFormat, dbFormat)
 	}
+
+	var dependencySet depset.DependencySet
+	if interopEnabled {
+		depsetConfigPath := ctx.Path(flags.DepsetConfig.Name)
+		if depsetConfigPath == "" {
+			// TODO(#13887): Load static config dependency from embed if no path is provided
+			return nil, fmt.Errorf("empty depset config path")
+		}
+		dependencySet, err = loadDepsetConfig(depsetConfigPath)
+		if err != nil {
+			return nil, fmt.Errorf("invalid depset config: %w", err)
+		}
+	}
+
 	return &Config{
 		L2ChainID:          l2ChainID,
 		Rollups:            rollupCfgs,
@@ -339,6 +356,7 @@ func NewConfigFromCLI(log log.Logger, ctx *cli.Context) (*Config, error) {
 		L2Head:             l2Head,
 		L2OutputRoot:       l2OutputRoot,
 		AgreedPrestate:     agreedPrestate,
+		DependencySet:      dependencySet,
 		L2Claim:            l2Claim,
 		L2ClaimBlockNumber: l2ClaimBlockNum,
 		L1Head:             l1Head,
@@ -374,4 +392,17 @@ func loadRollupConfig(rollupConfigPath string) (*rollup.Config, error) {
 
 	var rollupConfig rollup.Config
 	return &rollupConfig, rollupConfig.ParseRollupConfig(file)
+}
+
+func loadDepsetConfig(path string) (*depset.StaticConfigDependencySet, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read depset config: %w", err)
+	}
+	var depsetConfig depset.StaticConfigDependencySet
+	err = json.Unmarshal(data, &depsetConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse depset config: %w", err)
+	}
+	return &depsetConfig, nil
 }

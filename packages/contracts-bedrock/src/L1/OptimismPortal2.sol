@@ -177,9 +177,9 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
     }
 
     /// @notice Semantic version.
-    /// @custom:semver 3.12.0
+    /// @custom:semver 3.12.1
     function version() public pure virtual returns (string memory) {
-        return "3.12.0";
+        return "3.12.1";
     }
 
     /// @notice Constructs the OptimismPortal contract.
@@ -310,6 +310,7 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
         if (gameType.raw() != respectedGameType.raw()) revert InvalidGameType();
 
         // The game type of the DisputeGame must have been the respected game type at creation.
+        // eip150-safe
         try gameProxy.wasRespectedGameTypeWhenCreated() returns (bool wasRespected_) {
             if (!wasRespected_) revert InvalidGameType();
         } catch {
@@ -550,6 +551,7 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
         // possible that the respected game type has since changed. Users can still use this game
         // to finalize a withdrawal as long as it has not been otherwise invalidated.
         // The game type of the DisputeGame must have been the respected game type at creation.
+        // eip150-safe
         try disputeGameProxy.wasRespectedGameTypeWhenCreated() returns (bool wasRespected_) {
             if (!wasRespected_) revert InvalidGameType();
         } catch {

@@ -95,7 +95,7 @@ func (db *DB) PreviousDerived(derived eth.BlockID) (prevDerived types.BlockSeal,
 }
 
 // Latest returns the last known values:
-// derivedFrom: the L1 block that the L2 block is safe for (not necessarily the first, multiple L2 blocks may be derived from the same L1 block).
+// source: the L1 block that the L2 block is safe for (not necessarily the first, multiple L2 blocks may be derived from the same L1 block).
 // derived: the L2 block that was derived (not necessarily the first, the L1 block may have been empty and repeated the last safe L2 block).
 // If the last entry is invalidated, this returns a types.ErrAwaitReplacementBlock error.
 func (db *DB) Last() (pair types.DerivedBlockSealPair, err error) {
@@ -314,11 +314,11 @@ func (db *DB) sourceNumToLastDerived(sourceNum uint64) (entrydb.EntryIdx, LinkEn
 	})
 }
 
-func (db *DB) lookup(derivedFrom, derived uint64) (entrydb.EntryIdx, LinkEntry, error) {
+func (db *DB) lookup(source, derived uint64) (entrydb.EntryIdx, LinkEntry, error) {
 	return db.find(false, func(link LinkEntry) int {
 		res := cmp.Compare(link.derived.Number, derived)
 		if res == 0 {
-			return cmp.Compare(link.source.Number, derivedFrom)
+			return cmp.Compare(link.source.Number, source)
 		}
 		return res
 	})
@@ -334,6 +334,7 @@ func (db *DB) find(reverse bool, cmpFn func(link LinkEntry) int) (entrydb.EntryI
 	}
 	var searchErr error
 	// binary-search for the smallest index i for which cmp(i) >= 0
+	// i.e. find the earliest entry that is bigger or equal than the needle.
 	result := sort.Search(int(n), func(i int) bool {
 		at := entrydb.EntryIdx(i)
 		if reverse {
@@ -349,25 +350,39 @@ func (db *DB) find(reverse bool, cmpFn func(link LinkEntry) int) (entrydb.EntryI
 	if searchErr != nil {
 		return -1, LinkEntry{}, fmt.Errorf("failed to search: %w", searchErr)
 	}
+	// If we did not find anything, then we got the length of the input.
 	if result == int(n) {
 		if reverse {
+			// If searching in reverse, then the last entry is the start.
+			// I.e. the needle must be before the db start.
 			return -1, LinkEntry{}, fmt.Errorf("no entry found: %w", types.ErrSkipped)
 		} else {
+			// If searing regularly, then the last entry is the end.
+			// I.e. the needle must be after the db end.
 			return -1, LinkEntry{}, fmt.Errorf("no entry found: %w", types.ErrFuture)
 		}
 	}
+	// If the very first entry matched, then we might be missing prior data.
+	firstTry := result == 0
+	// Transform back the index, if we were searching in reverse
 	if reverse {
 		result = int(n) - 1 - result
 	}
+	// Whatever we found as first entry to be bigger or equal, must be checked for equality.
+	// We don't want it if it's bigger, we were searching for the equal-case.
 	link, err := db.readAt(entrydb.EntryIdx(result))
 	if err != nil {
 		return -1, LinkEntry{}, fmt.Errorf("failed to read final result entry %d: %w", result, err)
 	}
 	if cmpFn(link) != 0 {
-		if reverse {
-			return -1, LinkEntry{}, fmt.Errorf("lowest entry %s is too high: %w", link, types.ErrFuture)
+		if firstTry { // if the first found entry already is bigger, then we are missing the real data.
+			if reverse {
+				return -1, LinkEntry{}, fmt.Errorf("query is past last entry %s: %w", link, types.ErrFuture)
+			} else {
+				return -1, LinkEntry{}, fmt.Errorf("query is before first entry %s: %w", link, types.ErrSkipped)
+			}
 		} else {
-			return -1, LinkEntry{}, fmt.Errorf("lowest entry %s is too high: %w", link, types.ErrSkipped)
+			return -1, LinkEntry{}, fmt.Errorf("traversed data, no exact match found, but hit %s: %w", link, types.ErrDataCorruption)
 		}
 	}
 	if cmpFn(link) != 0 {

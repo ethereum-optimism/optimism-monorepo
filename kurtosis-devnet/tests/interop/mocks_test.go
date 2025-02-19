@@ -9,11 +9,24 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/ethereum-optimism/optimism/devnet-sdk/constraints"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/interfaces"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/system"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/testing/systest"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/types"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/ethclient"
+)
+
+var (
+	// Ensure mockFailingTx implements WriteInvocation
+	_ types.WriteInvocation[any] = (*mockFailingTx)(nil)
+
+	// Ensure mockFailingTx implements Wallet
+	_ system.Wallet = (*mockFailingWallet)(nil)
+
+	// Ensure mockFailingChain implements Chain
+	_ system.Chain = (*mockFailingChain)(nil)
 )
 
 // mockFailingTx implements types.WriteInvocation[any] that always fails
@@ -42,6 +55,10 @@ type mockFailingWallet struct {
 	bal  types.Balance
 }
 
+func (m *mockFailingWallet) Client() *ethclient.Client {
+	return nil
+}
+
 func (m *mockFailingWallet) Address() types.Address {
 	return m.addr
 }
@@ -58,28 +75,47 @@ func (m *mockFailingWallet) SendETH(to types.Address, amount types.Balance) type
 	return &mockFailingTx{}
 }
 
+func (m *mockFailingWallet) Nonce() uint64 {
+	return 0
+}
+
+func (m *mockFailingWallet) Sign(tx system.Transaction) (system.Transaction, error) {
+	return tx, nil
+}
+
+func (m *mockFailingWallet) Send(ctx context.Context, tx system.Transaction) error {
+	return nil
+}
+
+func (m *mockFailingWallet) Transactor() *bind.TransactOpts {
+	return nil
+}
+
 // mockFailingChain implements system.Chain with a failing SendETH
 type mockFailingChain struct {
-	id     types.ChainID
-	wallet types.Wallet
-	reg    interfaces.ContractsRegistry
+	id  types.ChainID
+	reg interfaces.ContractsRegistry
 }
 
-func (m *mockFailingChain) RPCURL() string    { return "mock://failing" }
-func (m *mockFailingChain) ID() types.ChainID { return m.id }
-func (m *mockFailingChain) Wallet(ctx context.Context, constraints ...constraints.WalletConstraint) (types.Wallet, error) {
-	return m.wallet, nil
+func (m *mockFailingChain) RPCURL() string                     { return "mock://failing" }
+func (m *mockFailingChain) Client() (*ethclient.Client, error) { return ethclient.Dial(m.RPCURL()) }
+func (m *mockFailingChain) ID() types.ChainID                  { return m.id }
+func (m *mockFailingChain) Wallets(ctx context.Context) ([]system.Wallet, error) {
+	return nil, nil
 }
 func (m *mockFailingChain) ContractsRegistry() interfaces.ContractsRegistry { return m.reg }
-
-// mockFailingSystem implements system.System with a failing chain
-type mockFailingSystem struct {
-	chain *mockFailingChain
+func (m *mockFailingChain) GasPrice(ctx context.Context) (*big.Int, error) {
+	return big.NewInt(1), nil
 }
-
-func (m *mockFailingSystem) Identifier() string     { return "mock-failing" }
-func (m *mockFailingSystem) L1() system.Chain       { return m.chain }
-func (m *mockFailingSystem) L2(uint64) system.Chain { return m.chain }
+func (m *mockFailingChain) GasLimit(ctx context.Context, tx system.TransactionData) (uint64, error) {
+	return 1000000, nil
+}
+func (m *mockFailingChain) PendingNonceAt(ctx context.Context, address common.Address) (uint64, error) {
+	return 0, nil
+}
+func (m *mockFailingChain) SupportsEIP(ctx context.Context, eip uint64) bool {
+	return true
+}
 
 // recordingT implements systest.T and records failures
 type RecordingT struct {
@@ -232,27 +268,4 @@ func (r *RecordingT) TestScenario(scenario systest.SystemTestFunc, sys system.Sy
 		scenario(r, sys)
 	}()
 	<-done
-}
-
-// mockBalance implements types.ReadInvocation[types.Balance]
-type mockBalance struct {
-	bal types.Balance
-}
-
-func (m *mockBalance) Call(ctx context.Context) (types.Balance, error) {
-	return m.bal, nil
-}
-
-// mockWETH implements interfaces.SuperchainWETH
-type mockWETH struct{}
-
-func (m *mockWETH) BalanceOf(addr types.Address) types.ReadInvocation[types.Balance] {
-	return &mockBalance{bal: types.NewBalance(big.NewInt(0))}
-}
-
-// mockRegistry implements interfaces.ContractsRegistry
-type mockRegistry struct{}
-
-func (m *mockRegistry) SuperchainWETH(addr types.Address) (interfaces.SuperchainWETH, error) {
-	return &mockWETH{}, nil
 }

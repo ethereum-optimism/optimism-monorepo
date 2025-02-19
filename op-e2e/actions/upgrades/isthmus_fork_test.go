@@ -15,6 +15,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/client"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/predeploys"
+	"github.com/ethereum-optimism/optimism/op-service/sources"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -46,8 +47,34 @@ func TestIsthmusActivationAtGenesis(gt *testing.T) {
 	env.Seq.ActL1HeadSignal(t)
 	env.Seq.ActBuildToL1Head(t)
 
+	// Make verifier sync, then check the block
+	env.Verifier.ActL2PipelineFull(t)
 	block := env.VerifEngine.L2Chain().CurrentBlock()
 	verifyIsthmusHeaderWithdrawalsRoot(gt, env.SeqEngine.RPCClient(), block, true)
+	require.Equal(t, types.EmptyRequestsHash, *block.RequestsHash, "isthmus block must have requests hash")
+
+	// Check genesis config type can convert to a valid block
+	genesisBlock, err := env.VerifEngine.EthClient().BlockByNumber(t.Ctx(), big.NewInt(0))
+	require.NoError(t, err)
+	reproduced := env.SetupData.L2Cfg.ToBlock()
+	require.Equal(t, genesisBlock.WithdrawalsRoot(), reproduced.WithdrawalsRoot(), "genesis.ToBlock withdrawals-hash must match as expected")
+	require.Equal(t, genesisBlock.Hash(), reproduced.Hash(), "genesis.ToBlock block hash must match")
+
+	require.Equal(t, types.EmptyRequestsHash, *genesisBlock.RequestsHash(), "isthmus retrieved genesis block must have a requests-hash")
+	require.Equal(t, types.EmptyRequestsHash, *reproduced.RequestsHash(), "isthmus generated genesis block have a requests-hash")
+
+	// Check that the RPC client can handle block-hash verification of the genesis block
+	cfg := sources.EngineClientDefaultConfig(env.SetupData.RollupCfg)
+	cfg.TrustRPC = false // Make the RPC client check the block contents fully.
+	l2Cl, err := sources.NewEngineClient(env.VerifEngine.RPCClient(), testlog.Logger(t, log.LevelInfo), nil, cfg)
+	require.NoError(t, err)
+	genesisPayload, err := l2Cl.PayloadByNumber(t.Ctx(), 0)
+	require.NoError(t, err)
+	require.Equal(t, genesisPayload.ExecutionPayload.WithdrawalsRoot, genesisBlock.WithdrawalsRoot())
+	require.Equal(t, types.EmptyRequestsHash, *genesisPayload.RequestsHash)
+	got, ok := genesisPayload.CheckBlockHash()
+	require.Equal(t, got, reproduced.Hash())
+	require.True(t, ok, "CheckBlockHash must pass")
 }
 
 // There are 2 stages pre-Isthmus that we need to test:

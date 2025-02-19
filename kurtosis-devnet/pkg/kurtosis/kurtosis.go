@@ -7,6 +7,7 @@ import (
 	"io"
 
 	"github.com/ethereum-optimism/optimism/devnet-sdk/descriptors"
+	"github.com/ethereum-optimism/optimism/devnet-sdk/types"
 	apiInterfaces "github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/api/interfaces"
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/api/run"
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/api/wrappers"
@@ -135,7 +136,7 @@ func (d *KurtosisDeployer) getWallets(wallets deployer.WalletList) descriptors.W
 	walletMap := make(descriptors.WalletMap)
 	for _, wallet := range wallets {
 		walletMap[wallet.Name] = descriptors.Wallet{
-			Address:    wallet.Address,
+			Address:    types.Address(wallet.Address),
 			PrivateKey: wallet.PrivateKey,
 		}
 	}
