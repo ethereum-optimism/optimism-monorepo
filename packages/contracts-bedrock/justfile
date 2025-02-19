@@ -93,7 +93,6 @@ prepare-upgrade-env *ARGS : build-go-ffi
     export FORK_BLOCK_NUMBER=$pinnedBlockNumber
   fi
   echo "Running upgrade tests at block $FORK_BLOCK_NUMBER"
-  export NO_MATCH_CONTRACTS="OptimismPortal2WithMockERC20_Test|OptimismPortal2_FinalizeWithdrawal_Test|AnchorStateRegistry_*|FaultDisputeGame_Test|PermissionedDisputeGame_Test|FaultDispute_1v1_Actors_Test|DelayedWETH_Hold_Test"
   export FORK_RPC_URL=$ETH_RPC_URL
   export FORK_TEST=true
   {{ARGS}} \
