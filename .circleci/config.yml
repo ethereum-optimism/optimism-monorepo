@@ -156,6 +156,7 @@ commands:
           name: <<parameters.command>>
           command: |
             git reset --hard
+            git clean -df
             just <<parameters.command>>
             [ -z "$(git status --porcelain)" ] || exit 1
           working_directory: packages/contracts-bedrock
