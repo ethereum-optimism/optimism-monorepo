@@ -189,7 +189,8 @@ func includeTxOnChainBasic(t helpers.Testing, chain *dsl.Chain, tx *types.Transa
 	chain.Sequencer.ActL2StartBlock(t)
 	// is used for building an empty block with tx==nil
 	if tx != nil {
-		require.NoError(t, chain.SequencerEngine.EngineApi.IncludeTx(tx, sender))
+		_, err := chain.SequencerEngine.EngineApi.IncludeTx(tx, sender)
+		require.NoError(t, err)
 	}
 	chain.Sequencer.ActL2EndBlock(t)
 }

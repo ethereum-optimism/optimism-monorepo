@@ -11,7 +11,6 @@ import (
 	"github.com/ethereum-optimism/optimism/op-e2e/actions/helpers"
 	"github.com/ethereum-optimism/optimism/op-e2e/actions/interop/dsl"
 	fpHelpers "github.com/ethereum-optimism/optimism/op-e2e/actions/proofs/helpers"
-	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/interop/contracts/bindings/inbox"
 	"github.com/ethereum-optimism/optimism/op-program/client/claim"
 	"github.com/ethereum-optimism/optimism/op-program/client/interop"
 	"github.com/ethereum-optimism/optimism/op-program/client/interop/types"
@@ -20,7 +19,6 @@ import (
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
 	supervisortypes "github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 	"github.com/ethereum/go-ethereum/common"
-	gethTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/require"
 )
@@ -382,42 +380,20 @@ func TestInteropFaultProofs_Cycle(gt *testing.T) {
 	actEmitA := emitter.EmitMessage(alice, "hello")
 	actEmitB := emitter.EmitMessage(alice, "world")
 
-	// txToID creates the would-be message identifier of the next block
-	txToID := func(chain *dsl.Chain, tx *gethTypes.Transaction) inbox.Identifier {
-		status := chain.Sequencer.SyncStatus()
-		return inbox.Identifier{
-			Origin:      *tx.To(),
-			BlockNumber: big.NewInt(int64(status.UnsafeL2.Number + 1)),
-			LogIndex:    big.NewInt(0),
-			Timestamp:   big.NewInt(int64(status.UnsafeL2.Time + 2)),
-			ChainId:     chain.ChainID.ToBig(),
-		}
-	}
-	txToPayload := func(data []byte) []byte {
-		topic := crypto.Keccak256Hash([]byte("DataEmitted(bytes)"))
-		var msg []byte
-		msg = append(msg, topic.Bytes()...)
-		dataHash := crypto.Keccak256Hash(data)
-		msg = append(msg, dataHash.Bytes()...)
-		return msg
-	}
-
 	actors.ChainA.Sequencer.ActL2StartBlock(t)
 	actors.ChainB.Sequencer.ActL2StartBlock(t)
 
 	// create init messages
-	emitTxA, from := actEmitA(actors.ChainA)
-	require.NoError(t, actors.ChainA.SequencerEngine.EngineApi.IncludeTx(emitTxA, from))
-	emitTxB, from := actEmitB(actors.ChainB)
-	require.NoError(t, actors.ChainB.SequencerEngine.EngineApi.IncludeTx(emitTxB, from))
+	emitTxA := actEmitA(actors.ChainA)
+	emitTxA.Include(actors.ChainA.SequencerEngine.EngineApi)
+	emitTxB := actEmitB(actors.ChainB)
+	emitTxB.Include(actors.ChainB.SequencerEngine.EngineApi)
 
 	// execute them within the same block
-	actExecA := system.InboxContract.Execute(alice, txToID(actors.ChainB, emitTxB), txToPayload([]byte("world")))
-	actExecB := system.InboxContract.Execute(alice, txToID(actors.ChainA, emitTxA), txToPayload([]byte("hello")))
-	tx, from := actExecA(actors.ChainA)
-	require.NoError(t, actors.ChainA.SequencerEngine.EngineApi.IncludeTx(tx, from))
-	tx, from = actExecB(actors.ChainB)
-	require.NoError(t, actors.ChainB.SequencerEngine.EngineApi.IncludeTx(tx, from))
+	actExecA := system.InboxContract.ExecuteReferencing(alice, emitTxB) // Exec msg on chain A referencing chain B
+	actExecB := system.InboxContract.ExecuteReferencing(alice, emitTxA) // Exec msg on chain B referencing chain A
+	actExecA(actors.ChainB).Include(actors.ChainB.SequencerEngine.EngineApi)
+	actExecB(actors.ChainA).Include(actors.ChainA.SequencerEngine.EngineApi)
 
 	actors.ChainA.Sequencer.ActL2EndBlock(t)
 	actors.ChainB.Sequencer.ActL2EndBlock(t)
