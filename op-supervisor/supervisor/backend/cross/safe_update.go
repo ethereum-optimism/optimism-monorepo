@@ -99,7 +99,10 @@ func scopedCrossSafeUpdate(logger log.Logger, chainID eth.ChainID, d CrossSafeDe
 	if opened.ID() != candidate.Derived.ID() {
 		return candidate, fmt.Errorf("unsafe L2 DB has %s, but candidate cross-safe was %s: %w", opened, candidate.Derived, types.ErrConflict)
 	}
-	hazards, err := CrossSafeHazards(d, chainID, candidate.Source.ID(), types.BlockSealFromRef(opened), sliceOfExecMsgs(execMsgs))
+
+	execMsgSlice := sliceOfExecMsgs(execMsgs)
+
+	hazards, err := CrossSafeHazards(d, chainID, candidate.Source.ID(), types.BlockSealFromRef(opened), execMsgSlice)
 	if err != nil {
 		return candidate, fmt.Errorf("failed to determine dependencies of cross-safe candidate %s: %w", candidate.Derived, err)
 	}
@@ -108,6 +111,9 @@ func scopedCrossSafeUpdate(logger log.Logger, chainID eth.ChainID, d CrossSafeDe
 	}
 	if err := HazardCycleChecks(d.DependencySet(), d, candidate.Derived.Time, hazards); err != nil {
 		return candidate, fmt.Errorf("failed to verify block %s in cross-safe check for cycle hazards: %w", candidate.Derived, err)
+	}
+	if err := ValidateCrossSafeDependencies(d, candidate.Source.ID(), hazards, execMsgSlice); err != nil {
+		return candidate, fmt.Errorf("failed to verify block %s dependency cross validation: %w", candidate.Derived, err)
 	}
 
 	// promote the candidate block to cross-safe
@@ -156,4 +162,102 @@ func NewCrossSafeWorker(logger log.Logger, chainID eth.ChainID, d CrossSafeDeps)
 		chainID: chainID,
 		d:       d,
 	}
+}
+
+// ValidateCrossSafeDependencies verifies that all executing messages in the hazard blocks
+// reference initiating messages that are either:
+//   - already cross-safe
+//   - part of the current hazard set
+//
+// It tracks dependencies between blocks in the hazard set and ensures they are all
+// promoted to cross-safe together.
+func ValidateCrossSafeDependencies(d SafeFrontierCheckDeps, inL1Source eth.BlockID, hazards map[types.ChainIndex]types.BlockSeal, execMsgs []*types.ExecutingMessage) error {
+	depSet := d.DependencySet()
+	// Track dependencies between blocks in the hazard set
+	deferredPromotions := make(map[eth.BlockID][]eth.BlockID)
+
+	// First pass: check all dependencies and build deferredPromotions map
+	for _, msg := range execMsgs {
+		// Get the chain ID for the initiating message
+		initChainID, err := depSet.ChainIDFromIndex(msg.Chain)
+		if err != nil {
+			return fmt.Errorf("cannot verify dependency on unknown chain index %s: %w", msg.Chain, types.ErrConflict)
+		}
+
+		// Check if the initiating message's block is in the current hazard set
+		initBlockInHazards := false
+		var initBlockID eth.BlockID
+		for chainIndex, hazardBlock := range hazards {
+			if chainIndex == msg.Chain && hazardBlock.Number == msg.BlockNum {
+				initBlockInHazards = true
+				initBlockID = eth.BlockID{
+					Hash:   hazardBlock.Hash,
+					Number: hazardBlock.Number,
+				}
+				break
+			}
+		}
+
+		// If not in hazards, the block must already be cross-safe
+		if !initBlockInHazards {
+			initBlockID = eth.BlockID{
+				Hash:   msg.Hash,
+				Number: msg.BlockNum,
+			}
+			// Check if the block is cross-safe and within the L1 scope
+			source, err := d.CrossDerivedToSource(initChainID, initBlockID)
+			if err != nil {
+				// Block is not cross-safe and not in hazard set - must wait
+				return fmt.Errorf("executing message depends on block %s (chain %s) that is not cross-safe: %w", initBlockID, initChainID, types.ErrFuture)
+			}
+			if source.Number > inL1Source.Number {
+				return fmt.Errorf("executing message depends on block %s (chain %s) derived from L1 block %s that is after scope %s: %w",
+					initBlockID, initChainID, source, inL1Source, types.ErrOutOfScope)
+			}
+			continue
+		}
+
+		// Block is in hazard set - track the dependency
+		for chainIndex, hazardBlock := range hazards {
+			if chainIndex == msg.Chain {
+				continue // Skip self-dependencies
+			}
+			execBlockID := eth.BlockID{
+				Hash:   hazardBlock.Hash,
+				Number: hazardBlock.Number,
+			}
+			deferredPromotions[execBlockID] = append(deferredPromotions[execBlockID], initBlockID)
+		}
+	}
+
+	// Second pass: verify all dependencies are ready for promotion
+	for execBlockID, dependencies := range deferredPromotions {
+		// Check if the executing block is in the hazard set
+		execFound := false
+		for _, hazardBlock := range hazards {
+			if hazardBlock.Number == execBlockID.Number && hazardBlock.Hash == execBlockID.Hash {
+				execFound = true
+				break
+			}
+		}
+		if !execFound {
+			return fmt.Errorf("executing block %s not found in hazard set: %w", execBlockID, types.ErrConflict)
+		}
+
+		// Check if all dependencies are in the hazard set
+		for _, depID := range dependencies {
+			depFound := false
+			for _, hazardBlock := range hazards {
+				if hazardBlock.Number == depID.Number && hazardBlock.Hash == depID.Hash {
+					depFound = true
+					break
+				}
+			}
+			if !depFound {
+				return fmt.Errorf("deferred promotion dependency %s not found in hazard set: %w", depID, types.ErrConflict)
+			}
+		}
+	}
+
+	return nil
 }

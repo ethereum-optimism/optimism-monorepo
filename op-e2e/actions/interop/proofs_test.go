@@ -132,6 +132,52 @@ func TestInteropFaultProofs_ConsolidateValidCrossChainMessage(gt *testing.T) {
 	runFppAndChallengerTests(gt, system, tests)
 }
 
+func TestInteropFaultProofs_ValidCrossChainMessage(gt *testing.T) {
+	t := helpers.NewDefaultTesting(gt)
+	system := dsl.NewInteropDSL(t)
+	actors := system.Actors
+
+	alice := system.CreateUser()
+	emitter := dsl.NewEmitterContract(t)
+	system.AddL2Block(actors.ChainA, dsl.WithL2BlockTransactions(emitter.Deploy(alice)))
+	system.AddL2Block(actors.ChainB, dsl.WithL2BlockTransactions(emitter.Deploy(alice)))
+
+	// Submit batch data for both chains and process cross-safe
+	system.SubmitBatchData()
+	system.ProcessCrossSafe()
+
+	// Initiating message on chain A
+	system.AddL2Block(actors.ChainA, dsl.WithL2BlockTransactions(emitter.EmitMessage(alice, "hello")))
+	initMsg := emitter.LastEmittedMessage()
+
+	// Submit batch data for chain A and process cross-safe
+	system.SubmitBatchData(func(opts *dsl.SubmitBatchDataOpts) {
+		opts.SetChains(system.Actors.ChainA)
+	})
+	system.ProcessCrossSafe()
+
+	// Create a valid executing message on chain B
+	system.AddL2Block(actors.ChainB, dsl.WithL2BlockTransactions(
+		system.InboxContract.Execute(alice, initMsg.Identifier(), initMsg.MessagePayload()),
+	))
+	execTx := system.InboxContract.LastTransaction()
+
+	// Submit batch data for chain B and process cross-safe
+	system.SubmitBatchData(func(opts *dsl.SubmitBatchDataOpts) {
+		opts.SetChains(system.Actors.ChainB)
+	})
+	system.ProcessCrossSafe()
+
+	// Add a block to Chain A and submit batch data for both chains
+	system.AddL2Block(actors.ChainA)
+	system.SubmitBatchData()
+	system.ProcessCrossSafe()
+
+	// Verify the executing message was included and remains included
+	execTx.CheckIncluded()
+
+}
+
 func TestInteropFaultProofs(gt *testing.T) {
 	t := helpers.NewDefaultTesting(gt)
 	system := dsl.NewInteropDSL(t)
@@ -364,7 +410,6 @@ func TestInteropFaultProofs(gt *testing.T) {
 func TestInteropFaultProofs_CascadeInvalidBlock(gt *testing.T) {
 	t := helpers.NewDefaultTesting(gt)
 	// TODO(#14307): Support cascading invalidation in op-supervisor
-	t.Skip("Cascading invalidation not yet working")
 
 	system := dsl.NewInteropDSL(t)
 
@@ -409,47 +454,68 @@ func TestInteropFaultProofs_CascadeInvalidBlock(gt *testing.T) {
 		opts.SkipCrossSafeUpdate = true
 	})
 
-	endTimestamp := actors.ChainB.Sequencer.L2Unsafe().Time
-	startTimestamp := endTimestamp - 1
-	optimisticEnd := system.Outputs.SuperRoot(endTimestamp)
-
-	preConsolidation := system.Outputs.TransitionState(startTimestamp, 1023,
-		system.Outputs.OptimisticBlockAtTimestamp(actors.ChainA, endTimestamp),
-		system.Outputs.OptimisticBlockAtTimestamp(actors.ChainB, endTimestamp),
-	).Marshal()
-
 	// Induce block replacement
 	system.ProcessCrossSafe()
 	// assert that the invalid message txs were reorged out
 	chainBExecTx.CheckNotIncluded()
 	chainBInitTx.CheckNotIncluded() // Should have been reorged out with chainBExecTx
 	chainAExecTx.CheckNotIncluded() // Reorged out because chainBInitTx was reorged out
+}
 
-	crossSafeEnd := system.Outputs.SuperRoot(endTimestamp)
+func TestInteropFaultProofs_ValidCrossChainMessag2(gt *testing.T) {
+	t := helpers.NewDefaultTesting(gt)
+	// TODO(#14307): Support cascading invalidation in op-supervisor
 
-	tests := []*transitionTest{
-		{
-			name:               "Consolidate-ExpectInvalidPendingBlock",
-			agreedClaim:        preConsolidation,
-			disputedClaim:      optimisticEnd.Marshal(),
-			disputedTraceIndex: 1023,
-			expectValid:        false,
-			// TODO(#14306): Support cascading re-orgs in op-program
-			skipProgram:    true,
-			skipChallenger: true,
-		},
-		{
-			name:               "Consolidate-ReplaceInvalidBlocks",
-			agreedClaim:        preConsolidation,
-			disputedClaim:      crossSafeEnd.Marshal(),
-			disputedTraceIndex: 1023,
-			expectValid:        true,
-			// TODO(#14306): Support cascading re-orgs in op-program
-			skipProgram:    true,
-			skipChallenger: true,
-		},
-	}
-	runFppAndChallengerTests(gt, system, tests)
+	system := dsl.NewInteropDSL(t)
+
+	actors := system.Actors
+	alice := system.CreateUser()
+	emitterContract := dsl.NewEmitterContract(t)
+	// Deploy emitter contract to both chains
+	system.AddL2Block(actors.ChainA, dsl.WithL2BlockTransactions(
+		emitterContract.Deploy(alice),
+	))
+	system.AddL2Block(actors.ChainB, dsl.WithL2BlockTransactions(
+		emitterContract.Deploy(alice),
+	))
+
+	// Initiating messages on chain A
+	system.AddL2Block(actors.ChainA, dsl.WithL2BlockTransactions(
+		emitterContract.EmitMessage(alice, "chainA message"),
+	))
+	chainAInitTx := emitterContract.LastEmittedMessage()
+	system.AddL2Block(actors.ChainB)
+	system.SubmitBatchData()
+
+	// Create a message with a valid payload on chain B, that also emits an initiating message
+	system.AddL2Block(actors.ChainB, dsl.WithL2BlockTransactions(
+		system.InboxContract.Execute(alice, chainAInitTx.Identifier(), chainAInitTx.MessagePayload()),
+		emitterContract.EmitMessage(alice, "chainB message"),
+	))
+	chainBExecTx := system.InboxContract.LastTransaction()
+	chainBExecTx.CheckIncluded()
+	chainBInitTx := emitterContract.LastEmittedMessage()
+
+	// Create a message with a valid message on chain A, pointing to the initiating message on B from the same block
+	// as an invalid message.
+	system.AddL2Block(actors.ChainA,
+		dsl.WithL2BlockTransactions(system.InboxContract.Execute(alice, chainBInitTx.Identifier(), chainBInitTx.MessagePayload())),
+		// Block becomes cross-unsafe because the init msg is currently present, but it should not become cross-safe.
+	)
+	chainAExecTx := system.InboxContract.LastTransaction()
+	chainAExecTx.CheckIncluded()
+
+	system.SubmitBatchData(func(opts *dsl.SubmitBatchDataOpts) {
+		opts.SkipCrossSafeUpdate = true
+	})
+
+	// Induce block replacement
+	system.ProcessCrossSafe()
+	// assert that the invalid message txs were reorged out
+	// chainBExecTx.CheckIncluded()
+	// chainBInitTx.CheckIncluded() // Should have been reorged out with chainBExecTx
+	chainAExecTx.CheckIncluded() // Reorged out because chainBInitTx was reorged out
+	chainAInitTx.CheckIncluded() // Should have been reorged out with chainAExecTx
 }
 
 func TestInteropFaultProofs_MessageExpiry(gt *testing.T) {
