@@ -6,7 +6,7 @@ import { Test } from "forge-std/Test.sol";
 import { RLPReader } from "src/libraries/rlp/RLPReader.sol";
 import "src/libraries/rlp/RLPErrors.sol";
 
-/// @notice Here we allow internal reverts as readRawBytes uses memory allocations and can only be tested internally.
+/// @notice Here we allow internal reverts as readRawBytes uses memory allocations and can only be tested internally
 contract RLPReader_readBytes_Test is Test {
     function test_readBytes_bytestring00_succeeds() external pure {
         assertEq(RLPReader.readBytes(hex"00"), hex"00");
