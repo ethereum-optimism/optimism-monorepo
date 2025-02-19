@@ -15,7 +15,7 @@ import { ISemver } from "interfaces/universal/ISemver.sol";
 /// Note the two tags above mentioning the audit status and whether the contract is proxied.
 /// @title SingletonExample
 /// @notice The SingletonExample contract is a test of what is required for an L1 contract.
-contract SingletonExample is Initializable, ISemver { /// We always implement ISemver for all contracts. We use OZ Initializable for upgradable contracts.
+contract SingletonExample is ISemver { /// We always implement ISemver for all contracts.
     /// @notice Enum representing different types of updates.
     /// @custom:value GUARDIAN            Represents an update to the guardian.
     enum UpdateType {
