@@ -142,7 +142,7 @@
       },
       {
         "internalType": "address",
-        "name": "_upgradeController",
+        "name": "_proxyAdminOwner",
         "type": "address"
       }
     ],
