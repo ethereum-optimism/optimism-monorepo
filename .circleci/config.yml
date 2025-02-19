@@ -157,7 +157,7 @@ commands:
           command: |
             git reset --hard
             just <<parameters.command>>
-            git diff --exit-code
+            [ -z "$(git status --porcelain)" ] || exit 1
           working_directory: packages/contracts-bedrock
           when: always
           environment:
