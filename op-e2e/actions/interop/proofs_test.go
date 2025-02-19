@@ -92,7 +92,7 @@ func TestInteropFaultProofs_ConsolidateValidCrossChainMessage(gt *testing.T) {
 
 	system.AddL2Block(system.Actors.ChainA, dsl.WithL2BlockTransactions(emitter.EmitMessage(alice, "hello")))
 	initMsg := emitter.LastEmittedMessage()
-	system.AddL2Block(system.Actors.ChainB, dsl.WithL2BlockTransactions(system.InboxContract.Execute(alice, initMsg.Identifier(), initMsg.MessagePayload())))
+	system.AddL2Block(system.Actors.ChainB, dsl.WithL2BlockTransactions(system.InboxContract.Execute(alice, initMsg)))
 
 	// Submit batch data for each chain in separate L1 blocks so tests can have one chain safe and one unsafe
 	system.SubmitBatchData(func(opts *dsl.SubmitBatchDataOpts) {
@@ -390,8 +390,8 @@ func TestInteropFaultProofs_Cycle(gt *testing.T) {
 	emitTxB.Include(actors.ChainB.SequencerEngine.EngineApi)
 
 	// execute them within the same block
-	actExecA := system.InboxContract.ExecuteReferencing(alice, emitTxB) // Exec msg on chain A referencing chain B
-	actExecB := system.InboxContract.ExecuteReferencing(alice, emitTxA) // Exec msg on chain B referencing chain A
+	actExecA := system.InboxContract.Execute(alice, emitTxB) // Exec msg on chain A referencing chain B
+	actExecB := system.InboxContract.Execute(alice, emitTxA) // Exec msg on chain B referencing chain A
 	actExecA(actors.ChainB).Include(actors.ChainB.SequencerEngine.EngineApi)
 	actExecB(actors.ChainA).Include(actors.ChainA.SequencerEngine.EngineApi)
 
@@ -468,7 +468,7 @@ func TestInteropFaultProofs_CascadeInvalidBlock(gt *testing.T) {
 
 	// Create a message with a conflicting payload on chain B, that also emits an initiating message
 	system.AddL2Block(actors.ChainB, dsl.WithL2BlockTransactions(
-		system.InboxContract.Execute(alice, chainAInitTx.Identifier(), []byte("this message was never emitted")),
+		system.InboxContract.Execute(alice, chainAInitTx, dsl.WithPayload([]byte("this message was never emitted"))),
 		emitterContract.EmitMessage(alice, "chainB message"),
 	), dsl.WithL1BlockCrossUnsafe())
 	chainBExecTx := system.InboxContract.LastTransaction()
@@ -478,7 +478,7 @@ func TestInteropFaultProofs_CascadeInvalidBlock(gt *testing.T) {
 	// Create a message with a valid message on chain A, pointing to the initiating message on B from the same block
 	// as an invalid message.
 	system.AddL2Block(actors.ChainA,
-		dsl.WithL2BlockTransactions(system.InboxContract.Execute(alice, chainBInitTx.Identifier(), chainBInitTx.MessagePayload())),
+		dsl.WithL2BlockTransactions(system.InboxContract.Execute(alice, chainBInitTx)),
 		// Block becomes cross-unsafe because the init msg is currently present, but it should not become cross-safe.
 	)
 	chainAExecTx := system.InboxContract.LastTransaction()
@@ -561,7 +561,7 @@ func TestInteropFaultProofs_MessageExpiry(gt *testing.T) {
 	system.SubmitBatchData()
 
 	system.AddL2Block(actors.ChainB, func(opts *dsl.AddL2BlockOpts) {
-		opts.TransactionCreators = []dsl.TransactionCreator{system.InboxContract.Execute(alice, emitTx.Identifier(), emitTx.MessagePayload())}
+		opts.TransactionCreators = []dsl.TransactionCreator{system.InboxContract.Execute(alice, emitTx)}
 		opts.BlockIsNotCrossUnsafe = true
 	})
 	system.AddL2Block(actors.ChainA)
@@ -630,7 +630,7 @@ func TestInteropFaultProofsInvalidBlock(gt *testing.T) {
 	// Create a message with a conflicting payload
 	fakeMessage := []byte("this message was never emitted")
 	system.AddL2Block(actors.ChainB, func(opts *dsl.AddL2BlockOpts) {
-		opts.TransactionCreators = []dsl.TransactionCreator{system.InboxContract.Execute(alice, emitTx.Identifier(), fakeMessage)}
+		opts.TransactionCreators = []dsl.TransactionCreator{system.InboxContract.Execute(alice, emitTx, dsl.WithPayload(fakeMessage))}
 		opts.BlockIsNotCrossUnsafe = true
 	})
 	system.AddL2Block(actors.ChainA)
