@@ -21,6 +21,8 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 )
 
+var ErrInvalidBlockReplacement = errors.New("invalid block replacement error")
+
 func ReceiptsToExecutingMessages(depset depset.ChainIndexFromID, receipts ethtypes.Receipts) ([]*supervisortypes.ExecutingMessage, uint32, error) {
 	var execMsgs []*supervisortypes.ExecutingMessage
 	var logCount uint32
@@ -57,27 +59,68 @@ func RunConsolidation(
 	bootInfo *boot.BootInfoInterop,
 	l1PreimageOracle l1.Oracle,
 	l2PreimageOracle l2.Oracle,
-	transitionState *types.TransitionState,
+	transitionStateInput *types.TransitionState,
 	superRoot *eth.SuperV1,
 	tasks taskExecutor,
 ) (eth.Bytes32, error) {
+	// We will be mutating the transition state as blocks are replaced, so we make a copy
+	transitionState := types.TransitionState{
+		PendingProgress: make([]types.OptimisticBlock, len(transitionStateInput.PendingProgress)),
+		SuperRoot:       transitionStateInput.SuperRoot,
+		Step:            transitionStateInput.Step,
+	}
+	copy(transitionState.PendingProgress, transitionStateInput.PendingProgress)
+
+	// Keep consolidating until there are no more invalid blocks to replace
+loop:
+	for {
+		err := singleRoundConsolidation(logger, bootInfo, l1PreimageOracle, l2PreimageOracle, &transitionState, superRoot, tasks)
+		switch {
+		case err == nil:
+			break loop
+		case errors.Is(err, ErrInvalidBlockReplacement):
+			continue
+		default:
+			return eth.Bytes32{}, err
+		}
+	}
+
+	var consolidatedChains []eth.ChainIDAndOutput
+	for i, chain := range superRoot.Chains {
+		consolidatedChains = append(consolidatedChains, eth.ChainIDAndOutput{
+			ChainID: chain.ChainID,
+			Output:  transitionState.PendingProgress[i].OutputRoot,
+		})
+	}
+	consolidatedSuper := &eth.SuperV1{
+		Timestamp: superRoot.Timestamp + 1,
+		Chains:    consolidatedChains,
+	}
+	return eth.SuperRoot(consolidatedSuper), nil
+}
+
+func singleRoundConsolidation(
+	logger log.Logger,
+	bootInfo *boot.BootInfoInterop,
+	l1PreimageOracle l1.Oracle,
+	l2PreimageOracle l2.Oracle,
+	transitionState *types.TransitionState,
+	superRoot *eth.SuperV1,
+	tasks taskExecutor,
+) error {
 	// The depset is the same for all chains. So it suffices to use any chain ID
 	depset, err := bootInfo.Configs.DependencySet(superRoot.Chains[0].ChainID)
 	if err != nil {
-		return eth.Bytes32{}, fmt.Errorf("failed to get dependency set: %w", err)
+		return fmt.Errorf("failed to get dependency set: %w", err)
 	}
 	deps, err := newConsolidateCheckDeps(depset, bootInfo, transitionState, superRoot.Chains, l2PreimageOracle)
 	if err != nil {
-		return eth.Bytes32{}, fmt.Errorf("failed to create consolidate check deps: %w", err)
+		return fmt.Errorf("failed to create consolidate check deps: %w", err)
 	}
 	agreedBlockHashes, err := fetchAgreedBlockHashes(l2PreimageOracle, superRoot)
 	if err != nil {
-		return eth.Bytes32{}, err
+		return err
 	}
-	// TODO(#14306): Handle cascading reorgs
-	// invalidChains tracks blocks that need to be replaced with a deposits-only block.
-	// The replacement is done after a first pass on all chains to avoid "contaminating" the caonical block
-	// oracle in a way that alters the result of hazard checks after a reorg.
 	invalidChains := make(map[eth.ChainID]*ethtypes.Block)
 
 	for i, chain := range superRoot.Chains {
@@ -94,7 +137,7 @@ func RunConsolidation(
 			invalidChains[chain.ChainID] = optimisticBlock
 			continue
 		case err != nil:
-			return eth.Bytes32{}, err
+			return err
 		}
 
 		candidate := supervisortypes.BlockSeal{
@@ -104,21 +147,24 @@ func RunConsolidation(
 		}
 		rollupCfg, err := bootInfo.Configs.RollupConfig(chain.ChainID)
 		if err != nil {
-			return eth.Bytes32{}, fmt.Errorf("no rollup config available for chain ID %v: %w", chain.ChainID, err)
+			return fmt.Errorf("no rollup config available for chain ID %v: %w", chain.ChainID, err)
 		}
 		if err := checkHazards(rollupCfg, deps, candidate, chain.ChainID, execMsgs); err != nil {
 			if !isInvalidMessageError(err) {
-				return eth.Bytes32{}, err
+				return err
 			}
 			invalidChains[chain.ChainID] = optimisticBlock
 		}
 	}
 
-	var consolidatedChains []eth.ChainIDAndOutput
+	if len(invalidChains) == 0 {
+		return nil
+	}
+
 	for i, chain := range superRoot.Chains {
 		if optimisticBlock, ok := invalidChains[chain.ChainID]; ok {
 			chainAgreedPrestate := superRoot.Chains[i]
-			_, outputRoot, err := buildDepositOnlyBlock(
+			replacementBlockHash, outputRoot, err := buildDepositOnlyBlock(
 				logger,
 				bootInfo,
 				l1PreimageOracle,
@@ -128,24 +174,21 @@ func RunConsolidation(
 				optimisticBlock,
 			)
 			if err != nil {
-				return eth.Bytes32{}, err
+				return err
 			}
-			consolidatedChains = append(consolidatedChains, eth.ChainIDAndOutput{
-				ChainID: chain.ChainID,
-				Output:  outputRoot,
-			})
-		} else {
-			consolidatedChains = append(consolidatedChains, eth.ChainIDAndOutput{
-				ChainID: chain.ChainID,
-				Output:  transitionState.PendingProgress[i].OutputRoot,
-			})
+			logger.Info(
+				"Replaced block",
+				"chain", chain.ChainID,
+				"block", optimisticBlock.NumberU64(),
+				"outputRoot", outputRoot,
+				"replacedOutputRoot", superRoot.Chains[i].Output,
+			)
+			superRoot.Chains[i].Output = outputRoot
+			transitionState.PendingProgress[i].OutputRoot = outputRoot
+			transitionState.PendingProgress[i].BlockHash = replacementBlockHash
 		}
 	}
-	consolidatedSuper := &eth.SuperV1{
-		Timestamp: superRoot.Timestamp + 1,
-		Chains:    consolidatedChains,
-	}
-	return eth.SuperRoot(consolidatedSuper), nil
+	return ErrInvalidBlockReplacement
 }
 
 func isInvalidMessageError(err error) bool {
