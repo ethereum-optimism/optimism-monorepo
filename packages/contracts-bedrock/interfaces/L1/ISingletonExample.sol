@@ -19,5 +19,5 @@ interface ISingletonExample {
     function store(string memory _key, string memory _value) external;
     function read(string memory _key) external view returns (string memory value_);
 
-    function __constructor__() external;
+    function __constructor__(address guardian_) external;
 }
