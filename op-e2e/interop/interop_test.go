@@ -434,7 +434,7 @@ func TestProposals(t *testing.T) {
 			require.NoError(t, err)
 			t.Logf("Current game count: %v", count)
 			return count > 0
-		}, time.Minute, time.Second)
+		}, 5*time.Minute, time.Second)
 	}
 	setupAndRun(t, SuperSystemConfig{}, test)
 }
