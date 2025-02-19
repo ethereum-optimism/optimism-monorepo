@@ -28,3 +28,17 @@ func TestGetCustomChainConfig(t *testing.T) {
 	_, err = chainConfigByChainID(eth.ChainIDFromUInt64(900), test.TestCustomChainConfigFS)
 	require.Error(t, err)
 }
+
+func TestGetCustomDependencySetConfig(t *testing.T) {
+	depSet, err := dependencySetByChainID(eth.ChainIDFromUInt64(901), test.TestCustomChainConfigFS)
+	require.NoError(t, err)
+	require.True(t, depSet.HasChain(eth.ChainIDFromUInt64(901)))
+	require.True(t, depSet.HasChain(eth.ChainIDFromUInt64(902))) // Also contained in the test depset
+
+	_, err = dependencySetByChainID(eth.ChainIDFromUInt64(900), test.TestCustomChainConfigFS)
+	require.Error(t, err)
+	// We load based on the specific chain ID in the filename so won't find this by chain ID even though it is in the
+	// depset.
+	_, err = dependencySetByChainID(eth.ChainIDFromUInt64(902), test.TestCustomChainConfigFS)
+	require.Error(t, err)
+}
