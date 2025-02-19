@@ -323,7 +323,7 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
 
         VmSafe.Gas memory gas = vm.lastCallGas();
 
-        assertLt(gas.gasTotalUsed, 15_000_000, "Upgrade exceeds gas target of 15M");
+        assertLt(gas.gasTotalUsed, 0.9 * 15_000_000, "Upgrade exceeds gas target of 15M");
 
         vm.etch(_delegateCaller, delegateCallerCode);
 
