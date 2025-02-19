@@ -6,6 +6,10 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/stretchr/testify/require"
+
 	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/trace/super"
 	challengerTypes "github.com/ethereum-optimism/optimism/op-challenger/game/fault/types"
 	"github.com/ethereum-optimism/optimism/op-e2e/actions/helpers"
@@ -18,9 +22,6 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
 	supervisortypes "github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/stretchr/testify/require"
 )
 
 func TestInteropFaultProofs_TraceExtensionActivation(gt *testing.T) {
@@ -364,7 +365,6 @@ func TestInteropFaultProofs(gt *testing.T) {
 func TestInteropFaultProofs_CascadeInvalidBlock(gt *testing.T) {
 	t := helpers.NewDefaultTesting(gt)
 	// TODO(#14307): Support cascading invalidation in op-supervisor
-	t.Skip("Cascading invalidation not yet working")
 
 	system := dsl.NewInteropDSL(t)
 
@@ -409,47 +409,12 @@ func TestInteropFaultProofs_CascadeInvalidBlock(gt *testing.T) {
 		opts.SkipCrossSafeUpdate = true
 	})
 
-	endTimestamp := actors.ChainB.Sequencer.L2Unsafe().Time
-	startTimestamp := endTimestamp - 1
-	optimisticEnd := system.Outputs.SuperRoot(endTimestamp)
-
-	preConsolidation := system.Outputs.TransitionState(startTimestamp, 1023,
-		system.Outputs.OptimisticBlockAtTimestamp(actors.ChainA, endTimestamp),
-		system.Outputs.OptimisticBlockAtTimestamp(actors.ChainB, endTimestamp),
-	).Marshal()
-
 	// Induce block replacement
 	system.ProcessCrossSafe()
 	// assert that the invalid message txs were reorged out
 	chainBExecTx.CheckNotIncluded()
 	chainBInitTx.CheckNotIncluded() // Should have been reorged out with chainBExecTx
 	chainAExecTx.CheckNotIncluded() // Reorged out because chainBInitTx was reorged out
-
-	crossSafeEnd := system.Outputs.SuperRoot(endTimestamp)
-
-	tests := []*transitionTest{
-		{
-			name:               "Consolidate-ExpectInvalidPendingBlock",
-			agreedClaim:        preConsolidation,
-			disputedClaim:      optimisticEnd.Marshal(),
-			disputedTraceIndex: 1023,
-			expectValid:        false,
-			// TODO(#14306): Support cascading re-orgs in op-program
-			skipProgram:    true,
-			skipChallenger: true,
-		},
-		{
-			name:               "Consolidate-ReplaceInvalidBlocks",
-			agreedClaim:        preConsolidation,
-			disputedClaim:      crossSafeEnd.Marshal(),
-			disputedTraceIndex: 1023,
-			expectValid:        true,
-			// TODO(#14306): Support cascading re-orgs in op-program
-			skipProgram:    true,
-			skipChallenger: true,
-		},
-	}
-	runFppAndChallengerTests(gt, system, tests)
 }
 
 func TestInteropFaultProofs_MessageExpiry(gt *testing.T) {
