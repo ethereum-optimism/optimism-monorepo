@@ -19,7 +19,7 @@ library RLPReader_Harness {
         return RLPReader.readList(_in);
     }
 
-    function readRawBytes(RLPReader.RLPItem memory _in) public pure returns (bytes memory out_) {
+    function readRawBytes(RLPReader.RLPItem memory _in) public pure returns (bytes memory) {
         return RLPReader.readRawBytes(_in);
     }
 }
