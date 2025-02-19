@@ -52,10 +52,20 @@ func (m *GeneratedTransaction) CheckIncluded() {
 	rcpt, err := m.chain.SequencerEngine.EthClient().TransactionReceipt(m.t.Ctx(), m.tx.Hash())
 	require.NoError(m.t, err)
 	require.NotNil(m.t, rcpt)
+	// failing txs can be included but not emit the expected logs!
+	require.Equal(m.t, types.ReceiptStatusSuccessful, rcpt.Status)
 }
 
 func (m *GeneratedTransaction) CheckNotIncluded() {
-	rcpt, err := m.chain.SequencerEngine.EthClient().TransactionReceipt(m.t.Ctx(), m.tx.Hash())
+	cl := m.chain.SequencerEngine.EthClient()
+	rcpt, err := cl.TransactionReceipt(m.t.Ctx(), m.tx.Hash())
+	if err == nil {
+		// if no lookup error, then try check if it's still canonical
+		require.NotNil(m.t, rcpt)
+		bl, err := cl.BlockByNumber(m.t.Ctx(), rcpt.BlockNumber)
+		require.NoError(m.t, err)
+		require.NotEqual(m.t, rcpt.BlockHash, bl.Hash(), "if tx was included, but reorged out, then the receipt hash should have changed. Receipt blockhash: %s, regular block hash: %s", rcpt.BlockHash, bl.Hash())
+	}
 	require.ErrorIs(m.t, err, ethereum.NotFound)
 	require.Nil(m.t, rcpt)
 }

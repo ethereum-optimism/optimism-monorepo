@@ -102,6 +102,7 @@ func CrossUnsafeHazards(d UnsafeStartDeps, chainID eth.ChainID,
 			} else {
 				// Mark it as hazard block
 				hazards[msg.Chain] = includedIn
+				// TODO: add hazards, and executing messages, recursively
 			}
 		} else {
 			// Timestamp invariant is broken: executing message tries to execute future block.
