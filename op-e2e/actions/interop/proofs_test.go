@@ -11,6 +11,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-e2e/actions/helpers"
 	"github.com/ethereum-optimism/optimism/op-e2e/actions/interop/dsl"
 	fpHelpers "github.com/ethereum-optimism/optimism/op-e2e/actions/proofs/helpers"
+	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/interop/contracts/bindings/inbox"
 	"github.com/ethereum-optimism/optimism/op-program/client/claim"
 	"github.com/ethereum-optimism/optimism/op-program/client/interop"
 	"github.com/ethereum-optimism/optimism/op-program/client/interop/types"
@@ -19,6 +20,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
 	supervisortypes "github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 	"github.com/ethereum/go-ethereum/common"
+	gethTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/require"
 )
@@ -358,6 +360,107 @@ func TestInteropFaultProofs(gt *testing.T) {
 		},
 	}
 
+	runFppAndChallengerTests(gt, system, tests)
+}
+
+func TestInteropFaultProofs_Cycle(gt *testing.T) {
+	t := helpers.NewDefaultTesting(gt)
+	// TODO(#14425): Handle cyclic valid messages
+	t.Skip("Cyclic valid messages does not work")
+
+	system := dsl.NewInteropDSL(t)
+	actors := system.Actors
+
+	alice := system.CreateUser()
+	emitter := dsl.NewEmitterContract(t)
+	system.AddL2Block(actors.ChainA, dsl.WithL2BlockTransactions(emitter.Deploy(alice)))
+	system.AddL2Block(actors.ChainB, dsl.WithL2BlockTransactions(emitter.Deploy(alice)))
+
+	assertHeads(t, actors.ChainA, 1, 0, 1, 0)
+	assertHeads(t, actors.ChainB, 1, 0, 1, 0)
+
+	actEmitA := emitter.EmitMessage(alice, "hello")
+	actEmitB := emitter.EmitMessage(alice, "world")
+
+	// txToID creates the would-be message identifier of the next block
+	txToID := func(chain *dsl.Chain, tx *gethTypes.Transaction) inbox.Identifier {
+		status := chain.Sequencer.SyncStatus()
+		return inbox.Identifier{
+			Origin:      *tx.To(),
+			BlockNumber: big.NewInt(int64(status.UnsafeL2.Number + 1)),
+			LogIndex:    big.NewInt(0),
+			Timestamp:   big.NewInt(int64(status.UnsafeL2.Time + 2)),
+			ChainId:     chain.ChainID.ToBig(),
+		}
+	}
+	txToPayload := func(data []byte) []byte {
+		topic := crypto.Keccak256Hash([]byte("DataEmitted(bytes)"))
+		var msg []byte
+		msg = append(msg, topic.Bytes()...)
+		dataHash := crypto.Keccak256Hash(data)
+		msg = append(msg, dataHash.Bytes()...)
+		return msg
+	}
+
+	actors.ChainA.Sequencer.ActL2StartBlock(t)
+	actors.ChainB.Sequencer.ActL2StartBlock(t)
+
+	// create init messages
+	emitTxA, from := actEmitA(actors.ChainA)
+	require.NoError(t, actors.ChainA.SequencerEngine.EngineApi.IncludeTx(emitTxA, from))
+	emitTxB, from := actEmitB(actors.ChainB)
+	require.NoError(t, actors.ChainB.SequencerEngine.EngineApi.IncludeTx(emitTxB, from))
+
+	// execute them within the same block
+	actExecA := system.InboxContract.Execute(alice, txToID(actors.ChainB, emitTxB), txToPayload([]byte("world")))
+	actExecB := system.InboxContract.Execute(alice, txToID(actors.ChainA, emitTxA), txToPayload([]byte("hello")))
+	tx, from := actExecA(actors.ChainA)
+	require.NoError(t, actors.ChainA.SequencerEngine.EngineApi.IncludeTx(tx, from))
+	tx, from = actExecB(actors.ChainB)
+	require.NoError(t, actors.ChainB.SequencerEngine.EngineApi.IncludeTx(tx, from))
+
+	actors.ChainA.Sequencer.ActL2EndBlock(t)
+	actors.ChainB.Sequencer.ActL2EndBlock(t)
+	actors.ChainA.Sequencer.SyncSupervisor(t)
+	actors.ChainB.Sequencer.SyncSupervisor(t)
+	actors.Supervisor.ProcessFull(t)
+	actors.ChainA.Sequencer.ActL2PipelineFull(t)
+	actors.ChainB.Sequencer.ActL2PipelineFull(t)
+
+	assertHeads(t, actors.ChainA, 2, 0, 2, 0)
+	assertHeads(t, actors.ChainB, 2, 0, 2, 0)
+
+	system.SubmitBatchData()
+	assertHeads(t, actors.ChainA, 2, 2, 2, 2)
+	assertHeads(t, actors.ChainB, 2, 2, 2, 2)
+
+	endTimestamp := system.Actors.ChainA.Sequencer.L2Safe().Time
+	startTimestamp := endTimestamp - 1
+	end := system.Outputs.SuperRoot(endTimestamp)
+
+	paddingStep := func(step uint64) []byte {
+		return system.Outputs.TransitionState(startTimestamp, step,
+			system.Outputs.OptimisticBlockAtTimestamp(actors.ChainA, endTimestamp),
+			system.Outputs.OptimisticBlockAtTimestamp(actors.ChainB, endTimestamp),
+		).Marshal()
+	}
+
+	tests := []*transitionTest{
+		{
+			name:               "Consolidate-AllValid",
+			agreedClaim:        paddingStep(1023),
+			disputedClaim:      end.Marshal(),
+			disputedTraceIndex: 1023,
+			expectValid:        true,
+		},
+		{
+			name:               "Consolidate-AllValid-InvalidNoChange",
+			agreedClaim:        paddingStep(1023),
+			disputedClaim:      paddingStep(1023),
+			disputedTraceIndex: 1023,
+			expectValid:        false,
+		},
+	}
 	runFppAndChallengerTests(gt, system, tests)
 }
 
