@@ -567,6 +567,7 @@ func (h *Host) unwindCallstack(depth int) {
 							"from", bcast.From,
 							"to", bcast.To,
 							"input", bcast.Input,
+							"input_len", len(bcast.Input),
 							"value", bcast.Value,
 							"type", bcast.Type,
 						)

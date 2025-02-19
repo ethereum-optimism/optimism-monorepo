@@ -143,7 +143,7 @@ func NewSupervisorBackend(ctx context.Context, logger log.Logger,
 	eventSys.Register("sync-controller", super.syncNodesController, event.DefaultRegisterOpts())
 
 	// create status tracker
-	super.statusTracker = status.NewStatusTracker()
+	super.statusTracker = status.NewStatusTracker(depSet.Chains())
 	eventSys.Register("status", super.statusTracker, event.DefaultRegisterOpts())
 
 	// Initialize the resources of the supervisor backend.
@@ -167,7 +167,15 @@ func (su *SupervisorBackend) OnEvent(ev event.Event) bool {
 		su.emitter.Emit(superevents.UpdateCrossUnsafeRequestEvent{
 			ChainID: x.ChainID,
 		})
+	case superevents.CrossUnsafeUpdateEvent:
+		su.emitter.Emit(superevents.UpdateCrossUnsafeRequestEvent{
+			ChainID: x.ChainID,
+		})
 	case superevents.LocalSafeUpdateEvent:
+		su.emitter.Emit(superevents.UpdateCrossSafeRequestEvent{
+			ChainID: x.ChainID,
+		})
+	case superevents.CrossSafeUpdateEvent:
 		su.emitter.Emit(superevents.UpdateCrossSafeRequestEvent{
 			ChainID: x.ChainID,
 		})
@@ -285,6 +293,11 @@ func (su *SupervisorBackend) AttachSyncNode(ctx context.Context, src syncnode.Sy
 	if !su.depSet.HasChain(chainID) {
 		return nil, fmt.Errorf("chain %s is not part of the interop dependency set: %w", chainID, types.ErrUnknownChain)
 	}
+	// before attaching the sync source to the backend at all,
+	// query the anchor point to initialize the database
+	if err := su.QueryAnchorpoint(chainID, src); err != nil {
+		return nil, fmt.Errorf("failed to query anchor point: %w", err)
+	}
 	err = su.AttachProcessorSource(chainID, src)
 	if err != nil {
 		return nil, fmt.Errorf("failed to attach sync source to processor: %w", err)
@@ -296,12 +309,24 @@ func (su *SupervisorBackend) AttachSyncNode(ctx context.Context, src syncnode.Sy
 	return su.syncNodesController.AttachNodeController(chainID, src, noSubscribe)
 }
 
+func (su *SupervisorBackend) QueryAnchorpoint(chainID eth.ChainID, src syncnode.SyncNode) error {
+	anchor, err := src.AnchorPoint(context.Background())
+	if err != nil {
+		return fmt.Errorf("failed to get anchor point: %w", err)
+	}
+	su.emitter.Emit(superevents.AnchorEvent{
+		ChainID: chainID,
+		Anchor:  anchor,
+	})
+	return nil
+}
+
 func (su *SupervisorBackend) AttachProcessorSource(chainID eth.ChainID, src processors.Source) error {
 	proc, ok := su.chainProcessors.Get(chainID)
 	if !ok {
 		return fmt.Errorf("unknown chain %s, cannot attach RPC to processor", chainID)
 	}
-	proc.SetSource(src)
+	proc.AddSource(src)
 	return nil
 }
 
@@ -489,8 +514,8 @@ func (su *SupervisorBackend) CrossUnsafe(ctx context.Context, chainID eth.ChainI
 	return v.ID(), nil
 }
 
-func (su *SupervisorBackend) SafeDerivedAt(ctx context.Context, chainID eth.ChainID, derivedFrom eth.BlockID) (eth.BlockID, error) {
-	v, err := su.chainDBs.SafeDerivedAt(chainID, derivedFrom)
+func (su *SupervisorBackend) SafeDerivedAt(ctx context.Context, chainID eth.ChainID, source eth.BlockID) (eth.BlockID, error) {
+	v, err := su.chainDBs.SafeDerivedAt(chainID, source)
 	if err != nil {
 		return eth.BlockID{}, err
 	}
@@ -498,11 +523,11 @@ func (su *SupervisorBackend) SafeDerivedAt(ctx context.Context, chainID eth.Chai
 }
 
 // AllSafeDerivedAt returns the last derived block for each chain, from the given L1 block
-func (su *SupervisorBackend) AllSafeDerivedAt(ctx context.Context, derivedFrom eth.BlockID) (map[eth.ChainID]eth.BlockID, error) {
+func (su *SupervisorBackend) AllSafeDerivedAt(ctx context.Context, source eth.BlockID) (map[eth.ChainID]eth.BlockID, error) {
 	chains := su.depSet.Chains()
 	ret := map[eth.ChainID]eth.BlockID{}
 	for _, chainID := range chains {
-		derived, err := su.SafeDerivedAt(ctx, chainID, derivedFrom)
+		derived, err := su.SafeDerivedAt(ctx, chainID, source)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get last derived block for chain %v: %w", chainID, err)
 		}
@@ -571,12 +596,12 @@ func (su *SupervisorBackend) SuperRootAtTimestamp(ctx context.Context, timestamp
 		if err != nil {
 			return eth.SuperRootResponse{}, err
 		}
-		derivedFrom, err := su.chainDBs.CrossDerivedToSource(chainID, ref.ID())
+		source, err := su.chainDBs.CrossDerivedToSource(chainID, ref.ID())
 		if err != nil {
 			return eth.SuperRootResponse{}, err
 		}
-		if crossSafeSource.Number == 0 || crossSafeSource.Number < derivedFrom.Number {
-			crossSafeSource = derivedFrom.ID()
+		if crossSafeSource.Number == 0 || crossSafeSource.Number < source.Number {
+			crossSafeSource = source.ID()
 		}
 	}
 	superRoot := eth.SuperRoot(&eth.SuperV1{
@@ -592,7 +617,7 @@ func (su *SupervisorBackend) SuperRootAtTimestamp(ctx context.Context, timestamp
 }
 
 func (su *SupervisorBackend) SyncStatus() (eth.SupervisorSyncStatus, error) {
-	return su.statusTracker.SyncStatus(), nil
+	return su.statusTracker.SyncStatus()
 }
 
 // PullLatestL1 makes the supervisor aware of the latest L1 block. Exposed for testing purposes.

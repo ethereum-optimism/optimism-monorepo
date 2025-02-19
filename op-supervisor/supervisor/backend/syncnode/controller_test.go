@@ -12,7 +12,6 @@ import (
 
 	"github.com/ethereum-optimism/optimism/op-node/rollup/event"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
-	"github.com/ethereum-optimism/optimism/op-service/testlog"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/superevents"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
@@ -22,7 +21,7 @@ type mockSyncControl struct {
 	anchorPointFn       func(ctx context.Context) (types.DerivedBlockRefPair, error)
 	provideL1Fn         func(ctx context.Context, ref eth.BlockRef) error
 	resetFn             func(ctx context.Context, unsafe, safe, finalized eth.BlockID) error
-	updateCrossSafeFn   func(ctx context.Context, derived, derivedFrom eth.BlockID) error
+	updateCrossSafeFn   func(ctx context.Context, derived, source eth.BlockID) error
 	updateCrossUnsafeFn func(ctx context.Context, derived eth.BlockID) error
 	updateFinalizedFn   func(ctx context.Context, id eth.BlockID) error
 	pullEventFn         func(ctx context.Context) (*types.ManagedEvent, error)
@@ -66,9 +65,9 @@ func (m *mockSyncControl) SubscribeEvents(ctx context.Context, ch chan *types.Ma
 	return m.subscribeEvents.Subscribe(ch), nil
 }
 
-func (m *mockSyncControl) UpdateCrossSafe(ctx context.Context, derived eth.BlockID, derivedFrom eth.BlockID) error {
+func (m *mockSyncControl) UpdateCrossSafe(ctx context.Context, derived eth.BlockID, source eth.BlockID) error {
 	if m.updateCrossSafeFn != nil {
-		return m.updateCrossSafeFn(ctx, derived, derivedFrom)
+		return m.updateCrossSafeFn(ctx, derived, source)
 	}
 	return nil
 }
@@ -94,7 +93,7 @@ func (m *mockSyncControl) String() string {
 var _ SyncControl = (*mockSyncControl)(nil)
 
 type mockBackend struct {
-	safeDerivedAtFn func(ctx context.Context, chainID eth.ChainID, derivedFrom eth.BlockID) (eth.BlockID, error)
+	safeDerivedAtFn func(ctx context.Context, chainID eth.ChainID, source eth.BlockID) (eth.BlockID, error)
 }
 
 func (m *mockBackend) LocalSafe(ctx context.Context, chainID eth.ChainID) (pair types.DerivedIDPair, err error) {
@@ -109,9 +108,9 @@ func (m *mockBackend) LocalUnsafe(ctx context.Context, chainID eth.ChainID) (eth
 	return eth.BlockID{}, nil
 }
 
-func (m *mockBackend) SafeDerivedAt(ctx context.Context, chainID eth.ChainID, derivedFrom eth.BlockID) (derived eth.BlockID, err error) {
+func (m *mockBackend) SafeDerivedAt(ctx context.Context, chainID eth.ChainID, source eth.BlockID) (derived eth.BlockID, err error) {
 	if m.safeDerivedAtFn != nil {
-		return m.safeDerivedAtFn(ctx, chainID, derivedFrom)
+		return m.safeDerivedAtFn(ctx, chainID, source)
 	}
 	return eth.BlockID{}, nil
 }
@@ -165,45 +164,6 @@ func (m *eventMonitor) OnEvent(ev event.Event) bool {
 		return false
 	}
 	return true
-}
-
-// TestInitFromAnchorPoint tests that the SyncNodesController uses the Anchor Point to initialize databases
-func TestInitFromAnchorPoint(t *testing.T) {
-	logger := testlog.Logger(t, log.LvlInfo)
-	depSet := sampleDepSet(t)
-	ex := event.NewGlobalSynchronous(context.Background())
-	eventSys := event.NewSystem(logger, ex)
-
-	mon := &eventMonitor{}
-	eventSys.Register("monitor", mon, event.DefaultRegisterOpts())
-
-	controller := NewSyncNodesController(logger, depSet, eventSys, &mockBackend{})
-	eventSys.Register("controller", controller, event.DefaultRegisterOpts())
-
-	require.Zero(t, controller.controllers.Len(), "controllers should be empty to start")
-
-	// Attach a controller for chain 900
-	// make the controller return an anchor point
-	ctrl := mockSyncControl{}
-	ctrl.anchorPointFn = func(ctx context.Context) (types.DerivedBlockRefPair, error) {
-		return types.DerivedBlockRefPair{
-			Derived: eth.BlockRef{Number: 1},
-			Source:  eth.BlockRef{Number: 0},
-		}, nil
-	}
-
-	// after the first attach, both databases are called for update
-	_, err := controller.AttachNodeController(eth.ChainIDFromUInt64(900), &ctrl, false)
-	require.NoError(t, err)
-	require.NoError(t, ex.Drain())
-	require.Equal(t, 1, mon.anchorCalled, "an anchor point should be received")
-
-	// on second attach we send the anchor again; it's up to the DB to use it or not.
-	ctrl2 := mockSyncControl{}
-	_, err = controller.AttachNodeController(eth.ChainIDFromUInt64(901), &ctrl2, false)
-	require.NoError(t, err)
-	require.NoError(t, ex.Drain())
-	require.Equal(t, 2, mon.anchorCalled, "anchor point again")
 }
 
 // TestAttachNodeController tests the AttachNodeController function of the SyncNodesController.

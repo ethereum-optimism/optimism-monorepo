@@ -1,6 +1,6 @@
 # The Init Command
 
-The `init` command is used to create a new intent and state file in the specified directory. This command is the 
+The `init` command is used to create a new intent and state file in the specified directory. This command is the
 starting point of each new deployment.
 
 The `init` command is used like this:
@@ -9,8 +9,8 @@ The `init` command is used like this:
 op-deployer init \
   --l1-chain-id <chain ID of your L1> \
   --l2-chain-ids <comman separated list of chain IDs for your L2s> \
-  --output-dir <directory to write the intent and state files> \
-  --intent-config-type <standard/custom/strict/standard-overrides/strict-overrides>
+  --outdir <directory to write the intent and state files> \
+  --intent-type <standard/custom/standard-overrides>
 ```
 
 You should then see the following files appear in your output directory:
@@ -21,7 +21,7 @@ outdir
 └── state.json
 ```
 
-The `intent.toml` file is where you specify the configuration for your deployment. The `state.json` file is where OP 
+The `intent.toml` file is where you specify the configuration for your deployment. The `state.json` file is where OP
 Deployer will output the current state of the deployment after each [stage][stages] of the deployment.
 
 Your intent should look something like this:
@@ -57,7 +57,7 @@ l2ContractsLocator = "op-contracts/v1.7.0-beta.1+l2-contracts"
     challenger = "0x0000000000000000000000000000000000000000"
 ```
 
-Before you can use your intent file for a deployment, you will need to update all zero values to whatever is 
+Before you can use your intent file for a deployment, you will need to update all zero values to whatever is
 appropriate for your chain.
 
 [stages]: ../architecture/pipeline.md

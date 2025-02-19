@@ -25,6 +25,8 @@ func (*noopMetrics) RecordUp()                 {}
 
 func (*noopMetrics) RecordL2BlocksProposed(l2ref eth.L2BlockRef) {}
 
+func (m *noopMetrics) RecordL2Proposal(_ uint64) {}
+
 func (*noopMetrics) StartBalanceMetrics(log.Logger, *ethclient.Client, common.Address) io.Closer {
 	return nil
 }

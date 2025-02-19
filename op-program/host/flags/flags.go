@@ -121,6 +121,12 @@ var (
 			return &out
 		}(),
 	}
+	DepsetConfig = &cli.PathFlag{
+		Name:      "depset.config",
+		Usage:     "Path to the static config dependency set JSON file. Used for interop-enabled games.",
+		EnvVars:   prefixEnvVars("DEPSET_CONFIG"),
+		TakesFile: true,
+	}
 	Exec = &cli.StringFlag{
 		Name:    "exec",
 		Usage:   "Run the specified client program as a separate process detached from the host. Default is to run the client program in the host process.",
@@ -158,6 +164,7 @@ var programFlags = []cli.Flag{
 	L1BeaconAddr,
 	L1TrustRPC,
 	L1RPCProviderKind,
+	DepsetConfig,
 	Exec,
 	Server,
 }

@@ -1,15 +1,16 @@
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+**Table of Contents**
+
+<!--TOC-->
 
 - [Policy](#policy)
   - [Contributing](#contributing)
   - [Versioning Policy](#versioning-policy)
+  - [Code Freeze Policy](#code-freeze-policy)
   - [Upgrade Policy](#upgrade-policy)
   - [Style Guide](#style-guide)
   - [Revert Data](#revert-data)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+<!--TOC-->
 
 # Policy
 
@@ -22,6 +23,10 @@ For any policies on contributing, please see [CONTRIBUTING](./CONTRIBUTING.md)
 ## Versioning Policy
 
 For our versioning policy, please see our policy on [VERSIONING](./VERSIONING.md)
+
+## Code Freeze Policy
+
+For our code freeze policy, please see our doc on [CODE FREEZES](./CODE_FREEZES.md)
 
 ## Upgrade Policy
 

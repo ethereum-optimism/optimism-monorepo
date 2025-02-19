@@ -345,10 +345,23 @@ func (m *ManagedMode) PendingOutputV0AtTimestamp(ctx context.Context, timestamp 
 	if err != nil {
 		return nil, err
 	}
-	// TODO: Once interop reorgs are supported (see #13645), replace with the output root preimage of an actual pending
-	// block contained in the optimistic block deposited transaction - https://github.com/ethereum-optimism/specs/pull/489
-	// For now, we use the output at timestamp as-if it didn't contain invalid messages for happy path testing.
-	return m.l2.OutputV0AtBlock(ctx, ref.Hash)
+	if ref.Number == 0 {
+		// The genesis block cannot have been invalid
+		return m.l2.OutputV0AtBlock(ctx, ref.Hash)
+	}
+
+	payload, err := m.l2.PayloadByHash(ctx, ref.Hash)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch block (%v): %w", ref, err)
+	}
+	optimisticOutput, err := DecodeInvalidatedBlockTxFromReplacement(payload.ExecutionPayload.Transactions)
+	if errors.Is(err, ErrNotReplacementBlock) {
+		// This block was not replaced so use the canonical output root as pending
+		return m.l2.OutputV0AtBlock(ctx, ref.Hash)
+	} else if err != nil {
+		return nil, fmt.Errorf("failed parse replacement block (%v): %w", ref, err)
+	}
+	return optimisticOutput, nil
 }
 
 func (m *ManagedMode) L2BlockRefByTimestamp(ctx context.Context, timestamp uint64) (eth.L2BlockRef, error) {

@@ -18,6 +18,7 @@ High-level information about these contracts can be found within this README and
   - [Style Guide](#style-guide)
   - [Contract Interfaces](#contract-interfaces)
   - [Solidity Versioning](#solidity-versioning)
+  - [Frozen Code](#frozen-code)
 - [Deployment](#deployment)
   - [Deploying Production Networks](#deploying-production-networks)
 - [Generating L2 Genesis Allocs](#generating-l2-genesis-allocs)
@@ -66,7 +67,13 @@ See the [Optimism Developer Docs](https://docs.optimism.io/chain/addresses) for 
 ### Contributing Guide
 
 Contributions to the OP Stack are always welcome.
-Please refer to the [CONTRIBUTING.md](../../CONTRIBUTING.md) for more information about how to contribute to the OP Stack smart contracts.
+Please refer to the [CONTRIBUTING.md](../../CONTRIBUTING.md) for general information about how to contribute to the OP Stack monorepo.
+
+When contributing to the `contracts-bedrock` package there are some additional steps you should follow. These have been conveniently packaged into a just command which you should run before pushing your changes.
+
+```bash
+just pre-pr
+```
 
 ### Style Guide
 

@@ -324,11 +324,11 @@ func (s *EthClient) FetchReceipts(ctx context.Context, blockHash common.Hash) (e
 	return info, receipts, nil
 }
 
-// ExecutionWitness fetches execution witness data for a block number.
-func (s *EthClient) ExecutionWitness(ctx context.Context, blockNum uint64) (*eth.ExecutionWitness, error) {
+// PayloadExecutionWitness generates a block from a payload and returns execution witness data.
+func (s *EthClient) PayloadExecutionWitness(ctx context.Context, parentHash common.Hash, payloadAttributes eth.PayloadAttributes) (*eth.ExecutionWitness, error) {
 	var witness *eth.ExecutionWitness
 
-	err := s.client.CallContext(ctx, &witness, "debug_executionWitness", hexutil.EncodeUint64(blockNum), true)
+	err := s.client.CallContext(ctx, &witness, "debug_executePayload", parentHash, payloadAttributes)
 	if err != nil {
 		return nil, err
 	}

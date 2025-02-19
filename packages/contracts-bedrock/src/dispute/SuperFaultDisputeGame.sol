@@ -95,7 +95,8 @@ contract SuperFaultDisputeGame is Clone, ISemver {
         address counteredBy;
     }
 
-    /// @notice Parameters for creating a new FaultDisputeGame. We place this into a struct to
+
+    /// @notice Parameters for creating a new SuperFaultDisputeGame. We place this into a struct to
     ///         avoid stack-too-deep errors when compiling without the optimizer enabled.
     struct GameConstructorParams {
         GameType gameType;
@@ -175,7 +176,7 @@ contract SuperFaultDisputeGame is Clone, ISemver {
     /// @notice Semantic version.
     /// @custom:semver 0.1.0-beta.0
     function version() public pure virtual returns (string memory) {
-        return "0.1.0";
+        return "0.1.0-beta.0";
     }
 
     /// @notice The starting timestamp of the game
@@ -223,7 +224,7 @@ contract SuperFaultDisputeGame is Clone, ISemver {
     /// @notice The bond distribution mode of the game.
     BondDistributionMode public bondDistributionMode;
 
-    /// @param _params Parameters for creating a new FaultDisputeGame.
+    /// @param _params Parameters for creating a new SuperFaultDisputeGame.
     constructor(GameConstructorParams memory _params) {
         // The max game depth may not be greater than `LibPosition.MAX_POSITION_BITLEN - 1`.
         if (_params.maxGameDepth > LibPosition.MAX_POSITION_BITLEN - 1) revert MaxDepthTooLarge();
@@ -481,6 +482,10 @@ contract SuperFaultDisputeGame is Clone, ISemver {
             revert CannotDefendRootClaim();
         }
 
+        // INVARIANT: No moves against the root claim can be made after it has been challenged with
+        //            `challengeRootL2Block`.`
+        if (l2BlockNumberChallenged && _challengeIndex == 0) revert L2BlockNumberChallenged();
+
         // INVARIANT: A move can never surpass the `MAX_GAME_DEPTH`. The only option to counter a
         //            claim at this depth is to perform a single instruction step on-chain via
         //            the `step` function to prove that the state transition produces an unexpected
@@ -641,7 +646,7 @@ contract SuperFaultDisputeGame is Clone, ISemver {
     function startingRootHash() external view returns (Hash startingRootHash_) {
         startingRootHash_ = startingOutputRoot.root;
     }
-
+    
     ////////////////////////////////////////////////////////////////
     //                    `IDisputeGame` impl                     //
     ////////////////////////////////////////////////////////////////
@@ -944,6 +949,7 @@ contract SuperFaultDisputeGame is Clone, ISemver {
 
         // Try to update the anchor game first. Won't always succeed because delays can lead
         // to situations in which this game might not be eligible to be a new anchor game.
+        // eip150-safe
         try ANCHOR_STATE_REGISTRY.setAnchorState(IDisputeGame(address(this))) { } catch { }
 
         // Check if the game is a proper game, which will determine the bond distribution mode.

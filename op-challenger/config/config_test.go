@@ -44,7 +44,7 @@ var (
 	validAsteriscKonaAbsolutePreStateBaseURL, _ = url.Parse("http://localhost/bar/")
 )
 
-var cannonTraceTypes = []types.TraceType{types.TraceTypeCannon, types.TraceTypePermissioned, types.TraceTypeSuperCannon}
+var cannonTraceTypes = []types.TraceType{types.TraceTypeCannon, types.TraceTypePermissioned, types.TraceTypeSuperCannon, types.TraceTypeSuperPermissioned}
 var asteriscTraceTypes = []types.TraceType{types.TraceTypeAsterisc}
 var asteriscKonaTraceTypes = []types.TraceType{types.TraceTypeAsteriscKona}
 
@@ -113,7 +113,7 @@ func applyValidConfigForAsteriscKona(t *testing.T, cfg *Config) {
 
 func validConfig(t *testing.T, traceType types.TraceType) Config {
 	cfg := NewConfig(validGameFactoryAddress, validL1EthRpc, validL1BeaconUrl, validRollupRpc, validL2Rpc, validDatadir, traceType)
-	if traceType == types.TraceTypeSuperCannon {
+	if traceType == types.TraceTypeSuperCannon || traceType == types.TraceTypeSuperPermissioned {
 		applyValidConfigForSuperCannon(t, &cfg)
 	}
 	if traceType == types.TraceTypeCannon || traceType == types.TraceTypePermissioned {
@@ -566,7 +566,7 @@ func TestHttpPollInterval(t *testing.T) {
 func TestRollupRpcRequired(t *testing.T) {
 	for _, traceType := range types.TraceTypes {
 		traceType := traceType
-		if traceType == types.TraceTypeSuperCannon {
+		if traceType == types.TraceTypeSuperCannon || traceType == types.TraceTypeSuperPermissioned {
 			continue
 		}
 		t.Run(traceType.String(), func(t *testing.T) {
@@ -578,15 +578,23 @@ func TestRollupRpcRequired(t *testing.T) {
 }
 
 func TestRollupRpcNotRequiredForInterop(t *testing.T) {
-	config := validConfig(t, types.TraceTypeSuperCannon)
-	config.RollupRpc = ""
-	require.NoError(t, config.Check())
+	t.Run("SuperCannon", func(t *testing.T) {
+		config := validConfig(t, types.TraceTypeSuperCannon)
+		config.RollupRpc = ""
+		require.NoError(t, config.Check())
+	})
+
+	t.Run("SuperPermissioned", func(t *testing.T) {
+		config := validConfig(t, types.TraceTypeSuperPermissioned)
+		config.RollupRpc = ""
+		require.NoError(t, config.Check())
+	})
 }
 
 func TestSupervisorRpc(t *testing.T) {
 	for _, traceType := range types.TraceTypes {
 		traceType := traceType
-		if traceType == types.TraceTypeSuperCannon {
+		if traceType == types.TraceTypeSuperCannon || traceType == types.TraceTypeSuperPermissioned {
 			t.Run("RequiredFor"+traceType.String(), func(t *testing.T) {
 				config := validConfig(t, traceType)
 				config.SupervisorRPC = ""

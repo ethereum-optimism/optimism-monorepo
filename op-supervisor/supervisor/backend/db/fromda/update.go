@@ -9,10 +9,10 @@ import (
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 )
 
-func (db *DB) AddDerived(derivedFrom eth.BlockRef, derived eth.BlockRef) error {
+func (db *DB) AddDerived(source eth.BlockRef, derived eth.BlockRef) error {
 	db.rwLock.Lock()
 	defer db.rwLock.Unlock()
-	return db.addLink(derivedFrom, derived, common.Hash{})
+	return db.addLink(source, derived, common.Hash{})
 }
 
 // ReplaceInvalidatedBlock replaces the current Invalidated block with the given replacement.
@@ -91,7 +91,7 @@ func (db *DB) Rewind(target types.DerivedBlockSealPair, including bool) error {
 }
 
 // RewindToScope rewinds the DB to the last entry with
-// a derivedFrom value matching the given scope (inclusive, scope is retained in DB).
+// a source value matching the given scope (inclusive, scope is retained in DB).
 // Note that this drop L1 blocks that resulted in a previously invalidated local-safe block.
 // This returns ErrFuture if the block is newer than the last known block.
 // This returns ErrConflict if a different block at the given height is known.
@@ -163,12 +163,12 @@ func (db *DB) rewindLocked(t types.DerivedBlockSealPair, including bool) error {
 // addLink adds a L1/L2 derivation link, with strong consistency checks.
 // if the link invalidates a prior L2 block, that was valid in a prior L1,
 // the invalidated hash needs to match it, even if a new derived block replaces it.
-func (db *DB) addLink(derivedFrom eth.BlockRef, derived eth.BlockRef, invalidated common.Hash) error {
+func (db *DB) addLink(source eth.BlockRef, derived eth.BlockRef, invalidated common.Hash) error {
 	link := LinkEntry{
 		source: types.BlockSeal{
-			Hash:      derivedFrom.Hash,
-			Number:    derivedFrom.Number,
-			Timestamp: derivedFrom.Time,
+			Hash:      source.Hash,
+			Number:    source.Number,
+			Timestamp: source.Time,
 		},
 		derived: types.BlockSeal{
 			Hash:      derived.Hash,
@@ -186,6 +186,7 @@ func (db *DB) addLink(derivedFrom eth.BlockRef, derived eth.BlockRef, invalidate
 		if err := db.store.Append(e); err != nil {
 			return err
 		}
+		db.log.Debug("First entry in DB", "entry", link)
 		db.m.RecordDBDerivedEntryCount(db.store.Size())
 		return nil
 	}
@@ -200,18 +201,24 @@ func (db *DB) addLink(derivedFrom eth.BlockRef, derived eth.BlockRef, invalidate
 	lastSource := last.source
 	lastDerived := last.derived
 
-	if lastDerived.ID() == derived.ID() && lastSource.ID() == derivedFrom.ID() {
+	if (lastSource.Number+1 == source.Number) && (lastDerived.Number+1 == derived.Number) {
+		return fmt.Errorf("cannot add source:%s derived:%s on top of last entry source:%s derived:%s, must increment source or derived, not both: %w",
+			source, derived, last.source, last.derived, types.ErrOutOfOrder)
+	}
+
+	if lastDerived.ID() == derived.ID() && lastSource.ID() == source.ID() {
 		// it shouldn't be possible, but the ID component of a block ref doesn't include the timestamp
-		// so if the timestampt doesn't match, still return no error to the caller, but at least log a warning
+		// so if the timestamp doesn't match, still return no error to the caller, but at least log a warning
 		if lastDerived.Timestamp != derived.Time {
 			db.log.Warn("Derived block already exists with different timestamp", "derived", derived, "lastDerived", lastDerived)
 		}
-		if lastSource.Timestamp != derivedFrom.Time {
-			db.log.Warn("Derived-from block already exists with different timestamp", "derivedFrom", derivedFrom, "lastSource", lastSource)
+		if lastSource.Timestamp != source.Time {
+			db.log.Warn("Derived-from block already exists with different timestamp", "source", source, "lastSource", lastSource)
 		}
 		// Repeat of same information. No entries to be written.
 		// But we can silently ignore and not return an error, as that brings the caller
 		// in a consistent state, after which it can insert the actual new derived-from information.
+		db.log.Debug("Database link already written", "derived", derived, "lastDerived", lastDerived)
 		return nil
 	}
 
@@ -221,7 +228,7 @@ func (db *DB) addLink(derivedFrom eth.BlockRef, derived eth.BlockRef, invalidate
 		// I.e. we encountered an empty L1 block, and the same L2 block continues to be the last block that was derived from it.
 		if invalidated != (common.Hash{}) {
 			if lastDerived.Hash != invalidated {
-				return fmt.Errorf("inserting block %s that invalidates %s at height %d, but expected %s", derived.Hash, invalidated, lastDerived.Number, lastDerived.Hash)
+				return fmt.Errorf("inserting block %s that invalidates %s at height %d, but expected %s: %w", derived.Hash, invalidated, lastDerived.Number, lastDerived.Hash, types.ErrConflict)
 			}
 		} else {
 			if lastDerived.Hash != derived.Hash {
@@ -236,54 +243,54 @@ func (db *DB) addLink(derivedFrom eth.BlockRef, derived eth.BlockRef, invalidate
 		}
 	} else if lastDerived.Number+1 < derived.Number {
 		return fmt.Errorf("cannot add block (%s derived from %s), last block (%s derived from %s) is too far behind: (%w)",
-			derived, derivedFrom,
+			derived, source,
 			lastDerived, lastSource,
-			types.ErrOutOfOrder)
+			types.ErrFuture)
 	} else {
 		return fmt.Errorf("derived block %s is older than current derived block %s: %w",
 			derived, lastDerived, types.ErrOutOfOrder)
 	}
 
 	// Check derived-from relation: multiple L2 blocks may be derived from the same L1 block. But everything in sequence.
-	if lastSource.Number == derivedFrom.Number {
+	if lastSource.Number == source.Number {
 		// Same block height? Then it must be the same block.
-		if lastSource.Hash != derivedFrom.Hash {
+		if lastSource.Hash != source.Hash {
 			return fmt.Errorf("cannot add block %s as derived from %s, expected to be derived from %s at this block height: %w",
-				derived, derivedFrom, lastSource, types.ErrConflict)
+				derived, source, lastSource, types.ErrConflict)
 		}
-	} else if lastSource.Number+1 == derivedFrom.Number {
+	} else if lastSource.Number+1 == source.Number {
 		// parent hash check
-		if lastSource.Hash != derivedFrom.ParentHash {
+		if lastSource.Hash != source.ParentHash {
 			return fmt.Errorf("cannot add block %s as derived from %s (parent %s) derived on top of %s: %w",
-				derived, derivedFrom, derivedFrom.ParentHash, lastSource, types.ErrConflict)
+				derived, source, source.ParentHash, lastSource, types.ErrConflict)
 		}
-	} else if lastSource.Number+1 < derivedFrom.Number {
+	} else if lastSource.Number+1 < source.Number {
 		// adding block that is derived from something too far into the future
 		return fmt.Errorf("cannot add block (%s derived from %s), last block (%s derived from %s) is too far behind: (%w)",
-			derived, derivedFrom,
+			derived, source,
 			lastDerived, lastSource,
-			types.ErrOutOfOrder)
+			types.ErrFuture)
 	} else {
 		if lastDerived.Hash == derived.Hash {
 			// we might see L1 blocks repeat,
 			// if the deriver has reset to the latest local-safe block,
 			// since we don't reset it to any particular source block.
 			// So check if it's canonical, and if it is, we can gracefully accept it, to allow forwards progress.
-			_, got, err := db.lookup(derivedFrom.Number, derived.Number)
+			_, got, err := db.lookup(source.Number, derived.Number)
 			if err != nil {
 				return fmt.Errorf("failed to check if block %s with old source %s was derived from canonical source chain: %w",
-					derived, derivedFrom, err)
+					derived, source, err)
 			}
-			if got.source.Hash != derivedFrom.Hash {
+			if got.source.Hash != source.Hash {
 				return fmt.Errorf("cannot add block %s that matches latest derived since it is derived from non-canonical source %s, expected %s: %w",
-					derived, derivedFrom, got.source, types.ErrConflict)
+					derived, source, got.source, types.ErrConflict)
 			}
 			return fmt.Errorf("received latest block %s, derived from known old source %s, latest source is %s: %w",
-				derived, derivedFrom, lastSource, types.ErrIneffective)
+				derived, source, lastSource, types.ErrIneffective)
 		}
 		// Adding a newer block that is derived from an older source, that cannot be right
 		return fmt.Errorf("cannot add block %s as derived from %s, deriving already at %s: %w",
-			derived, derivedFrom, lastSource, types.ErrOutOfOrder)
+			derived, source, lastSource, types.ErrOutOfOrder)
 	}
 
 	e := link.encode()

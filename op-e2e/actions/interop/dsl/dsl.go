@@ -54,6 +54,8 @@ type InteropDSL struct {
 	Outputs *Outputs
 	setup   *InteropSetup
 
+	InboxContract *InboxContract
+
 	// allChains contains all chains in the interop set.
 	// Currently this is always two chains, but as the setup code becomes more flexible it could be more
 	// and likely this array would be replaced by something in InteropActors
@@ -91,6 +93,8 @@ func NewInteropDSL(t helpers.Testing) *InteropDSL {
 		},
 		setup: setup,
 
+		InboxContract: NewInboxContract(t),
+
 		allChains: allChains,
 	}
 }
@@ -114,13 +118,26 @@ func (d *InteropDSL) CreateUser() *DSLUser {
 
 type TransactionCreator func(chain *Chain) (*types.Transaction, common.Address)
 type AddL2BlockOpts struct {
-	BlockIsNotCrossSafe bool
-	TransactionCreators []TransactionCreator
+	BlockIsNotCrossUnsafe bool
+	TransactionCreators   []TransactionCreator
+	UntilTimestamp        uint64
 }
 
 func WithL2BlockTransactions(mkTxs ...TransactionCreator) func(*AddL2BlockOpts) {
 	return func(o *AddL2BlockOpts) {
 		o.TransactionCreators = mkTxs
+	}
+}
+
+func WithL1BlockCrossUnsafe() func(*AddL2BlockOpts) {
+	return func(o *AddL2BlockOpts) {
+		o.BlockIsNotCrossUnsafe = true
+	}
+}
+
+func WithL2BlocksUntilTimestamp(timestamp uint64) func(*AddL2BlockOpts) {
+	return func(o *AddL2BlockOpts) {
+		o.UntilTimestamp = timestamp
 	}
 }
 
@@ -130,25 +147,30 @@ func (d *InteropDSL) AddL2Block(chain *Chain, optionalArgs ...func(*AddL2BlockOp
 	for _, arg := range optionalArgs {
 		arg(&opts)
 	}
-	priorSyncStatus := chain.Sequencer.SyncStatus()
-	chain.Sequencer.ActL2StartBlock(d.t)
-	for _, creator := range opts.TransactionCreators {
-		tx, from := creator(chain)
-		err := chain.SequencerEngine.EngineApi.IncludeTx(tx, from)
-		require.NoError(d.t, err)
-	}
-	chain.Sequencer.ActL2EndBlock(d.t)
-	chain.Sequencer.SyncSupervisor(d.t)
-	d.Actors.Supervisor.ProcessFull(d.t)
-	chain.Sequencer.ActL2PipelineFull(d.t)
+	for opts.UntilTimestamp == 0 || chain.Sequencer.L2Unsafe().Time <= opts.UntilTimestamp {
+		priorSyncStatus := chain.Sequencer.SyncStatus()
+		chain.Sequencer.ActL2StartBlock(d.t)
+		for _, creator := range opts.TransactionCreators {
+			tx, from := creator(chain)
+			err := chain.SequencerEngine.EngineApi.IncludeTx(tx, from)
+			require.NoError(d.t, err)
+		}
+		chain.Sequencer.ActL2EndBlock(d.t)
+		chain.Sequencer.SyncSupervisor(d.t)
+		d.Actors.Supervisor.ProcessFull(d.t)
+		chain.Sequencer.ActL2PipelineFull(d.t)
 
-	status := chain.Sequencer.SyncStatus()
-	expectedBlockNum := priorSyncStatus.UnsafeL2.Number + 1
-	require.Equal(d.t, expectedBlockNum, status.UnsafeL2.Number, "Unsafe head did not advance")
-	if opts.BlockIsNotCrossSafe {
-		require.Equal(d.t, priorSyncStatus.CrossUnsafeL2.Number, status.CrossUnsafeL2.Number, "CrossUnsafe head advanced unexpectedly")
-	} else {
-		require.Equal(d.t, expectedBlockNum, status.CrossUnsafeL2.Number, "CrossUnsafe head did not advance")
+		status := chain.Sequencer.SyncStatus()
+		expectedBlockNum := priorSyncStatus.UnsafeL2.Number + 1
+		require.Equal(d.t, expectedBlockNum, status.UnsafeL2.Number, "Unsafe head did not advance")
+		if opts.BlockIsNotCrossUnsafe {
+			require.Equal(d.t, priorSyncStatus.CrossUnsafeL2.Number, status.CrossUnsafeL2.Number, "CrossUnsafe head advanced unexpectedly")
+		} else {
+			require.Equal(d.t, expectedBlockNum, status.CrossUnsafeL2.Number, "CrossUnsafe head did not advance")
+		}
+		if opts.UntilTimestamp == 0 {
+			break
+		}
 	}
 }
 

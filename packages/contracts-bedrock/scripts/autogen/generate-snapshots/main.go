@@ -72,8 +72,9 @@ func processFile(file string) (*SnapshotResult, []error) {
 		return nil, []error{fmt.Errorf("failed to parse artifact name %q: %w", file, err)}
 	}
 
-	// Skip anything that isn't in the src directory.
-	if !strings.HasPrefix(artifact.Ast.AbsolutePath, "src/") {
+	// Skip anything that isn't in the src directory, with the exception of
+	// GnosisSafe because it's used for decoding storage changes in superchain-ops.
+	if !strings.HasPrefix(artifact.Ast.AbsolutePath, "src/") && contractName != "GnosisSafe" {
 		return nil, nil
 	}
 

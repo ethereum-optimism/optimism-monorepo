@@ -21,13 +21,17 @@ FROM --platform=$BUILDPLATFORM golang:1.22.7-alpine3.20 AS builder
 
 RUN apk add --no-cache curl tar gzip make gcc musl-dev linux-headers git jq bash
 
-# install yq
-RUN wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/local/bin/yq && \
+ARG TARGETARCH
+
+# Install yq
+RUN wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_$TARGETARCH -O /usr/local/bin/yq && \
     chmod +x /usr/local/bin/yq
 
-# install versioned toolchain
+# Install versioned toolchain
 COPY ./mise.toml .
-RUN curl -L https://github.com/casey/just/releases/download/$(yq '.tools.just' mise.toml)/just-$(yq '.tools.just' mise.toml)-x86_64-unknown-linux-musl.tar.gz | \
+RUN JUST_VERSION=$(yq '.tools.just' mise.toml) && \
+    ARCH_MAPPING=$(echo $TARGETARCH | sed 's/amd64/x86_64/;s/arm64/aarch64/') && \
+    curl -L https://github.com/casey/just/releases/download/$JUST_VERSION/just-$JUST_VERSION-$ARCH_MAPPING-unknown-linux-musl.tar.gz | \
     tar xz -C /usr/local/bin just
 
 # We copy the go.mod/sum first, so the `go mod download` does not have to re-run if dependencies do not change.
@@ -53,7 +57,6 @@ ARG GIT_COMMIT
 ARG GIT_DATE
 
 ARG TARGETOS
-ARG TARGETARCH
 
 # separate docker-builds:
 # - proxyd

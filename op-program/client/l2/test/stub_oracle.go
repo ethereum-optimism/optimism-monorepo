@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	interopTypes "github.com/ethereum-optimism/optimism/op-program/client/interop/types"
+	l2Types "github.com/ethereum-optimism/optimism/op-program/client/l2/types"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/rawdb"
@@ -56,7 +57,7 @@ func NewStubOracleWithBlocks(t *testing.T, chain []*gethTypes.Block, outputs []e
 		t:           t,
 		Blocks:      blocks,
 		Outputs:     o,
-		stateOracle: &KvStateOracle{t: t, Source: db},
+		stateOracle: &KvStateOracle{T: t, Source: db},
 	}
 }
 
@@ -83,6 +84,10 @@ func (o StubBlockOracle) TransitionStateByRoot(root common.Hash) *interopTypes.T
 	return output
 }
 
+func (o StubBlockOracle) Hinter() l2Types.OracleHinter {
+	return nil
+}
+
 func (o StubBlockOracle) BlockDataByHash(agreedBlockHash, blockHash common.Hash, chainID eth.ChainID) *gethTypes.Block {
 	block, ok := o.BlockData[blockHash]
 	if !ok {
@@ -101,13 +106,13 @@ func (o StubBlockOracle) ReceiptsByBlockHash(blockHash common.Hash, chainID eth.
 
 // KvStateOracle loads data from a source ethdb.KeyValueStore
 type KvStateOracle struct {
-	t      *testing.T
+	T      *testing.T
 	Source ethdb.KeyValueStore
 }
 
 func NewKvStateOracle(t *testing.T, db ethdb.KeyValueStore) *KvStateOracle {
 	return &KvStateOracle{
-		t:      t,
+		T:      t,
 		Source: db,
 	}
 }
@@ -115,7 +120,7 @@ func NewKvStateOracle(t *testing.T, db ethdb.KeyValueStore) *KvStateOracle {
 func (o *KvStateOracle) NodeByHash(nodeHash common.Hash, chainID eth.ChainID) []byte {
 	val, err := o.Source.Get(nodeHash.Bytes())
 	if err != nil {
-		o.t.Fatalf("error retrieving node %v: %v", nodeHash, err)
+		o.T.Fatalf("error retrieving node %v: %v", nodeHash, err)
 	}
 	return val
 }

@@ -1,0 +1,121 @@
+[
+  {
+    "bytes": "20",
+    "label": "superchainConfig",
+    "offset": 0,
+    "slot": "0",
+    "type": "contract ISuperchainConfig"
+  },
+  {
+    "bytes": "20",
+    "label": "protocolVersions",
+    "offset": 0,
+    "slot": "1",
+    "type": "contract IProtocolVersions"
+  },
+  {
+    "bytes": "20",
+    "label": "l1PAOMultisig",
+    "offset": 0,
+    "slot": "2",
+    "type": "address"
+  },
+  {
+    "bytes": "20",
+    "label": "mips",
+    "offset": 0,
+    "slot": "3",
+    "type": "address"
+  },
+  {
+    "bytes": "20",
+    "label": "challenger",
+    "offset": 0,
+    "slot": "4",
+    "type": "address"
+  },
+  {
+    "bytes": "20",
+    "label": "superchainConfigImpl",
+    "offset": 0,
+    "slot": "5",
+    "type": "address"
+  },
+  {
+    "bytes": "20",
+    "label": "protocolVersionsImpl",
+    "offset": 0,
+    "slot": "6",
+    "type": "address"
+  },
+  {
+    "bytes": "20",
+    "label": "l1ERC721BridgeImpl",
+    "offset": 0,
+    "slot": "7",
+    "type": "address"
+  },
+  {
+    "bytes": "20",
+    "label": "optimismPortalImpl",
+    "offset": 0,
+    "slot": "8",
+    "type": "address"
+  },
+  {
+    "bytes": "20",
+    "label": "systemConfigImpl",
+    "offset": 0,
+    "slot": "9",
+    "type": "address"
+  },
+  {
+    "bytes": "20",
+    "label": "optimismMintableERC20FactoryImpl",
+    "offset": 0,
+    "slot": "10",
+    "type": "address"
+  },
+  {
+    "bytes": "20",
+    "label": "l1CrossDomainMessengerImpl",
+    "offset": 0,
+    "slot": "11",
+    "type": "address"
+  },
+  {
+    "bytes": "20",
+    "label": "l1StandardBridgeImpl",
+    "offset": 0,
+    "slot": "12",
+    "type": "address"
+  },
+  {
+    "bytes": "20",
+    "label": "disputeGameFactoryImpl",
+    "offset": 0,
+    "slot": "13",
+    "type": "address"
+  },
+  {
+    "bytes": "20",
+    "label": "anchorStateRegistryImpl",
+    "offset": 0,
+    "slot": "14",
+    "type": "address"
+  },
+  {
+    "bytes": "20",
+    "label": "delayedWETHImpl",
+    "offset": 0,
+    "slot": "15",
+    "type": "address"
+  },
+  {
+    "bytes": "20",
+    "label": "mipsImpl",
+    "offset": 0,
+    "slot": "16",
+    "type": "address"
+  }
+]

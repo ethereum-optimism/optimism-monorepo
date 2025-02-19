@@ -18,6 +18,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	oplog "github.com/ethereum-optimism/optimism/op-service/log"
 	"github.com/ethereum-optimism/optimism/op-service/sources"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/params"
 
@@ -256,6 +257,11 @@ func TestL2Head(t *testing.T) {
 		delete(req, "--l2.head")
 		delete(req, "--l2.outputroot")
 		args := append(toArgList(req), "--l2.agreed-prestate", "0x1234")
+		// TODO(#14416): Remove the --depset.config flag once there's a depset defined for sepolia.
+		// For now we stub a depset path to ensure the run succeeds
+		depsetFile := writeDepset(t)
+		args = append(args, "--depset.config", depsetFile)
+
 		cfg := configForArgs(t, args)
 		require.Equal(t, common.Hash{}, cfg.L2Head)
 		require.True(t, cfg.InteropEnabled)
@@ -272,7 +278,11 @@ func TestL2OutputRoot(t *testing.T) {
 	})
 
 	t.Run("NotRequiredWhenAgreedPrestateProvided", func(t *testing.T) {
-		configForArgs(t, addRequiredArgsExceptMultiple([]string{"--l2.outputroot", "--l2.head"}, "--l2.agreed-prestate", "0x1234"))
+		optionalArgs := []string{"--l2.agreed-prestate", "0x1234"}
+		// TODO(#14416): Remove the --depset.config flag once there's a depset defined for sepolia.
+		depsetFile := writeDepset(t)
+		optionalArgs = append(optionalArgs, "--depset.config", depsetFile)
+		configForArgs(t, addRequiredArgsExceptMultiple([]string{"--l2.outputroot", "--l2.head"}, optionalArgs...))
 	})
 
 	t.Run("Valid", func(t *testing.T) {
@@ -287,14 +297,22 @@ func TestL2OutputRoot(t *testing.T) {
 
 func TestL2AgreedPrestate(t *testing.T) {
 	t.Run("NotRequiredWhenL2OutputRootProvided", func(t *testing.T) {
-		configForArgs(t, addRequiredArgsExceptMultiple([]string{"--l2.outputroot", "--l2.head"}, "--l2.agreed-prestate", "0x1234"))
+		optionalArgs := []string{"--l2.agreed-prestate", "0x1234"}
+		// TODO(#14416): Remove the --depset.config flag once there's a depset defined for sepolia.
+		depsetFile := writeDepset(t)
+		optionalArgs = append(optionalArgs, "--depset.config", depsetFile)
+		configForArgs(t, addRequiredArgsExceptMultiple([]string{"--l2.outputroot", "--l2.head"}, optionalArgs...))
 	})
 
 	t.Run("Valid", func(t *testing.T) {
 		prestate := "0x1234"
 		prestateBytes := common.FromHex(prestate)
 		expectedOutputRoot := crypto.Keccak256Hash(prestateBytes)
-		cfg := configForArgs(t, addRequiredArgsExceptMultiple([]string{"--l2.outputroot", "--l2.head"}, "--l2.agreed-prestate", prestate))
+		optionalArgs := []string{"--l2.agreed-prestate", prestate}
+		// TODO(#14416): Remove the --depset.config flag once there's a depset defined for sepolia.
+		depsetFile := writeDepset(t)
+		optionalArgs = append(optionalArgs, "--depset.config", depsetFile)
+		cfg := configForArgs(t, addRequiredArgsExceptMultiple([]string{"--l2.outputroot", "--l2.head"}, optionalArgs...))
 		require.Equal(t, expectedOutputRoot, cfg.L2OutputRoot)
 		require.Equal(t, prestateBytes, cfg.AgreedPrestate)
 	})
@@ -546,6 +564,16 @@ func writeGenesis(t *testing.T, genesis *core.Genesis) string {
 	genesisFile := dir + "/genesis.json"
 	require.NoError(t, os.WriteFile(genesisFile, j, 0666))
 	return genesisFile
+}
+
+func writeDepset(t *testing.T) string {
+	var depset depset.StaticConfigDependencySet
+	dir := t.TempDir()
+	j, err := json.Marshal(&depset)
+	require.NoError(t, err)
+	depsetFile := dir + "/depset.json"
+	require.NoError(t, os.WriteFile(depsetFile, j, 0666))
+	return depsetFile
 }
 
 func writeValidRollupConfig(t *testing.T) string {

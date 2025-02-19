@@ -31,7 +31,11 @@ func (f *FileServer) Deploy(ctx context.Context, sourceDir string) error {
 	if err := os.MkdirAll(baseDir, 0755); err != nil {
 		return fmt.Errorf("error creating base directory: %w", err)
 	}
-	tempDir, err := os.MkdirTemp(baseDir, "upload-content")
+	// Can't use MkdirTemp here because the directory name needs to always be the same
+	// in order for kurtosis file artifact upload to be idempotent.
+	// (i.e. the file upload and all its downstream dependencies can be SKIPPED on re-runs)
+	tempDir := filepath.Join(baseDir, "upload-content")
+	err := os.Mkdir(tempDir, 0755)
 	if err != nil {
 		return fmt.Errorf("error creating temporary directory: %w", err)
 	}

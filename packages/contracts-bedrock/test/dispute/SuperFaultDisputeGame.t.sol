@@ -31,7 +31,7 @@ import { IDelayedWETH } from "interfaces/dispute/IDelayedWETH.sol";
 
 contract SuperFaultDisputeGame_Init is DisputeGameFactory_Init {
     /// @dev The type of the game being tested.
-    GameType internal constant GAME_TYPE = GameType.wrap(4);
+    uint8 internal constant GAME_TYPE = 4;
 
     /// @dev The implementation of the game.
     IFaultDisputeGame internal gameImpl;
@@ -99,6 +99,7 @@ contract SuperFaultDisputeGame_Init is DisputeGameFactory_Init {
 
         vm.prank(superchainConfig.guardian());
         optimismPortal2.setRespectedGameType(GAME_TYPE);
+
 
         // Create a new game.
         gameProxy = IFaultDisputeGame(

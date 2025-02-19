@@ -14,7 +14,11 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 )
 
-var OptimisticBlockDepositSenderAddress = common.HexToAddress("0xdeaddeaddeaddeaddeaddeaddeaddeaddead0002")
+var (
+	OptimisticBlockDepositSenderAddress = common.HexToAddress("0xdeaddeaddeaddeaddeaddeaddeaddeaddead0002")
+
+	ErrNotReplacementBlock = errors.New("not a replacement block")
+)
 
 // AttributesToReplaceInvalidBlock builds the payload-attributes to replace an invalidated block.
 // See https://github.com/ethereum-optimism/specs/blob/main/specs/interop/derivation.md#replacing-invalid-blocks
@@ -95,7 +99,7 @@ func DecodeInvalidatedBlockTxFromReplacement(txs []eth.Data) (*eth.OutputV0, err
 
 func DecodeInvalidatedBlockTx(tx *types.Transaction) (*eth.OutputV0, error) {
 	if tx.Type() != types.DepositTxType {
-		return nil, fmt.Errorf("expected deposit tx type, but got %d", tx.Type())
+		return nil, fmt.Errorf("%w: expected deposit tx type, but got %d", ErrNotReplacementBlock, tx.Type())
 	}
 	signer := types.LatestSignerForChainID(tx.ChainId())
 	from, err := signer.Sender(tx)
@@ -103,7 +107,7 @@ func DecodeInvalidatedBlockTx(tx *types.Transaction) (*eth.OutputV0, error) {
 		return nil, fmt.Errorf("failed to get invalidated-block deposit-tx sender addr: %w", err)
 	}
 	if from != OptimisticBlockDepositSenderAddress {
-		return nil, fmt.Errorf("expected system tx sender, but got %s", from)
+		return nil, fmt.Errorf("%w: expected system tx sender, but got %s", ErrNotReplacementBlock, from)
 	}
 	out, err := eth.UnmarshalOutput(tx.Data())
 	if err != nil {

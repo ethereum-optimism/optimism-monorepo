@@ -42,7 +42,7 @@ func TestBadUpdates(t *testing.T) {
 
 	testCases := []testCase{
 		{
-			name: "add on old derivedFrom before DB start",
+			name: "add on old source before DB start",
 			setupFn: func(t *testing.T, db *DB, m *stubMetrics) {
 				require.ErrorIs(t, db.AddDerived(
 					toRef(bSource, aSource.Hash), // b is before c
@@ -71,7 +71,7 @@ func TestBadUpdates(t *testing.T) {
 			assertFn: noChange,
 		},
 		{
-			name: "repeat latest derived, old derivedFrom",
+			name: "repeat latest derived, old source",
 			setupFn: func(t *testing.T, db *DB, m *stubMetrics) {
 				require.NoError(t, db.AddDerived(
 					toRef(eSource, dSource.Hash),   // new L1 block
@@ -90,7 +90,7 @@ func TestBadUpdates(t *testing.T) {
 			},
 		},
 		{
-			name: "repeat latest derived, conflicting old derivedFrom",
+			name: "repeat latest derived, conflicting old source",
 			setupFn: func(t *testing.T, db *DB, m *stubMetrics) {
 				require.NoError(t, db.AddDerived(
 					toRef(eSource, dSource.Hash),   // new L1 block
@@ -109,7 +109,7 @@ func TestBadUpdates(t *testing.T) {
 			},
 		},
 		{
-			name: "new derived, old derivedFrom",
+			name: "new derived, old source",
 			setupFn: func(t *testing.T, db *DB, m *stubMetrics) {
 				require.NoError(t, db.AddDerived(
 					toRef(eSource, dSource.Hash),   // new L1 block
@@ -128,7 +128,7 @@ func TestBadUpdates(t *testing.T) {
 			},
 		},
 		{
-			name: "add on conflicting derivedFrom, same height. And new derived value",
+			name: "add on conflicting source, same height. And new derived value",
 			setupFn: func(t *testing.T, db *DB, m *stubMetrics) {
 				require.ErrorIs(t, db.AddDerived(
 					toRef(types.BlockSeal{
@@ -155,7 +155,7 @@ func TestBadUpdates(t *testing.T) {
 			},
 		},
 		{
-			name: "Conflicting derivedFrom parent root, new L1 height, same L2",
+			name: "Conflicting source parent root, new L1 height, same L2",
 			setupFn: func(t *testing.T, db *DB, m *stubMetrics) {
 				require.ErrorIs(t,
 					db.AddDerived(
@@ -165,16 +165,16 @@ func TestBadUpdates(t *testing.T) {
 			assertFn: noChange,
 		},
 		{
-			name: "add on too new derivedFrom (even if parent-hash looks correct)",
+			name: "add on too new source (even if parent-hash looks correct)",
 			setupFn: func(t *testing.T, db *DB, m *stubMetrics) {
 				require.ErrorIs(t,
 					db.AddDerived(toRef(fSource, dSource.Hash),
-						toRef(eDerived, dDerived.Hash)), types.ErrOutOfOrder)
+						toRef(eDerived, dDerived.Hash)), types.ErrFuture)
 			},
 			assertFn: noChange,
 		},
 		{
-			name: "add on old derivedFrom (even if parent-hash looks correct)",
+			name: "add on old source (even if parent-hash looks correct)",
 			setupFn: func(t *testing.T, db *DB, m *stubMetrics) {
 				require.ErrorIs(t, db.AddDerived(
 					toRef(cSource, bSource.Hash),
@@ -183,7 +183,7 @@ func TestBadUpdates(t *testing.T) {
 			assertFn: noChange,
 		},
 		{
-			name: "add on even older derivedFrom",
+			name: "add on even older source",
 			setupFn: func(t *testing.T, db *DB, m *stubMetrics) {
 				require.ErrorIs(t, db.AddDerived(
 					toRef(bSource, aSource.Hash),
@@ -232,7 +232,7 @@ func TestBadUpdates(t *testing.T) {
 			setupFn: func(t *testing.T, db *DB, m *stubMetrics) {
 				require.ErrorIs(t, db.AddDerived(
 					toRef(dSource, cSource.Hash),
-					toRef(fDerived, dDerived.Hash)), types.ErrOutOfOrder)
+					toRef(fDerived, dDerived.Hash)), types.ErrFuture)
 			},
 			assertFn: noChange,
 		},
