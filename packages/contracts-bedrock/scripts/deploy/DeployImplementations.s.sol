@@ -33,7 +33,6 @@ import { Solarray } from "scripts/libraries/Solarray.sol";
 import { BaseDeployIO } from "scripts/deploy/BaseDeployIO.sol";
 import { IDummyRegistry } from "interfaces/L1/IDummyRegistry.sol";
 
-import "forge-std/console2.sol";
 
 // See DeploySuperchain.s.sol for detailed comments on the script architecture used here.
 contract DeployImplementationsInput is BaseDeployIO {
@@ -461,7 +460,6 @@ contract DeployImplementations is Script {
         deployDisputeGameFactoryImpl(_dio);
         deployAnchorStateRegistryImpl(_dio);
 
-        console2.log("About to deploy OPContractsManager");
         // Deploy the OP Contracts Manager with the new implementations set.
         deployOPContractsManager(_dii, _dio);
 
@@ -502,8 +500,6 @@ contract DeployImplementations is Script {
             mipsImpl: address(_dio.mipsSingleton())
         });
 
-        console2.log("upgradeController passed on to the constructor", upgradeController);
-
         opcm_ = IOPContractsManager(
             DeployUtils.createDeterministic({
                 _name: "OPContractsManager",
@@ -524,8 +520,6 @@ contract DeployImplementations is Script {
                 _salt: _salt
             })
         );
-
-        console2.log("opcm_.upgradeController", opcm_.upgradeController());
 
         vm.label(address(opcm_), "OPContractsManager");
         _dio.set(_dio.opcm.selector, address(opcm_));
