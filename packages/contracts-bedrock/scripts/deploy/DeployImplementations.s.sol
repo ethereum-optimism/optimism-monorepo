@@ -31,6 +31,8 @@ import { IProxyAdmin } from "interfaces/universal/IProxyAdmin.sol";
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 import { Solarray } from "scripts/libraries/Solarray.sol";
 import { BaseDeployIO } from "scripts/deploy/BaseDeployIO.sol";
+import { ISingletonExample } from "interfaces/L1/ISingletonExample.sol";
+
 
 // See DeploySuperchain.s.sol for detailed comments on the script architecture used here.
 contract DeployImplementationsInput is BaseDeployIO {
@@ -551,11 +553,12 @@ contract DeployImplementations is Script {
         // But for Blueprint, the initcode is stored as runtime code, that's why it's necessary to split into 2 parts.
         (blueprints.permissionedDisputeGame1, blueprints.permissionedDisputeGame2) = DeployUtils.createDeterministicBlueprint(vm.getCode("PermissionedDisputeGame"), _salt);
         (blueprints.permissionlessDisputeGame1, blueprints.permissionlessDisputeGame2) = DeployUtils.createDeterministicBlueprint(vm.getCode("FaultDisputeGame"), _salt);
+        (blueprints.singletonExample, checkAddress) = DeployUtils.createDeterministicBlueprint(vm.getCode("SingletonExample"), _salt);
+        require(checkAddress == address(0), "OPCM-60");
         // forgefmt: disable-end
         vm.stopBroadcast();
 
         IOPContractsManager opcm = createOPCMContract(_dii, _dio, blueprints, l1ContractsRelease);
-
         vm.label(address(opcm), "OPContractsManager");
         _dio.set(_dio.opcm.selector, address(opcm));
     }

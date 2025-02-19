@@ -507,10 +507,10 @@ library ChainAssertions {
         IOPContractsManager.Blueprints memory blueprints = _opcm.blueprints();
         Blueprint.Preamble memory addressManagerPreamble =
             Blueprint.parseBlueprintPreamble(address(blueprints.addressManager).code);
-        require(keccak256(addressManagerPreamble.initcode) == keccak256(vm.getCode("AddressManager")), "CHECK-OPCM-140");
+        require(keccak256(addressManagerPreamble.initcode) == keccak256(vm.getCode("AddressManager")), "CHECK-OPCM-210");
 
         Blueprint.Preamble memory proxyPreamble = Blueprint.parseBlueprintPreamble(address(blueprints.proxy).code);
-        require(keccak256(proxyPreamble.initcode) == keccak256(vm.getCode("Proxy")), "CHECK-OPCM-150");
+        require(keccak256(proxyPreamble.initcode) == keccak256(vm.getCode("Proxy")), "CHECK-OPCM-220");
 
         Blueprint.Preamble memory proxyAdminPreamble =
             Blueprint.parseBlueprintPreamble(address(blueprints.proxyAdmin).code);

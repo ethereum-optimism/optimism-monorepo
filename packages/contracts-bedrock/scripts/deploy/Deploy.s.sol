@@ -365,6 +365,7 @@ contract Deploy is Deployer {
 
         // Save all deploy outputs from the OPCM, in the order they are declared in the DeployOutput struct
         artifacts.save("ProxyAdmin", address(deployOutput.opChainProxyAdmin));
+        artifacts.save("SingletonExample", address(deployOutput.singletonExample));
         artifacts.save("AddressManager", address(deployOutput.addressManager));
         artifacts.save("L1ERC721BridgeProxy", address(deployOutput.l1ERC721BridgeProxy));
         artifacts.save("SystemConfigProxy", address(deployOutput.systemConfigProxy));

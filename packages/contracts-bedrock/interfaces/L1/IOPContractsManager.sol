@@ -22,7 +22,7 @@ import { IL1CrossDomainMessenger } from "interfaces/L1/IL1CrossDomainMessenger.s
 import { IL1ERC721Bridge } from "interfaces/L1/IL1ERC721Bridge.sol";
 import { IL1StandardBridge } from "interfaces/L1/IL1StandardBridge.sol";
 import { IOptimismMintableERC20Factory } from "interfaces/universal/IOptimismMintableERC20Factory.sol";
-
+import { ISingletonExample } from "interfaces/L1/ISingletonExample.sol";
 interface IOPContractsManager {
     // -------- Structs --------
 
@@ -58,6 +58,7 @@ interface IOPContractsManager {
 
     /// @notice The full set of outputs from deploying a new OP Stack chain.
     struct DeployOutput {
+        ISingletonExample singletonExample;
         IProxyAdmin opChainProxyAdmin;
         IAddressManager addressManager;
         IL1ERC721Bridge l1ERC721BridgeProxy;
@@ -81,6 +82,7 @@ interface IOPContractsManager {
     /// contain the bytecode of every contract it deploys. Therefore we instead use Blueprints to
     /// reduce the code size of this contract.
     struct Blueprints {
+        address singletonExample;
         address addressManager;
         address proxy;
         address proxyAdmin;

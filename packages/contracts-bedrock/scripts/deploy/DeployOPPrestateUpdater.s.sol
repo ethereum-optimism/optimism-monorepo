@@ -51,6 +51,8 @@ contract DeployOPPrestateUpdaterInput is BaseDeployIO {
     address internal _delayedWETHImpl;
     address internal _mipsImpl;
 
+    address internal _singletonExampleBlueprint;
+
     // Setter for address type
     function set(bytes4 _sel, address _addr) public {
         require(_addr != address(0), "DeployOPPrestateUpdaterInput: cannot set zero address");
@@ -78,6 +80,7 @@ contract DeployOPPrestateUpdaterInput is BaseDeployIO {
         else if (_sel == this.anchorStateRegistryImpl.selector) _anchorStateRegistryImpl = _addr;
         else if (_sel == this.delayedWETHImpl.selector) _delayedWETHImpl = _addr;
         else if (_sel == this.mipsImpl.selector) _mipsImpl = _addr;
+        else if (_sel == this.singletonExampleBlueprint.selector) _singletonExampleBlueprint = _addr;
         else revert("DeployOPPrestateUpdaterInput: unknown selector");
         // forgefmt: disable-end
     }
@@ -219,6 +222,11 @@ contract DeployOPPrestateUpdaterInput is BaseDeployIO {
         require(_mipsImpl != address(0), "DeployOPPrestateUpdaterInput: not set");
         return _mipsImpl;
     }
+
+    function singletonExampleBlueprint() public view returns (address) {
+        require(_singletonExampleBlueprint != address(0), "DeployOPPrestateUpdaterInput: not set");
+        return _singletonExampleBlueprint;
+    }
 }
 
 contract DeployOPPrestateUpdaterOutput is BaseDeployIO {
@@ -251,7 +259,8 @@ contract DeployOPPrestateUpdater is Script {
             permissionedDisputeGame1: _doi.permissionedDisputeGame1Blueprint(),
             permissionedDisputeGame2: _doi.permissionedDisputeGame2Blueprint(),
             permissionlessDisputeGame1: _doi.permissionlessDisputeGame1Blueprint(),
-            permissionlessDisputeGame2: _doi.permissionlessDisputeGame2Blueprint()
+            permissionlessDisputeGame2: _doi.permissionlessDisputeGame2Blueprint(),
+            singletonExample: _doi.singletonExampleBlueprint()
         });
 
         OPPrestateUpdater oppu_ = deployOPPrestateUpdater(_doi.superchainConfig(), _doi.protocolVersions(), blueprints);
