@@ -840,8 +840,10 @@ jobs:
           command: bash scripts/ops/pull-artifacts.sh
           working_directory: packages/contracts-bedrock
       - run:
-          name: Prepare env to get correct block number
-          command: just prepare-upgrade-env
+          name: Write pinned block number for cache key
+          command: |
+            echo $FORK_BLOCK_NUMBER > ./pinnedBlockNumber.txt
+            cat pinnedBlockNumber.txt
           working_directory: packages/contracts-bedrock
       - restore_cache:
           name: Restore forked state
