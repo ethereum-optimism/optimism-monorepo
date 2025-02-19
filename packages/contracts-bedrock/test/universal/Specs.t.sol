@@ -754,6 +754,7 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("step(uint256,bool,bytes,bytes)") });
         _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("subgames(uint256,uint256)") });
         _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("version()") });
+        _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("vm()") });
 
         // SuperPermissionedDisputeGame
         _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("absolutePrestate()") });
