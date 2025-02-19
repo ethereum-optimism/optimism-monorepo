@@ -423,3 +423,151 @@ func (db *ChainsDB) IteratorStartingAt(chain eth.ChainID, sealedNum uint64, logI
 	}
 	return logDB.IteratorStartingAt(sealedNum, logIndex)
 }
+
+// FindDependentBlocks returns a list of blocks across all chains that depend on the given block
+// through executing messages referencing initiating messages in the invalidated block.
+func (db *ChainsDB) FindDependentBlocks(invalidatedChainID eth.ChainID, invalidatedBlock eth.BlockID) ([]types.DependentBlock, error) {
+	var dependentBlocks []types.DependentBlock
+
+	// Get the chain index for the invalidated block's chain
+	invalidatedChainIndex, err := db.depSet.ChainIndexFromID(invalidatedChainID)
+	if err != nil {
+		db.logger.Error("Failed to get chain index for invalidated block",
+			"chain", invalidatedChainID,
+			"block", invalidatedBlock,
+			"err", err)
+		return nil, fmt.Errorf("failed to get chain index for chain %s: %w", invalidatedChainID, err)
+	}
+
+	db.logger.Info("Searching for dependent blocks",
+		"chain", invalidatedChainID,
+		"block", invalidatedBlock,
+		"chain_index", invalidatedChainIndex)
+
+	// Check all chains for dependencies
+	for _, otherChainID := range db.depSet.Chains() {
+		// Skip the invalidated chain itself
+		if otherChainID == invalidatedChainID {
+			continue
+		}
+
+		// Get the log DB for this chain
+		logDB, ok := db.logDBs.Get(otherChainID)
+		if !ok {
+			db.logger.Debug("No log DB for chain",
+				"chain", otherChainID)
+			continue
+		}
+
+		// Get the local safe DB for this chain
+		localDB, ok := db.localDBs.Get(otherChainID)
+		if !ok {
+			db.logger.Debug("No local DB for chain",
+				"chain", otherChainID)
+			continue
+		}
+
+		// Get the latest block number for this chain
+		latestBlock, ok := logDB.LatestSealedBlock()
+		if !ok {
+			db.logger.Debug("No blocks in chain",
+				"chain", otherChainID)
+			continue
+		}
+
+		db.logger.Debug("Scanning chain for dependencies",
+			"chain", otherChainID,
+			"latest_block", latestBlock.Number)
+
+		// Scan through blocks in this chain looking for dependencies
+		// TODO: Start from the latest block and work backward to the safe head
+		for blockNum := uint64(0); blockNum <= latestBlock.Number; blockNum++ {
+			blockRef, _, execMsgs, err := logDB.OpenBlock(blockNum)
+			if err != nil {
+				db.logger.Debug("Failed to open block",
+					"chain", otherChainID,
+					"block_num", blockNum,
+					"err", err)
+				continue
+			}
+
+			// Check if any executing messages in this block reference the invalidated block
+			hasDependency := false
+			for _, execMsg := range execMsgs {
+				db.logger.Info("Checking message",
+					"chain_being_checked", otherChainID,
+					"exec_msg_block_num", blockNum,
+					"exec_msg_init_chain", execMsg.Chain,
+					"exec_msg_init_block_num", execMsg.BlockNum)
+
+				// Check if this message is executing a message from the invalidated block
+				if execMsg.Chain == invalidatedChainIndex && execMsg.BlockNum == invalidatedBlock.Number {
+					hasDependency = true
+					db.logger.Info("Found dependent block - block contains message executing from invalidated block",
+						"executing_chain", otherChainID,
+						"executing_block", blockRef,
+						"initiating_chain", execMsg.Chain,
+						"initiating_block", execMsg.BlockNum,
+						"initiating_log", execMsg.LogIdx)
+					break
+				}
+			}
+
+			if hasDependency {
+				// Get the source block for this derived block
+				source, err := localDB.DerivedToFirstSource(blockRef.ID())
+				if err != nil {
+					db.logger.Warn("Failed to get source for dependent block",
+						"chain", otherChainID,
+						"block", blockRef,
+						"err", err)
+					continue
+				}
+
+				// Get the parent block to construct the full BlockRef
+				parent, err := logDB.FindSealedBlock(blockRef.Number - 1)
+				if err != nil {
+					db.logger.Warn("Failed to get parent for dependent block",
+						"chain", otherChainID,
+						"block", blockRef,
+						"err", err)
+					continue
+				}
+
+				// Create block references with parent information
+				sourceRef := eth.L1BlockRef{
+					Hash:       source.Hash,
+					Number:     source.Number,
+					Time:       source.Timestamp,
+					ParentHash: eth.BlockID{}.Hash, // Parent of source not needed for invalidation
+				}
+
+				derivedRef := eth.L1BlockRef{
+					Hash:       blockRef.Hash,
+					Number:     blockRef.Number,
+					Time:       blockRef.Time,
+					ParentHash: parent.Hash,
+				}
+
+				dependentBlock := types.DependentBlock{
+					ChainID: otherChainID,
+					Block: types.DerivedBlockRefPair{
+						Source:  sourceRef,
+						Derived: derivedRef,
+					},
+				}
+				dependentBlocks = append(dependentBlocks, dependentBlock)
+				db.logger.Info("Added dependent block",
+					"chain", otherChainID,
+					"block", blockRef,
+					"source", sourceRef)
+			}
+		}
+	}
+
+	db.logger.Info("Completed dependent block search",
+		"chain", invalidatedChainID,
+		"block", invalidatedBlock,
+		"dependent_count", len(dependentBlocks))
+	return dependentBlocks, nil
+}

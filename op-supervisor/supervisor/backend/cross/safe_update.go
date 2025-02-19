@@ -32,6 +32,10 @@ type CrossSafeDeps interface {
 	// The replacement of this candidate will effectively be "derived from"
 	// the scope that the candidate block was invalidated at.
 	InvalidateLocalSafe(chainID eth.ChainID, candidate types.DerivedBlockRefPair) error
+
+	// FindDependentBlocks returns a list of blocks across all chains that depend on the given block
+	// through executing messages referencing initiating messages in the invalidated block.
+	FindDependentBlocks(chainID eth.ChainID, invalidatedBlock eth.BlockID) ([]types.DependentBlock, error)
 }
 
 func CrossSafeUpdate(logger log.Logger, chainID eth.ChainID, d CrossSafeDeps) error {
@@ -50,7 +54,7 @@ func CrossSafeUpdate(logger log.Logger, chainID eth.ChainID, d CrossSafeDeps) er
 	if errors.Is(err, types.ErrConflict) {
 		logger.Warn("Found a conflicting local-safe block that cannot be promoted to cross-safe",
 			"scope", candidate.Source, "invalidated", candidate, "err", err)
-		return d.InvalidateLocalSafe(chainID, candidate)
+		return InvalidateLocalSafeWithDependents(logger, chainID, d, candidate)
 	}
 	if !errors.Is(err, types.ErrOutOfScope) {
 		return fmt.Errorf("failed to determine cross-safe update scope of chain %s: %w", chainID, err)
@@ -75,11 +79,7 @@ func CrossSafeUpdate(logger log.Logger, chainID eth.ChainID, d CrossSafeDeps) er
 		return fmt.Errorf("cannot find parent-block of cross-safe: %w", err)
 	}
 	crossSafeRef := currentCrossSafe.Derived.MustWithParent(parent.ID())
-	logger.Debug("Bumping cross-safe scope", "scope", newScope, "crossSafe", crossSafeRef)
-	if err := d.UpdateCrossSafe(chainID, newScope, crossSafeRef); err != nil {
-		return fmt.Errorf("failed to update cross-safe head with L1 scope increment to %s and repeat of L2 block %s: %w", candidate.Source, crossSafeRef, err)
-	}
-	return nil
+	return d.UpdateCrossSafe(chainID, newScope, crossSafeRef)
 }
 
 // scopedCrossSafeUpdate runs through the cross-safe update checks.
@@ -256,6 +256,60 @@ func ValidateCrossSafeDependencies(d SafeFrontierCheckDeps, inL1Source eth.Block
 			if !depFound {
 				return fmt.Errorf("deferred promotion dependency %s not found in hazard set: %w", depID, types.ErrConflict)
 			}
+		}
+	}
+
+	return nil
+}
+
+// InvalidateLocalSafeWithDependents invalidates a block and all blocks that depend on it through
+// executing messages referencing initiating messages in the invalidated block.
+func InvalidateLocalSafeWithDependents(logger log.Logger, chainID eth.ChainID, d CrossSafeDeps, candidate types.DerivedBlockRefPair) error {
+	logger.Info("Starting cascading invalidation",
+		"chain", chainID,
+		"block", candidate.Derived,
+		"source", candidate.Source)
+
+	// First invalidate the target block
+	if err := d.InvalidateLocalSafe(chainID, candidate); err != nil {
+		logger.Error("Failed to invalidate block",
+			"chain", chainID,
+			"block", candidate.Derived,
+			"err", err)
+		return fmt.Errorf("failed to invalidate block %s: %w", candidate.Derived, err)
+	}
+	logger.Info("Successfully invalidated block",
+		"chain", chainID,
+		"block", candidate.Derived)
+
+	// Find all blocks that depend on this block
+	dependentBlocks, err := d.FindDependentBlocks(chainID, candidate.Derived.ID())
+	if err != nil {
+		logger.Error("Failed to find dependent blocks",
+			"chain", chainID,
+			"block", candidate.Derived,
+			"err", err)
+		return fmt.Errorf("failed to find dependent blocks of %s: %w", candidate.Derived, err)
+	}
+	logger.Info("Found dependent blocks",
+		"dependent_count", len(dependentBlocks))
+
+	// Recursively invalidate all dependent blocks
+	for _, depBlock := range dependentBlocks {
+		logger.Info("Invalidating dependent block",
+			"dependent_chain", depBlock.ChainID,
+			"dependent_block", depBlock.Block.Derived,
+			"dependent_source", depBlock.Block.Source,
+			"parent_chain", chainID,
+			"parent_block", candidate.Derived)
+		if err := InvalidateLocalSafeWithDependents(logger, depBlock.ChainID, d, depBlock.Block); err != nil {
+			logger.Error("Failed to invalidate dependent block",
+				"block", depBlock.Block.Derived,
+				"source", depBlock.Block.Source,
+				"parent_block", candidate.Derived,
+				"chain", depBlock.ChainID,
+				"err", err)
+			return fmt.Errorf("failed to invalidate dependent block %s: %w", depBlock.Block.Derived, err)
 		}
 	}
 

@@ -449,6 +449,118 @@ func TestScopedCrossSafeUpdate(t *testing.T) {
 	})
 }
 
+func TestInvalidateLocalSafeWithDependents(t *testing.T) {
+	logger := testlog.Logger(t, log.LevelDebug)
+	chainID := eth.ChainIDFromUInt64(0)
+	csd := &mockCrossSafeDeps{}
+
+	// Create test blocks
+	chainABlock := types.DerivedBlockRefPair{
+		Source:  eth.BlockRef{Number: 1, Hash: common.Hash{0x1}},
+		Derived: eth.BlockRef{Number: 3, Hash: common.Hash{0x3}},
+	}
+
+	chainBBlock := types.DerivedBlockRefPair{
+		Source:  eth.BlockRef{Number: 2, Hash: common.Hash{0x2}},
+		Derived: eth.BlockRef{Number: 4, Hash: common.Hash{0x4}},
+	}
+
+	// Track invalidated blocks
+	invalidatedBlocks := make(map[eth.ChainID]types.DerivedBlockRefPair)
+	csd.invalidateLocalSafeFn = func(id eth.ChainID, p types.DerivedBlockRefPair) error {
+		invalidatedBlocks[id] = p
+		return nil
+	}
+
+	// Set up dependent blocks
+	chainBID := eth.ChainIDFromUInt64(1)
+	csd.findDependentBlocksFn = func(id eth.ChainID, invalidatedBlock eth.BlockID) ([]types.DependentBlock, error) {
+		if id == chainID {
+			// ChainA block 3 has ChainB block 4 as a dependent
+			return []types.DependentBlock{
+				{
+					ChainID: chainBID,
+					Block:   chainBBlock,
+				},
+			}, nil
+		}
+		// ChainB block has no dependents
+		return nil, nil
+	}
+
+	// Run the test
+	err := InvalidateLocalSafeWithDependents(logger, chainID, csd, chainABlock)
+	require.NoError(t, err)
+
+	// Verify both blocks were invalidated
+	require.Len(t, invalidatedBlocks, 2)
+	require.Equal(t, chainABlock, invalidatedBlocks[chainID])
+	require.Equal(t, chainBBlock, invalidatedBlocks[chainBID])
+}
+
+func TestInvalidateLocalSafeWithDependentsErrors(t *testing.T) {
+	logger := testlog.Logger(t, log.LevelDebug)
+	chainID := eth.ChainIDFromUInt64(0)
+	chainBID := eth.ChainIDFromUInt64(1)
+
+	chainABlock := types.DerivedBlockRefPair{
+		Source:  eth.BlockRef{Number: 1, Hash: common.Hash{0x1}},
+		Derived: eth.BlockRef{Number: 3, Hash: common.Hash{0x3}},
+	}
+
+	chainBBlock := types.DerivedBlockRefPair{
+		Source:  eth.BlockRef{Number: 2, Hash: common.Hash{0x2}},
+		Derived: eth.BlockRef{Number: 4, Hash: common.Hash{0x4}},
+	}
+
+	t.Run("InvalidateLocalSafe error", func(t *testing.T) {
+		csd := &mockCrossSafeDeps{}
+		csd.invalidateLocalSafeFn = func(id eth.ChainID, p types.DerivedBlockRefPair) error {
+			return errors.New("invalidate error")
+		}
+
+		err := InvalidateLocalSafeWithDependents(logger, chainID, csd, chainABlock)
+		require.ErrorContains(t, err, "invalidate error")
+	})
+
+	t.Run("FindDependentBlocks error", func(t *testing.T) {
+		csd := &mockCrossSafeDeps{}
+		csd.invalidateLocalSafeFn = func(id eth.ChainID, p types.DerivedBlockRefPair) error {
+			return nil
+		}
+		csd.findDependentBlocksFn = func(id eth.ChainID, invalidatedBlock eth.BlockID) ([]types.DependentBlock, error) {
+			return nil, errors.New("find error")
+		}
+
+		err := InvalidateLocalSafeWithDependents(logger, chainID, csd, chainABlock)
+		require.ErrorContains(t, err, "find error")
+	})
+
+	t.Run("Dependent block invalidation error", func(t *testing.T) {
+		csd := &mockCrossSafeDeps{}
+		csd.invalidateLocalSafeFn = func(id eth.ChainID, p types.DerivedBlockRefPair) error {
+			if id == chainBID {
+				return errors.New("dependent invalidate error")
+			}
+			return nil
+		}
+		csd.findDependentBlocksFn = func(id eth.ChainID, invalidatedBlock eth.BlockID) ([]types.DependentBlock, error) {
+			if id == chainID {
+				return []types.DependentBlock{
+					{
+						ChainID: chainBID,
+						Block:   chainBBlock,
+					},
+				}, nil
+			}
+			return nil, nil
+		}
+
+		err := InvalidateLocalSafeWithDependents(logger, chainID, csd, chainABlock)
+		require.ErrorContains(t, err, "dependent invalidate error")
+	})
+}
+
 type mockCrossSafeDeps struct {
 	deps                  mockDependencySet
 	crossSafeFn           func(chainID eth.ChainID) (pair types.DerivedBlockSealPair, err error)
@@ -459,6 +571,7 @@ type mockCrossSafeDeps struct {
 	previousDerivedFn     func(chain eth.ChainID, derived eth.BlockID) (prevDerived types.BlockSeal, err error)
 	checkFn               func(chainID eth.ChainID, blockNum uint64, logIdx uint32, logHash common.Hash) (types.BlockSeal, error)
 	invalidateLocalSafeFn func(chainID eth.ChainID, candidate types.DerivedBlockRefPair) error
+	findDependentBlocksFn func(chainID eth.ChainID, invalidatedBlock eth.BlockID) ([]types.DependentBlock, error)
 }
 
 var _ CrossSafeDeps = (*mockCrossSafeDeps)(nil)
@@ -492,20 +605,6 @@ func (m *mockCrossSafeDeps) Contains(chainID eth.ChainID, q types.ContainsQuery)
 	return types.BlockSeal{}, nil
 }
 
-func (m *mockCrossSafeDeps) NextSource(chain eth.ChainID, source eth.BlockID) (after eth.BlockRef, err error) {
-	if m.nextSourceFn != nil {
-		return m.nextSourceFn(chain, source)
-	}
-	return eth.BlockRef{}, nil
-}
-
-func (m *mockCrossSafeDeps) PreviousDerived(chain eth.ChainID, derived eth.BlockID) (prevDerived types.BlockSeal, err error) {
-	if m.previousDerivedFn != nil {
-		return m.previousDerivedFn(chain, derived)
-	}
-	return types.BlockSeal{}, nil
-}
-
 func (m *mockCrossSafeDeps) OpenBlock(chainID eth.ChainID, blockNum uint64) (ref eth.BlockRef, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error) {
 	if m.openBlockFn != nil {
 		return m.openBlockFn(chainID, blockNum)
@@ -520,9 +619,30 @@ func (m *mockCrossSafeDeps) UpdateCrossSafe(chain eth.ChainID, l1View eth.BlockR
 	return nil
 }
 
+func (m *mockCrossSafeDeps) NextSource(chain eth.ChainID, source eth.BlockID) (after eth.BlockRef, err error) {
+	if m.nextSourceFn != nil {
+		return m.nextSourceFn(chain, source)
+	}
+	return eth.BlockRef{}, nil
+}
+
+func (m *mockCrossSafeDeps) PreviousDerived(chain eth.ChainID, derived eth.BlockID) (prevDerived types.BlockSeal, err error) {
+	if m.previousDerivedFn != nil {
+		return m.previousDerivedFn(chain, derived)
+	}
+	return types.BlockSeal{}, nil
+}
+
 func (m *mockCrossSafeDeps) InvalidateLocalSafe(chainID eth.ChainID, candidate types.DerivedBlockRefPair) error {
 	if m.invalidateLocalSafeFn != nil {
 		return m.invalidateLocalSafeFn(chainID, candidate)
 	}
 	return nil
+}
+
+func (m *mockCrossSafeDeps) FindDependentBlocks(chainID eth.ChainID, invalidatedBlock eth.BlockID) ([]types.DependentBlock, error) {
+	if m.findDependentBlocksFn != nil {
+		return m.findDependentBlocksFn(chainID, invalidatedBlock)
+	}
+	return nil, nil
 }

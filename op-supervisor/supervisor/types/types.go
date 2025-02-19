@@ -324,3 +324,9 @@ type ManagedEvent struct {
 	ReplaceBlock           *BlockReplacement    `json:"replaceBlock,omitempty"`
 	DerivationOriginUpdate *eth.BlockRef        `json:"derivationOriginUpdate,omitempty"`
 }
+
+// DependentBlock represents a block that depends on another block, including its chain ID.
+type DependentBlock struct {
+	ChainID eth.ChainID         `json:"chainId"`
+	Block   DerivedBlockRefPair `json:"block"`
+}

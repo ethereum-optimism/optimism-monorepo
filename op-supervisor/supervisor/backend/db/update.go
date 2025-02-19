@@ -200,6 +200,14 @@ func (db *ChainsDB) onFinalizedL1(finalized eth.BlockRef) {
 }
 
 func (db *ChainsDB) InvalidateLocalSafe(chainID eth.ChainID, candidate types.DerivedBlockRefPair) error {
+	db.logger.Info("Starting local-safe invalidation",
+		"chain", chainID,
+		"derived_block_num", candidate.Derived.Number,
+		"derived_block_hash", candidate.Derived.Hash,
+		"derived_parent_hash", candidate.Derived.ParentHash,
+		"source_block_num", candidate.Source.Number,
+		"source_block_hash", candidate.Source.Hash)
+
 	// Get databases to invalidate data in.
 	eventsDB, ok := db.logDBs.Get(chainID)
 	if !ok {
@@ -213,7 +221,16 @@ func (db *ChainsDB) InvalidateLocalSafe(chainID eth.ChainID, candidate types.Der
 	// Now invalidate the local-safe data.
 	// We insert a marker, so we don't build on top of the invalidated block, until it is replaced.
 	// And we won't index unsafe blocks, until it is replaced.
+	db.logger.Info("Invalidating block in local-safe DB",
+		"chain", chainID,
+		"block_num", candidate.Derived.Number,
+		"block_hash", candidate.Derived.Hash)
 	if err := localSafeDB.RewindAndInvalidate(candidate); err != nil {
+		db.logger.Error("Failed to invalidate entry in local-safe DB",
+			"chain", chainID,
+			"block_num", candidate.Derived.Number,
+			"block_hash", candidate.Derived.Hash,
+			"err", err)
 		return fmt.Errorf("failed to invalidate entry in local-safe DB: %w", err)
 	}
 
@@ -224,7 +241,16 @@ func (db *ChainsDB) InvalidateLocalSafe(chainID eth.ChainID, candidate types.Der
 
 	// Drop the events of the invalidated block and after,
 	// by rewinding to only keep the parent-block.
+	db.logger.Info("Rewinding events DB to parent block",
+		"chain", chainID,
+		"parent_block_num", candidate.Derived.Number-1,
+		"parent_block_hash", candidate.Derived.ParentHash)
 	if err := eventsDB.Rewind(candidate.Derived.ParentID()); err != nil {
+		db.logger.Error("Failed to rewind events DB",
+			"chain", chainID,
+			"parent_block_num", candidate.Derived.Number-1,
+			"parent_block_hash", candidate.Derived.ParentHash,
+			"err", err)
 		return fmt.Errorf("failed to rewind unsafe-chain: %w", err)
 	}
 
@@ -234,6 +260,10 @@ func (db *ChainsDB) InvalidateLocalSafe(chainID eth.ChainID, candidate types.Der
 		ChainID:   chainID,
 		Candidate: candidate,
 	})
+	db.logger.Info("Completed local-safe invalidation",
+		"chain", chainID,
+		"block_num", candidate.Derived.Number,
+		"block_hash", candidate.Derived.Hash)
 	return nil
 }
 
