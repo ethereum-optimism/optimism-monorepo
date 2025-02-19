@@ -114,8 +114,8 @@ func (rs *RPCSyncNode) UpdateCrossUnsafe(ctx context.Context, id eth.BlockID) er
 	return rs.cl.CallContext(ctx, nil, "interop_updateCrossUnsafe", id)
 }
 
-func (rs *RPCSyncNode) UpdateCrossSafe(ctx context.Context, derived eth.BlockID, derivedFrom eth.BlockID) error {
-	return rs.cl.CallContext(ctx, nil, "interop_updateCrossSafe", derived, derivedFrom)
+func (rs *RPCSyncNode) UpdateCrossSafe(ctx context.Context, derived eth.BlockID, source eth.BlockID) error {
+	return rs.cl.CallContext(ctx, nil, "interop_updateCrossSafe", derived, source)
 }
 
 func (rs *RPCSyncNode) UpdateFinalized(ctx context.Context, id eth.BlockID) error {

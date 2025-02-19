@@ -32,6 +32,11 @@ var (
 		Usage:   "HTTP provider URL for the rollup node. A comma-separated list enables the active rollup provider.",
 		EnvVars: prefixEnvVars("ROLLUP_RPC"),
 	}
+	SupervisorRpcFlag = &cli.StringFlag{
+		Name:    "supervisor-rpc",
+		Usage:   "HTTP provider URL for the supervisor node",
+		EnvVars: prefixEnvVars("SUPERVISOR_RPC"),
+	}
 
 	// Optional flags
 	L2OOAddressFlag = &cli.StringFlag{
@@ -85,10 +90,11 @@ var (
 
 var requiredFlags = []cli.Flag{
 	L1EthRpcFlag,
-	RollupRpcFlag,
 }
 
 var optionalFlags = []cli.Flag{
+	RollupRpcFlag,
+	SupervisorRpcFlag,
 	L2OOAddressFlag,
 	PollIntervalFlag,
 	AllowNonFinalizedFlag,

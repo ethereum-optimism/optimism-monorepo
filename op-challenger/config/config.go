@@ -185,7 +185,7 @@ func (c Config) Check() error {
 	if c.MaxConcurrency == 0 {
 		return ErrMaxConcurrencyZero
 	}
-	if c.TraceTypeEnabled(types.TraceTypeSuperCannon) {
+	if c.TraceTypeEnabled(types.TraceTypeSuperCannon) || c.TraceTypeEnabled(types.TraceTypeSuperPermissioned) {
 		if c.SupervisorRPC == "" {
 			return ErrMissingSupervisorRpc
 		}

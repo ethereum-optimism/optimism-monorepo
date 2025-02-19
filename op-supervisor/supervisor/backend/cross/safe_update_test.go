@@ -125,7 +125,7 @@ func TestCrossSafeUpdate(t *testing.T) {
 			return eth.BlockRef{}, 0, nil, types.ErrOutOfScope
 		}
 		newScope := eth.BlockRef{Number: 3}
-		csd.nextSourceFn = func(chain eth.ChainID, derivedFrom eth.BlockID) (after eth.BlockRef, err error) {
+		csd.nextSourceFn = func(chain eth.ChainID, source eth.BlockID) (after eth.BlockRef, err error) {
 			return newScope, nil
 		}
 		currentCrossSafe := types.BlockSeal{Number: 5}
@@ -172,7 +172,7 @@ func TestCrossSafeUpdate(t *testing.T) {
 		csd.openBlockFn = func(chainID eth.ChainID, blockNum uint64) (ref eth.BlockRef, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error) {
 			return eth.BlockRef{}, 0, nil, types.ErrOutOfScope
 		}
-		csd.nextSourceFn = func(chain eth.ChainID, derivedFrom eth.BlockID) (after eth.BlockRef, err error) {
+		csd.nextSourceFn = func(chain eth.ChainID, source eth.BlockID) (after eth.BlockRef, err error) {
 			return eth.BlockRef{}, errors.New("some error")
 		}
 		csd.deps = mockDependencySet{}
@@ -455,7 +455,7 @@ type mockCrossSafeDeps struct {
 	candidateCrossSafeFn  func() (candidate types.DerivedBlockRefPair, err error)
 	openBlockFn           func(chainID eth.ChainID, blockNum uint64) (ref eth.BlockRef, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error)
 	updateCrossSafeFn     func(chain eth.ChainID, l1View eth.BlockRef, lastCrossDerived eth.BlockRef) error
-	nextSourceFn          func(chain eth.ChainID, derivedFrom eth.BlockID) (after eth.BlockRef, err error)
+	nextSourceFn          func(chain eth.ChainID, source eth.BlockID) (after eth.BlockRef, err error)
 	previousDerivedFn     func(chain eth.ChainID, derived eth.BlockID) (prevDerived types.BlockSeal, err error)
 	checkFn               func(chainID eth.ChainID, blockNum uint64, logIdx uint32, logHash common.Hash) (types.BlockSeal, error)
 	invalidateLocalSafeFn func(chainID eth.ChainID, candidate types.DerivedBlockRefPair) error
@@ -481,7 +481,7 @@ func (m *mockCrossSafeDeps) DependencySet() depset.DependencySet {
 	return m.deps
 }
 
-func (m *mockCrossSafeDeps) CrossDerivedToSource(chainID eth.ChainID, derived eth.BlockID) (derivedFrom types.BlockSeal, err error) {
+func (m *mockCrossSafeDeps) CrossDerivedToSource(chainID eth.ChainID, derived eth.BlockID) (source types.BlockSeal, err error) {
 	return types.BlockSeal{}, nil
 }
 
@@ -492,9 +492,9 @@ func (m *mockCrossSafeDeps) Contains(chainID eth.ChainID, q types.ContainsQuery)
 	return types.BlockSeal{}, nil
 }
 
-func (m *mockCrossSafeDeps) NextSource(chain eth.ChainID, derivedFrom eth.BlockID) (after eth.BlockRef, err error) {
+func (m *mockCrossSafeDeps) NextSource(chain eth.ChainID, source eth.BlockID) (after eth.BlockRef, err error) {
 	if m.nextSourceFn != nil {
-		return m.nextSourceFn(chain, derivedFrom)
+		return m.nextSourceFn(chain, source)
 	}
 	return eth.BlockRef{}, nil
 }

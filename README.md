@@ -7,9 +7,9 @@
   <br />
 </div>
 
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**
+
+<!--TOC-->
 
 - [What is Optimism?](#what-is-optimism)
 - [Documentation](#documentation)
@@ -24,7 +24,7 @@
   - [Development branch](#development-branch)
 - [License](#license)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+<!--TOC-->
 
 ## What is Optimism?
 

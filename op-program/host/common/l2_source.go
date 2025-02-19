@@ -84,7 +84,7 @@ func (l *L2Source) ExperimentalEnabled() bool {
 // CodeByHash implements prefetcher.L2Source.
 func (l *L2Source) CodeByHash(ctx context.Context, hash common.Hash) ([]byte, error) {
 	if l.ExperimentalEnabled() {
-		// This means experimental source was not able to retrieve relevant information from eth_getProof or debug_executionWitness
+		// This means experimental source was not able to retrieve relevant information from eth_getProof or debug_executePayload
 		// We should fall back to the canonical source, and log a warning, and record a metric
 		l.logger.Warn("Experimental source failed to retrieve code by hash, falling back to canonical source", "hash", hash)
 	}
@@ -102,7 +102,7 @@ func (l *L2Source) FetchReceipts(ctx context.Context, blockHash common.Hash) (et
 // NodeByHash implements prefetcher.L2Source.
 func (l *L2Source) NodeByHash(ctx context.Context, hash common.Hash) ([]byte, error) {
 	if l.ExperimentalEnabled() {
-		// This means experimental source was not able to retrieve relevant information from eth_getProof or debug_executionWitness
+		// This means experimental source was not able to retrieve relevant information from eth_getProof or debug_executePayload
 		// We should fall back to the canonical source, and log a warning, and record a metric
 		l.logger.Warn("Experimental source failed to retrieve node by hash, falling back to canonical source", "hash", hash)
 	}
@@ -133,17 +133,17 @@ func (l *L2Source) OutputByNumber(ctx context.Context, blockNum uint64) (eth.Out
 	return l.canonicalEthClient.OutputByNumber(ctx, blockNum)
 }
 
-// ExecutionWitness implements prefetcher.L2Source.
-func (l *L2Source) ExecutionWitness(ctx context.Context, blockNum uint64) (*eth.ExecutionWitness, error) {
+// PayloadExecutionWitness implements prefetcher.L2Source.
+func (l *L2Source) PayloadExecutionWitness(ctx context.Context, parentHash common.Hash, payloadAttributes eth.PayloadAttributes) (*eth.ExecutionWitness, error) {
 	if !l.ExperimentalEnabled() {
-		l.logger.Error("Experimental source is not enabled, cannot fetch execution witness", "blockNum", blockNum)
+		l.logger.Error("Experimental source is not enabled, cannot fetch execution witness", "parentHash", parentHash)
 		return nil, ErrExperimentalPrefetchDisabled
 	}
 
 	// log errors, but return standard error so we know to retry with legacy source
-	witness, err := l.experimentalClient.ExecutionWitness(ctx, blockNum)
+	witness, err := l.experimentalClient.PayloadExecutionWitness(ctx, parentHash, payloadAttributes)
 	if err != nil {
-		l.logger.Error("Failed to fetch execution witness from experimental source", "blockNum", blockNum, "err", err)
+		l.logger.Error("Failed to fetch execution witness from experimental source", "parentHash", parentHash, "err", err)
 		return nil, ErrExperimentalPrefetchFailed
 	}
 	return witness, nil

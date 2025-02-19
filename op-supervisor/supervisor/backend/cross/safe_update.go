@@ -19,7 +19,7 @@ type CrossSafeDeps interface {
 	SafeStartDeps
 
 	CandidateCrossSafe(chain eth.ChainID) (candidate types.DerivedBlockRefPair, err error)
-	NextSource(chain eth.ChainID, derivedFrom eth.BlockID) (after eth.BlockRef, err error)
+	NextSource(chain eth.ChainID, source eth.BlockID) (after eth.BlockRef, err error)
 	PreviousDerived(chain eth.ChainID, derived eth.BlockID) (prevDerived types.BlockSeal, err error)
 
 	OpenBlock(chainID eth.ChainID, blockNum uint64) (ref eth.BlockRef, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error)

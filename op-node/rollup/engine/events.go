@@ -504,6 +504,14 @@ func (d *EngDeriver) OnEvent(ev event.Event) bool {
 			CrossSafe: d.ec.SafeL2Head(),
 			LocalSafe: d.ec.LocalSafeL2Head(),
 		})
+		if x.Ref.Number > d.ec.crossUnsafeHead.Number {
+			d.log.Debug("Cross Unsafe Head is stale, updating to match cross safe", "cross_unsafe", d.ec.crossUnsafeHead, "cross_safe", x.Ref)
+			d.ec.SetCrossUnsafeHead(x.Ref)
+			d.emitter.Emit(CrossUnsafeUpdateEvent{
+				CrossUnsafe: x.Ref,
+				LocalUnsafe: d.ec.UnsafeL2Head(),
+			})
+		}
 		// Try to apply the forkchoice changes
 		d.emitter.Emit(TryUpdateEngineEvent{})
 	case PromoteFinalizedEvent:

@@ -119,4 +119,30 @@ func TestCanonicalBlockNumberOracle_SetCanonical(t *testing.T) {
 		}
 		require.Equal(t, blocks[1].Hash(), canon.GetHeaderByNumber(1).Hash())
 	})
+	t.Run("set canonical with cache reset up to genesis", func(t *testing.T) {
+		chainCfg, blocks, oracle := setupOracle(t, blockCount, headBlockNumber, true)
+		head := blocks[headBlockNumber].Header()
+
+		blockRequestCount := 0
+		blockByHash := func(hash common.Hash) *types.Block {
+			blockRequestCount++
+			return oracle.BlockByHash(hash, eth.ChainIDFromBig(chainCfg.ChainID))
+		}
+		canon := NewCanonicalBlockHeaderOracle(head, blockByHash)
+		oracle.Blocks[blocks[2].Hash()] = blocks[2]
+		oracle.Blocks[blocks[1].Hash()] = blocks[1]
+		oracle.Blocks[blocks[0].Hash()] = blocks[0]
+
+		// create a fork at genesis
+		header1b := *blocks[1].Header()
+		header1b.Time = header1b.Time + 2
+		block1b := types.NewBlockWithHeader(&header1b)
+		require.NotEqual(t, blocks[1].Hash(), block1b.Hash())
+		oracle.Blocks[block1b.Hash()] = block1b
+
+		canon.SetCanonical(block1b.Header())
+		blockRequestCount = 0
+		require.Equal(t, block1b.Hash(), canon.CurrentHeader().Hash())
+		require.Equal(t, 0, blockRequestCount, "Should not have needed to fetch a block")
+	})
 }

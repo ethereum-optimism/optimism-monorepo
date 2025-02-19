@@ -57,6 +57,7 @@ func TestRewindL1(t *testing.T) {
 		Time:       901,
 		ParentHash: l1Block1A.Hash,
 	}
+	s.chainsDB.ForceInitialized(chainID) // force init for test
 
 	// Setup the L1 node with initial chain
 	chain.l1Node.blocks[l1Block0.Number] = l1Block0
@@ -73,11 +74,13 @@ func TestRewindL1(t *testing.T) {
 	// Make genesis block derived from l1Block0 and make it safe
 	s.makeBlockSafe(chainID, genesis, l1Block0, true)
 
+	s.makeBlockSafe(chainID, genesis, l1Block1A, true) // Bump scope
 	// Make block1 local-safe and cross-safe using l1Block1A
 	s.makeBlockSafe(chainID, block1, l1Block1A, true)
 
 	// Add block2A and make it local-safe and cross-safe using l1Block2A
 	s.sealBlocks(chainID, block2A)
+	s.makeBlockSafe(chainID, block1, l1Block2A, true) // Bump scope
 	s.makeBlockSafe(chainID, block2A, l1Block2A, true)
 
 	// Verify block2A is the latest sealed block and is cross-safe
@@ -138,6 +141,7 @@ func TestRewindL2(t *testing.T) {
 	chain.l1Node.blocks[l1Genesis.Number] = l1Genesis
 	chain.l1Node.blocks[l1Block1.Number] = l1Block1
 	chain.l1Node.blocks[l1Block2.Number] = l1Block2
+	s.chainsDB.ForceInitialized(chainID) // force init for test
 
 	// Seal genesis and block1
 	s.sealBlocks(chainID, genesis, block1)
@@ -145,6 +149,7 @@ func TestRewindL2(t *testing.T) {
 	// Make genesis safe and derived from L1 genesis
 	s.makeBlockSafe(chainID, genesis, l1Genesis, true)
 
+	s.makeBlockSafe(chainID, genesis, l1Block1, true) // Bump scope
 	// Make block1 local-safe and cross-safe
 	s.makeBlockSafe(chainID, block1, l1Block1, true)
 
@@ -217,6 +222,7 @@ func TestNoRewindNeeded(t *testing.T) {
 	}
 	chain.l1Node.blocks[l1Block1.Number] = l1Block1
 	chain.l1Node.blocks[l1Block2.Number] = l1Block2
+	s.chainsDB.ForceInitialized(chainID) // force init for test
 
 	// Seal genesis and block1
 	s.sealBlocks(chainID, genesis, block1)
@@ -237,9 +243,11 @@ func TestNoRewindNeeded(t *testing.T) {
 		},
 	})
 
+	s.makeBlockSafe(chainID, genesis, l1Block1, true) // Bump scope
 	// Make block1 local-safe and cross-safe
 	s.makeBlockSafe(chainID, block1, l1Block1, true)
 
+	s.makeBlockSafe(chainID, block1, l1Block2, true) // Bump scope
 	// Add block2A and make it local-safe and cross-safe
 	s.sealBlocks(chainID, block2A)
 	s.makeBlockSafe(chainID, block2A, l1Block2, true)
@@ -284,6 +292,7 @@ func TestRewindLongChain(t *testing.T) {
 
 	chainID := eth.ChainID{1}
 	chain := s.chains[chainID]
+	s.chainsDB.ForceInitialized(chainID) // force init for test
 
 	// Create a chain with blocks 0-100
 	var blocks []eth.L2BlockRef
@@ -338,6 +347,9 @@ func TestRewindLongChain(t *testing.T) {
 	// Make blocks up to 95 safe
 	for i := uint64(1); i <= 95; i++ {
 		l1Index := i / 10
+		if (i-1)/10 != l1Index { // bump scope
+			s.makeBlockSafe(chainID, blocks[i-1], l1Blocks[l1Index], true)
+		}
 		s.makeBlockSafe(chainID, blocks[i], l1Blocks[l1Index], true)
 	}
 
@@ -380,6 +392,8 @@ func TestRewindMultiChain(t *testing.T) {
 	chain2ID := eth.ChainID{2}
 	s := setupTestChains(t, chain1ID, chain2ID)
 	defer s.Close()
+	s.chainsDB.ForceInitialized(chain1ID) // force init for test
+	s.chainsDB.ForceInitialized(chain2ID) // force init for test
 
 	// Create common blocks for both chains
 	genesis, block1, block2A, block2B := createTestBlocks()
@@ -409,6 +423,8 @@ func TestRewindMultiChain(t *testing.T) {
 
 		// Make genesis safe and derived from L1 genesis
 		s.makeBlockSafe(chainID, genesis, l1Genesis, true)
+
+		s.makeBlockSafe(chainID, genesis, l1Block1, true) // Bump scope
 
 		// Make block1 local-safe and cross-safe
 		s.makeBlockSafe(chainID, block1, l1Block1, true)
@@ -454,6 +470,7 @@ func TestRewindL2WalkBack(t *testing.T) {
 	defer s.Close()
 	chainID := eth.ChainID{1}
 	chain := s.chains[chainID]
+	s.chainsDB.ForceInitialized(chainID)
 	// Create a chain of blocks: genesis -> block1 -> block2 -> block3 -> block4A
 	genesis := eth.L2BlockRef{
 		Hash:           common.HexToHash("0x1110"),
@@ -554,9 +571,12 @@ func TestRewindL2WalkBack(t *testing.T) {
 		FinalizedL1: l1Genesis,
 	})
 
+	s.makeBlockSafe(chainID, genesis, l1Block1, true) // bump scope
 	// Make blocks up to block3 safe
 	s.makeBlockSafe(chainID, block1, l1Block1, true)
+	s.makeBlockSafe(chainID, block1, l1Block2, true) // bump scope
 	s.makeBlockSafe(chainID, block2, l1Block2, true)
+	s.makeBlockSafe(chainID, block2, l1Block3, true) // bump scope
 	s.makeBlockSafe(chainID, block3, l1Block3, true)
 
 	// Create rewinder with all dependencies
@@ -588,6 +608,7 @@ func TestRewindL1PastCrossSafe(t *testing.T) {
 
 	chainID := eth.ChainID{1}
 	chain := s.chains[chainID]
+	s.chainsDB.ForceInitialized(chainID) // force init for test
 
 	// Create blocks: genesis -> block1 -> block2 -> block3A/3B
 	genesis := eth.L2BlockRef{
@@ -680,12 +701,15 @@ func TestRewindL1PastCrossSafe(t *testing.T) {
 		FinalizedL1: l1Genesis,
 	})
 
+	s.makeBlockSafe(chainID, genesis, l1Block1, true) // bump scope
 	// Make block1 local-safe and cross-safe
 	s.makeBlockSafe(chainID, block1, l1Block1, true)
 
+	s.makeBlockSafe(chainID, block1, l1Block2, true) // bump scope
 	// Make block2 local-safe and cross-safe
 	s.makeBlockSafe(chainID, block2, l1Block2, true)
 
+	s.makeBlockSafe(chainID, block2, l1Block3A, false) // bump scope
 	// Make block3A only local-safe (not cross-safe)
 	s.makeBlockSafe(chainID, block3A, l1Block3A, false)
 

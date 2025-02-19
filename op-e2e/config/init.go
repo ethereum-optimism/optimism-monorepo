@@ -364,7 +364,7 @@ func defaultIntent(root string, loc *artifacts.Locator, deployer common.Address,
 	defaultPrestate := common.HexToHash("0x03c7ae758795765c6664a5d39bf63841c71ff191e9189522bad8ebff5d4eca98")
 	genesisOutputRoot := common.HexToHash("0xDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEF")
 	return &state.Intent{
-		ConfigType: state.IntentConfigTypeCustom,
+		ConfigType: state.IntentTypeCustom,
 		L1ChainID:  900,
 		SuperchainRoles: &state.SuperchainRoles{
 			ProxyAdminOwner:       deployer,

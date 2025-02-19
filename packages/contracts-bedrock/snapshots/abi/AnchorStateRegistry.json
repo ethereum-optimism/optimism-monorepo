@@ -120,25 +120,6 @@
         "type": "address"
       }
     ],
-    "name": "isGameAirgapped",
-    "outputs": [
-      {
-        "internalType": "bool",
-        "name": "",
-        "type": "bool"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "contract IDisputeGame",
-        "name": "_game",
-        "type": "address"
-      }
-    ],
     "name": "isGameBlacklisted",
     "outputs": [
       {

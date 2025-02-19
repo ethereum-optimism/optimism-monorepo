@@ -8,6 +8,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/derive"
 	"github.com/ethereum-optimism/optimism/op-program/client/l2/engineapi"
+	l2Types "github.com/ethereum-optimism/optimism/op-program/client/l2/types"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/predeploys"
 	"github.com/ethereum/go-ethereum/common"
@@ -19,7 +20,8 @@ import (
 var ErrNotFound = errors.New("not found")
 
 type OracleEngine struct {
-	api *engineapi.L2EngineAPI
+	api    *engineapi.L2EngineAPI
+	hinter l2Types.OracleHinter
 
 	// backend is the actual implementation used to create and process blocks. It is specifically a
 	// engineapi.CachingEngineBackend to ensure that blocks are stored when they are created and don't need to be
@@ -28,12 +30,13 @@ type OracleEngine struct {
 	rollupCfg *rollup.Config
 }
 
-func NewOracleEngine(rollupCfg *rollup.Config, logger log.Logger, backend engineapi.CachingEngineBackend) *OracleEngine {
+func NewOracleEngine(rollupCfg *rollup.Config, logger log.Logger, backend engineapi.CachingEngineBackend, hinter l2Types.OracleHinter) *OracleEngine {
 	engineAPI := engineapi.NewL2EngineAPI(logger, backend, nil)
 	return &OracleEngine{
 		api:       engineAPI,
 		backend:   backend,
 		rollupCfg: rollupCfg,
+		hinter:    hinter,
 	}
 }
 
@@ -70,6 +73,10 @@ func (o *OracleEngine) l2OutputAtHeader(header *types.Header) (*eth.OutputV0, er
 		}
 		storageRoot = *header.WithdrawalsHash
 	} else {
+		chainID := eth.ChainIDFromBig(o.rollupCfg.L2ChainID)
+		if o.hinter != nil {
+			o.hinter.HintWithdrawalsRoot(blockHash, chainID)
+		}
 		stateDB, err := o.backend.StateAt(header.Root)
 		if err != nil {
 			return nil, fmt.Errorf("failed to open L2 state db at block %s: %w", blockHash, err)
@@ -108,6 +115,13 @@ func (o *OracleEngine) GetPayload(ctx context.Context, payloadInfo eth.PayloadIn
 }
 
 func (o *OracleEngine) ForkchoiceUpdate(ctx context.Context, state *eth.ForkchoiceState, attr *eth.PayloadAttributes) (*eth.ForkchoiceUpdatedResult, error) {
+	if attr != nil {
+		chainID := eth.ChainIDFromBig(o.rollupCfg.L2ChainID)
+		if o.hinter != nil {
+			o.hinter.HintBlockExecution(state.HeadBlockHash, *attr, chainID)
+		}
+	}
+
 	switch method := o.rollupCfg.ForkchoiceUpdatedVersion(attr); method {
 	case eth.FCUV3:
 		return o.api.ForkchoiceUpdatedV3(ctx, state, attr)

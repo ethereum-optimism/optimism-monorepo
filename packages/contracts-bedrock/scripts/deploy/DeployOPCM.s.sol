@@ -45,6 +45,7 @@ contract DeployOPCMInput is BaseDeployIO {
     function set(bytes4 _sel, address _addr) public {
         require(_addr != address(0), "DeployOPCMInput: cannot set zero address");
 
+        // forgefmt: disable-start
         if (_sel == this.superchainConfig.selector) _superchainConfig = ISuperchainConfig(_addr);
         else if (_sel == this.protocolVersions.selector) _protocolVersions = IProtocolVersions(_addr);
         else if (_sel == this.superchainProxyAdmin.selector) _superchainProxyAdmin = IProxyAdmin(_addr);
@@ -69,6 +70,7 @@ contract DeployOPCMInput is BaseDeployIO {
         else if (_sel == this.delayedWETHImpl.selector) _delayedWETHImpl = _addr;
         else if (_sel == this.mipsImpl.selector) _mipsImpl = _addr;
         else revert("DeployOPCMInput: unknown selector");
+        // forgefmt: disable-end
     }
 
     // Setter for string type

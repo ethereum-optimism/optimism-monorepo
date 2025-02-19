@@ -19,14 +19,11 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/eth/ethconfig"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/log"
-	gn "github.com/ethereum/go-ethereum/node"
 	"github.com/ethereum/go-ethereum/rpc"
 
 	bss "github.com/ethereum-optimism/optimism/op-batcher/batcher"
-	batcherFlags "github.com/ethereum-optimism/optimism/op-batcher/flags"
 	"github.com/ethereum-optimism/optimism/op-chain-ops/devkeys"
 	"github.com/ethereum-optimism/optimism/op-chain-ops/foundry"
 	"github.com/ethereum-optimism/optimism/op-chain-ops/interopgen"
@@ -36,17 +33,8 @@ import (
 	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/interop/contracts/bindings/emit"
 	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/interop/contracts/bindings/inbox"
 	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/interop/contracts/bindings/systemconfig"
-	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/opnode"
-	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/services"
-	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/setuputils"
 	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/wait"
 	"github.com/ethereum-optimism/optimism/op-e2e/system/helpers"
-	"github.com/ethereum-optimism/optimism/op-node/node"
-	"github.com/ethereum-optimism/optimism/op-node/p2p"
-	"github.com/ethereum-optimism/optimism/op-node/rollup/derive"
-	"github.com/ethereum-optimism/optimism/op-node/rollup/driver"
-	"github.com/ethereum-optimism/optimism/op-node/rollup/interop"
-	"github.com/ethereum-optimism/optimism/op-node/rollup/sync"
 	l2os "github.com/ethereum-optimism/optimism/op-proposer/proposer"
 	"github.com/ethereum-optimism/optimism/op-service/client"
 	"github.com/ethereum-optimism/optimism/op-service/clock"
@@ -73,41 +61,31 @@ import (
 // for example, interopE2ESystem is the default implementation, but a shim to
 // kurtosis or another testing framework could be implemented
 type SuperSystem interface {
-	// get the supervisor
-	Supervisor() *supervisor.SupervisorService
-	// get the supervisor client
-	SupervisorClient() *sources.SupervisorClient
-	// get the batcher for a network
-	Batcher(network string) *bss.BatcherService
-	// get the proposer for a network
-	Proposer(network string) *l2os.ProposerService
-	// get the opnode for a network
-	OpNode(network string) *opnode.Opnode
-	// get the geth instance for a network
-	L2Geth(network string) *geth.GethInstance
-	// get the L2 geth client for a network
-	L2GethClient(network string) *ethclient.Client
-	// get the secret for a network and role
-	L2OperatorKey(network string, role devkeys.ChainOperatorRole) ecdsa.PrivateKey
-	// get the list of network IDs as key-strings
+	L1() *geth.GethInstance
+
+	// Superchain level
 	L2IDs() []string
-	// get the chain ID for a network
-	ChainID(network string) *big.Int
-	// register a username to an account on all L2s
+	Supervisor() *supervisor.SupervisorService
+	Batcher(network string) *bss.BatcherService
+	Proposer(network string) *l2os.ProposerService
 	AddUser(username string)
-	// get the user key for a user on an L2
-	UserKey(id, username string) ecdsa.PrivateKey
-	// send a transaction on an L2 on the given network, from the given user
-	SendL2Tx(network string, username string, applyTxOpts helpers.TxOptsFn) *types.Receipt
-	// get the address for a user on an L2
+	SupervisorClient() *sources.SupervisorClient
+
+	// L2 client specific
+	L2GethClient(network string, node string) *ethclient.Client
+	L2RollupClient(network string, node string) *sources.RollupClient
+	SendL2Tx(network string, node string, username string, applyTxOpts helpers.TxOptsFn) *types.Receipt
+	EmitData(ctx context.Context, network string, node string, username string, data string) *types.Receipt
+	AddNode(network string, nodeName string)
+
+	// L2 level
+	ChainID(network string) *big.Int
+	UserKey(nework, username string) ecdsa.PrivateKey
+	L2OperatorKey(network string, role devkeys.ChainOperatorRole) ecdsa.PrivateKey
 	Address(network string, username string) common.Address
-	// Deploy the Emitter Contract, which emits Event Logs
+	Contract(network string, contractName string) interface{}
 	DeployEmitterContract(network string, username string) common.Address
-	// Use the Emitter Contract to emit an Event Log
-	EmitData(ctx context.Context, network string, username string, data string) *types.Receipt
-	// AddDependency adds a dependency (by chain ID) to the given chain
 	AddDependency(ctx context.Context, network string, dep *big.Int) *types.Receipt
-	// ValidateMessage calls the CrossL2Inbox ValidateMessage function
 	ValidateMessage(
 		ctx context.Context,
 		id string,
@@ -117,7 +95,6 @@ type SuperSystem interface {
 		expectedError error,
 	) (*types.Receipt, error)
 	// Access a contract on a network by name
-	Contract(network string, contractName string) interface{}
 }
 type SuperSystemConfig struct {
 	mempoolFiltering bool
@@ -143,24 +120,16 @@ type interopE2ESystem struct {
 	worldOutput     *interopgen.WorldOutput
 	beacon          *fakebeacon.FakeBeacon
 	l1              *geth.GethInstance
-	l2s             map[string]l2Set
-	l1GethClient    *ethclient.Client
-	l2GethClients   map[string]*ethclient.Client
-	supervisor      *supervisor.SupervisorService
-	superClient     *sources.SupervisorClient
-	config          *SuperSystemConfig
+	l2s             map[string]l2Net
+	// supervisor and L1 clients should be singletons, so they are cached
+	l1GethClient *ethclient.Client
+	superClient  *sources.SupervisorClient
+	supervisor   *supervisor.SupervisorService
+	config       *SuperSystemConfig
 }
 
-// l2Set is a set of resources for an L2 chain
-type l2Set struct {
-	chainID      *big.Int
-	opNode       *opnode.Opnode
-	l2Geth       *geth.GethInstance
-	proposer     *l2os.ProposerService
-	batcher      *bss.BatcherService
-	operatorKeys map[devkeys.ChainOperatorRole]ecdsa.PrivateKey
-	userKeys     map[string]ecdsa.PrivateKey
-	contracts    map[string]interface{}
+func (s *interopE2ESystem) L1() *geth.GethInstance {
+	return s.l1
 }
 
 // prepareHDWallet creates a new HD wallet to derive keys from
@@ -261,203 +230,6 @@ func (s *interopE2ESystem) newOperatorKeysForL2(l2Out *interopgen.L2Output) map[
 	return operatorKeys
 }
 
-// newGethForL2 creates a new Geth instance for an L2 chain
-func (s *interopE2ESystem) newGethForL2(id string, l2Out *interopgen.L2Output) *geth.GethInstance {
-	jwtPath := writeDefaultJWT(s.t)
-	name := "l2-" + id
-	l2Geth, err := geth.InitL2(name, l2Out.Genesis, jwtPath,
-		func(ethCfg *ethconfig.Config, nodeCfg *gn.Config) error {
-			ethCfg.InteropMessageRPC = s.supervisor.RPC()
-			ethCfg.InteropMempoolFiltering = s.config.mempoolFiltering
-			return nil
-		})
-	require.NoError(s.t, err)
-	require.NoError(s.t, l2Geth.Node.Start())
-	s.t.Cleanup(func() {
-		s.t.Logf("Closing L2 geth of chain %s", id)
-		closeErr := l2Geth.Close()
-		s.t.Logf("Closed L2 geth of chain %s: %v", id, closeErr)
-	})
-	return l2Geth
-}
-
-// newNodeForL2 creates a new Opnode for an L2 chain
-func (s *interopE2ESystem) newNodeForL2(
-	id string,
-	l2Out *interopgen.L2Output,
-	operatorKeys map[devkeys.ChainOperatorRole]ecdsa.PrivateKey,
-	l2Geth *geth.GethInstance,
-) *opnode.Opnode {
-	logger := s.logger.New("role", "op-node-"+id)
-	p2pKey := operatorKeys[devkeys.SequencerP2PRole]
-	nodeCfg := &node.Config{
-		L1: &node.PreparedL1Endpoint{
-			Client: client.NewBaseRPCClient(endpoint.DialRPC(
-				endpoint.PreferAnyRPC,
-				s.l1.UserRPC(),
-				mustDial(s.t, logger))),
-			TrustRPC:        false,
-			RPCProviderKind: sources.RPCKindDebugGeth,
-		},
-		L2: &node.L2EndpointConfig{
-			L2EngineAddr:      l2Geth.AuthRPC().RPC(),
-			L2EngineJWTSecret: testingJWTSecret,
-		},
-		Beacon: &node.L1BeaconEndpointConfig{
-			BeaconAddr: s.beacon.BeaconAddr(),
-		},
-		Driver: driver.Config{
-			SequencerEnabled: true,
-		},
-		Rollup: *l2Out.RollupCfg,
-		P2PSigner: &p2p.PreparedSigner{
-			Signer: p2p.NewLocalSigner(&p2pKey)},
-		RPC: node.RPCConfig{
-			ListenAddr:  "127.0.0.1",
-			ListenPort:  0,
-			EnableAdmin: true,
-		},
-		InteropConfig: &interop.Config{
-			//SupervisorAddr:   s.supervisor.RPC(),
-			RPCAddr:          "127.0.0.1",
-			RPCPort:          0,
-			RPCJwtSecretPath: "jwt.secret",
-		},
-		P2P:                         nil, // disabled P2P setup for now
-		L1EpochPollInterval:         time.Second * 2,
-		RuntimeConfigReloadInterval: 0,
-		Tracer:                      nil,
-		Sync: sync.Config{
-			SyncMode:                       sync.CLSync,
-			SkipSyncStartCheck:             false,
-			SupportsPostFinalizationELSync: false,
-		},
-		ConfigPersistence: node.DisabledConfigPersistence{},
-	}
-	opNode, err := opnode.NewOpnode(logger.New("service", "op-node"),
-		nodeCfg, func(err error) {
-			s.t.Error(err)
-		})
-	require.NoError(s.t, err)
-	s.t.Cleanup(func() {
-		ctx, cancel := context.WithCancel(context.Background())
-		cancel() // force-quit
-		s.t.Logf("Closing op-node of chain %s", id)
-		_ = opNode.Stop(ctx)
-		s.t.Logf("Closed op-node of chain %s", id)
-	})
-	return opNode
-}
-
-// newProposerForL2 creates a new Proposer for an L2 chain
-// it is currently unused, as the generated world does not have a DisputeGameFactoryProxy
-// TODO(#11888): name this function "newProposerForL2" and use it in the prepareL2s function when the DisputeGameFactoryProxy is available
-func (s *interopE2ESystem) _(
-	id string,
-	operatorKeys map[devkeys.ChainOperatorRole]ecdsa.PrivateKey,
-	opNode *opnode.Opnode,
-) *l2os.ProposerService {
-	proposerSecret := operatorKeys[devkeys.ProposerRole]
-	logger := s.logger.New("role", "proposer"+id)
-	proposerCLIConfig := &l2os.CLIConfig{
-		L1EthRpc:          s.l1.UserRPC().RPC(),
-		RollupRpc:         opNode.UserRPC().RPC(),
-		DGFAddress:        s.worldDeployment.L2s[id].DisputeGameFactoryProxy.Hex(),
-		ProposalInterval:  6 * time.Second,
-		DisputeGameType:   254, // Fast game type
-		PollInterval:      500 * time.Millisecond,
-		TxMgrConfig:       setuputils.NewTxMgrConfig(s.l1.UserRPC(), &proposerSecret),
-		AllowNonFinalized: false,
-		LogConfig: oplog.CLIConfig{
-			Level:  log.LvlInfo,
-			Format: oplog.FormatText,
-		},
-	}
-	proposer, err := l2os.ProposerServiceFromCLIConfig(
-		context.Background(),
-		"0.0.1",
-		proposerCLIConfig,
-		logger.New("service", "proposer"))
-	require.NoError(s.t, err, "must start proposer")
-	require.NoError(s.t, proposer.Start(context.Background()))
-	s.t.Cleanup(func() {
-		ctx, cancel := context.WithCancel(context.Background())
-		cancel() // force-quit
-		_ = proposer.Stop(ctx)
-	})
-	return proposer
-}
-
-// newBatcherForL2 creates a new Batcher for an L2 chain
-func (s *interopE2ESystem) newBatcherForL2(
-	id string,
-	operatorKeys map[devkeys.ChainOperatorRole]ecdsa.PrivateKey,
-	l2Geth *geth.GethInstance,
-	opNode *opnode.Opnode,
-) *bss.BatcherService {
-	batcherSecret := operatorKeys[devkeys.BatcherRole]
-	logger := s.logger.New("role", "batcher"+id)
-	batcherCLIConfig := &bss.CLIConfig{
-		L1EthRpc:                 s.l1.UserRPC().RPC(),
-		L2EthRpc:                 l2Geth.UserRPC().RPC(),
-		RollupRpc:                opNode.UserRPC().RPC(),
-		MaxPendingTransactions:   1,
-		MaxChannelDuration:       1,
-		MaxL1TxSize:              120_000,
-		TestUseMaxTxSizeForBlobs: false,
-		TargetNumFrames:          1,
-		ApproxComprRatio:         0.4,
-		SubSafetyMargin:          4,
-		PollInterval:             50 * time.Millisecond,
-		TxMgrConfig:              setuputils.NewTxMgrConfig(s.l1.UserRPC(), &batcherSecret),
-		LogConfig: oplog.CLIConfig{
-			Level:  log.LevelInfo,
-			Format: oplog.FormatText,
-		},
-		Stopped:               false,
-		BatchType:             derive.SpanBatchType,
-		MaxBlocksPerSpanBatch: 10,
-		DataAvailabilityType:  batcherFlags.CalldataType,
-		CompressionAlgo:       derive.Brotli,
-	}
-	batcher, err := bss.BatcherServiceFromCLIConfig(
-		context.Background(), "0.0.1", batcherCLIConfig,
-		logger.New("service", "batcher"))
-	require.NoError(s.t, err)
-	require.NoError(s.t, batcher.Start(context.Background()))
-	s.t.Cleanup(func() {
-		ctx, cancel := context.WithCancel(context.Background())
-		cancel() // force-quit
-		s.t.Logf("Closing batcher of chain %s", id)
-		_ = batcher.Stop(ctx)
-		s.t.Logf("Closed batcher of chain %s", id)
-	})
-	return batcher
-}
-
-// newL2 creates a new L2, starting with the L2Output from the world configuration
-// and iterating through the resources needed for the L2.
-// it returns a l2Set with the resources for the L2
-func (s *interopE2ESystem) newL2(id string, l2Out *interopgen.L2Output) l2Set {
-	operatorKeys := s.newOperatorKeysForL2(l2Out)
-	l2Geth := s.newGethForL2(id, l2Out)
-	opNode := s.newNodeForL2(id, l2Out, operatorKeys, l2Geth)
-	// TODO(#11886): proposer does not work with the generated world as there is no DisputeGameFactoryProxy
-	//proposer := s.newProposerForL2(id, operatorKeys, opNode)
-	batcher := s.newBatcherForL2(id, operatorKeys, l2Geth, opNode)
-
-	return l2Set{
-		chainID:      l2Out.Genesis.Config.ChainID,
-		opNode:       opNode,
-		l2Geth:       l2Geth,
-		proposer:     nil,
-		batcher:      batcher,
-		operatorKeys: operatorKeys,
-		userKeys:     make(map[string]ecdsa.PrivateKey),
-		contracts:    make(map[string]interface{}),
-	}
-}
-
 func (s *interopE2ESystem) ChainID(network string) *big.Int {
 	return s.l2s[network].chainID
 }
@@ -552,9 +324,11 @@ func (s *interopE2ESystem) prepare(t *testing.T, w worldResourcePaths) {
 	// add the L2 RPCs to the supervisor now that the L2s are created
 	ctx := context.Background()
 	for _, l2 := range s.l2s {
-		rpcEndpoint, secret := l2.opNode.InteropRPC()
-		err := s.SupervisorClient().AddL2RPC(ctx, rpcEndpoint, secret)
-		require.NoError(s.t, err, "failed to add L2 RPC to supervisor")
+		for _, node := range l2.nodes {
+			rpcEndpoint, secret := node.opNode.InteropRPC()
+			err := s.SupervisorClient().AddL2RPC(ctx, rpcEndpoint, secret)
+			require.NoError(s.t, err, "failed to add L2 RPC to supervisor")
+		}
 	}
 
 	// Try to close the op-supervisor first
@@ -600,8 +374,8 @@ func (s *interopE2ESystem) Address(id, username string) common.Address {
 }
 
 // prepareL2s creates the L2s for the system, returning a map of L2s
-func (s *interopE2ESystem) prepareL2s() map[string]l2Set {
-	l2s := make(map[string]l2Set)
+func (s *interopE2ESystem) prepareL2s() map[string]l2Net {
+	l2s := make(map[string]l2Net)
 	for id, l2Out := range s.worldOutput.L2s {
 		l2s[id] = s.newL2(id, l2Out)
 	}
@@ -614,7 +388,7 @@ func (s *interopE2ESystem) prepareContracts() {
 	l1GethClient := s.L1GethClient()
 	for id, l2Dep := range s.worldDeployment.L2s {
 		{
-			contract, err := inbox.NewInbox(predeploys.CrossL2InboxAddr, s.L2GethClient(id))
+			contract, err := inbox.NewInbox(predeploys.CrossL2InboxAddr, s.L2GethClient(id, "sequencer"))
 			require.NoError(s.t, err)
 			s.l2s[id].contracts["inbox"] = contract
 		}
@@ -646,55 +420,9 @@ func (s *interopE2ESystem) L1GethClient() *ethclient.Client {
 	return nodeClient
 }
 
-func (s *interopE2ESystem) L2GethClient(id string) *ethclient.Client {
-	// guard: check if the client already exists and return it in that case
-	nodeClient, ok := s.l2GethClients[id]
-	if ok {
-		return nodeClient
-	}
-	// create a new client for the L2 from the L2's geth instance
-	var ethClient services.EthInstance = s.L2Geth(id)
-	rpcEndpoint := ethClient.UserRPC()
-	rpcCl := endpoint.DialRPC(
-		endpoint.PreferAnyRPC,
-		rpcEndpoint,
-		func(v string) *rpc.Client {
-			logger := testlog.Logger(s.t, log.LevelInfo).New("node", id)
-			cl, err := dial.DialRPCClientWithTimeout(context.Background(), 30*time.Second, logger, v)
-			require.NoError(s.t, err, "failed to dial eth node instance %s", id)
-			return cl
-		})
-	nodeClient = ethclient.NewClient(rpcCl)
-	// register the client so it can be reused
-	s.addL2GethClient(id, nodeClient)
-	return nodeClient
-}
-
-func (sys *interopE2ESystem) addL2GethClient(name string, client *ethclient.Client) {
-	if sys.l2GethClients == nil {
-		sys.l2GethClients = make(map[string]*ethclient.Client)
-	}
-	sys.l2GethClients[name] = client
-}
-
-// getter functions for L1 entities
-func (s *interopE2ESystem) Supervisor() *supervisor.SupervisorService {
-	return s.supervisor
-}
-
-// gettter functions for the individual L2s
-func (s *interopE2ESystem) Batcher(id string) *bss.BatcherService {
-	return s.l2s[id].batcher
-}
-func (s *interopE2ESystem) Proposer(id string) *l2os.ProposerService {
-	return s.l2s[id].proposer
-}
-func (s *interopE2ESystem) OpNode(id string) *opnode.Opnode {
-	return s.l2s[id].opNode
-}
-func (s *interopE2ESystem) L2Geth(id string) *geth.GethInstance {
-	return s.l2s[id].l2Geth
-}
+func (s *interopE2ESystem) Supervisor() *supervisor.SupervisorService { return s.supervisor }
+func (s *interopE2ESystem) Batcher(id string) *bss.BatcherService     { return s.l2s[id].batcher }
+func (s *interopE2ESystem) Proposer(id string) *l2os.ProposerService  { return s.l2s[id].proposer }
 func (s *interopE2ESystem) L2OperatorKey(id string, role devkeys.ChainOperatorRole) ecdsa.PrivateKey {
 	return s.l2s[id].operatorKeys[role]
 }
@@ -714,12 +442,13 @@ func (s *interopE2ESystem) L2IDs() []string {
 // and uses the L2's chain ID, username key, and geth client.
 func (s *interopE2ESystem) SendL2Tx(
 	id string,
+	node string,
 	sender string,
 	applyTxOpts helpers.TxOptsFn,
 ) *types.Receipt {
 	senderSecret := s.UserKey(id, sender)
 	require.NotNil(s.t, senderSecret, "no secret found for sender %s", sender)
-	nonce, err := s.L2GethClient(id).PendingNonceAt(context.Background(), crypto.PubkeyToAddress(senderSecret.PublicKey))
+	nonce, err := s.L2GethClient(id, node).PendingNonceAt(context.Background(), crypto.PubkeyToAddress(senderSecret.PublicKey))
 	require.NoError(s.t, err, "failed to get nonce")
 	newApply := func(opts *helpers.TxOpts) {
 		applyTxOpts(opts)
@@ -728,7 +457,7 @@ func (s *interopE2ESystem) SendL2Tx(
 	return helpers.SendL2TxWithID(
 		s.t,
 		s.l2s[id].chainID,
-		s.L2GethClient(id),
+		s.L2GethClient(id, node),
 		&senderSecret,
 		newApply)
 }
@@ -769,7 +498,7 @@ func (s *interopE2ESystem) ValidateMessage(
 		require.NoError(s.t, err)
 	}
 	s.logger.Info("Validating message", "tx", tx.Hash(), "to", tx.To(), "data", hexutil.Bytes(tx.Data()))
-	return bind.WaitMined(ctx, s.L2GethClient(id), tx)
+	return bind.WaitMined(ctx, s.L2GethClient(id, "sequencer"), tx) // use the sequencer client to wait for the tx
 }
 
 func (s *interopE2ESystem) AddDependency(ctx context.Context, id string, dep *big.Int) *types.Receipt {
@@ -800,6 +529,8 @@ func (s *interopE2ESystem) AddDependency(ctx context.Context, id string, dep *bi
 	return receipt
 }
 
+// DeployEmitterContract deploys the Emitter contract on the L2
+// it uses the sequencer node to deploy the contract
 func (s *interopE2ESystem) DeployEmitterContract(
 	id string,
 	sender string,
@@ -809,9 +540,9 @@ func (s *interopE2ESystem) DeployEmitterContract(
 	require.NoError(s.t, err)
 	auth.GasLimit = uint64(3000000)
 	auth.GasPrice = big.NewInt(20000000000)
-	address, _, _, err := emit.DeployEmit(auth, s.L2GethClient(id))
+	address, _, _, err := emit.DeployEmit(auth, s.L2GethClient(id, "sequencer"))
 	require.NoError(s.t, err)
-	contract, err := emit.NewEmit(address, s.L2GethClient(id))
+	contract, err := emit.NewEmit(address, s.L2GethClient(id, "sequencer"))
 	require.NoError(s.t, err)
 	s.l2s[id].contracts["emitter"] = contract
 	return address
@@ -820,6 +551,7 @@ func (s *interopE2ESystem) DeployEmitterContract(
 func (s *interopE2ESystem) EmitData(
 	ctx context.Context,
 	id string,
+	node string,
 	sender string,
 	data string,
 ) *types.Receipt {
@@ -834,7 +566,7 @@ func (s *interopE2ESystem) EmitData(
 	contract := s.Contract(id, "emitter").(*emit.Emit)
 	tx, err := contract.EmitTransactor.EmitData(auth, []byte(data))
 	require.NoError(s.t, err)
-	receipt, err := bind.WaitMined(ctx, s.L2GethClient(id), tx)
+	receipt, err := bind.WaitMined(ctx, s.L2GethClient(id, node), tx)
 	require.NoError(s.t, err)
 	return receipt
 }

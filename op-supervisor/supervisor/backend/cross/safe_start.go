@@ -12,7 +12,7 @@ import (
 type SafeStartDeps interface {
 	Contains(chain eth.ChainID, query types.ContainsQuery) (includedIn types.BlockSeal, err error)
 
-	CrossDerivedToSource(chainID eth.ChainID, derived eth.BlockID) (derivedFrom types.BlockSeal, err error)
+	CrossDerivedToSource(chainID eth.ChainID, derived eth.BlockID) (source types.BlockSeal, err error)
 
 	DependencySet() depset.DependencySet
 }
