@@ -166,9 +166,9 @@ contract SuperFaultDisputeGame is Clone, ISemver {
     uint256 internal constant HEADER_BLOCK_NUMBER_INDEX = 8;
 
     /// @notice Semantic version.
-    /// @custom:semver 0.1.0-beta.0
+    /// @custom:semver 0.1.0-beta.1
     function version() public pure virtual returns (string memory) {
-        return "0.1.0-beta.0";
+        return "0.1.0-beta.1";
     }
 
     /// @notice The starting timestamp of the game
