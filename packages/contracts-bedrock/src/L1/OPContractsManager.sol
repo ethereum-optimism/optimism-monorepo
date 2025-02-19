@@ -657,8 +657,10 @@ contract OPContractsManager is ISemver {
             // Deploy a new DelayedWETH proxy for this game if one hasn't already been specified. Leaving
             /// gameConfig.delayedWETH as the zero address will cause a new DelayedWETH to be deployed for this game.
             if (address(gameConfig.delayedWETH) == address(0)) {
+                string memory contractName =
+                    string.concat(gameConfig.permissioned ? "Permissioned" : "Permissionless", "DelayedWETH");
                 outputs[i].delayedWETH = IDelayedWETH(
-                    payable(deployProxy(l2ChainId, gameConfig.proxyAdmin, gameConfig.saltMixer, "DelayedWETH"))
+                    payable(deployProxy(l2ChainId, gameConfig.proxyAdmin, gameConfig.saltMixer, contractName))
                 );
 
                 // Initialize the proxy.
