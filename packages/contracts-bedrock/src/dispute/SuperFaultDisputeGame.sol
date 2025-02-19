@@ -39,7 +39,6 @@ import {
     InvalidPrestate,
     ValidStep,
     GameDepthExceeded,
-    L2BlockNumberChallenged,
     InvalidDisputedClaimIndex,
     ClockTimeExceeded,
     DuplicateStep,
@@ -94,7 +93,6 @@ contract SuperFaultDisputeGame is Clone, ISemver {
         Position leftmostPosition;
         address counteredBy;
     }
-
 
     /// @notice Parameters for creating a new SuperFaultDisputeGame. We place this into a struct to
     ///         avoid stack-too-deep errors when compiling without the optimizer enabled.
@@ -482,10 +480,6 @@ contract SuperFaultDisputeGame is Clone, ISemver {
             revert CannotDefendRootClaim();
         }
 
-        // INVARIANT: No moves against the root claim can be made after it has been challenged with
-        //            `challengeRootL2Block`.`
-        if (l2BlockNumberChallenged && _challengeIndex == 0) revert L2BlockNumberChallenged();
-
         // INVARIANT: A move can never surpass the `MAX_GAME_DEPTH`. The only option to counter a
         //            claim at this depth is to perform a single instruction step on-chain via
         //            the `step` function to prove that the state transition produces an unexpected
@@ -646,7 +640,7 @@ contract SuperFaultDisputeGame is Clone, ISemver {
     function startingRootHash() external view returns (Hash startingRootHash_) {
         startingRootHash_ = startingOutputRoot.root;
     }
-    
+
     ////////////////////////////////////////////////////////////////
     //                    `IDisputeGame` impl                     //
     ////////////////////////////////////////////////////////////////
