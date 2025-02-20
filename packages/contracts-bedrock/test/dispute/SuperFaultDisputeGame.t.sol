@@ -10,9 +10,6 @@ import { stdError } from "forge-std/StdError.sol";
 // Scripts
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 
-// Contracts
-import { DisputeActor, HonestDisputeActor } from "test/actors/FaultDisputeActors.sol";
-
 // Libraries
 import { Types } from "src/libraries/Types.sol";
 import { Hashing } from "src/libraries/Hashing.sol";
