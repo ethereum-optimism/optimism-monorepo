@@ -514,3 +514,54 @@ func TestEVM_SingleStep_Branch64(t *testing.T) {
 
 	testBranch(t, cases)
 }
+
+func TestEVM_SingleStep_CloClz64(t *testing.T) {
+	rsReg := uint32(7)
+	rdReg := uint32(8)
+	cases := []struct {
+		name           string
+		rs             Word
+		funct          uint32
+		expectedResult Word
+	}{
+		// dclo
+		{name: "dclo", rs: Word(0xFFFF_FFFF_FFFF_FFFF), expectedResult: Word(64), funct: 0b10_0101},
+		{name: "dclo", rs: Word(0xFFFF_FFFF_FFFF_FFFE), expectedResult: Word(63), funct: 0b10_0101},
+		{name: "dclo", rs: Word(0xFFFF_FFFF_0000_0000), expectedResult: Word(32), funct: 0b10_0101},
+		{name: "dclo", rs: Word(0x8000_0000_0000_0000), expectedResult: Word(1), funct: 0b10_0101},
+		{name: "dclo", rs: Word(0x0000_0000_0000_0000), expectedResult: Word(0), funct: 0b10_0101},
+		// dclz
+		{name: "dclz", rs: Word(0x0), expectedResult: Word(64), funct: 0b10_0100},
+		{name: "dclz", rs: Word(0x1), expectedResult: Word(63), funct: 0b10_0100},
+		{name: "dclz", rs: Word(0x10_00_00_00), expectedResult: Word(35), funct: 0b10_0100},
+		{name: "dclz", rs: Word(0x80_00_00_00), expectedResult: Word(32), funct: 0b10_0100},
+		{name: "dclz", rs: Word(0x80_00_00_00_00_00_00_00), expectedResult: Word(0), funct: 0b10_0100},
+	}
+
+	versions := GetMipsVersionTestCases(t)
+	for _, v := range versions {
+		for i, tt := range cases {
+			testName := fmt.Sprintf("%v (%v)", tt.name, v.Name)
+			t.Run(testName, func(t *testing.T) {
+				// Set up state
+				goVm := v.VMFactory(nil, os.Stdout, os.Stderr, testutil.CreateLogger(), testutil.WithRandomization(int64(i)))
+				state := goVm.GetState()
+				insn := 0b01_1100<<26 | rsReg<<21 | rdReg<<11 | tt.funct
+				testutil.StoreInstruction(state.GetMemory(), state.GetPC(), insn)
+				state.GetRegistersRef()[rsReg] = tt.rs
+				step := state.GetStep()
+
+				// Setup expectations
+				expected := testutil.NewExpectedState(state)
+				expected.ExpectStep()
+				expected.Registers[rdReg] = tt.expectedResult
+				stepWitness, err := goVm.Step(true)
+				require.NoError(t, err)
+
+				// Check expectations
+				expected.Validate(t, state)
+				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
+			})
+		}
+	}
+}
