@@ -91,6 +91,7 @@ type DriverSetup struct {
 	ChannelConfig     ChannelConfigProvider
 	AltDA             *altda.DAClient
 	ChannelOutFactory ChannelOutFactory
+	ActiveSeqChanged  chan struct{} // optional
 }
 
 // BatchSubmitter encapsulates a service responsible for submitting L2 tx
@@ -124,9 +125,8 @@ func NewBatchSubmitter(setup DriverSetup) *BatchSubmitter {
 	}
 
 	return &BatchSubmitter{
-		DriverSetup:            setup,
-		channelMgr:             state,
-		activeSequencerChanged: make(chan struct{}, 1),
+		DriverSetup: setup,
+		channelMgr:  state,
 	}
 }
 
@@ -180,7 +180,6 @@ func (l *BatchSubmitter) StartBatchSubmitting() error {
 
 	l.Log.Info("Batch Submitter started")
 	return nil
-
 }
 
 // waitForL2Genesis waits for the L2 genesis time to be reached.
@@ -616,13 +615,12 @@ func (l *BatchSubmitter) throttlingLoop(wg *sync.WaitGroup, pendingBytesUpdated 
 			}
 			updateParams(pendingBytes)
 			cachedPendingBytes = pendingBytes
-		case <-l.activeSequencerChanged:
+		case <-l.ActiveSeqChanged:
 			updateParams(cachedPendingBytes)
 		case <-retryTimer.C:
 			updateParams(cachedPendingBytes)
 		}
 	}
-
 }
 
 func (l *BatchSubmitter) waitNodeSyncAndClearState() {
@@ -688,7 +686,6 @@ func (l *BatchSubmitter) publishStateToL1(ctx context.Context, queue *txmgr.Queu
 		}
 
 		err := l.publishTxToL1(ctx, queue, receiptsCh, daGroup)
-
 		if err != nil {
 			if err != io.EOF {
 				l.Log.Error("Error publishing tx to l1", "err", err)
@@ -743,7 +740,6 @@ func (l *BatchSubmitter) clearState(ctx context.Context) {
 
 // publishTxToL1 submits a single state tx to the L1
 func (l *BatchSubmitter) publishTxToL1(ctx context.Context, queue *txmgr.Queue[txRef], receiptsCh chan txmgr.TxReceipt[txRef], daGroup *errgroup.Group) error {
-
 	// send all available transactions
 	l1tip, isPectra, err := l.l1Tip(ctx)
 	if err != nil {
@@ -968,7 +964,6 @@ func (l *BatchSubmitter) l1Tip(ctx context.Context) (eth.L1BlockRef, bool, error
 	tctx, cancel := context.WithTimeout(ctx, l.Config.NetworkTimeout)
 	defer cancel()
 	head, err := l.L1Client.HeaderByNumber(tctx, nil)
-
 	if err != nil {
 		return eth.L1BlockRef{}, false, fmt.Errorf("getting latest L1 block: %w", err)
 	}
