@@ -1017,10 +1017,5 @@ func (m *mockL1Node) L1BlockRefByNumber(ctx context.Context, number uint64) (eth
 	if !ok {
 		return eth.L1BlockRef{}, fmt.Errorf("block not found: %d", number)
 	}
-	return eth.L1BlockRef{
-		Hash:       block.Hash,
-		Number:     block.Number,
-		Time:       block.Time,
-		ParentHash: block.ParentHash,
-	}, nil
+	return eth.L1BlockRef(block), nil
 }
