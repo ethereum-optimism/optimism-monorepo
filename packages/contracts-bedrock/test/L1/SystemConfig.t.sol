@@ -74,6 +74,7 @@ contract SystemConfig_Initialize_Test is SystemConfig_Init {
         assertEq(address(impl.disputeGameFactory()), address(0));
         assertEq(address(impl.optimismPortal()), address(0));
         assertEq(address(impl.optimismMintableERC20Factory()), address(0));
+        assertEq(bytes32(impl.foo()), bytes32(0));
     }
 
     /// @dev Tests that initialization sets the correct values.
@@ -114,6 +115,7 @@ contract SystemConfig_Initialize_Test is SystemConfig_Init {
         assertEq(addrs.optimismPortal, address(optimismPortal2));
         assertEq(address(systemConfig.optimismMintableERC20Factory()), address(optimismMintableERC20Factory));
         assertEq(addrs.optimismMintableERC20Factory, address(optimismMintableERC20Factory));
+        assertEq(systemConfig.foo(), bytes32(hex"DEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEF"));
     }
 }
 

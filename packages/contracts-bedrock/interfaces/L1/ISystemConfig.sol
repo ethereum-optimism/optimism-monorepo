@@ -43,6 +43,7 @@ interface ISystemConfig {
     function gasLimit() external view returns (uint64);
     function eip1559Denominator() external view returns (uint32);
     function eip1559Elasticity() external view returns (uint32);
+    function foo() external view returns (bytes32);
     function getAddresses() external view returns (Addresses memory);
     function initialize(
         address _owner,

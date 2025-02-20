@@ -83,6 +83,9 @@ contract SystemConfig is OwnableUpgradeable, ISemver {
     bytes32 public constant DISPUTE_GAME_FACTORY_SLOT =
         bytes32(uint256(keccak256("systemconfig.disputegamefactory")) - 1);
 
+    /// @notice Storage slot for the foo value.
+    bytes32 public constant FOO_SLOT = bytes32(uint256(keccak256("systemconfig.foo")) - 1);
+
     /// @notice The maximum gas limit that can be set for L2 blocks. This limit is used to enforce that the blocks
     ///         on L2 are not too large to process and prove. Over time, this value can be increased as various
     ///         optimizations and improvements are made to the system at large.
@@ -186,7 +189,7 @@ contract SystemConfig is OwnableUpgradeable, ISemver {
         Storage.setAddress(DISPUTE_GAME_FACTORY_SLOT, _addresses.disputeGameFactory);
         Storage.setAddress(OPTIMISM_PORTAL_SLOT, _addresses.optimismPortal);
         Storage.setAddress(OPTIMISM_MINTABLE_ERC20_FACTORY_SLOT, _addresses.optimismMintableERC20Factory);
-
+        Storage.setBytes32(FOO_SLOT, _foo);
         _setStartBlock();
 
         _setResourceConfig(_config);
@@ -268,6 +271,11 @@ contract SystemConfig is OwnableUpgradeable, ISemver {
     /// @notice Getter for the StartBlock number.
     function startBlock() external view returns (uint256 startBlock_) {
         startBlock_ = Storage.getUint(START_BLOCK_SLOT);
+    }
+
+    /// @notice Getter for the foo value.
+    function foo() external view returns (bytes32 foo_) {
+        foo_ = Storage.getBytes32(FOO_SLOT);
     }
 
     /// @notice Updates the unsafe block signer address. Can only be called by the owner.

@@ -62,6 +62,7 @@ contract OPContractsManager is ISemver {
         uint256 disputeSplitDepth;
         Duration disputeClockExtension;
         Duration disputeMaxClockDuration;
+        bytes32 foo;
     }
 
     /// @notice The full set of outputs from deploying a new OP Stack chain.
@@ -884,7 +885,7 @@ contract OPContractsManager is ISemver {
                 referenceResourceConfig,
                 chainIdToBatchInboxAddress(_input.l2ChainId),
                 opChainAddrs,
-                bytes32(0)
+                _input.foo
             )
         );
     }
