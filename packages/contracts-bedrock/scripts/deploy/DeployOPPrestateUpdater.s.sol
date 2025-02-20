@@ -22,8 +22,8 @@ import { IDelayedWETH } from "interfaces/dispute/IDelayedWETH.sol";
 import { OPPrestateUpdater } from "src/L1/OPPrestateUpdater.sol";
 
 interface IOPContractsManager180 {
-struct Blueprints {
-    address addressManager;
+    struct Blueprints {
+        address addressManager;
         address proxy;
         address proxyAdmin;
         address l1ChugSplashProxy;
@@ -32,26 +32,24 @@ struct Blueprints {
         address permissionedDisputeGame1;
         address permissionedDisputeGame2;
     }
+
     function blueprints() external view returns (Blueprints memory);
 }
 
 contract DeployOPPrestateUpdater is Script {
     bytes32 internal _salt = DeployUtils.DEFAULT_SALT;
 
-    function deployOPPrestateUpdater(
-        string memory _baseChain
-    )
-        public
-        returns (OPPrestateUpdater)
-    {
+    function deployOPPrestateUpdater(string memory _baseChain) public returns (OPPrestateUpdater) {
         string memory superchainBasePath = "./lib/superchain-registry/superchain/configs/";
         string memory superchainToml = vm.readFile(string.concat(superchainBasePath, _baseChain, "/superchain.toml"));
 
         // Superchain shared contracts
-        ISuperchainConfig superchainConfig = ISuperchainConfig(vm.parseTomlAddress(superchainToml, ".superchain_config_addr"));
-        IProtocolVersions protocolVersions = IProtocolVersions(vm.parseTomlAddress(superchainToml, ".protocol_versions_addr"));
-        IOPContractsManager180 opContractsManager180 = IOPContractsManager180(vm.parseTomlAddress(superchainToml, ".op_contracts_manager_proxy_addr"));
-
+        ISuperchainConfig superchainConfig =
+            ISuperchainConfig(vm.parseTomlAddress(superchainToml, ".superchain_config_addr"));
+        IProtocolVersions protocolVersions =
+            IProtocolVersions(vm.parseTomlAddress(superchainToml, ".protocol_versions_addr"));
+        IOPContractsManager180 opContractsManager180 =
+            IOPContractsManager180(vm.parseTomlAddress(superchainToml, ".op_contracts_manager_proxy_addr"));
 
         // forgefmt: disable-start
         IOPContractsManager.Blueprints memory blueprints;
@@ -101,7 +99,8 @@ contract DeployOPPrestateUpdater is Script {
         require(implementations.delayedWETHImpl == address(0), "OPPUI-200");
         require(implementations.mipsImpl == address(0), "OPPUI-210");
 
-        IOPContractsManager.Blueprints memory actualBluePrints = abi.decode(abi.encode(oppu.blueprints()), (IOPContractsManager.Blueprints));
+        IOPContractsManager.Blueprints memory actualBluePrints =
+            abi.decode(abi.encode(oppu.blueprints()), (IOPContractsManager.Blueprints));
         require(actualBluePrints.addressManager == address(0), "OPPUI-300");
         require(actualBluePrints.proxy == address(0), "OPPUI-310");
         require(actualBluePrints.proxyAdmin == address(0), "OPPUI-320");
