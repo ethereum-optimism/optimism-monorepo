@@ -6,7 +6,7 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/sources/artifact"
+	ktfs "github.com/ethereum-optimism/optimism/devnet-sdk/kt/fs"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -14,7 +14,7 @@ import (
 // testFS implements EnclaveFS for testing
 type testFS struct{}
 
-func (m *testFS) GetArtifact(_ context.Context, name string) (*artifact.Artifact, error) {
+func (m *testFS) GetArtifact(_ context.Context, name string) (*ktfs.Artifact, error) {
 	if name == "error" {
 		return nil, fmt.Errorf("mock error")
 	}

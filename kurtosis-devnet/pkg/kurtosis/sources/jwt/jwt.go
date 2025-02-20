@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/sources/artifact"
+	ktfs "github.com/ethereum-optimism/optimism/devnet-sdk/kt/fs"
 )
 
 const (
@@ -33,7 +33,7 @@ func NewExtractor(enclave string) *extractor {
 
 // ExtractData extracts JWT secrets from their respective artifacts
 func (e *extractor) ExtractData(ctx context.Context) (*Data, error) {
-	fs, err := artifact.NewEnclaveFS(ctx, e.enclave)
+	fs, err := ktfs.NewEnclaveFS(ctx, e.enclave)
 	if err != nil {
 		return nil, err
 	}
@@ -56,14 +56,14 @@ func (e *extractor) ExtractData(ctx context.Context) (*Data, error) {
 	}, nil
 }
 
-func extractJWTFromArtifact(ctx context.Context, fs *artifact.EnclaveFS, artifactName string) (string, error) {
+func extractJWTFromArtifact(ctx context.Context, fs *ktfs.EnclaveFS, artifactName string) (string, error) {
 	a, err := fs.GetArtifact(ctx, artifactName)
 	if err != nil {
 		return "", fmt.Errorf("failed to get artifact: %w", err)
 	}
 
 	buffer := &bytes.Buffer{}
-	if err := a.ExtractFiles(artifact.NewArtifactFileWriter(jwtSecretFileName, buffer)); err != nil {
+	if err := a.ExtractFiles(ktfs.NewArtifactFileWriter(jwtSecretFileName, buffer)); err != nil {
 		return "", fmt.Errorf("failed to extract JWT: %w", err)
 	}
 

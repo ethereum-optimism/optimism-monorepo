@@ -1,4 +1,4 @@
-package artifact
+package fs
 
 import (
 	"archive/tar"
