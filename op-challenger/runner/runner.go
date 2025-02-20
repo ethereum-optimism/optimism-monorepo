@@ -20,6 +20,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-challenger/config"
 	contractMetrics "github.com/ethereum-optimism/optimism/op-challenger/game/fault/contracts/metrics"
 	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/trace/utils"
+	trace "github.com/ethereum-optimism/optimism/op-challenger/game/fault/trace/vm"
 	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/types"
 	"github.com/ethereum-optimism/optimism/op-challenger/metrics"
 	"github.com/ethereum-optimism/optimism/op-service/cliapp"
@@ -122,6 +123,9 @@ func (r *Runner) runAndRecordOnce(ctx context.Context, runConfig RunConfig, clie
 		if errors.Is(err, ErrUnexpectedStatusCode) {
 			log.Error("Incorrect status code", "type", runConfig.Name, "err", err)
 			m.RecordInvalid(traceType)
+		} else if errors.Is(err, trace.ErrVMNonZeroExitCode) {
+			log.Error("VM returned non-zero exit code")
+			// TODO: record new metric
 		} else if err != nil {
 			log.Error("Failed to run", "type", runConfig.Name, "err", err)
 			m.RecordFailure(traceType)
