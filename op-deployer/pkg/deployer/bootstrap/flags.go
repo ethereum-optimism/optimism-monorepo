@@ -128,10 +128,20 @@ var (
 		Usage:   "Protocol versions proxy.",
 		EnvVars: deployer.PrefixEnvVar("PROTOCOL_VERSIONS_PROXY"),
 	}
+	UpgradeControllerFlag = &cli.StringFlag{
+		Name:    "upgrade-controller",
+		Usage:   "Upgrade controller.",
+		EnvVars: deployer.PrefixEnvVar("UPGRADE_CONTROLLER"),
+	}
 	UseInteropFlag = &cli.BoolFlag{
 		Name:    "use-interop",
 		Usage:   "If true, deploy Interop implementations.",
 		EnvVars: deployer.PrefixEnvVar("USE_INTEROP"),
+	}
+	ConfigFileFlag = &cli.StringFlag{
+		Name:    "config",
+		Usage:   "Path to a JSON file",
+		EnvVars: deployer.PrefixEnvVar("CONFIG"),
 	}
 )
 
@@ -149,6 +159,7 @@ var ImplementationsFlags = []cli.Flag{
 	DisputeGameFinalityDelaySecondsFlag,
 	SuperchainConfigProxyFlag,
 	ProtocolVersionsProxyFlag,
+	UpgradeControllerFlag,
 	UseInteropFlag,
 }
 
@@ -173,6 +184,14 @@ var SuperchainFlags = []cli.Flag{
 	RecommendedProtocolVersionFlag,
 }
 
+var ValidatorFlags = []cli.Flag{
+	deployer.L1RPCURLFlag,
+	deployer.PrivateKeyFlag,
+	OutfileFlag,
+	ArtifactsLocatorFlag,
+	ConfigFileFlag,
+}
+
 var Commands = []*cli.Command{
 	{
 		Name:   "implementations",
@@ -192,5 +211,11 @@ var Commands = []*cli.Command{
 		Usage:  "Bootstrap the Superchain configuration",
 		Flags:  cliapp.ProtectFlags(SuperchainFlags),
 		Action: SuperchainCLI,
+	},
+	{
+		Name:   "validator",
+		Usage:  "Bootstrap the StandardValidator contracts",
+		Flags:  cliapp.ProtectFlags(ValidatorFlags),
+		Action: ValidatorCLI,
 	},
 }

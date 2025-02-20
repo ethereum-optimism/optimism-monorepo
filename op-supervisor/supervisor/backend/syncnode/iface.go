@@ -2,6 +2,7 @@ package syncnode
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
@@ -37,7 +38,7 @@ type SyncControl interface {
 	PullEvent(ctx context.Context) (*types.ManagedEvent, error)
 
 	UpdateCrossUnsafe(ctx context.Context, id eth.BlockID) error
-	UpdateCrossSafe(ctx context.Context, derived eth.BlockID, derivedFrom eth.BlockID) error
+	UpdateCrossSafe(ctx context.Context, derived eth.BlockID, source eth.BlockID) error
 	UpdateFinalized(ctx context.Context, id eth.BlockID) error
 
 	InvalidateBlock(ctx context.Context, seal types.BlockSeal) error
@@ -45,6 +46,8 @@ type SyncControl interface {
 	Reset(ctx context.Context, unsafe, safe, finalized eth.BlockID) error
 	ProvideL1(ctx context.Context, nextL1 eth.BlockRef) error
 	AnchorPoint(ctx context.Context) (types.DerivedBlockRefPair, error)
+
+	fmt.Stringer
 }
 
 type SyncNode interface {

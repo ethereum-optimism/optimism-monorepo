@@ -37,6 +37,8 @@ import { IAnchorStateRegistry } from "interfaces/dispute/IAnchorStateRegistry.so
 contract ForkLive is Deployer {
     using stdToml for string;
 
+    bool public useOpsRepo;
+
     /// @notice Returns the base chain name to use for forking
     /// @return The base chain name as a string
     function baseChain() internal view returns (string memory) {
@@ -58,7 +60,7 @@ contract ForkLive is Deployer {
     function run() public {
         string memory superchainOpsAllocsPath = vm.envOr("SUPERCHAIN_OPS_ALLOCS_PATH", string(""));
 
-        bool useOpsRepo = bytes(superchainOpsAllocsPath).length > 0;
+        useOpsRepo = bytes(superchainOpsAllocsPath).length > 0;
         if (useOpsRepo) {
             console.log("ForkLive: loading state from %s", superchainOpsAllocsPath);
             // Set the resultant state from the superchain ops repo upgrades.
@@ -72,7 +74,7 @@ contract ForkLive is Deployer {
         } else {
             // Read the superchain registry and save the addresses to the Artifacts contract.
             _readSuperchainRegistry();
-            // Now deploy the updated OPCM and implementations of the contracts
+            // Now deploy the updated OPCM and implementations of the contracts.
             _deployNewImplementations();
         }
 
@@ -175,10 +177,12 @@ contract ForkLive is Deployer {
             absolutePrestate: Claim.wrap(bytes32(keccak256("absolutePrestate")))
         });
 
-        // TODO Migrate from DelegateCaller to a Safe to reduce risk of mocks not properly
-        // reflecting the production system.
+        // Temporarily replace the upgrader with a DelegateCaller so we can test the upgrade,
+        // then reset its code to the original code.
+        bytes memory upgraderCode = address(upgrader).code;
         vm.etch(upgrader, vm.getDeployedCode("test/mocks/Callers.sol:DelegateCaller"));
         DelegateCaller(upgrader).dcForward(address(opcm), abi.encodeCall(IOPContractsManager.upgrade, (opChains)));
+        vm.etch(upgrader, upgraderCode);
 
         console.log("ForkLive: Saving newly deployed contracts");
         // A new ASR and new dispute games were deployed, so we need to update them

@@ -13,13 +13,21 @@ snapshots = 'notarealpath' # workaround for foundry#9477
 optimizer = true
 optimizer_runs = 999999
 
+# IMPORTANT:
+# When adding any new compiler profiles or compilation restrictions, you must
+# also update the restrictions in the "LITE" profile to match. This guarantees
+# that builds will fully overwrite one another without needing to clean the
+# entire build directory.
 additional_compiler_profiles = [
   { name = "dispute", optimizer_runs = 5000 },
 ]
 compilation_restrictions = [
   { paths = "src/dispute/FaultDisputeGame.sol", optimizer_runs = 5000 },
   { paths = "src/dispute/PermissionedDisputeGame.sol", optimizer_runs = 5000 },
+  { paths = "src/dispute/SuperFaultDisputeGame.sol", optimizer_runs = 5000 },
+  { paths = "src/dispute/SuperPermissionedDisputeGame.sol", optimizer_runs = 5000 },
   { paths = "src/L1/OPContractsManager.sol", optimizer_runs = 5000 },
+  { paths = "src/L1/StandardValidator.sol", optimizer_runs = 5000 },
 ]
 
 extra_output = ['devdoc', 'userdoc', 'metadata', 'storageLayout']
@@ -121,8 +129,18 @@ timeout = 300
 
 [profile.lite]
 optimizer = false
-compilation_restrictions = []
 
+# IMPORTANT:
+# See the info in the "DEFAULT" profile to understand this section.
+additional_compiler_profiles = [
+  { name = "dispute", optimizer_runs = 0 },
+]
+compilation_restrictions = [
+  { paths = "src/dispute/FaultDisputeGame.sol", optimizer_runs = 0 },
+  { paths = "src/dispute/PermissionedDisputeGame.sol", optimizer_runs = 0 },
+  { paths = "src/L1/OPContractsManager.sol", optimizer_runs = 0 },
+  { paths = "src/L1/StandardValidator.sol", optimizer_runs = 0 },
+]
 
 ################################################################
 #                         PROFILE: KONTROL                     #

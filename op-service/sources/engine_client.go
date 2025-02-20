@@ -3,9 +3,9 @@ package sources
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/eth/catalyst"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
@@ -49,10 +49,9 @@ func NewEngineClient(client client.RPC, log log.Logger, metrics caching.Metrics,
 
 // EngineAPIClient is an RPC client for the Engine API functions.
 type EngineAPIClient struct {
-	RPC     client.RPC
-	log     log.Logger
-	evp     EngineVersionProvider
-	timeout time.Duration
+	RPC client.RPC
+	log log.Logger
+	evp EngineVersionProvider
 }
 
 type EngineVersionProvider interface {
@@ -63,19 +62,9 @@ type EngineVersionProvider interface {
 
 func NewEngineAPIClient(rpc client.RPC, l log.Logger, evp EngineVersionProvider) *EngineAPIClient {
 	return &EngineAPIClient{
-		RPC:     rpc,
-		log:     l,
-		evp:     evp,
-		timeout: time.Second * 5,
-	}
-}
-
-func NewEngineAPIClientWithTimeout(rpc client.RPC, l log.Logger, evp EngineVersionProvider, timeout time.Duration) *EngineAPIClient {
-	return &EngineAPIClient{
-		RPC:     rpc,
-		log:     l,
-		evp:     evp,
-		timeout: timeout,
+		RPC: rpc,
+		log: l,
+		evp: evp,
 	}
 }
 
@@ -90,11 +79,9 @@ func (s *EngineAPIClient) ForkchoiceUpdate(ctx context.Context, fc *eth.Forkchoi
 	llog := s.log.New("state", fc)       // local logger
 	tlog := llog.New("attr", attributes) // trace logger
 	tlog.Trace("Sharing forkchoice-updated signal")
-	fcCtx, cancel := context.WithTimeout(ctx, s.timeout)
-	defer cancel()
 	var result eth.ForkchoiceUpdatedResult
 	method := s.evp.ForkchoiceUpdatedVersion(attributes)
-	err := s.RPC.CallContext(fcCtx, &result, string(method), fc, attributes)
+	err := s.RPC.CallContext(ctx, &result, string(method), fc, attributes)
 	if err != nil {
 		llog.Warn("Failed to share forkchoice-updated signal", "err", err)
 		return nil, err
@@ -113,16 +100,16 @@ func (s *EngineAPIClient) NewPayload(ctx context.Context, payload *eth.Execution
 	e := s.log.New("block_hash", payload.BlockHash)
 	e.Trace("sending payload for execution")
 
-	execCtx, cancel := context.WithTimeout(ctx, s.timeout)
-	defer cancel()
 	var result eth.PayloadStatusV1
 
 	var err error
 	switch method := s.evp.NewPayloadVersion(uint64(payload.Timestamp)); method {
+	case eth.NewPayloadV4:
+		err = s.RPC.CallContext(ctx, &result, string(method), payload, []common.Hash{}, parentBeaconBlockRoot, []hexutil.Bytes{})
 	case eth.NewPayloadV3:
-		err = s.RPC.CallContext(execCtx, &result, string(method), payload, []common.Hash{}, parentBeaconBlockRoot)
+		err = s.RPC.CallContext(ctx, &result, string(method), payload, []common.Hash{}, parentBeaconBlockRoot)
 	case eth.NewPayloadV2:
-		err = s.RPC.CallContext(execCtx, &result, string(method), payload)
+		err = s.RPC.CallContext(ctx, &result, string(method), payload)
 	default:
 		return nil, fmt.Errorf("unsupported NewPayload version: %s", method)
 	}

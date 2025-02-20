@@ -21,6 +21,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethdb/memorydb"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
+	"github.com/ethereum/go-ethereum/trie"
 	"github.com/ethereum/go-ethereum/triedb"
 	"github.com/ethereum/go-ethereum/triedb/hashdb"
 	"github.com/stretchr/testify/require"
@@ -116,6 +117,26 @@ func TestSetSafe(t *testing.T) {
 	}
 	chain.SetSafe(blocks[2].Header())
 	require.Equal(t, blocks[2].Header(), chain.CurrentSafeBlock())
+}
+
+func TestGetReceiptsByBlockHash(t *testing.T) {
+	blocks, chain := setupOracleBackedChain(t, 1)
+
+	_, err := chain.InsertBlockWithoutSetHead(blocks[1], false)
+	require.NoError(t, err)
+	require.Equal(t,
+		blocks[1].ReceiptHash(),
+		types.DeriveSha(chain.GetReceiptsByBlockHash(blocks[1].Hash()), trie.NewStackTrie(nil)),
+		"Lookup block1 receipt",
+	)
+
+	// create block with txs/receipts
+	newBlock := createBlock(t, chain)
+	_, err = chain.InsertBlockWithoutSetHead(newBlock, false)
+	require.NoError(t, err)
+	receipts := chain.GetReceiptsByBlockHash(newBlock.Hash())
+	require.NotNil(t, receipts)
+	require.Equal(t, newBlock.ReceiptHash(), types.DeriveSha(receipts, trie.NewStackTrie(nil)))
 }
 
 func TestUpdateStateDatabaseWhenImportingBlock(t *testing.T) {

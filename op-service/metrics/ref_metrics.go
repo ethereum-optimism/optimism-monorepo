@@ -40,63 +40,11 @@ var _ RefMetricer = (*RefMetrics)(nil)
 //
 // ns is the fully qualified namespace, e.g. "op_node_default".
 func MakeRefMetrics(ns string, factory Factory) RefMetrics {
-	return RefMetrics{
-		RefsNumber: factory.NewGaugeVec(prometheus.GaugeOpts{
-			Namespace: ns,
-			Name:      "refs_number",
-			Help:      "Gauge representing the different L1/L2 reference block numbers",
-		}, []string{
-			"layer",
-			"type",
-		}),
-		RefsTime: factory.NewGaugeVec(prometheus.GaugeOpts{
-			Namespace: ns,
-			Name:      "refs_time",
-			Help:      "Gauge representing the different L1/L2 reference block timestamps",
-		}, []string{
-			"layer",
-			"type",
-		}),
-		RefsHash: factory.NewGaugeVec(prometheus.GaugeOpts{
-			Namespace: ns,
-			Name:      "refs_hash",
-			Help:      "Gauge representing the different L1/L2 reference block hashes truncated to float values",
-		}, []string{
-			"layer",
-			"type",
-		}),
-		RefsSeqNr: factory.NewGaugeVec(prometheus.GaugeOpts{
-			Namespace: ns,
-			Name:      "refs_seqnr",
-			Help:      "Gauge representing the different L2 reference sequence numbers",
-		}, []string{
-			"type",
-		}),
-		RefsLatency: factory.NewGaugeVec(prometheus.GaugeOpts{
-			Namespace: ns,
-			Name:      "refs_latency",
-			Help:      "Gauge representing the different L1/L2 reference block timestamps minus current time, in seconds",
-		}, []string{
-			"layer",
-			"type",
-		}),
-		LatencySeen: make(map[string]common.Hash),
-	}
+	return makeRefMetrics(ns, factory)
 }
 
 func (m *RefMetrics) RecordRef(layer string, name string, num uint64, timestamp uint64, h common.Hash) {
-	m.RefsNumber.WithLabelValues(layer, name).Set(float64(num))
-	if timestamp != 0 {
-		m.RefsTime.WithLabelValues(layer, name).Set(float64(timestamp))
-		// only meter the latency when we first see this hash for the given label name
-		if m.LatencySeen[name] != h {
-			m.LatencySeen[name] = h
-			m.RefsLatency.WithLabelValues(layer, name).Set(float64(timestamp) - (float64(time.Now().UnixNano()) / 1e9))
-		}
-	}
-	// we map the first 8 bytes to a float64, so we can graph changes of the hash to find divergences visually.
-	// We don't do math.Float64frombits, just a regular conversion, to keep the value within a manageable range.
-	m.RefsHash.WithLabelValues(layer, name).Set(float64(binary.LittleEndian.Uint64(h[:])))
+	recordRefWithLabels(m, name, num, timestamp, h, []string{layer, name})
 }
 
 func (m *RefMetrics) RecordL1Ref(name string, ref eth.L1BlockRef) {
@@ -107,6 +55,82 @@ func (m *RefMetrics) RecordL2Ref(name string, ref eth.L2BlockRef) {
 	m.RecordRef("l2", name, ref.Number, ref.Time, ref.Hash)
 	m.RecordRef("l1_origin", name, ref.L1Origin.Number, 0, ref.L1Origin.Hash)
 	m.RefsSeqNr.WithLabelValues(name).Set(float64(ref.SequenceNumber))
+}
+
+// RefMetricsWithChainID is a RefMetrics that includes a chain ID label.
+type RefMetricsWithChainID struct {
+	RefMetrics
+}
+
+func MakeRefMetricsWithChainID(ns string, factory Factory) RefMetricsWithChainID {
+	return RefMetricsWithChainID{
+		RefMetrics: makeRefMetrics(ns, factory, "chain"),
+	}
+}
+
+func (m *RefMetricsWithChainID) RecordRef(layer string, name string, num uint64, timestamp uint64, h common.Hash, chainID eth.ChainID) {
+	recordRefWithLabels(&m.RefMetrics, name, num, timestamp, h, []string{layer, name, chainID.String()})
+}
+
+func (m *RefMetricsWithChainID) RecordL1Ref(name string, ref eth.L1BlockRef, chainID eth.ChainID) {
+	m.RecordRef("l1", name, ref.Number, ref.Time, ref.Hash, chainID)
+}
+
+func (m *RefMetricsWithChainID) RecordL2Ref(name string, ref eth.L2BlockRef, chainID eth.ChainID) {
+	m.RecordRef("l2", name, ref.Number, ref.Time, ref.Hash, chainID)
+	m.RecordRef("l1_origin", name, ref.L1Origin.Number, 0, ref.L1Origin.Hash, chainID)
+	m.RefsSeqNr.WithLabelValues(name, chainID.String()).Set(float64(ref.SequenceNumber))
+}
+
+// makeRefMetrics creates a new RefMetrics with the given namespace, factory, and labels.
+func makeRefMetrics(ns string, factory Factory, extraLabels ...string) RefMetrics {
+	labels := append([]string{"layer", "type"}, extraLabels...)
+	seqLabels := append([]string{"type"}, extraLabels...)
+	return RefMetrics{
+		RefsNumber: factory.NewGaugeVec(prometheus.GaugeOpts{
+			Namespace: ns,
+			Name:      "refs_number",
+			Help:      "Gauge representing the different L1/L2 reference block numbers",
+		}, labels),
+		RefsTime: factory.NewGaugeVec(prometheus.GaugeOpts{
+			Namespace: ns,
+			Name:      "refs_time",
+			Help:      "Gauge representing the different L1/L2 reference block timestamps",
+		}, labels),
+		RefsHash: factory.NewGaugeVec(prometheus.GaugeOpts{
+			Namespace: ns,
+			Name:      "refs_hash",
+			Help:      "Gauge representing the different L1/L2 reference block hashes truncated to float values",
+		}, labels),
+		RefsSeqNr: factory.NewGaugeVec(prometheus.GaugeOpts{
+			Namespace: ns,
+			Name:      "refs_seqnr",
+			Help:      "Gauge representing the different L2 reference sequence numbers",
+		}, seqLabels),
+		RefsLatency: factory.NewGaugeVec(prometheus.GaugeOpts{
+			Namespace: ns,
+			Name:      "refs_latency",
+			Help:      "Gauge representing the different L1/L2 reference block timestamps minus current time, in seconds",
+		}, labels),
+		LatencySeen: make(map[string]common.Hash),
+	}
+}
+
+// recordRefWithLabels implements to core logic of emitting block ref metrics.
+// It's abstracted over labels to enable re-use in different contexts.
+func recordRefWithLabels(m *RefMetrics, name string, num uint64, timestamp uint64, h common.Hash, labels []string) {
+	m.RefsNumber.WithLabelValues(labels...).Set(float64(num))
+	if timestamp != 0 {
+		m.RefsTime.WithLabelValues(labels...).Set(float64(timestamp))
+		// only meter the latency when we first see this hash for the given label name
+		if m.LatencySeen[name] != h {
+			m.LatencySeen[name] = h
+			m.RefsLatency.WithLabelValues(labels...).Set(float64(timestamp) - (float64(time.Now().UnixNano()) / 1e9))
+		}
+	}
+	// we map the first 8 bytes to a float64, so we can graph changes of the hash to find divergences visually.
+	// We don't do math.Float64frombits, just a regular conversion, to keep the value within a manageable range.
+	m.RefsHash.WithLabelValues(labels...).Set(float64(binary.LittleEndian.Uint64(h[:])))
 }
 
 // NoopRefMetrics can be embedded in a noop version of a metric implementation

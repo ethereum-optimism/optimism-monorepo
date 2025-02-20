@@ -426,11 +426,10 @@ func (l *BatchSubmitter) syncAndPrune(syncStatus *eth.SyncStatus) *inclusiveBloc
 // -  drives the creation of channels and frames
 // -  sends transactions to the DA layer
 func (l *BatchSubmitter) mainLoop(ctx context.Context, receiptsCh chan txmgr.TxReceipt[txRef], receiptsLoopCancel, throttlingLoopCancel context.CancelFunc) {
-	defer l.wg.Done()
-	defer receiptsLoopCancel()
-	defer throttlingLoopCancel()
 
-	queue := txmgr.NewQueue[txRef](l.killCtx, l.Txmgr, l.Config.MaxPendingTransactions)
+	queueCtx, queueCancel := context.WithCancel(l.killCtx)
+
+	queue := txmgr.NewQueue[txRef](queueCtx, l.Txmgr, l.Config.MaxPendingTransactions)
 	daGroup := &errgroup.Group{}
 	// errgroup with limit of 0 means no goroutine is able to run concurrently,
 	// so we only set the limit if it is greater than 0.
@@ -476,9 +475,15 @@ func (l *BatchSubmitter) mainLoop(ctx context.Context, receiptsCh chan txmgr.TxR
 			l.publishStateToL1(queue, receiptsCh, daGroup, l.Config.PollInterval)
 
 		case <-ctx.Done():
+			queueCancel()
 			if err := queue.Wait(); err != nil {
-				l.Log.Error("error waiting for transactions to complete", "err", err)
+				if !errors.Is(err, context.Canceled) {
+					l.Log.Error("error waiting for transactions to complete", "err", err)
+				}
 			}
+			throttlingLoopCancel()
+			receiptsLoopCancel()
+			l.wg.Done()
 			l.Log.Warn("main loop returning")
 			return
 		}
@@ -521,7 +526,7 @@ func (l *BatchSubmitter) throttlingLoop(ctx context.Context) {
 	defer ticker.Stop()
 
 	updateParams := func(pendingBytes int64) {
-		ctx, cancel := context.WithTimeout(l.shutdownCtx, l.Config.NetworkTimeout)
+		ctx, cancel := context.WithTimeout(ctx, l.Config.NetworkTimeout)
 		defer cancel()
 		cl, err := l.EndpointProvider.EthClient(ctx)
 		if err != nil {
@@ -542,9 +547,16 @@ func (l *BatchSubmitter) throttlingLoop(ctx context.Context) {
 			success bool
 			rpcErr  rpc.Error
 		)
-		if err := cl.Client().CallContext(
+		err = cl.Client().CallContext(
 			ctx, &success, SetMaxDASizeMethod, hexutil.Uint64(maxTxSize), hexutil.Uint64(maxBlockSize),
-		); errors.As(err, &rpcErr) && eth.ErrorCode(rpcErr.ErrorCode()).IsGenericRPCError() {
+		)
+		if errors.Is(ctx.Err(), context.Canceled) {
+			// If the context was cancelled, our work is done and we expect an error here:
+			// So log it quietly and exit.
+			l.Log.Debug("DA throttling context cancelled")
+			return
+		}
+		if errors.As(err, &rpcErr) && eth.ErrorCode(rpcErr.ErrorCode()).IsGenericRPCError() {
 			l.Log.Error("SetMaxDASize rpc unavailable or broken, shutting down. Either enable it or disable throttling.", "err", err)
 			// We'd probably hit this error right after startup, so a short shutdown duration should suffice.
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -602,7 +614,7 @@ func (l *BatchSubmitter) waitNodeSync() error {
 	cCtx, cancel := context.WithTimeout(ctx, l.Config.NetworkTimeout)
 	defer cancel()
 
-	l1Tip, err := l.l1Tip(cCtx)
+	l1Tip, _, err := l.l1Tip(cCtx)
 	if err != nil {
 		return fmt.Errorf("failed to retrieve l1 tip: %w", err)
 	}
@@ -700,7 +712,7 @@ func (l *BatchSubmitter) clearState(ctx context.Context) {
 func (l *BatchSubmitter) publishTxToL1(ctx context.Context, queue *txmgr.Queue[txRef], receiptsCh chan txmgr.TxReceipt[txRef], daGroup *errgroup.Group) error {
 
 	// send all available transactions
-	l1tip, err := l.l1Tip(ctx)
+	l1tip, isPectra, err := l.l1Tip(ctx)
 	if err != nil {
 		l.Log.Error("Failed to query L1 tip", "err", err)
 		return err
@@ -710,7 +722,7 @@ func (l *BatchSubmitter) publishTxToL1(ctx context.Context, queue *txmgr.Queue[t
 	// Collect next transaction data. This pulls data out of the channel, so we need to make sure
 	// to put it back if ever da or txmgr requests fail, by calling l.recordFailedDARequest/recordFailedTx.
 	l.channelMgrMutex.Lock()
-	txdata, err := l.channelMgr.TxData(l1tip.ID())
+	txdata, err := l.channelMgr.TxData(l1tip.ID(), isPectra)
 	l.channelMgrMutex.Unlock()
 
 	if err == io.EOF {
@@ -744,11 +756,11 @@ func (l *BatchSubmitter) safeL1Origin(ctx context.Context) (eth.BlockID, error) 
 	}
 
 	// If the safe L2 block origin is 0, we are at the genesis block and should use the L1 origin from the rollup config.
-	if status.SafeL2.L1Origin.Number == 0 {
+	if status.LocalSafeL2.L1Origin.Number == 0 {
 		return l.RollupConfig.Genesis.L1, nil
 	}
 
-	return status.SafeL2.L1Origin, nil
+	return status.LocalSafeL2.L1Origin, nil
 }
 
 // cancelBlockingTx creates an empty transaction of appropriate type to cancel out the incompatible
@@ -847,7 +859,7 @@ func (l *BatchSubmitter) sendTransaction(txdata txData, queue *txmgr.Queue[txRef
 // sendTx uses the txmgr queue to send the given transaction candidate after setting its
 // gaslimit. It will block if the txmgr queue has reached its MaxPendingTransactions limit.
 func (l *BatchSubmitter) sendTx(txdata txData, isCancel bool, candidate *txmgr.TxCandidate, queue *txmgr.Queue[txRef], receiptsCh chan txmgr.TxReceipt[txRef]) {
-	intrinsicGas, err := core.IntrinsicGas(candidate.TxData, nil, false, true, true, false)
+	intrinsicGas, err := core.IntrinsicGas(candidate.TxData, nil, nil, false, true, true, false)
 	if err != nil {
 		// we log instead of return an error here because txmgr can do its own gas estimation
 		l.Log.Error("Failed to calculate intrinsic gas", "err", err)
@@ -917,14 +929,17 @@ func (l *BatchSubmitter) recordConfirmedTx(id txID, receipt *types.Receipt) {
 
 // l1Tip gets the current L1 tip as a L1BlockRef. The passed context is assumed
 // to be a lifetime context, so it is internally wrapped with a network timeout.
-func (l *BatchSubmitter) l1Tip(ctx context.Context) (eth.L1BlockRef, error) {
+// It also returns a boolean indicating if the tip is from a Pectra chain.
+func (l *BatchSubmitter) l1Tip(ctx context.Context) (eth.L1BlockRef, bool, error) {
 	tctx, cancel := context.WithTimeout(ctx, l.Config.NetworkTimeout)
 	defer cancel()
 	head, err := l.L1Client.HeaderByNumber(tctx, nil)
+
 	if err != nil {
-		return eth.L1BlockRef{}, fmt.Errorf("getting latest L1 block: %w", err)
+		return eth.L1BlockRef{}, false, fmt.Errorf("getting latest L1 block: %w", err)
 	}
-	return eth.InfoToL1BlockRef(eth.HeaderBlockInfo(head)), nil
+	isPectra := head.RequestsHash != nil // See https://eips.ethereum.org/EIPS/eip-7685
+	return eth.InfoToL1BlockRef(eth.HeaderBlockInfo(head)), isPectra, nil
 }
 
 func (l *BatchSubmitter) checkTxpool(queue *txmgr.Queue[txRef], receiptsCh chan txmgr.TxReceipt[txRef]) bool {

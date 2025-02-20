@@ -5,10 +5,13 @@ import { Script } from "forge-std/Script.sol";
 
 import { LibString } from "@solady/utils/LibString.sol";
 
+// Libraries
+import { Chains } from "scripts/libraries/Chains.sol";
+
+// Interfaces
 import { IResourceMetering } from "interfaces/L1/IResourceMetering.sol";
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 import { IProtocolVersions } from "interfaces/L1/IProtocolVersions.sol";
-
 import { IDelayedWETH } from "interfaces/dispute/IDelayedWETH.sol";
 import { IPreimageOracle } from "interfaces/cannon/IPreimageOracle.sol";
 import { IMIPS } from "interfaces/cannon/IMIPS.sol";
@@ -492,10 +495,9 @@ contract DeployImplementations is Script {
             disputeGameFactoryImpl: address(_dio.disputeGameFactoryImpl()),
             anchorStateRegistryImpl: address(_dio.anchorStateRegistryImpl()),
             delayedWETHImpl: address(_dio.delayedWETHImpl()),
-            mips64Impl: address(_dio.mipsSingleton())
+            mipsImpl: address(_dio.mipsSingleton())
         });
 
-        vm.broadcast(msg.sender);
         opcm_ = IOPContractsManager(
             DeployUtils.createDeterministic({
                 _name: "OPContractsManager",
@@ -561,7 +563,6 @@ contract DeployImplementations is Script {
     // --- Core Contracts ---
 
     function deploySuperchainConfigImpl(DeployImplementationsOutput _dio) public virtual {
-        vm.broadcast(msg.sender);
         ISuperchainConfig impl = ISuperchainConfig(
             DeployUtils.createDeterministic({
                 _name: "SuperchainConfig",
@@ -574,7 +575,6 @@ contract DeployImplementations is Script {
     }
 
     function deployProtocolVersionsImpl(DeployImplementationsOutput _dio) public virtual {
-        vm.broadcast(msg.sender);
         IProtocolVersions impl = IProtocolVersions(
             DeployUtils.createDeterministic({
                 _name: "ProtocolVersions",
@@ -587,7 +587,6 @@ contract DeployImplementations is Script {
     }
 
     function deploySystemConfigImpl(DeployImplementationsOutput _dio) public virtual {
-        vm.broadcast(msg.sender);
         ISystemConfig impl = ISystemConfig(
             DeployUtils.createDeterministic({
                 _name: "SystemConfig",
@@ -600,7 +599,6 @@ contract DeployImplementations is Script {
     }
 
     function deployL1CrossDomainMessengerImpl(DeployImplementationsOutput _dio) public virtual {
-        vm.broadcast(msg.sender);
         IL1CrossDomainMessenger impl = IL1CrossDomainMessenger(
             DeployUtils.createDeterministic({
                 _name: "L1CrossDomainMessenger",
@@ -613,7 +611,6 @@ contract DeployImplementations is Script {
     }
 
     function deployL1ERC721BridgeImpl(DeployImplementationsOutput _dio) public virtual {
-        vm.broadcast(msg.sender);
         IL1ERC721Bridge impl = IL1ERC721Bridge(
             DeployUtils.createDeterministic({
                 _name: "L1ERC721Bridge",
@@ -626,7 +623,6 @@ contract DeployImplementations is Script {
     }
 
     function deployL1StandardBridgeImpl(DeployImplementationsOutput _dio) public virtual {
-        vm.broadcast(msg.sender);
         IL1StandardBridge impl = IL1StandardBridge(
             DeployUtils.createDeterministic({
                 _name: "L1StandardBridge",
@@ -639,7 +635,6 @@ contract DeployImplementations is Script {
     }
 
     function deployOptimismMintableERC20FactoryImpl(DeployImplementationsOutput _dio) public virtual {
-        vm.broadcast(msg.sender);
         IOptimismMintableERC20Factory impl = IOptimismMintableERC20Factory(
             DeployUtils.createDeterministic({
                 _name: "OptimismMintableERC20Factory",
@@ -697,7 +692,6 @@ contract DeployImplementations is Script {
     {
         uint256 proofMaturityDelaySeconds = _dii.proofMaturityDelaySeconds();
         uint256 disputeGameFinalityDelaySeconds = _dii.disputeGameFinalityDelaySeconds();
-        vm.broadcast(msg.sender);
         IOptimismPortal2 impl = IOptimismPortal2(
             DeployUtils.createDeterministic({
                 _name: "OptimismPortal2",
@@ -715,7 +709,6 @@ contract DeployImplementations is Script {
 
     function deployDelayedWETHImpl(DeployImplementationsInput _dii, DeployImplementationsOutput _dio) public virtual {
         uint256 withdrawalDelaySeconds = _dii.withdrawalDelaySeconds();
-        vm.broadcast(msg.sender);
         IDelayedWETH impl = IDelayedWETH(
             DeployUtils.createDeterministic({
                 _name: "DelayedWETH",
@@ -736,7 +729,6 @@ contract DeployImplementations is Script {
     {
         uint256 minProposalSizeBytes = _dii.minProposalSizeBytes();
         uint256 challengePeriodSeconds = _dii.challengePeriodSeconds();
-        vm.broadcast(msg.sender);
         IPreimageOracle singleton = IPreimageOracle(
             DeployUtils.createDeterministic({
                 _name: "PreimageOracle",
@@ -753,7 +745,14 @@ contract DeployImplementations is Script {
     function deployMipsSingleton(DeployImplementationsInput _dii, DeployImplementationsOutput _dio) public virtual {
         uint256 mipsVersion = _dii.mipsVersion();
         IPreimageOracle preimageOracle = IPreimageOracle(address(_dio.preimageOracleSingleton()));
-        vm.broadcast(msg.sender);
+
+        // We want to ensure that the OPCM for upgrade 13 is deployed with Mips32 on production networks.
+        if (mipsVersion != 1) {
+            if (block.chainid == Chains.Mainnet || block.chainid == Chains.Sepolia) {
+                revert("DeployImplementations: Only Mips32 should be deployed on Mainnet or Sepolia");
+            }
+        }
+
         IMIPS singleton = IMIPS(
             DeployUtils.createDeterministic({
                 _name: mipsVersion == 1 ? "MIPS" : "MIPS64",
@@ -766,7 +765,6 @@ contract DeployImplementations is Script {
     }
 
     function deployDisputeGameFactoryImpl(DeployImplementationsOutput _dio) public virtual {
-        vm.broadcast(msg.sender);
         IDisputeGameFactory impl = IDisputeGameFactory(
             DeployUtils.createDeterministic({
                 _name: "DisputeGameFactory",
@@ -779,7 +777,6 @@ contract DeployImplementations is Script {
     }
 
     function deployAnchorStateRegistryImpl(DeployImplementationsOutput _dio) public virtual {
-        vm.broadcast(msg.sender);
         IAnchorStateRegistry impl = IAnchorStateRegistry(
             DeployUtils.createDeterministic({
                 _name: "AnchorStateRegistry",
@@ -876,10 +873,9 @@ contract DeployImplementationsInterop is DeployImplementations {
             disputeGameFactoryImpl: address(_dio.disputeGameFactoryImpl()),
             anchorStateRegistryImpl: address(_dio.anchorStateRegistryImpl()),
             delayedWETHImpl: address(_dio.delayedWETHImpl()),
-            mips64Impl: address(_dio.mipsSingleton())
+            mipsImpl: address(_dio.mipsSingleton())
         });
 
-        vm.broadcast(msg.sender);
         opcm_ = IOPContractsManager(
             DeployUtils.createDeterministic({
                 _name: "OPContractsManagerInterop",
@@ -914,7 +910,6 @@ contract DeployImplementationsInterop is DeployImplementations {
     {
         uint256 proofMaturityDelaySeconds = _dii.proofMaturityDelaySeconds();
         uint256 disputeGameFinalityDelaySeconds = _dii.disputeGameFinalityDelaySeconds();
-        vm.broadcast(msg.sender);
         IOptimismPortalInterop impl = IOptimismPortalInterop(
             DeployUtils.createDeterministic({
                 _name: "OptimismPortalInterop",
@@ -932,7 +927,6 @@ contract DeployImplementationsInterop is DeployImplementations {
     }
 
     function deploySystemConfigImpl(DeployImplementationsOutput _dio) public override {
-        vm.broadcast(msg.sender);
         ISystemConfigInterop impl = ISystemConfigInterop(
             DeployUtils.createDeterministic({
                 _name: "SystemConfigInterop",

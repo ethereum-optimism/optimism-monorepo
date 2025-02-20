@@ -108,3 +108,52 @@ func TestStoreSubWord_32bits(t *testing.T) {
 		})
 	}
 }
+
+func TestSignExtend_32bit(t *testing.T) {
+	cases := []struct {
+		name     string
+		data     Word
+		index    Word
+		expected Word
+	}{
+		{name: "idx 1, signed", data: 0x0000_0001, index: 1, expected: 0xFFFF_FFFF},
+		{name: "idx 1, unsigned", data: 0x0000_0000, index: 1, expected: 0x0000_0000},
+		{name: "idx 2, signed", data: 0x0000_0002, index: 2, expected: 0xFFFF_FFFE},
+		{name: "idx 2, unsigned", data: 0x0000_0001, index: 2, expected: 0x0000_0001},
+		{name: "idx 4, signed", data: 0x0000_0008, index: 4, expected: 0xFFFF_FFF8},
+		{name: "idx 4, unsigned", data: 0x0000_0005, index: 4, expected: 0x0000_0005},
+		{name: "idx 8, signed", data: 0x0000_0092, index: 8, expected: 0xFFFF_FF92},
+		{name: "idx 8, unsigned", data: 0x0000_0075, index: 8, expected: 0x0000_0075},
+		{name: "idx 16, signed", data: 0x0000_A123, index: 16, expected: 0xFFFF_A123},
+		{name: "idx 16, unsigned", data: 0x0000_7123, index: 16, expected: 0x0000_7123},
+		{name: "idx 32, signed", data: 0x8123_4567, index: 32, expected: 0x8123_4567},
+		{name: "idx 32, unsigned", data: 0x7123_4567, index: 32, expected: 0x7123_4567},
+		{name: "idx 1, signed, nonzero upper bits", data: 0x1234_5671, index: 1, expected: 0xFFFF_FFFF},
+		{name: "idx 1, unsigned, nonzero upper bits", data: 0x1234_567E, index: 1, expected: 0x0000_0000},
+		{name: "idx 2, signed, nonzero upper bits", data: 0xABCD_EFE6, index: 2, expected: 0xFFFF_FFFE},
+		{name: "idx 2, unsigned, nonzero upper bits", data: 0xABCD_EFED, index: 2, expected: 0x0000_0001},
+		{name: "idx 4, signed, nonzero upper bits", data: 0x1230_0008, index: 4, expected: 0xFFFF_FFF8},
+		{name: "idx 4, unsigned, nonzero upper bits", data: 0xFFF0_0005, index: 4, expected: 0x0000_0005},
+		{name: "idx 8, signed, nonzero upper bits", data: 0x1111_1192, index: 8, expected: 0xFFFF_FF92},
+		{name: "idx 8, unsigned, nonzero upper bits", data: 0xFFFF_FF75, index: 8, expected: 0x0000_0075},
+		{name: "idx 16, signed, nonzero upper bits", data: 0x1234_A123, index: 16, expected: 0xFFFF_A123},
+		{name: "idx 16, unsigned, nonzero upper bits", data: 0x1234_7123, index: 16, expected: 0x0000_7123},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			actual := SignExtend(c.data, c.index)
+			expected := signExtend64(c.expected)
+			require.Equal(t, expected, actual)
+		})
+	}
+}
+
+func signExtend64(w Word) Word {
+	// If bit at index 31 == 1, then sign extend the higher bits on 64-bit architectures
+	if !arch.IsMips32 && (w>>31)&1 == 1 {
+		upperBits := uint64(0xFFFF_FFFF_0000_0000)
+		return Word(upperBits) | w
+	}
+	return w
+}

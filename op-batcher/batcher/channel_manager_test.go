@@ -101,9 +101,9 @@ func ChannelManagerReturnsErrReorgWhenDrained(t *testing.T, batchType uint) {
 
 	require.NoError(t, m.AddL2Block(a))
 
-	_, err := m.TxData(eth.BlockID{})
+	_, err := m.TxData(eth.BlockID{}, false)
 	require.NoError(t, err)
-	_, err = m.TxData(eth.BlockID{})
+	_, err = m.TxData(eth.BlockID{}, false)
 	require.ErrorIs(t, err, io.EOF)
 
 	require.ErrorIs(t, m.AddL2Block(x), ErrReorg)
@@ -199,7 +199,7 @@ func ChannelManager_TxResend(t *testing.T, batchType uint) {
 
 	require.NoError(m.AddL2Block(a))
 
-	txdata0, err := m.TxData(eth.BlockID{})
+	txdata0, err := m.TxData(eth.BlockID{}, false)
 	require.NoError(err)
 	txdata0bytes := txdata0.CallData()
 	data0 := make([]byte, len(txdata0bytes))
@@ -207,13 +207,13 @@ func ChannelManager_TxResend(t *testing.T, batchType uint) {
 	copy(data0, txdata0bytes)
 
 	// ensure channel is drained
-	_, err = m.TxData(eth.BlockID{})
+	_, err = m.TxData(eth.BlockID{}, false)
 	require.ErrorIs(err, io.EOF)
 
 	// requeue frame
 	m.TxFailed(txdata0.ID())
 
-	txdata1, err := m.TxData(eth.BlockID{})
+	txdata1, err := m.TxData(eth.BlockID{}, false)
 	require.NoError(err)
 
 	data1 := txdata1.CallData()
@@ -276,7 +276,7 @@ type FakeDynamicEthChannelConfig struct {
 	assessments int
 }
 
-func (f *FakeDynamicEthChannelConfig) ChannelConfig() ChannelConfig {
+func (f *FakeDynamicEthChannelConfig) ChannelConfig(isPectra bool) ChannelConfig {
 	f.assessments++
 	if f.chooseBlobs {
 		return f.blobConfig
@@ -356,7 +356,7 @@ func TestChannelManager_TxData(t *testing.T) {
 			m.blocks = []*types.Block{blockA}
 
 			// Call TxData a first time to trigger blocks->channels pipeline
-			_, err := m.TxData(eth.BlockID{})
+			_, err := m.TxData(eth.BlockID{}, false)
 			require.ErrorIs(t, err, io.EOF)
 
 			// The test requires us to have something in the channel queue
@@ -375,7 +375,7 @@ func TestChannelManager_TxData(t *testing.T) {
 			var data txData
 			for {
 				m.blocks = append(m.blocks, blockA)
-				data, err = m.TxData(eth.BlockID{})
+				data, err = m.TxData(eth.BlockID{}, false)
 				if err == nil && data.Len() > 0 {
 					break
 				}
@@ -412,6 +412,7 @@ func TestChannelManager_handleChannelInvalidated(t *testing.T) {
 	stateSnapshot := queue.Queue[*types.Block]{blockA, blockB}
 	m.blocks = stateSnapshot
 	require.Empty(t, m.channelQueue)
+	require.Equal(t, metrics.ChannelQueueLength, 0)
 
 	// Place an old channel in the queue.
 	// This channel should not be affected by
@@ -419,7 +420,9 @@ func TestChannelManager_handleChannelInvalidated(t *testing.T) {
 	oldChannel := newChannel(l, nil, m.defaultCfg, defaultTestRollupConfig, 0, nil)
 	oldChannel.Close()
 	m.channelQueue = []*channel{oldChannel}
+	metrics.RecordChannelQueueLength(1) // we need to do this manually b/c we are not using the usual codepath to set state
 	require.Len(t, m.channelQueue, 1)
+	require.Equal(t, metrics.ChannelQueueLength, 1)
 
 	// Setup initial metrics
 	metrics.RecordL2BlockInPendingQueue(blockA)
@@ -429,6 +432,8 @@ func TestChannelManager_handleChannelInvalidated(t *testing.T) {
 	// Trigger the blocks -> channelQueue data pipelining
 	require.NoError(t, m.ensureChannelWithSpace(eth.BlockID{}))
 	require.Len(t, m.channelQueue, 2)
+	require.Equal(t, metrics.ChannelQueueLength, 2)
+
 	require.NoError(t, m.processBlocks())
 
 	// Assert that at least one block was processed into the channel
@@ -446,6 +451,7 @@ func TestChannelManager_handleChannelInvalidated(t *testing.T) {
 	require.Equal(t, m.blocks, stateSnapshot)
 	require.Contains(t, m.channelQueue, oldChannel)
 	require.Len(t, m.channelQueue, 1)
+	require.Equal(t, metrics.ChannelQueueLength, 1)
 
 	// Check metric came back up to previous value
 	require.Equal(t, pendingBytesBefore, metrics.PendingBlocksBytesCurrent)

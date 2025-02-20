@@ -2,19 +2,16 @@ package tasks
 
 import (
 	"context"
-	"encoding/binary"
 	"fmt"
-	"math/big"
 
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
-	"github.com/ethereum-optimism/optimism/op-node/rollup/derive"
+	"github.com/ethereum-optimism/optimism/op-node/rollup/interop/managed"
 	"github.com/ethereum-optimism/optimism/op-program/client/l1"
 	"github.com/ethereum-optimism/optimism/op-program/client/l2"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/consensus/misc/eip1559"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethdb/memorydb"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
@@ -37,7 +34,7 @@ func BuildDepositOnlyBlock(
 	if err != nil {
 		return common.Hash{}, eth.Bytes32{}, fmt.Errorf("failed to create oracle-backed L2 chain: %w", err)
 	}
-	l2Source := l2.NewOracleEngine(cfg, logger, engineBackend)
+	l2Source := l2.NewOracleEngine(cfg, logger, engineBackend, l2Oracle.Hinter())
 	l2Head := l2Oracle.BlockByHash(optimisticBlock.ParentHash(), eth.ChainIDFromBig(l2Cfg.ChainID))
 	l2HeadHash := l2Head.Hash()
 
@@ -70,6 +67,20 @@ func BuildDepositOnlyBlock(
 	if err != nil {
 		return common.Hash{}, eth.Bytes32{}, fmt.Errorf("failed to get payload: %w", err)
 	}
+
+	// Sync the engine's view so we can fetch the latest output root
+	result, err = l2Source.ForkchoiceUpdate(context.Background(), &eth.ForkchoiceState{
+		HeadBlockHash:      payload.ExecutionPayload.BlockHash,
+		SafeBlockHash:      payload.ExecutionPayload.BlockHash,
+		FinalizedBlockHash: payload.ExecutionPayload.BlockHash,
+	}, nil)
+	if err != nil {
+		return common.Hash{}, eth.Bytes32{}, fmt.Errorf("failed to update forkchoice state (no build): %w", err)
+	}
+	if result.PayloadStatus.Status != eth.ExecutionValid {
+		return common.Hash{}, eth.Bytes32{}, fmt.Errorf("failed to update forkchoice state (no build): %w", eth.ForkchoiceUpdateErr(result.PayloadStatus))
+	}
+
 	blockHash, outputRoot, err := l2Source.L2OutputRoot(uint64(payload.ExecutionPayload.BlockNumber))
 	if err != nil {
 		return common.Hash{}, eth.Bytes32{}, fmt.Errorf("failed to get L2 output root: %w", err)
@@ -79,7 +90,7 @@ func BuildDepositOnlyBlock(
 
 func getL2Output(logger log.Logger, cfg *rollup.Config, l2Cfg *params.ChainConfig, l2Oracle l2.Oracle, l1Oracle l1.Oracle, block *types.Block) (*eth.OutputV0, error) {
 	backend := l2.NewOracleBackedL2ChainFromHead(logger, l2Oracle, l1Oracle, l2Cfg, block, memorydb.New())
-	engine := l2.NewOracleEngine(cfg, logger, backend)
+	engine := l2.NewOracleEngine(cfg, logger, backend, l2Oracle.Hinter())
 	output, err := engine.L2OutputAtBlockHash(block.Hash())
 	if err != nil {
 		return nil, fmt.Errorf("failed to get L2 output: %w", err)
@@ -100,12 +111,12 @@ func blockToDepositsOnlyAttributes(cfg *rollup.Config, block *types.Block, outpu
 			deposits = append(deposits, txdata)
 		}
 	}
-	depositedTx := createBlockDepositedTx(output)
-	depositedTxData, err := depositedTx.MarshalBinary()
+	invalidatedBlockTx := managed.InvalidatedBlockSourceDepositTx(output.Marshal())
+	invalidatedBlockTxData, err := invalidatedBlockTx.MarshalBinary()
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal deposited tx: %w", err)
 	}
-	deposits = append(deposits, depositedTxData)
+	deposits = append(deposits, invalidatedBlockTxData)
 
 	attrs := &eth.PayloadAttributes{
 		Timestamp:             eth.Uint64Quantity(block.Time()),
@@ -119,34 +130,8 @@ func blockToDepositsOnlyAttributes(cfg *rollup.Config, block *types.Block, outpu
 	}
 	if cfg.IsHolocene(block.Time()) {
 		d, e := eip1559.DecodeHoloceneExtraData(block.Extra())
-		eip1559Params := eip1559.EncodeHolocene1559Params(d, e)
-		copy(attrs.EIP1559Params[:], eip1559Params)
+		eip1559Params := eth.Bytes8(eip1559.EncodeHolocene1559Params(d, e))
+		attrs.EIP1559Params = &eip1559Params
 	}
 	return attrs, nil
-}
-
-func createBlockDepositedTx(output *eth.OutputV0) *types.Transaction {
-	// TODO(#14013): refactor this with block replacement helpers introduced in https://github.com/ethereum-optimism/optimism/pull/13645
-	outputRoot := eth.OutputRoot(output)
-	outputRootPreimage := output.Marshal()
-
-	sourceHash := createBlockDepositedSourceHash(outputRoot)
-	return types.NewTx(&types.DepositTx{
-		SourceHash:          sourceHash,
-		From:                derive.L1InfoDepositerAddress,
-		To:                  &common.Address{}, // to the zero address, no EVM execution.
-		Mint:                big.NewInt(0),
-		Value:               big.NewInt(0),
-		Gas:                 36_000,
-		IsSystemTransaction: false,
-		Data:                outputRootPreimage,
-	})
-}
-
-func createBlockDepositedSourceHash(outputRoot eth.Bytes32) common.Hash {
-	domain := uint64(4)
-	var domainInput [32 * 2]byte
-	binary.BigEndian.PutUint64(domainInput[32-8:32], domain)
-	copy(domainInput[32:], outputRoot[:])
-	return crypto.Keccak256Hash(domainInput[:])
 }

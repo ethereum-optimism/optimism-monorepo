@@ -52,19 +52,21 @@ func NewL2FaultProofEnv[c any](t helpers.Testing, testCfg *TestCfg[c], tp *e2eut
 		// Enable L2 feature.
 		switch testCfg.Hardfork {
 		case Regolith:
-			dp.DeployConfig.L2GenesisRegolithTimeOffset = &genesisBlock
+			dp.DeployConfig.ActivateForkAtGenesis(rollup.Regolith)
 		case Canyon:
-			dp.DeployConfig.L2GenesisCanyonTimeOffset = &genesisBlock
+			dp.DeployConfig.ActivateForkAtGenesis(rollup.Canyon)
 		case Delta:
-			dp.DeployConfig.L2GenesisDeltaTimeOffset = &genesisBlock
+			dp.DeployConfig.ActivateForkAtGenesis(rollup.Delta)
 		case Ecotone:
-			dp.DeployConfig.L2GenesisEcotoneTimeOffset = &genesisBlock
+			dp.DeployConfig.ActivateForkAtGenesis(rollup.Ecotone)
 		case Fjord:
-			dp.DeployConfig.L2GenesisFjordTimeOffset = &genesisBlock
+			dp.DeployConfig.ActivateForkAtGenesis(rollup.Fjord)
 		case Granite:
-			dp.DeployConfig.L2GenesisGraniteTimeOffset = &genesisBlock
+			dp.DeployConfig.ActivateForkAtGenesis(rollup.Granite)
 		case Holocene:
-			dp.DeployConfig.L2GenesisHoloceneTimeOffset = &genesisBlock
+			dp.DeployConfig.ActivateForkAtGenesis(rollup.Holocene)
+		case Isthmus:
+			dp.DeployConfig.ActivateForkAtGenesis(rollup.Isthmus)
 		}
 
 		for _, override := range deployConfigOverrides {
@@ -220,5 +222,6 @@ func NewOpProgramCfg(
 		dfault.AgreedPrestate = fi.AgreedPrestate
 	}
 	dfault.InteropEnabled = fi.InteropEnabled
+	dfault.DependencySet = fi.DependencySet
 	return dfault
 }

@@ -9,8 +9,10 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 
 	preimage "github.com/ethereum-optimism/optimism/op-preimage"
+	l2Types "github.com/ethereum-optimism/optimism/op-program/client/l2/types"
 	"github.com/ethereum-optimism/optimism/op-program/client/mpt"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
+	"github.com/ethereum-optimism/optimism/op-service/predeploys"
 )
 
 // StateOracle defines the high-level API used to retrieve L2 state data pre-images
@@ -42,6 +44,30 @@ type Oracle interface {
 	TransitionStateByRoot(root common.Hash) *interopTypes.TransitionState
 
 	ReceiptsByBlockHash(blockHash common.Hash, chainID eth.ChainID) (*types.Block, types.Receipts)
+
+	// Optional interface to provide proactive hints.
+	Hinter() l2Types.OracleHinter
+}
+
+type PreimageOracleHinter struct {
+	hint preimage.Hinter
+}
+
+func NewPreimageHinter(hint preimage.Hinter) *PreimageOracleHinter {
+	return &PreimageOracleHinter{hint: hint}
+}
+
+func (p *PreimageOracleHinter) HintBlockExecution(parentBlockHash common.Hash, attr eth.PayloadAttributes, chainID eth.ChainID) {
+	p.hint.Hint(PayloadWitnessHint{
+		ParentBlockHash:   parentBlockHash,
+		PayloadAttributes: &attr,
+		ChainID:           &chainID,
+	})
+}
+
+// HintWithdrawalsRoot hints that we're about to fetch the storage root of the L2ToL1MessagePasser contract.
+func (p *PreimageOracleHinter) HintWithdrawalsRoot(blockHash common.Hash, chainID eth.ChainID) {
+	p.hint.Hint(AccountProofHint{BlockHash: blockHash, Address: predeploys.L2ToL1MessagePasserAddr, ChainID: chainID})
 }
 
 // PreimageOracle implements Oracle using by interfacing with the pure preimage.Oracle
@@ -50,6 +76,8 @@ type PreimageOracle struct {
 	oracle         preimage.Oracle
 	hint           preimage.Hinter
 	hintL2ChainIDs bool
+
+	oracleHinter l2Types.OracleHinter
 }
 
 var _ Oracle = (*PreimageOracle)(nil)
@@ -60,6 +88,13 @@ func NewPreimageOracle(raw preimage.Oracle, hint preimage.Hinter, hintL2ChainIDs
 		hint:           hint,
 		hintL2ChainIDs: hintL2ChainIDs,
 	}
+}
+
+func (p *PreimageOracle) Hinter() l2Types.OracleHinter {
+	if p.oracleHinter == nil {
+		p.oracleHinter = NewPreimageHinter(p.hint)
+	}
+	return p.oracleHinter
 }
 
 func (p *PreimageOracle) headerByBlockHash(blockHash common.Hash, chainID eth.ChainID) *types.Header {

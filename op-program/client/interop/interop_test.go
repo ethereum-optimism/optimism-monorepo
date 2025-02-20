@@ -19,9 +19,12 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
 	"github.com/ethereum-optimism/optimism/op-service/testutils"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
+	supervisortypes "github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 	"github.com/ethereum/go-ethereum/common"
 	gethTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/types/interoptypes"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/trie"
@@ -46,9 +49,14 @@ func setupTwoChains() (*staticConfigSource, *eth.SuperV1, *stubTasks) {
 			{ChainID: eth.ChainIDFromBig(rollupCfg2.L2ChainID), Output: eth.OutputRoot(&eth.OutputV0{BlockHash: common.Hash{0x22}})},
 		},
 	}
+	depset, _ := depset.NewStaticConfigDependencySet(map[eth.ChainID]*depset.StaticConfigDependency{
+		eth.ChainIDFromBig(rollupCfg1.L2ChainID): {ChainIndex: chainA, ActivationTime: 0, HistoryMinTime: 0},
+		eth.ChainIDFromBig(rollupCfg2.L2ChainID): {ChainIndex: chainB, ActivationTime: 0, HistoryMinTime: 0},
+	})
 	configSource := &staticConfigSource{
 		rollupCfgs:   []*rollup.Config{rollupCfg1, &rollupCfg2},
 		chainConfigs: []*params.ChainConfig{chainCfg1, &chainCfg2},
+		depset:       depset,
 	}
 	tasksStub := &stubTasks{
 		l2SafeHead: eth.L2BlockRef{Number: 918429823450218}, // Past the claimed block
@@ -125,7 +133,39 @@ func TestNoOpStep(t *testing.T) {
 	verifyResult(t, logger, tasksStub, configSource, l2PreimageOracle, outputRootHash, agreedSuperRoot.Timestamp+100000, expectedClaim)
 }
 
+var (
+	initiatingMessageTopic   = crypto.Keccak256Hash([]byte("Test()"))
+	initPayloadHash          = crypto.Keccak256Hash(initiatingMessageTopic[:])
+	initiatingMessageOrigin  = common.Address{0xaa}
+	initiatingMessageOrigin2 = common.Address{0xbb}
+)
+
+const (
+	chainA supervisortypes.ChainIndex = 0
+	chainB supervisortypes.ChainIndex = 1
+)
+
 func TestDeriveBlockForConsolidateStep(t *testing.T) {
+	createExecMessage := func(initIncludedIn uint64, config *staticConfigSource) interoptypes.Message {
+		exec := interoptypes.Message{
+			Identifier: interoptypes.Identifier{
+				Origin:      initiatingMessageOrigin,
+				BlockNumber: initIncludedIn,
+				LogIndex:    0,
+				Timestamp:   initIncludedIn * config.rollupCfgs[chainA].BlockTime,
+				ChainID:     uint256.Int(eth.ChainIDFromBig(config.rollupCfgs[chainA].L2ChainID)),
+			},
+			PayloadHash: initPayloadHash,
+		}
+		return exec
+	}
+	createInitLog := func() *gethTypes.Log {
+		return &gethTypes.Log{
+			Address: initiatingMessageOrigin,
+			Topics:  []common.Hash{initiatingMessageTopic},
+		}
+	}
+
 	cases := []struct {
 		name     string
 		testCase consolidationTestCase
@@ -135,87 +175,136 @@ func TestDeriveBlockForConsolidateStep(t *testing.T) {
 			testCase: consolidationTestCase{},
 		},
 		{
-			name: "HappyPathWithValidMessages",
+			name: "HappyPathWithValidMessages-ExecOnChainB",
 			testCase: consolidationTestCase{
-				stubExecMsgFn: func(includeChainIndex int, includeBlockNum uint64, config *staticConfigSource) []executingMessage {
-					if includeChainIndex == 0 {
-						return nil
-					} else {
-						return []executingMessage{
-							{
-								ChainID:   eth.ChainIDFromBig(config.rollupCfgs[0].L2ChainID),
-								BlockNum:  includeBlockNum,
-								LogIdx:    0,
-								Timestamp: includeBlockNum * config.rollupCfgs[1].BlockTime,
-							},
-						}
-					}
+				logBuilderFn: func(includeBlockNumbers map[supervisortypes.ChainIndex]uint64, config *staticConfigSource) map[supervisortypes.ChainIndex][]*gethTypes.Log {
+					init := createInitLog()
+					exec := createExecMessage(includeBlockNumbers[chainA], config)
+					return map[supervisortypes.ChainIndex][]*gethTypes.Log{chainA: {init}, chainB: {convertExecutingMessageToLog(t, exec)}}
 				},
 			},
 		},
 		{
-			name: "DepositsOnlyBlockReplacement-ChainA",
-			// Mock block2A (chain A, block 2) replaced with a deposit-only block
-			// Due to a self-referential invalid executing message.
+			name: "HappyPathWithValidMessages-ExecOnChainA",
 			testCase: consolidationTestCase{
-				stubExecMsgFn: func(includeChainIndex int, includeBlockNum uint64, config *staticConfigSource) []executingMessage {
-					if includeChainIndex == 0 {
-						return []executingMessage{
-							{
-								ChainID:   eth.ChainIDFromBig(config.rollupCfgs[0].L2ChainID),
-								BlockNum:  includeBlockNum,
-								LogIdx:    0,
-								Timestamp: includeBlockNum * config.rollupCfgs[0].BlockTime,
-							},
-						}
-					} else {
-						return nil
-					}
-				},
-				expectBlockReplacements: func(config *staticConfigSource) []uint64 {
-					return []uint64{0}
-				},
-			},
-		},
-		{
-			name: "DepositsOnlyBlockReplacement-ChainB",
-			// Mock block2B (chain B, block 2) replaced with a deposit-only block
-			// Due to a self-referential invalid executing message.
-			testCase: consolidationTestCase{
-				stubExecMsgFn: func(includeChainIndex int, includeBlockNum uint64, config *staticConfigSource) []executingMessage {
-					if includeChainIndex == 0 {
-						return nil
-					} else {
-						return []executingMessage{
-							{
-								ChainID:   eth.ChainIDFromBig(config.rollupCfgs[1].L2ChainID),
-								BlockNum:  includeBlockNum,
-								LogIdx:    0,
-								Timestamp: includeBlockNum * config.rollupCfgs[1].BlockTime,
-							},
-						}
-					}
-				},
-				expectBlockReplacements: func(config *staticConfigSource) []uint64 {
-					return []uint64{1}
-				},
-			},
-		},
-		{
-			name: "DepositsOnlyBlockReplacement-BothChains",
-			testCase: consolidationTestCase{
-				stubExecMsgFn: func(includeChainIndex int, includeBlockNum uint64, config *staticConfigSource) []executingMessage {
-					return []executingMessage{
-						{
-							ChainID:   eth.ChainIDFromBig(config.rollupCfgs[includeChainIndex].L2ChainID),
-							BlockNum:  includeBlockNum,
-							LogIdx:    0,
-							Timestamp: includeBlockNum * config.rollupCfgs[includeChainIndex].BlockTime,
+				logBuilderFn: func(includeBlockNumbers map[supervisortypes.ChainIndex]uint64, config *staticConfigSource) map[supervisortypes.ChainIndex][]*gethTypes.Log {
+					init := createInitLog()
+					initPayloadHash := crypto.Keccak256Hash(initiatingMessageTopic[:])
+					execMsg := interoptypes.Message{
+						Identifier: interoptypes.Identifier{
+							Origin:      init.Address,
+							BlockNumber: includeBlockNumbers[chainB],
+							LogIndex:    0,
+							Timestamp:   includeBlockNumbers[chainB] * config.rollupCfgs[chainB].BlockTime,
+							ChainID:     uint256.Int(eth.ChainIDFromBig(config.rollupCfgs[chainB].L2ChainID)),
 						},
+						PayloadHash: initPayloadHash,
+					}
+					exec := convertExecutingMessageToLog(t, execMsg)
+					return map[supervisortypes.ChainIndex][]*gethTypes.Log{chainA: {exec}, chainB: {init}}
+				},
+			},
+		},
+		{
+			name: "HappyPathWithValidMessages-ExecOnChainB-NonZeroLogIndex",
+			testCase: consolidationTestCase{
+				logBuilderFn: func(includeBlockNumbers map[supervisortypes.ChainIndex]uint64, config *staticConfigSource) map[supervisortypes.ChainIndex][]*gethTypes.Log {
+					init1 := &gethTypes.Log{
+						Address: initiatingMessageOrigin,
+						Topics:  []common.Hash{initiatingMessageTopic},
+					}
+					init2 := &gethTypes.Log{
+						Address: initiatingMessageOrigin2,
+						Topics:  []common.Hash{initiatingMessageTopic},
+					}
+					exec := createExecMessage(includeBlockNumbers[chainA], config)
+					exec.Identifier.Origin = init2.Address
+					exec.Identifier.LogIndex = 1
+					return map[supervisortypes.ChainIndex][]*gethTypes.Log{
+						chainA: {init1, init2},
+						chainB: {convertExecutingMessageToLog(t, exec)},
 					}
 				},
-				expectBlockReplacements: func(config *staticConfigSource) []uint64 {
-					return []uint64{0, 1}
+			},
+		},
+		{
+			name: "ReplaceChainB-UnknownChainID",
+			testCase: consolidationTestCase{
+				logBuilderFn: func(includeBlockNumbers map[supervisortypes.ChainIndex]uint64, config *staticConfigSource) map[supervisortypes.ChainIndex][]*gethTypes.Log {
+					init := createInitLog()
+					exec := createExecMessage(includeBlockNumbers[chainA], config)
+					exec.Identifier.ChainID = uint256.Int(eth.ChainIDFromUInt64(0xdeadbeef))
+					return map[supervisortypes.ChainIndex][]*gethTypes.Log{chainA: {init}, chainB: {convertExecutingMessageToLog(t, exec)}}
+				},
+				expectBlockReplacements: func(config *staticConfigSource) []supervisortypes.ChainIndex {
+					return []supervisortypes.ChainIndex{chainB}
+				},
+			},
+		},
+		{
+			name: "ReplaceChainB-InvalidLogIndex",
+			testCase: consolidationTestCase{
+				logBuilderFn: func(includeBlockNumbers map[supervisortypes.ChainIndex]uint64, config *staticConfigSource) map[supervisortypes.ChainIndex][]*gethTypes.Log {
+					init1 := &gethTypes.Log{
+						Address: initiatingMessageOrigin,
+						Topics:  []common.Hash{initiatingMessageTopic},
+					}
+					init2 := &gethTypes.Log{
+						Address: initiatingMessageOrigin2,
+						Topics:  []common.Hash{initiatingMessageTopic},
+					}
+					exec := createExecMessage(includeBlockNumbers[chainA], config)
+					exec.Identifier.Origin = init2.Address
+					exec.Identifier.LogIndex = 0
+					return map[supervisortypes.ChainIndex][]*gethTypes.Log{
+						chainA: {init1, init2},
+						chainB: {convertExecutingMessageToLog(t, exec)},
+					}
+				},
+				expectBlockReplacements: func(config *staticConfigSource) []supervisortypes.ChainIndex {
+					return []supervisortypes.ChainIndex{chainB}
+				},
+			},
+		},
+		{
+			name: "ReplaceChainB-InvalidPayloadHash",
+			testCase: consolidationTestCase{
+				logBuilderFn: func(includeBlockNumbers map[supervisortypes.ChainIndex]uint64, config *staticConfigSource) map[supervisortypes.ChainIndex][]*gethTypes.Log {
+					init := createInitLog()
+					execMsg := createExecMessage(includeBlockNumbers[chainA], config)
+					execMsg.PayloadHash = crypto.Keccak256Hash([]byte("invalid hash"))
+					return map[supervisortypes.ChainIndex][]*gethTypes.Log{chainA: {init}, chainB: {convertExecutingMessageToLog(t, execMsg)}}
+				},
+				expectBlockReplacements: func(config *staticConfigSource) []supervisortypes.ChainIndex {
+					return []supervisortypes.ChainIndex{chainB}
+				},
+			},
+		},
+		{
+			name: "ReplaceChainB-InvalidTimestamp",
+			testCase: consolidationTestCase{
+				logBuilderFn: func(includeBlockNumbers map[supervisortypes.ChainIndex]uint64, config *staticConfigSource) map[supervisortypes.ChainIndex][]*gethTypes.Log {
+					init := createInitLog()
+					execMsg := createExecMessage(includeBlockNumbers[chainA], config)
+					execMsg.Identifier.Timestamp = execMsg.Identifier.Timestamp - 1
+					return map[supervisortypes.ChainIndex][]*gethTypes.Log{chainA: {init}, chainB: {convertExecutingMessageToLog(t, execMsg)}}
+				},
+				expectBlockReplacements: func(config *staticConfigSource) []supervisortypes.ChainIndex {
+					return []supervisortypes.ChainIndex{chainB}
+				},
+			},
+		},
+		{
+			name: "ReplaceBothChains",
+			testCase: consolidationTestCase{
+				logBuilderFn: func(includeBlockNumbers map[supervisortypes.ChainIndex]uint64, config *staticConfigSource) map[supervisortypes.ChainIndex][]*gethTypes.Log {
+					invalidExecMsg := createExecMessage(includeBlockNumbers[chainA], config)
+					invalidExecMsg.PayloadHash = crypto.Keccak256Hash([]byte("invalid hash"))
+					log := convertExecutingMessageToLog(t, invalidExecMsg)
+					return map[supervisortypes.ChainIndex][]*gethTypes.Log{chainA: {log}, chainB: {log}}
+				},
+				expectBlockReplacements: func(config *staticConfigSource) []supervisortypes.ChainIndex {
+					return []supervisortypes.ChainIndex{chainA, chainB}
 				},
 			},
 		},
@@ -228,15 +317,14 @@ func TestDeriveBlockForConsolidateStep(t *testing.T) {
 	}
 }
 
-// stubExecMsgFn returns the executing messages to stub inclusion for the specified block
-type stubExecMsgFn func(includeChainIndex int, includeBlockNum uint64, config *staticConfigSource) []executingMessage
-
 // expectBlockReplacementsFn returns the chain indexes containing an optimistic block that must be replaced
-type expectBlockReplacementsFn func(config *staticConfigSource) (chainIDsToReplace []uint64)
+type expectBlockReplacementsFn func(config *staticConfigSource) (chainIndexesToReplace []supervisortypes.ChainIndex)
+
+type logBuilderFn func(includeBlockNumbers map[supervisortypes.ChainIndex]uint64, config *staticConfigSource) map[supervisortypes.ChainIndex][]*gethTypes.Log
 
 type consolidationTestCase struct {
-	stubExecMsgFn           stubExecMsgFn
 	expectBlockReplacements expectBlockReplacementsFn
+	logBuilderFn            logBuilderFn
 }
 
 func runConsolidationTestCase(t *testing.T, testCase consolidationTestCase) {
@@ -251,15 +339,14 @@ func runConsolidationTestCase(t *testing.T, testCase consolidationTestCase) {
 	block1A, _ := createBlock(rng, configA, 1, nil)
 	block1B, _ := createBlock(rng, configB, 1, nil)
 
-	var logA []*gethTypes.Log
-	if testCase.stubExecMsgFn != nil {
-		execMsgA := testCase.stubExecMsgFn(0, block1A.NumberU64()+1, configSource)
-		logA = convertExecutingMessagesToLog(t, execMsgA)
-	}
-	var logB []*gethTypes.Log
-	if testCase.stubExecMsgFn != nil {
-		execMsgB := testCase.stubExecMsgFn(1, block1B.NumberU64()+1, configSource)
-		logB = convertExecutingMessagesToLog(t, execMsgB)
+	var logA, logB []*gethTypes.Log
+	if testCase.logBuilderFn != nil {
+		logs := testCase.logBuilderFn(
+			map[supervisortypes.ChainIndex]uint64{0: block1A.NumberU64() + 1, 1: block1B.NumberU64() + 1},
+			configSource,
+		)
+		logA = logs[chainA]
+		logB = logs[chainB]
 	}
 	block2A, block2AReceipts := createBlock(rng, configA, 2, gethTypes.Receipts{{Logs: logA}})
 	block2B, block2BReceipts := createBlock(rng, configB, 2, gethTypes.Receipts{{Logs: logB}})
@@ -340,44 +427,25 @@ func createOutput(blockHash common.Hash) *eth.OutputV0 {
 	return &eth.OutputV0{BlockHash: blockHash}
 }
 
-type executingMessage struct {
-	ChainID   eth.ChainID
-	BlockNum  uint64
-	LogIdx    uint32
-	Timestamp uint64
-}
-
-func convertExecutingMessagesToLog(t *testing.T, msgs []executingMessage) []*gethTypes.Log {
-	logs := make([]*gethTypes.Log, 0, len(msgs))
-	for _, msg := range msgs {
-		id := interoptypes.Identifier{
-			Origin:      common.Address{0xaa},
-			BlockNumber: msg.BlockNum,
-			LogIndex:    msg.LogIdx,
-			Timestamp:   msg.Timestamp,
-			ChainID:     uint256.Int(msg.ChainID),
-		}
-		data := make([]byte, 0, 32*5)
-		data = append(data, make([]byte, 12)...)
-		data = append(data, id.Origin.Bytes()...)
-		data = append(data, make([]byte, 32-8)...)
-		data = append(data, binary.BigEndian.AppendUint64(nil, id.BlockNumber)...)
-		data = append(data, make([]byte, 32-4)...)
-		data = append(data, binary.BigEndian.AppendUint32(nil, id.LogIndex)...)
-		data = append(data, make([]byte, 32-8)...)
-		data = append(data, binary.BigEndian.AppendUint64(nil, id.Timestamp)...)
-		b := id.ChainID.Bytes32()
-		data = append(data, b[:]...)
-		require.Equal(t, len(data), 32*5)
-
-		payloadHash := common.Hash{0x01, 0x02, 0x03}
-		logs = append(logs, &gethTypes.Log{
-			Address: params.InteropCrossL2InboxAddress,
-			Topics:  []common.Hash{interoptypes.ExecutingMessageEventTopic, payloadHash},
-			Data:    data,
-		})
+func convertExecutingMessageToLog(t *testing.T, msg interoptypes.Message) *gethTypes.Log {
+	id := msg.Identifier
+	data := make([]byte, 0, 32*5)
+	data = append(data, make([]byte, 12)...)
+	data = append(data, id.Origin.Bytes()...)
+	data = append(data, make([]byte, 32-8)...)
+	data = append(data, binary.BigEndian.AppendUint64(nil, id.BlockNumber)...)
+	data = append(data, make([]byte, 32-4)...)
+	data = append(data, binary.BigEndian.AppendUint32(nil, id.LogIndex)...)
+	data = append(data, make([]byte, 32-8)...)
+	data = append(data, binary.BigEndian.AppendUint64(nil, id.Timestamp)...)
+	b := id.ChainID.Bytes32()
+	data = append(data, b[:]...)
+	require.Equal(t, len(data), 32*5)
+	return &gethTypes.Log{
+		Address: params.InteropCrossL2InboxAddress,
+		Topics:  []common.Hash{interoptypes.ExecutingMessageEventTopic, msg.PayloadHash},
+		Data:    data,
 	}
-	return logs
 }
 
 func createBlock(rng *rand.Rand,
@@ -506,6 +574,7 @@ func (t *stubTasks) ExpectBuildDepositOnlyBlock(
 type staticConfigSource struct {
 	rollupCfgs   []*rollup.Config
 	chainConfigs []*params.ChainConfig
+	depset       *depset.StaticConfigDependencySet
 }
 
 func (s *staticConfigSource) RollupConfig(chainID eth.ChainID) (*rollup.Config, error) {
@@ -524,4 +593,8 @@ func (s *staticConfigSource) ChainConfig(chainID eth.ChainID) (*params.ChainConf
 		}
 	}
 	return nil, fmt.Errorf("no chain config found for chain %d", chainID)
+}
+
+func (s *staticConfigSource) DependencySet(chainID eth.ChainID) (depset.DependencySet, error) {
+	return s.depset, nil
 }

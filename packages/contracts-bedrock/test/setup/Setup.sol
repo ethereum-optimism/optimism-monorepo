@@ -3,7 +3,7 @@ pragma solidity 0.8.15;
 
 // Testing
 import { console2 as console } from "forge-std/console2.sol";
-import { Vm } from "forge-std/Vm.sol";
+import { Vm, VmSafe } from "forge-std/Vm.sol";
 
 // Scripts
 import { Deploy } from "scripts/deploy/Deploy.s.sol";
@@ -175,11 +175,26 @@ contract Setup {
         console.log("Setup: L2 setup done!");
     }
 
+    /// @dev Skips tests when running in coverage mode.
+    function skipIfCoverage() public {
+        if (vm.isContext(VmSafe.ForgeContext.Coverage)) {
+            vm.skip(true);
+        }
+    }
+
     /// @dev Skips tests when running against a forked production network.
     function skipIfForkTest(string memory message) public {
         if (isForkTest()) {
             vm.skip(true);
             console.log(string.concat("Skipping fork test: ", message));
+        }
+    }
+
+    /// @dev Skips tests when running against a forked production network using the superchain ops repo.
+    function skipIfOpsRepoTest(string memory message) public {
+        if (forkLive.useOpsRepo()) {
+            vm.skip(true);
+            console.log(string.concat("Skipping ops repo test: ", message));
         }
     }
 
@@ -298,6 +313,7 @@ contract Setup {
         labelPreinstall(Preinstalls.SenderCreator_v070);
         labelPreinstall(Preinstalls.EntryPoint_v070);
         labelPreinstall(Preinstalls.BeaconBlockRoots);
+        labelPreinstall(Preinstalls.HistoryStorage);
         labelPreinstall(Preinstalls.CreateX);
 
         console.log("Setup: completed L2 genesis");

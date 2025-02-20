@@ -1,12 +1,9 @@
 version: 2.1
 
 parameters:
-  ci_builder_image:
+  default_docker_image:
     type: string
-    default: us-docker.pkg.dev/oplabs-tools-artifacts/images/ci-builder:v0.59.0
-  ci_builder_rust_image:
-    type: string
-    default: us-docker.pkg.dev/oplabs-tools-artifacts/images/ci-builder-rust:latest
+    default: cimg/base:2024.01
   base_image:
     type: string
     default: default
@@ -57,6 +54,8 @@ orbs:
   slack: circleci/slack@4.10.1
   shellcheck: circleci/shellcheck@3.2.0
   codecov: codecov/codecov@5.0.3
+  utils: ethereum-optimism/circleci-utils@1.0.13
+
 commands:
   gcp-oidc-authenticate:
     description: "Authenticate with GCP using a CircleCI OIDC token."
@@ -129,14 +128,6 @@ commands:
             # of the -j parameter, which speeds it up a lot.
             git submodule update --init --recursive --force -j 8
           working_directory: packages/contracts-bedrock
-      - run:
-          name: Verify mise dependencies
-          command: |
-            if command -v mise &> /dev/null; then
-              mise install
-            else
-              echo "mise not found, skipping"
-            fi
 
   notify-failures-on-develop:
     description: "Notify Slack"
@@ -165,8 +156,9 @@ commands:
           name: <<parameters.command>>
           command: |
             git reset --hard
+            git clean -df
             just <<parameters.command>>
-            git diff --exit-code
+            [ -z "$(git status --porcelain)" ] || exit 1
           working_directory: packages/contracts-bedrock
           when: always
           environment:
@@ -188,7 +180,7 @@ jobs:
         type: integer
         default: 32
     steps:
-      - checkout
+      - utils/checkout-with-mise
       - check-changed:
           patterns: cannon,packages/contracts-bedrock/src/cannon,op-preimage,go.mod
       - attach_workspace:
@@ -258,23 +250,29 @@ jobs:
 
   cannon-build-test-vectors:
     docker:
-      - image: <<pipeline.parameters.ci_builder_image>>
-    resource_class: medium
+      - image: <<pipeline.parameters.default_docker_image>>
+    resource_class: large
     steps:
-      - checkout
+      - utils/checkout-with-mise
       - check-changed:
           patterns: cannon/mipsevm/tests/open_mips_tests/test
       - run:
+          name: Install dependencies
+          command: |
+            sudo apt-get update
+            sudo apt-get install -y binutils-mips-linux-gnu
+            pip install capstone pyelftools
+      - run:
           name: Build MIPS test vectors
-          command: python3 maketests.py && git diff --exit-code
+          command: |
+            python3 maketests.py && git diff --exit-code
           working_directory: cannon/mipsevm/tests/open_mips_tests
 
   diff-asterisc-bytecode:
-    docker:
-      - image: <<pipeline.parameters.ci_builder_image>>
-    resource_class: medium
+    machine: true
+    resource_class: ethereum-optimism/latitude-1
     steps:
-      - checkout
+      - utils/checkout-with-mise
       - run:
           name: Check `RISCV.sol` bytecode
           working_directory: packages/contracts-bedrock
@@ -310,8 +308,9 @@ jobs:
           mentions: "@clabby @proofs-team"
 
   contracts-bedrock-build:
-    machine: true
-    resource_class: ethereum-optimism/latitude-1
+    docker:
+      - image: <<pipeline.parameters.default_docker_image>>
+    resource_class: large
     parameters:
       build_args:
         description: Forge build arguments
@@ -322,7 +321,7 @@ jobs:
         type: string
         default: ci
     steps:
-      - checkout
+      - utils/checkout-with-mise
       - install-contracts-dependencies
       - run:
           name: Print forge version
@@ -349,10 +348,10 @@ jobs:
 
   check-kontrol-build:
     docker:
-      - image: <<pipeline.parameters.ci_builder_image>>
+      - image: <<pipeline.parameters.default_docker_image>>
     resource_class: xlarge
     steps:
-      - checkout
+      - utils/checkout-with-mise
       - attach_workspace: { at: "." }
       - install-contracts-dependencies
       - check-changed:
@@ -413,7 +412,7 @@ jobs:
       resource_class: "<<parameters.resource_class>>"
       docker_layer_caching: true # we rely on this for faster builds, and actively warm it up for builds with common stages
     steps:
-      - checkout
+      - utils/checkout-with-mise
       - attach_workspace:
           at: /tmp/docker_images
       - run:
@@ -564,7 +563,7 @@ jobs:
   # Verify newly published images (built on AMD machine) will run on ARM
   check-cross-platform:
     docker:
-      - image: cimg/base:current
+      - image: <<pipeline.parameters.default_docker_image>>
     resource_class: arm.medium
     parameters:
       registry:
@@ -610,19 +609,49 @@ jobs:
     machine: true
     resource_class: ethereum-optimism/latitude-1
     steps:
-      - checkout
+      - utils/checkout-with-mise
       - attach_workspace: { at: "." }
       - install-contracts-dependencies
       - check-changed:
           patterns: contracts-bedrock
+      - run:
+          name: Check if target branch is develop
+          command: |
+            # Get PR number from CIRCLE_PULL_REQUEST
+            PR_NUMBER=$(echo $CIRCLE_PULL_REQUEST | rev | cut -d/ -f1 | rev)
+
+            # Use GitHub API to get target branch
+            TARGET_BRANCH=$(curl -s "https://api.github.com/repos/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}/pulls/${PR_NUMBER}" | jq -r .base.ref)
+
+            # If the target branch is not develop, do not run this check
+            if [ "$TARGET_BRANCH" != "develop" ]; then
+              echo "Target branch is not develop, skipping frozen files check"
+              circleci-agent step halt
+            fi
+      - run:
+          name: Check if PR has exempt label
+          command: |
+            # Get PR number from CIRCLE_PULL_REQUEST
+            PR_NUMBER=$(echo $CIRCLE_PULL_REQUEST | rev | cut -d/ -f1 | rev)
+
+            # Use GitHub API to get labels
+            LABELS=$(curl -s "https://api.github.com/repos/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}/pulls/${PR_NUMBER}" | jq -r .labels)
+
+            # If the PR has the "M-exempt-frozen-files" label, do not run this check
+            if echo $LABELS | jq -e 'any(.[]; .name == "M-exempt-frozen-files")' > /dev/null; then
+              echo "Skipping frozen files check, PR has exempt label"
+              circleci-agent step halt
+            fi
       - run:
           name: Check frozen files
           command: just check-frozen-code
           working_directory: packages/contracts-bedrock
 
   contracts-bedrock-tests:
-    machine: true
-    resource_class: ethereum-optimism/latitude-1
+    circleci_ip_ranges: true
+    docker:
+      - image: <<pipeline.parameters.default_docker_image>>
+    resource_class: xlarge
     parameters:
       test_list:
         description: List of test files to run
@@ -644,7 +673,7 @@ jobs:
         type: string
         default: ci
     steps:
-      - checkout
+      - utils/checkout-with-mise
       - attach_workspace: { at: "." }
       - install-contracts-dependencies
       - run:
@@ -705,8 +734,10 @@ jobs:
       - notify-failures-on-develop
 
   contracts-bedrock-coverage:
-    machine: true
-    resource_class: ethereum-optimism/latitude-1
+    circleci_ip_ranges: true
+    docker:
+        - image: <<pipeline.parameters.default_docker_image>>
+    resource_class: xlarge
     parameters:
       test_flags:
         description: Additional flags to pass to the test command
@@ -721,7 +752,7 @@ jobs:
         type: string
         default: ci
     steps:
-      - checkout
+      - utils/checkout-with-mise
       - attach_workspace: { at: "." }
       - install-contracts-dependencies
       - check-changed:
@@ -743,6 +774,15 @@ jobs:
           command: |
             sudo apt-get update
             sudo apt-get install -y lcov
+      - run:
+          name: Write pinned block number for cache key
+          command: |
+            just print-pinned-block-number > ./pinnedBlockNumber.txt
+            cat pinnedBlockNumber.txt
+          working_directory: packages/contracts-bedrock
+      - restore_cache:
+          name: Restore forked state
+          key: forked-state-contracts-bedrock-tests-upgrade-{{ checksum "packages/contracts-bedrock/pinnedBlockNumber.txt" }}
       - run:
           name: Run coverage tests
           command: just coverage-lcov-all <<parameters.test_flags>>
@@ -766,10 +806,12 @@ jobs:
       - notify-failures-on-develop
 
   contracts-bedrock-tests-upgrade:
-    machine: true
-    resource_class: ethereum-optimism/latitude-1
+    circleci_ip_ranges: true
+    docker:
+      - image: <<pipeline.parameters.default_docker_image>>
+    resource_class: large
     steps:
-      - checkout
+      - utils/checkout-with-mise
       - attach_workspace: { at: "." }
       - install-contracts-dependencies
       - check-changed:
@@ -791,7 +833,6 @@ jobs:
           command: |
             just print-pinned-block-number > ./pinnedBlockNumber.txt
             cat pinnedBlockNumber.txt
-            pwd
           working_directory: packages/contracts-bedrock
       - restore_cache:
           name: Restore forked state
@@ -833,7 +874,7 @@ jobs:
     machine: true
     resource_class: ethereum-optimism/latitude-1
     steps:
-      - checkout
+      - utils/checkout-with-mise
       - attach_workspace: { at: "." }
       - install-contracts-dependencies
       - check-changed:
@@ -856,8 +897,6 @@ jobs:
       - run-contracts-check:
           command: lint
       - run-contracts-check:
-          command: gas-snapshot-check
-      - run-contracts-check:
           command: snapshots-check-no-build
       - run-contracts-check:
           command: interfaces-check-no-build
@@ -876,7 +915,7 @@ jobs:
     machine:
       image: <<pipeline.parameters.base_image>>
     steps:
-      - checkout
+      - utils/checkout-with-mise
       - run:
           name: Install ripgrep
           command: sudo apt-get install -y ripgrep
@@ -897,10 +936,11 @@ jobs:
         description: should load in foundry artifacts
         type: boolean
         default: false
-    machine: true
-    resource_class: ethereum-optimism/latitude-1
+    docker:
+      - image: <<pipeline.parameters.default_docker_image>>
+    resource_class: xlarge
     steps:
-      - checkout
+      - utils/checkout-with-mise
       - check-changed:
           patterns: "<<parameters.package_name>>"
       - attach_workspace:
@@ -925,7 +965,7 @@ jobs:
     machine: true
     resource_class: ethereum-optimism/latitude-1
     steps:
-      - checkout
+      - utils/checkout-with-mise
       - run:
           name: run Go linter
           command: |
@@ -964,7 +1004,7 @@ jobs:
     machine: true
     resource_class: <<parameters.resource_class>>
     steps:
-      - checkout
+      - utils/checkout-with-mise
       - attach_workspace:
           at: "."
       - run:
@@ -983,7 +1023,6 @@ jobs:
           no_output_timeout: <<parameters.no_output_timeout>>
           command: |
             mkdir -p ./tmp/test-results && mkdir -p ./tmp/testlogs
-
             cd op-e2e && make pre-test && cd ..
 
             packages=(
@@ -1002,13 +1041,15 @@ jobs:
             export SEPOLIA_RPC_URL="https://ci-sepolia-l1-archive.optimism.io"
             export MAINNET_RPC_URL="https://ci-mainnet-l1-archive.optimism.io"
             export PARALLEL=$(nproc)
+            export OP_TESTLOG_FILE_LOGGER_OUTDIR=$(realpath ./tmp/testlogs)
 
             <<parameters.environment_overrides>>
 
             gotestsum --format=testname \
               --junitfile=./tmp/test-results/results.xml \
               --jsonfile=./tmp/testlogs/log.json \
-              --rerun-fails=2 \
+              --rerun-fails=3 \
+              --rerun-fails-max-failures=50 \
               --packages="$formatted_packages" \
               -- -parallel=$PARALLEL -coverprofile=coverage.out -timeout=<<parameters.test_timeout>>
       - codecov/upload:
@@ -1016,8 +1057,12 @@ jobs:
           files: ./coverage.out
       - store_test_results:
           path: ./tmp/test-results
+      - run:
+          name: Compress test logs
+          command: tar -czf testlogs.tar.gz -C ./tmp testlogs
+          when: always
       - store_artifacts:
-          path: ./tmp/testlogs
+          path: testlogs.tar.gz
           when: always
       - when:
           condition: "<<parameters.notify>>"
@@ -1027,9 +1072,15 @@ jobs:
 
   sanitize-op-program:
     docker:
-      - image: <<pipeline.parameters.ci_builder_image>>
+      - image: <<pipeline.parameters.default_docker_image>>
+    resource_class: large
     steps:
-      - checkout
+      - utils/checkout-with-mise
+      - run:
+          name: Install tools
+          command: |
+            sudo apt-get update
+            sudo apt-get install -y binutils-mips-linux-gnu
       - run:
           name: Build cannon
           command: make cannon
@@ -1038,13 +1089,15 @@ jobs:
           command: make op-program
       - run:
           name: Sanitize op-program client
-          command: make -f cannon/Makefile sanitize-program GUEST_PROGRAM=op-program/bin/op-program-client.elf
+          command: make sanitize-program GUEST_PROGRAM=../op-program/bin/op-program-client.elf
+          working_directory: cannon
+
 
   cannon-prestate-quick:
     machine: true
     resource_class: ethereum-optimism/latitude-1
     steps:
-      - checkout
+      - utils/checkout-with-mise
       - restore_cache:
           name: Restore cannon prestate cache
           key: cannon-prestate-{{ checksum "./cannon/bin/cannon" }}-{{ checksum "op-program/bin/op-program-client.elf" }}
@@ -1067,9 +1120,9 @@ jobs:
 
   cannon-prestate:
     docker:
-      - image: <<pipeline.parameters.ci_builder_image>>
+      - image: <<pipeline.parameters.default_docker_image>>
     steps:
-      - checkout
+      - utils/checkout-with-mise
       - setup_remote_docker
       - run:
           name: Build prestates
@@ -1081,16 +1134,16 @@ jobs:
             - "op-program/bin/meta*"
 
   publish-cannon-prestates:
-    docker:
-      - image: <<pipeline.parameters.ci_builder_image>>
+    machine: true
+    resource_class: ethereum-optimism/latitude-1
     steps:
-      - checkout
+      - utils/checkout-with-mise
       - attach_workspace:
           at: "."
       - gcp-cli/install
       - gcp-oidc-authenticate:
-          gcp_cred_config_file_path: /root/gcp_cred_config.json
-          oidc_token_file_path: /root/oidc_token.json
+          gcp_cred_config_file_path: /tmp/gcp_cred_config.json
+          oidc_token_file_path: /tmp/oidc_token.json
       - run:
           name: Upload cannon prestates
           command: |
@@ -1103,25 +1156,33 @@ jobs:
             echo "Publishing ${PRESTATE_HASH}, ${PRESTATE_MT64_HASH}, ${PRESTATE_INTEROP_HASH} as ${BRANCH_NAME}"
             if [[ "" != "<< pipeline.git.branch >>" ]]
             then
+              # Upload the git commit info for each prestate since this won't be recorded in releases.json
+              (echo "Commit=<< pipeline.git.revision >>" && echo "Prestate=${PRESTATE_HASH}") | gsutil cp - "gs://oplabs-network-data/proofs/op-program/cannon/${BRANCH_NAME}.bin.gz.txt"
+              (echo "Commit=<< pipeline.git.revision >>" && echo "Prestate: ${PRESTATE_MT64_HASH}") | gsutil cp - "gs://oplabs-network-data/proofs/op-program/cannon/${BRANCH_NAME}-mt64.bin.gz.txt"
+              (echo "Commit=<< pipeline.git.revision >>" && echo "Prestate: ${PRESTATE_INTEROP_HASH}") | gsutil cp - "gs://oplabs-network-data/proofs/op-program/cannon/${BRANCH_NAME}-interop.bin.gz.txt"
+
+
               # Use the branch name for branches to provide a consistent URL
               PRESTATE_HASH="${BRANCH_NAME}"
-              PRESTATE_MT64_HASH="${BRANCH_NAME}"
-              PRESTATE_INTEROP_HASH="${BRANCH_NAME}"
+              PRESTATE_MT64_HASH="${BRANCH_NAME}-mt64"
+              PRESTATE_INTEROP_HASH="${BRANCH_NAME}-interop"
             fi
             gsutil cp ./op-program/bin/prestate.bin.gz \
               "gs://oplabs-network-data/proofs/op-program/cannon/${PRESTATE_HASH}.bin.gz"
+
             gsutil cp ./op-program/bin/prestate-mt64.bin.gz \
-              "gs://oplabs-network-data/proofs/op-program/cannon/${PRESTATE_MT64_HASH}-mt64.bin.gz"
+              "gs://oplabs-network-data/proofs/op-program/cannon/${PRESTATE_MT64_HASH}.bin.gz"
+
             gsutil cp ./op-program/bin/prestate-interop.bin.gz \
-              "gs://oplabs-network-data/proofs/op-program/cannon/${PRESTATE_INTEROP_HASH}-interop.bin.gz"
+              "gs://oplabs-network-data/proofs/op-program/cannon/${PRESTATE_INTEROP_HASH}.bin.gz"
       - notify-failures-on-develop:
           mentions: "@proofs-team"
 
   preimage-reproducibility:
     docker:
-      - image: <<pipeline.parameters.ci_builder_image>>
+      - image: <<pipeline.parameters.default_docker_image>>
     steps:
-      - checkout
+      - utils/checkout-with-mise
       - setup_remote_docker
       - run: make -C op-program verify-reproducibility
       - notify-failures-on-develop:
@@ -1129,9 +1190,9 @@ jobs:
 
   cannon-stf-verify:
     docker:
-      - image: <<pipeline.parameters.ci_builder_image>>
+      - image: <<pipeline.parameters.default_docker_image>>
     steps:
-      - checkout
+      - utils/checkout-with-mise
       - setup_remote_docker
       - run:
           name: Build cannon
@@ -1159,7 +1220,7 @@ jobs:
       - image: returntocorp/semgrep
     resource_class: xlarge
     steps:
-      - checkout
+      - checkout # no need to use mise here since the docker image contains the only dependency
       - unless:
           condition:
             equal: ["develop", << pipeline.git.branch >>]
@@ -1188,10 +1249,7 @@ jobs:
 
   bedrock-go-tests: # just a helper, that depends on all the actual test jobs
     docker:
-      # Use a smaller base image to avoid pulling the huge ci-builder
-      # image which is not needed for this job and sometimes misses
-      # the cache.
-      - image: cimg/base:2024.01
+      - image: <<pipeline.parameters.default_docker_image>>
     resource_class: medium
     steps:
       - run: echo Done
@@ -1201,7 +1259,7 @@ jobs:
     docker:
       - image: cimg/go:1.21
     steps:
-      - checkout
+      - utils/checkout-with-mise
       - run:
           name: verify-sepolia
           command: |
@@ -1211,31 +1269,21 @@ jobs:
           mentions: "@proofs-team"
 
   op-program-compat:
-    docker:
-      - image: <<pipeline.parameters.ci_builder_image>>
+    machine: true
+    resource_class: ethereum-optimism/latitude-1
     steps:
-      - checkout
-      - restore_cache:
-          name: Restore Go modules cache
-          key: gomod-{{ checksum "go.sum" }}
-      - restore_cache:
-          key: golang-build-cache-op-program-compat-{{ checksum "go.sum" }}
+      - utils/checkout-with-mise
       - run:
           name: compat-sepolia
           command: |
             make verify-compat
           working_directory: op-program
-      - save_cache:
-          name: Save Go build cache
-          key: golang-build-cache-op-program-compat-{{ checksum "go.sum" }}
-          paths:
-            - "/root/.cache/go-build"
 
   check-generated-mocks-op-node:
-    docker:
-      - image: <<pipeline.parameters.ci_builder_image>>
+    machine: true
+    resource_class: ethereum-optimism/latitude-1
     steps:
-      - checkout
+      - utils/checkout-with-mise
       - check-changed:
           patterns: op-node
       - run:
@@ -1243,10 +1291,10 @@ jobs:
           command: make generate-mocks-op-node && git diff --exit-code
 
   check-generated-mocks-op-service:
-    docker:
-      - image: <<pipeline.parameters.ci_builder_image>>
+    machine: true
+    resource_class: ethereum-optimism/latitude-1
     steps:
-      - checkout
+      - utils/checkout-with-mise
       - check-changed:
           patterns: op-service
       - run:
@@ -1255,10 +1303,10 @@ jobs:
 
   kontrol-tests:
     docker:
-      - image: << pipeline.parameters.ci_builder_image >>
+      - image: <<pipeline.parameters.default_docker_image>>
     resource_class: xlarge
     steps:
-      - checkout
+      - utils/checkout-with-mise
       - install-contracts-dependencies
       - check-changed:
           no_go_deps: "true"
@@ -1295,7 +1343,7 @@ jobs:
           oidc_token_file_path: /tmp/oidc_token.json
           project_id: GCP_TOOLS_ARTIFACTS_PROJECT_ID
           service_account_email: GCP_CONTRACTS_PUBLISHER_SERVICE_ACCOUNT_EMAIL
-      - checkout
+      - utils/checkout-with-mise
       - install-contracts-dependencies
       - run:
           name: Pull artifacts
@@ -1322,23 +1370,15 @@ jobs:
         default: .goreleaser.yaml
         type: string
     docker:
-      - image: <<pipeline.parameters.ci_builder_image>>
+      - image: <<pipeline.parameters.default_docker_image>>
     resource_class: large
     steps:
       - setup_remote_docker
       - gcp-cli/install
       - gcp-oidc-authenticate:
-          gcp_cred_config_file_path: /root/gcp_cred_config.json
-          oidc_token_file_path: /root/oidc_token.json
-      - checkout
-      - run:
-          name: Install goreleaser pro
-          command: |
-            mkdir -p /tmp/goreleaser
-            cd /tmp/goreleaser
-            curl -L -o goreleaser.tgz https://github.com/goreleaser/goreleaser-pro/releases/download/v2.4.3-pro/goreleaser-pro_Linux_x86_64.tar.gz
-            tar -xzvf goreleaser.tgz
-            mv goreleaser /usr/local/bin/goreleaser
+          gcp_cred_config_file_path: /tmp/gcp_cred_config.json
+          oidc_token_file_path: /tmp/oidc_token.json
+      - utils/checkout-with-mise
       - run:
           name: Configure Docker
           command: |
@@ -1349,16 +1389,19 @@ jobs:
             goreleaser release --clean -f ./<<parameters.module>>/<<parameters.filename>>
 
   stale-check:
-    docker:
-      - image: cimg/python:3.11
-    steps:
-      - run:
-          name: Run Stale Check Script
-          command: |
-            git clone --branch main --depth 1 https://github.com/ethereum-optimism/circleci-utils.git /tmp/circleci-utils
-            cd /tmp/circleci-utils/stale-check
-            pip3 install -r requirements.txt
-            python3 stale-check.py --repo "ethereum-optimism/${CIRCLE_PROJECT_REPONAME}" --github-token "${STALE_GITHUB_TOKEN}"
+      machine:
+        image: ubuntu-2204:2024.08.1
+      steps:
+        - utils/github-stale:
+            stale-issue-message: 'This issue has been automatically marked as stale and will be closed in 5 days if no updates'
+            stale-pr-message: 'This pr has been automatically marked as stale and will be closed in 5 days if no updates'
+            close-issue-message: 'This issue was closed as stale.  Please reopen if this is a mistake'
+            close-pr-message: 'This PR was closed as stale.  Please reopen if this is a mistake'
+            days-before-issue-stale: 999
+            days-before-pr-stale: 14
+            days-before-issue-close: 5
+            days-before-pr-close: 5
+
 
 workflows:
   main:
@@ -1408,7 +1451,7 @@ workflows:
             - contracts-bedrock-build
       - contracts-bedrock-frozen-code:
           requires:
-            - contracts-bedrock-checks
+            - contracts-bedrock-build
       - diff-asterisc-bytecode
       - semgrep-scan:
           name: semgrep-scan-local
@@ -1440,6 +1483,8 @@ workflows:
           uses_artifacts: true
           requires: ["contracts-bedrock-build"]
       - go-tests:
+          environment_overrides: |
+            export PARALLEL=24
           packages: |
             op-alt-da
             op-batcher
@@ -1460,6 +1505,7 @@ workflows:
             op-e2e/actions
             op-e2e/faultproofs
             packages/contracts-bedrock/scripts/checks
+            op-dripper
           requires:
             - contracts-bedrock-build
             - cannon-prestate-quick
@@ -1499,6 +1545,7 @@ workflows:
                 - da-server
                 - op-supervisor
                 - cannon
+                - op-dripper
       - cannon-prestate-quick
       - sanitize-op-program:
           requires:
@@ -1546,7 +1593,7 @@ workflows:
           type: approval
           filters:
             tags:
-              only: /^(da-server|ci-builder(-rust)?|proofs-tools|cannon|ufm-[a-z0-9\-]*|op-[a-z0-9\-]*)\/v.*/
+              only: /^(da-server|proofs-tools|cannon|ufm-[a-z0-9\-]*|op-[a-z0-9\-]*)\/v.*/
             branches:
               ignore: /.*/
       # Standard (medium) cross-platform docker images go here
@@ -1565,6 +1612,7 @@ workflows:
                 - op-supervisor
                 - op-deployer
                 - cannon
+                - op-dripper
           name: <<matrix.docker_name>>-docker-release
           docker_tags: <<pipeline.git.revision>>
           platforms: "linux/amd64,linux/arm64"
@@ -1595,6 +1643,7 @@ workflows:
                 - op-supervisor
                 - op-deployer
                 - cannon
+                - op-dripper
           name: <<matrix.op_component>>-cross-platform
           requires:
             - op-node-docker-release
@@ -1607,13 +1656,12 @@ workflows:
             - op-ufm-docker-release
             - op-supervisor-docker-release
             - cannon-docker-release
+            - op-dripper-docker-release
       # Standard (xlarge) AMD-only docker images go here
       - docker-build:
           matrix:
             parameters:
               docker_name:
-                - ci-builder
-                - ci-builder-rust
                 - proofs-tools
           name: <<matrix.docker_name>>-docker-release
           resource_class: xlarge
@@ -1758,7 +1806,7 @@ workflows:
   scheduled-docker-publish:
     when:
       or:
-        - equal: [build_hourly, <<pipeline.schedule.name>>]
+        - equal: [build_daily, <<pipeline.schedule.name>>]
         # Trigger on manual triggers if explicitly requested
         - equal: [true, << pipeline.parameters.docker_publish_dispatch >>]
     jobs:
@@ -1775,6 +1823,7 @@ workflows:
                 - op-conductor
                 - op-supervisor
                 - cannon
+                - op-dripper
           name: <<matrix.docker_name>>-docker-publish
           docker_tags: <<pipeline.git.revision>>,<<pipeline.git.branch>>
           platforms: "linux/amd64,linux/arm64"
@@ -1795,6 +1844,7 @@ workflows:
                 - op-conductor
                 - op-supervisor
                 - cannon
+                - op-dripper
           name: <<matrix.op_component>>-cross-platform
           requires:
             - <<matrix.op_component>>-docker-publish
@@ -1817,4 +1867,4 @@ workflows:
         - equal: [true, << pipeline.parameters.stale_check_dispatch >>]
     jobs:
       - stale-check:
-          context: github-token-stale-check
+          context: circleci-repo-optimism

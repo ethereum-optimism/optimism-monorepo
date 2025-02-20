@@ -15,10 +15,10 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 )
 
-// ReplaceBlockDerivedFrom is a magic value for the "DerivedFrom" attribute,
+// ReplaceBlockSource is a magic value for the "Source" attribute,
 // used when a L2 block is a replacement of an invalidated block.
 // After the replacement has been processed, a reset is performed to derive the next L2 blocks.
-var ReplaceBlockDerivedFrom = eth.L1BlockRef{
+var ReplaceBlockSource = eth.L1BlockRef{
 	Hash:       common.HexToHash("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"),
 	Number:     ^uint64(0),
 	ParentHash: common.Hash{},
@@ -110,9 +110,9 @@ func (ev PendingSafeUpdateEvent) String() string {
 
 // PromotePendingSafeEvent signals that a block can be marked as pending-safe, and/or safe.
 type PromotePendingSafeEvent struct {
-	Ref         eth.L2BlockRef
-	Concluding  bool // Concludes the pending phase, so can be promoted to (local) safe
-	DerivedFrom eth.L1BlockRef
+	Ref        eth.L2BlockRef
+	Concluding bool // Concludes the pending phase, so can be promoted to (local) safe
+	Source     eth.L1BlockRef
 }
 
 func (ev PromotePendingSafeEvent) String() string {
@@ -121,8 +121,8 @@ func (ev PromotePendingSafeEvent) String() string {
 
 // PromoteLocalSafeEvent signals that a block can be promoted to local-safe.
 type PromoteLocalSafeEvent struct {
-	Ref         eth.L2BlockRef
-	DerivedFrom eth.L1BlockRef
+	Ref    eth.L2BlockRef
+	Source eth.L1BlockRef
 }
 
 func (ev PromoteLocalSafeEvent) String() string {
@@ -147,8 +147,8 @@ func (ev CrossSafeUpdateEvent) String() string {
 
 // LocalSafeUpdateEvent signals that a block is now considered to be local-safe.
 type LocalSafeUpdateEvent struct {
-	Ref         eth.L2BlockRef
-	DerivedFrom eth.L1BlockRef
+	Ref    eth.L2BlockRef
+	Source eth.L1BlockRef
 }
 
 func (ev LocalSafeUpdateEvent) String() string {
@@ -157,8 +157,8 @@ func (ev LocalSafeUpdateEvent) String() string {
 
 // PromoteSafeEvent signals that a block can be promoted to cross-safe.
 type PromoteSafeEvent struct {
-	Ref         eth.L2BlockRef
-	DerivedFrom eth.L1BlockRef
+	Ref    eth.L2BlockRef
+	Source eth.L1BlockRef
 }
 
 func (ev PromoteSafeEvent) String() string {
@@ -168,8 +168,8 @@ func (ev PromoteSafeEvent) String() string {
 // SafeDerivedEvent signals that a block was determined to be safe, and derived from the given L1 block.
 // This is signaled upon successful processing of PromoteSafeEvent.
 type SafeDerivedEvent struct {
-	Safe        eth.L2BlockRef
-	DerivedFrom eth.L1BlockRef
+	Safe   eth.L2BlockRef
+	Source eth.L1BlockRef
 }
 
 func (ev SafeDerivedEvent) String() string {
@@ -482,8 +482,8 @@ func (d *EngDeriver) OnEvent(ev event.Event) bool {
 		}
 		if x.Concluding && x.Ref.Number > d.ec.LocalSafeL2Head().Number {
 			d.emitter.Emit(PromoteLocalSafeEvent{
-				Ref:         x.Ref,
-				DerivedFrom: x.DerivedFrom,
+				Ref:    x.Ref,
+				Source: x.Source,
 			})
 		}
 	case PromoteLocalSafeEvent:
@@ -499,11 +499,19 @@ func (d *EngDeriver) OnEvent(ev event.Event) bool {
 		d.log.Debug("Updating safe", "safe", x.Ref, "unsafe", d.ec.UnsafeL2Head())
 		d.ec.SetSafeHead(x.Ref)
 		// Finalizer can pick up this safe cross-block now
-		d.emitter.Emit(SafeDerivedEvent{Safe: x.Ref, DerivedFrom: x.DerivedFrom})
+		d.emitter.Emit(SafeDerivedEvent{Safe: x.Ref, Source: x.Source})
 		d.emitter.Emit(CrossSafeUpdateEvent{
 			CrossSafe: d.ec.SafeL2Head(),
 			LocalSafe: d.ec.LocalSafeL2Head(),
 		})
+		if x.Ref.Number > d.ec.crossUnsafeHead.Number {
+			d.log.Debug("Cross Unsafe Head is stale, updating to match cross safe", "cross_unsafe", d.ec.crossUnsafeHead, "cross_safe", x.Ref)
+			d.ec.SetCrossUnsafeHead(x.Ref)
+			d.emitter.Emit(CrossUnsafeUpdateEvent{
+				CrossUnsafe: x.Ref,
+				LocalUnsafe: d.ec.UnsafeL2Head(),
+			})
+		}
 		// Try to apply the forkchoice changes
 		d.emitter.Emit(TryUpdateEngineEvent{})
 	case PromoteFinalizedEvent:
@@ -572,7 +580,10 @@ type ResetEngineControl interface {
 
 // ForceEngineReset is not to be used. The op-program needs it for now, until event processing is adopted there.
 func ForceEngineReset(ec ResetEngineControl, x rollup.ForceResetEvent) {
-	ec.SetUnsafeHead(x.Unsafe)
+	// if the unsafe head is not provided, do not override the existing unsafe head
+	if x.Unsafe != (eth.L2BlockRef{}) {
+		ec.SetUnsafeHead(x.Unsafe)
+	}
 	ec.SetLocalSafeHead(x.Safe)
 	ec.SetPendingSafeL2Head(x.Safe)
 	ec.SetFinalizedHead(x.Finalized)

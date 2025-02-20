@@ -21,13 +21,17 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
+	"path"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
 	"sync"
 
+	oplog "github.com/ethereum-optimism/optimism/op-service/log"
 	"github.com/ethereum/go-ethereum/log"
 )
 
@@ -44,6 +48,8 @@ func init() {
 type Testing interface {
 	Logf(format string, args ...any)
 	Helper()
+	Name() string
+	Cleanup(func())
 }
 
 // logger implements log.Logger such that all output goes to the unit test log via
@@ -64,10 +70,72 @@ func Logger(t Testing, level slog.Level) log.Logger {
 
 func LoggerWithHandlerMod(t Testing, level slog.Level, handlerMod func(slog.Handler) slog.Handler) log.Logger {
 	l := &logger{t: t, mu: new(sync.Mutex), buf: new(bytes.Buffer)}
-	var handler slog.Handler = log.NewTerminalHandlerWithLevel(l.buf, level, useColorInTestLog)
+
+	var handler slog.Handler
+	if outdir := os.Getenv("OP_TESTLOG_FILE_LOGGER_OUTDIR"); outdir != "" {
+		handler = fileHandler(t, outdir, level)
+	}
+
+	// Check if handler is nil here because setupFileLogger will return nil if it fails to
+	// create the logfile.
+	if handler == nil {
+		handler = log.NewTerminalHandlerWithLevel(l.buf, level, useColorInTestLog)
+	}
+
 	handler = handlerMod(handler)
 	l.l = log.NewLogger(handler)
+
 	return l
+}
+
+var (
+	alnumRegexp = regexp.MustCompile(`[^a-zA-Z0-9]+`)
+	flMtx       sync.Mutex
+	flHandlers  = make(map[string]slog.Handler)
+	rootSetup   sync.Once
+)
+
+func fileHandler(t Testing, outdir string, level slog.Level) slog.Handler {
+	rootSetup.Do(func() {
+		f, err := os.OpenFile(path.Join(outdir, fmt.Sprintf("root-%d.log", os.Getpid())), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+		if err != nil {
+			t.Logf("failed to open root log file: %v", err)
+			return
+		}
+
+		rootHdlr := log.NewTerminalHandlerWithLevel(bufio.NewWriter(f), level, false)
+		oplog.SetGlobalLogHandler(rootHdlr)
+		t.Logf("redirecting root logger to %s", f.Name())
+	})
+
+	testName := fmt.Sprintf(
+		"%s-%d.log",
+		alnumRegexp.ReplaceAllString(strings.ReplaceAll(t.Name(), "/", "-"), ""),
+		os.Getpid(),
+	)
+
+	flMtx.Lock()
+	defer flMtx.Unlock()
+
+	if h, ok := flHandlers[testName]; ok {
+		return h
+	}
+
+	logPath := path.Join(outdir, testName)
+	dw := newDeferredWriter(logPath)
+	t.Cleanup(func() {
+		if err := dw.Close(); err != nil {
+			t.Logf("failed to close log file %s: %v", logPath, err)
+		}
+
+		flMtx.Lock()
+		delete(flHandlers, testName)
+		flMtx.Unlock()
+	})
+	t.Logf("writing test log to %s", logPath)
+	h := log.NewTerminalHandlerWithLevel(dw, level, false)
+	flHandlers[testName] = h
+	return h
 }
 
 func (l *logger) Handler() slog.Handler {
@@ -201,4 +269,43 @@ func estimateInfoLen(frameSkip int) int {
 	} else {
 		return 8
 	}
+}
+
+type deferredWriter struct {
+	name  string
+	w     *bufio.Writer
+	close func() error
+	mtx   sync.Mutex
+}
+
+func newDeferredWriter(name string) *deferredWriter {
+	return &deferredWriter{name: name}
+}
+
+func (w *deferredWriter) Write(p []byte) (n int, err error) {
+	w.mtx.Lock()
+	defer w.mtx.Unlock()
+
+	if w.w == nil {
+		f, err := os.OpenFile(w.name, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+		if err != nil {
+			return 0, err
+		}
+		w.w = bufio.NewWriter(f)
+		w.close = f.Close
+	}
+
+	return w.w.Write(p)
+}
+
+func (w *deferredWriter) Close() error {
+	w.mtx.Lock()
+	defer w.mtx.Unlock()
+	if w.w == nil {
+		return nil
+	}
+	if err := w.w.Flush(); err != nil {
+		return err
+	}
+	return w.close()
 }

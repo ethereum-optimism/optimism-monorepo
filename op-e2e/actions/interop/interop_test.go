@@ -1,9 +1,6 @@
 package interop
 
 import (
-	"context"
-	"fmt"
-	"log/slog"
 	"math/big"
 	"testing"
 
@@ -12,26 +9,21 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 
-	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/trace/super"
-	challengerTypes "github.com/ethereum-optimism/optimism/op-challenger/game/fault/types"
 	"github.com/ethereum-optimism/optimism/op-e2e/actions/helpers"
-	fpHelpers "github.com/ethereum-optimism/optimism/op-e2e/actions/proofs/helpers"
+	"github.com/ethereum-optimism/optimism/op-e2e/actions/interop/dsl"
+	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/interop/contracts/bindings/emit"
 	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/interop/contracts/bindings/inbox"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/derive"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/event"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/interop/managed"
-	"github.com/ethereum-optimism/optimism/op-program/client/claim"
-	"github.com/ethereum-optimism/optimism/op-program/client/interop"
-	"github.com/ethereum-optimism/optimism/op-program/client/interop/types"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/predeploys"
-	"github.com/ethereum-optimism/optimism/op-service/testlog"
 )
 
 func TestFullInterop(gt *testing.T) {
 	t := helpers.NewDefaultTesting(gt)
 
-	is := SetupInterop(t)
+	is := dsl.SetupInterop(t)
 	actors := is.CreateActors()
 
 	// get both sequencers set up
@@ -42,103 +34,130 @@ func TestFullInterop(gt *testing.T) {
 	actors.ChainA.Sequencer.SyncSupervisor(t)
 	actors.ChainB.Sequencer.SyncSupervisor(t)
 
-	// No blocks yet
-	status := actors.ChainA.Sequencer.SyncStatus()
-	require.Equal(t, uint64(0), status.UnsafeL2.Number)
-
 	// sync initial chain A and B
 	actors.Supervisor.ProcessFull(t)
 
-	// Build L2 block on chain A
-	actors.ChainA.Sequencer.ActL2StartBlock(t)
-	actors.ChainA.Sequencer.ActL2EndBlock(t)
-	status = actors.ChainA.Sequencer.SyncStatus()
-	head := status.UnsafeL2.ID()
-	require.Equal(t, uint64(1), head.Number)
-	require.Equal(t, uint64(0), status.CrossUnsafeL2.Number)
-	require.Equal(t, uint64(0), status.LocalSafeL2.Number)
-	require.Equal(t, uint64(0), status.SafeL2.Number)
-	require.Equal(t, uint64(0), status.FinalizedL2.Number)
+	// full is a helper function to run the full interop flow for a given chain
+	// it will create a block and process it from unsafe to finalized
+	full := func(chain *dsl.Chain, l1BlocksToProcess int) {
+		// No blocks yet
+		status := chain.Sequencer.SyncStatus()
+		require.Equal(t, uint64(0), status.UnsafeL2.Number)
+		chain.Sequencer.ActL2StartBlock(t)
+		chain.Sequencer.ActL2EndBlock(t)
+		status = chain.Sequencer.SyncStatus()
+		head := status.UnsafeL2.ID()
+		require.Equal(t, uint64(1), head.Number)
+		require.Equal(t, uint64(0), status.CrossUnsafeL2.Number)
+		require.Equal(t, uint64(0), status.LocalSafeL2.Number)
+		require.Equal(t, uint64(0), status.SafeL2.Number)
+		require.Equal(t, uint64(0), status.FinalizedL2.Number)
 
-	// Ingest the new unsafe-block event
-	actors.ChainA.Sequencer.SyncSupervisor(t)
+		// Ingest the new unsafe-block event
+		chain.Sequencer.SyncSupervisor(t)
 
-	// Verify as cross-unsafe with supervisor
-	actors.Supervisor.ProcessFull(t)
-	actors.ChainA.Sequencer.ActL2PipelineFull(t)
-	status = actors.ChainA.Sequencer.SyncStatus()
-	require.Equal(t, head, status.UnsafeL2.ID())
-	require.Equal(t, head, status.CrossUnsafeL2.ID())
-	require.Equal(t, uint64(0), status.LocalSafeL2.Number)
-	require.Equal(t, uint64(0), status.SafeL2.Number)
-	require.Equal(t, uint64(0), status.FinalizedL2.Number)
+		// Verify as cross-unsafe with supervisor
+		actors.Supervisor.ProcessFull(t)
+		chain.Sequencer.ActL2PipelineFull(t)
+		status = chain.Sequencer.SyncStatus()
+		require.Equal(t, head, status.UnsafeL2.ID())
+		require.Equal(t, head, status.CrossUnsafeL2.ID())
+		require.Equal(t, uint64(0), status.LocalSafeL2.Number)
+		require.Equal(t, uint64(0), status.SafeL2.Number)
+		require.Equal(t, uint64(0), status.FinalizedL2.Number)
+		supervisorStatus, err := actors.Supervisor.SyncStatus(t.Ctx())
+		require.NoError(t, err)
+		require.Equal(t, head, supervisorStatus.Chains[chain.ChainID].LocalUnsafe.ID())
 
-	// Submit the L2 block, sync the local-safe data
-	actors.ChainA.Batcher.ActSubmitAll(t)
-	actors.L1Miner.ActL1StartBlock(12)(t)
-	actors.L1Miner.ActL1IncludeTx(actors.ChainA.BatcherAddr)(t)
-	actors.L1Miner.ActL1EndBlock(t)
+		// Submit the L2 block, sync the local-safe data
+		chain.Batcher.ActSubmitAll(t)
+		actors.L1Miner.ActL1StartBlock(12)(t)
+		actors.L1Miner.ActL1IncludeTx(chain.BatcherAddr)(t)
+		actors.L1Miner.ActL1EndBlock(t)
 
-	// The node will exhaust L1 data,
-	// it needs the supervisor to see the L1 block first,
-	// and provide it to the node.
-	actors.ChainA.Sequencer.ActL2EventsUntil(t, event.Is[derive.ExhaustedL1Event], 100, false)
-	actors.Supervisor.SignalLatestL1(t)          // supervisor will be aware of latest L1
-	actors.ChainA.Sequencer.SyncSupervisor(t)    // supervisor to react to exhaust-L1
-	actors.ChainA.Sequencer.ActL2PipelineFull(t) // node to complete syncing to L1 head.
+		// The node will exhaust L1 data,
+		// it needs the supervisor to see the L1 block first,
+		// and provide it to the node.
+		for i := 0; i < l1BlocksToProcess; i++ {
+			chain.Sequencer.ActL2EventsUntil(t, event.Is[derive.ExhaustedL1Event], 100, false)
+			actors.Supervisor.SignalLatestL1(t)  // supervisor will be aware of latest L1
+			chain.Sequencer.SyncSupervisor(t)    // supervisor to react to exhaust-L1
+			chain.Sequencer.ActL2PipelineFull(t) // node to complete syncing to L1 head.
+		}
 
-	// TODO(#13972): two sources of L1 head
-	actors.ChainA.Sequencer.ActL1HeadSignal(t)
-	status = actors.ChainA.Sequencer.SyncStatus()
-	require.Equal(t, head, status.UnsafeL2.ID())
-	require.Equal(t, head, status.CrossUnsafeL2.ID())
-	require.Equal(t, head, status.LocalSafeL2.ID())
-	require.Equal(t, uint64(0), status.SafeL2.Number)
-	require.Equal(t, uint64(0), status.FinalizedL2.Number)
-	// Local-safe does not count as "safe" in RPC
-	n := actors.ChainA.SequencerEngine.L2Chain().CurrentSafeBlock().Number.Uint64()
-	require.Equal(t, uint64(0), n)
+		// TODO(#13972): two sources of L1 head
+		chain.Sequencer.ActL1HeadSignal(t)
+		status = chain.Sequencer.SyncStatus()
+		require.Equal(t, head, status.UnsafeL2.ID())
+		require.Equal(t, head, status.CrossUnsafeL2.ID())
+		require.Equal(t, head, status.LocalSafeL2.ID())
+		require.Equal(t, uint64(0), status.SafeL2.Number)
+		require.Equal(t, uint64(0), status.FinalizedL2.Number)
+		supervisorStatus, err = actors.Supervisor.SyncStatus(t.Ctx())
+		require.NoError(t, err)
+		require.Equal(t, head, supervisorStatus.Chains[chain.ChainID].LocalUnsafe.ID())
+		// Local-safe does not count as "safe" in RPC
+		n := chain.SequencerEngine.L2Chain().CurrentSafeBlock().Number.Uint64()
+		require.Equal(t, uint64(0), n)
 
-	// Make the supervisor aware of the new L1 block
-	actors.Supervisor.SignalLatestL1(t)
+		// Make the supervisor aware of the new L1 block
+		actors.Supervisor.SignalLatestL1(t)
 
-	// Ingest the new local-safe event
-	actors.ChainA.Sequencer.SyncSupervisor(t)
+		// Ingest the new local-safe event
+		chain.Sequencer.SyncSupervisor(t)
 
-	// Cross-safe verify it
-	actors.Supervisor.ProcessFull(t)
-	actors.ChainA.Sequencer.ActL2PipelineFull(t)
-	status = actors.ChainA.Sequencer.SyncStatus()
-	require.Equal(t, head, status.UnsafeL2.ID())
-	require.Equal(t, head, status.CrossUnsafeL2.ID())
-	require.Equal(t, head, status.LocalSafeL2.ID())
-	require.Equal(t, head, status.SafeL2.ID())
-	require.Equal(t, uint64(0), status.FinalizedL2.Number)
-	h := actors.ChainA.SequencerEngine.L2Chain().CurrentSafeBlock().Hash()
-	require.Equal(t, head.Hash, h)
+		// Cross-safe verify it
+		actors.Supervisor.ProcessFull(t)
+		chain.Sequencer.ActL2PipelineFull(t)
+		status = chain.Sequencer.SyncStatus()
+		require.Equal(t, head, status.UnsafeL2.ID())
+		require.Equal(t, head, status.CrossUnsafeL2.ID())
+		require.Equal(t, head, status.LocalSafeL2.ID())
+		require.Equal(t, head, status.SafeL2.ID())
+		require.Equal(t, uint64(0), status.FinalizedL2.Number)
+		supervisorStatus, err = actors.Supervisor.SyncStatus(t.Ctx())
+		require.NoError(t, err)
+		require.Equal(t, head, supervisorStatus.Chains[chain.ChainID].LocalUnsafe.ID())
+		h := chain.SequencerEngine.L2Chain().CurrentSafeBlock().Hash()
+		require.Equal(t, head.Hash, h)
 
-	// Finalize L1, and see if the supervisor updates the op-node finality accordingly.
-	// The supervisor then determines finality, which the op-node can use.
-	actors.L1Miner.ActL1SafeNext(t)
-	actors.L1Miner.ActL1FinalizeNext(t)
-	actors.ChainA.Sequencer.ActL1SafeSignal(t) // TODO old source of finality
-	actors.ChainA.Sequencer.ActL1FinalizedSignal(t)
-	actors.Supervisor.SignalFinalizedL1(t)
-	actors.Supervisor.ProcessFull(t)
-	actors.ChainA.Sequencer.ActL2PipelineFull(t)
-	finalizedL2BlockID, err := actors.Supervisor.Finalized(t.Ctx(), actors.ChainA.ChainID)
+		// Finalize L1, and see if the supervisor updates the op-node finality accordingly.
+		// The supervisor then determines finality, which the op-node can use.
+		actors.L1Miner.ActL1SafeNext(t)
+		actors.L1Miner.ActL1FinalizeNext(t)
+		chain.Sequencer.ActL1SafeSignal(t) // TODO old source of finality
+		chain.Sequencer.ActL1FinalizedSignal(t)
+		actors.Supervisor.SignalFinalizedL1(t)
+		actors.Supervisor.ProcessFull(t)
+		chain.Sequencer.ActL2PipelineFull(t)
+		finalizedL2BlockID, err := actors.Supervisor.Finalized(t.Ctx(), chain.ChainID)
+		require.NoError(t, err)
+		require.Equal(t, head, finalizedL2BlockID)
+
+		chain.Sequencer.ActL2PipelineFull(t)
+		h = chain.SequencerEngine.L2Chain().CurrentFinalBlock().Hash()
+		require.Equal(t, head.Hash, h)
+		status = chain.Sequencer.SyncStatus()
+		require.Equal(t, head, status.UnsafeL2.ID())
+		require.Equal(t, head, status.CrossUnsafeL2.ID())
+		require.Equal(t, head, status.LocalSafeL2.ID())
+		require.Equal(t, head, status.SafeL2.ID())
+		require.Equal(t, head, status.FinalizedL2.ID())
+		supervisorStatus, err = actors.Supervisor.SyncStatus(t.Ctx())
+		require.NoError(t, err)
+		require.Equal(t, head, supervisorStatus.Chains[chain.ChainID].LocalUnsafe.ID())
+	}
+	// first run Chain A, processing 1 L1 block
+	full(actors.ChainA, 1)
+	supervisorStatus, err := actors.Supervisor.SyncStatus(t.Ctx())
 	require.NoError(t, err)
-	require.Equal(t, head, finalizedL2BlockID)
+	require.Equal(t, uint64(0), supervisorStatus.MinSyncedL1.Number)
 
-	actors.ChainA.Sequencer.ActL2PipelineFull(t)
-	h = actors.ChainA.SequencerEngine.L2Chain().CurrentFinalBlock().Hash()
-	require.Equal(t, head.Hash, h)
-	status = actors.ChainA.Sequencer.SyncStatus()
-	require.Equal(t, head, status.UnsafeL2.ID())
-	require.Equal(t, head, status.CrossUnsafeL2.ID())
-	require.Equal(t, head, status.LocalSafeL2.ID())
-	require.Equal(t, head, status.SafeL2.ID())
-	require.Equal(t, head, status.FinalizedL2.ID())
+	// then run Chain B, processing 2 L1 blocks (because L1 is further ahead now)
+	full(actors.ChainB, 2)
+	supervisorStatus, err = actors.Supervisor.SyncStatus(t.Ctx())
+	require.NoError(t, err)
+	require.Equal(t, uint64(1), supervisorStatus.MinSyncedL1.Number)
 }
 
 // TestFinality confirms that when L1 finality is updated on the supervisor,
@@ -147,7 +166,7 @@ func TestFullInterop(gt *testing.T) {
 // affecting the way Finality would be determined.
 func TestFinality(gt *testing.T) {
 	testFinality := func(t helpers.StatefulTesting, extraBlocks int) {
-		is := SetupInterop(t)
+		is := dsl.SetupInterop(t)
 		actors := is.CreateActors()
 
 		// set up a blank ChainA
@@ -204,8 +223,9 @@ func TestFinality(gt *testing.T) {
 
 		// Process the supervisor to update the finality, and pull L1, L2 finality
 		actors.Supervisor.ProcessFull(t)
-		l1Finalized := actors.Supervisor.backend.FinalizedL1()
-		l2Finalized, err := actors.Supervisor.backend.Finalized(context.Background(), actors.ChainA.ChainID)
+		l1Finalized, err := actors.Supervisor.FinalizedL1(t.Ctx())
+		require.NoError(t, err)
+		l2Finalized, err := actors.Supervisor.Finalized(t.Ctx(), actors.ChainA.ChainID)
 		require.NoError(t, err)
 		require.Equal(t, uint64(tip), l1Finalized.Number)
 		// the L2 finality is the latest L2 block, because L1 finality is beyond anything the L2 used to derive
@@ -228,7 +248,7 @@ func TestFinality(gt *testing.T) {
 func TestInteropLocalSafeInvalidation(gt *testing.T) {
 	t := helpers.NewDefaultTesting(gt)
 
-	is := SetupInterop(t)
+	is := dsl.SetupInterop(t)
 	actors := is.CreateActors()
 
 	// get both sequencers set up
@@ -264,6 +284,8 @@ func TestInteropLocalSafeInvalidation(gt *testing.T) {
 	actors.ChainB.Sequencer.ActL2PipelineFull(t)
 	originalBlock := actors.ChainB.Sequencer.SyncStatus().UnsafeL2
 	require.Equal(t, uint64(1), originalBlock.Number)
+	originalOutput, err := actors.ChainB.Sequencer.RollupClient().OutputAtBlock(t.Ctx(), originalBlock.Number)
+	require.NoError(t, err)
 
 	// build another empty L2 block, that will get reorged out
 	actors.ChainB.Sequencer.ActL2StartBlock(t)
@@ -326,7 +348,7 @@ func TestInteropLocalSafeInvalidation(gt *testing.T) {
 	txs := replacementBlock.Transactions()
 	out, err := managed.DecodeInvalidatedBlockTx(txs[len(txs)-1])
 	require.NoError(t, err)
-	require.Equal(t, originalBlock.Hash, out.BlockHash)
+	require.Equal(t, originalOutput.OutputRoot, eth.OutputRoot(out))
 
 	// Now check if we can continue to build L2 blocks on top of the new chain.
 	// Build a new L2 block
@@ -348,10 +370,10 @@ func TestInteropLocalSafeInvalidation(gt *testing.T) {
 	require.Equal(t, uint64(2), status.SafeL2.Number)
 }
 
-func TestInteropFaultProofs(gt *testing.T) {
+func TestInteropCrossSafeDependencyDelay(gt *testing.T) {
 	t := helpers.NewDefaultTesting(gt)
 
-	is := SetupInterop(t)
+	is := dsl.SetupInterop(t)
 	actors := is.CreateActors()
 
 	// get both sequencers set up
@@ -361,341 +383,80 @@ func TestInteropFaultProofs(gt *testing.T) {
 	// sync the supervisor, handle initial events emitted by the nodes
 	actors.ChainA.Sequencer.SyncSupervisor(t)
 	actors.ChainB.Sequencer.SyncSupervisor(t)
-
-	// No blocks yet
-	status := actors.ChainA.Sequencer.SyncStatus()
-	require.Equal(t, uint64(0), status.UnsafeL2.Number)
-
-	// sync chain A and B
 	actors.Supervisor.ProcessFull(t)
 
-	// Build L2 block on chain A
-	actors.ChainA.Sequencer.ActL2StartBlock(t)
-	actors.ChainA.Sequencer.ActL2EndBlock(t)
-	require.Equal(t, uint64(1), actors.ChainA.Sequencer.L2Unsafe().Number)
+	// We create a batch with some empty blocks before and after the cross-chain message,
+	// so multiple L2 blocks are all derived from the same L1 block.
+	actors.ChainA.Sequencer.ActL2EmptyBlock(t)
+	actors.ChainA.Sequencer.ActL2EmptyBlock(t)
+	actors.ChainA.Sequencer.ActL2EmptyBlock(t)
 
-	// Build L2 block on chain B
-	actors.ChainB.Sequencer.ActL2StartBlock(t)
-	actors.ChainB.Sequencer.ActL2EndBlock(t)
-	require.Equal(t, uint64(1), actors.ChainB.Sequencer.L2Unsafe().Number)
+	actors.ChainB.Sequencer.ActL2EmptyBlock(t)
 
-	// Ingest the new unsafe-block events
-	actors.ChainA.Sequencer.SyncSupervisor(t)
-	actors.ChainB.Sequencer.SyncSupervisor(t)
+	aliceA := setupUser(t, is, actors.ChainA, 0)
+	aliceB := setupUser(t, is, actors.ChainB, 0)
 
-	// Verify as cross-unsafe with supervisor
-	actors.Supervisor.ProcessFull(t)
-	actors.ChainA.Sequencer.ActL2PipelineFull(t)
-	status = actors.ChainA.Sequencer.SyncStatus()
-	require.Equal(gt, uint64(1), status.UnsafeL2.Number)
-	require.Equal(gt, uint64(1), status.CrossUnsafeL2.Number)
-	actors.ChainB.Sequencer.ActL2PipelineFull(t)
-	status = actors.ChainB.Sequencer.SyncStatus()
-	require.Equal(gt, uint64(1), status.UnsafeL2.Number)
-	require.Equal(gt, uint64(1), status.CrossUnsafeL2.Number)
+	// create a log event in chain B
+	auth := newL2TxOpts(t, aliceB.secret, actors.ChainB)
+	emitContractAddr, deployTx, _, err := emit.DeployEmit(auth, actors.ChainB.SequencerEngine.EthClient())
+	require.NoError(t, err)
+	includeTxOnChainBasic(t, actors.ChainB, deployTx, aliceB.address)
+	emitTx := newEmitMessageTx(t, actors.ChainB, aliceB, emitContractAddr, []byte("hello from B"))
+	includeTxOnChainBasic(t, actors.ChainB, emitTx, aliceB.address)
 
-	// Submit the L2 blocks, sync the local-safe data
+	// consume the log event in chain A
+	execTx := newExecuteMessageTx(t, actors.ChainA, aliceA, actors.ChainB, emitTx)
+	includeTxOnChainBasic(t, actors.ChainA, execTx, aliceA.address)
+	execTxIncludedIn := actors.ChainA.Sequencer.SyncStatus().UnsafeL2
+
+	actors.ChainA.Sequencer.ActL2EmptyBlock(t)
+	actors.ChainB.Sequencer.ActL2EmptyBlock(t)
+
+	chainAHead := actors.ChainA.Sequencer.SyncStatus().UnsafeL2
+	chainBHead := actors.ChainB.Sequencer.SyncStatus().UnsafeL2
+
+	// Now submit the data for chain A, and submit the data of chain B late,
+	// so the scope has to be bumped even though we know of the event in the unsafe chain already.
+
 	actors.ChainA.Batcher.ActSubmitAll(t)
-	actors.ChainB.Batcher.ActSubmitAll(t)
 	actors.L1Miner.ActL1StartBlock(12)(t)
 	actors.L1Miner.ActL1IncludeTx(actors.ChainA.BatcherAddr)(t)
+	actors.L1Miner.ActL1EndBlock(t)
+
+	actors.L1Miner.ActEmptyBlock(t)
+	actors.L1Miner.ActEmptyBlock(t)
+
+	actors.ChainB.Batcher.ActSubmitAll(t)
+	actors.L1Miner.ActL1StartBlock(12)(t)
 	actors.L1Miner.ActL1IncludeTx(actors.ChainB.BatcherAddr)(t)
 	actors.L1Miner.ActL1EndBlock(t)
+	chainBSubmittedIn, err := actors.L1Miner.EthClient().BlockByNumber(t.Ctx(), nil)
+	require.NoError(t, err)
+
 	actors.Supervisor.SignalLatestL1(t)
-	// The node will exhaust L1 data,
-	// it needs the supervisor to see the L1 block first, and provide it to the node.
-	actors.ChainA.Sequencer.ActL2EventsUntil(t, event.Is[derive.ExhaustedL1Event], 100, false)
-	actors.ChainB.Sequencer.ActL2EventsUntil(t, event.Is[derive.ExhaustedL1Event], 100, false)
-	actors.ChainA.Sequencer.SyncSupervisor(t)    // supervisor to react to exhaust-L1
-	actors.ChainB.Sequencer.SyncSupervisor(t)    // supervisor to react to exhaust-L1
-	actors.ChainA.Sequencer.ActL2PipelineFull(t) // node to complete syncing to L1 head.
-	actors.ChainB.Sequencer.ActL2PipelineFull(t) // node to complete syncing to L1 head.
+	actors.Supervisor.ProcessFull(t)
 
 	actors.ChainA.Sequencer.ActL1HeadSignal(t)
-	status = actors.ChainA.Sequencer.SyncStatus()
-	require.Equal(gt, uint64(1), status.LocalSafeL2.Number)
 	actors.ChainB.Sequencer.ActL1HeadSignal(t)
-	status = actors.ChainB.Sequencer.SyncStatus()
-	require.Equal(gt, uint64(1), status.LocalSafeL2.Number)
-
-	// Ingest the new local-safe event
-	actors.ChainA.Sequencer.SyncSupervisor(t)
-	actors.ChainB.Sequencer.SyncSupervisor(t)
-
-	// Cross-safe verify it
-	actors.Supervisor.ProcessFull(t)
 	actors.ChainA.Sequencer.ActL2PipelineFull(t)
-	status = actors.ChainA.Sequencer.SyncStatus()
-	require.Equal(gt, uint64(1), status.SafeL2.Number)
 	actors.ChainB.Sequencer.ActL2PipelineFull(t)
-	status = actors.ChainB.Sequencer.SyncStatus()
-	require.Equal(gt, uint64(1), status.SafeL2.Number)
 
-	require.Equal(gt, uint64(1), actors.ChainA.Sequencer.L2Safe().Number)
-	require.Equal(gt, uint64(1), actors.ChainB.Sequencer.L2Safe().Number)
-
-	chainAClient := actors.ChainA.Sequencer.RollupClient()
-	chainBClient := actors.ChainB.Sequencer.RollupClient()
-
-	ctx := context.Background()
-	endTimestamp := actors.ChainA.RollupCfg.Genesis.L2Time + actors.ChainA.RollupCfg.BlockTime
-	startTimestamp := endTimestamp - 1
-	source, err := NewSuperRootSource(ctx, chainAClient, chainBClient)
-	require.NoError(t, err)
-	start, err := source.CreateSuperRoot(ctx, startTimestamp)
-	require.NoError(t, err)
-	end, err := source.CreateSuperRoot(ctx, endTimestamp)
-	require.NoError(t, err)
-
-	endBlockNumA, err := actors.ChainA.RollupCfg.TargetBlockNumber(endTimestamp)
-	require.NoError(t, err)
-	chain1End, err := chainAClient.OutputAtBlock(ctx, endBlockNumA)
-	require.NoError(t, err)
-
-	endBlockNumB, err := actors.ChainB.RollupCfg.TargetBlockNumber(endTimestamp)
-	require.NoError(t, err)
-	chain2End, err := chainBClient.OutputAtBlock(ctx, endBlockNumB)
-	require.NoError(t, err)
-
-	step1Expected := (&types.TransitionState{
-		SuperRoot: start.Marshal(),
-		PendingProgress: []types.OptimisticBlock{
-			{BlockHash: chain1End.BlockRef.Hash, OutputRoot: chain1End.OutputRoot},
-		},
-		Step: 1,
-	}).Marshal()
-
-	step2Expected := (&types.TransitionState{
-		SuperRoot: start.Marshal(),
-		PendingProgress: []types.OptimisticBlock{
-			{BlockHash: chain1End.BlockRef.Hash, OutputRoot: chain1End.OutputRoot},
-			{BlockHash: chain2End.BlockRef.Hash, OutputRoot: chain2End.OutputRoot},
-		},
-		Step: 2,
-	}).Marshal()
-
-	paddingStep := func(step uint64) []byte {
-		return (&types.TransitionState{
-			SuperRoot: start.Marshal(),
-			PendingProgress: []types.OptimisticBlock{
-				{BlockHash: chain1End.BlockRef.Hash, OutputRoot: chain1End.OutputRoot},
-				{BlockHash: chain2End.BlockRef.Hash, OutputRoot: chain2End.OutputRoot},
-			},
-			Step: step,
-		}).Marshal()
+	// it takes a few round trips to sync the L1 blocks
+	for i := 0; i < 5; i++ {
+		actors.ChainA.Sequencer.SyncSupervisor(t)
+		actors.ChainB.Sequencer.SyncSupervisor(t)
+		actors.Supervisor.ProcessFull(t)
+		actors.ChainA.Sequencer.ActL2PipelineFull(t)
+		actors.ChainB.Sequencer.ActL2PipelineFull(t)
 	}
 
-	tests := []*transitionTest{
-		{
-			name:               "ClaimNoChange",
-			agreedClaim:        start.Marshal(),
-			disputedClaim:      start.Marshal(),
-			disputedTraceIndex: 0,
-			expectValid:        false,
-		},
-		{
-			name:               "ClaimDirectToNextTimestamp",
-			agreedClaim:        start.Marshal(),
-			disputedClaim:      end.Marshal(),
-			disputedTraceIndex: 0,
-			expectValid:        false,
-		},
-		{
-			name:               "FirstChainOptimisticBlock",
-			agreedClaim:        start.Marshal(),
-			disputedClaim:      step1Expected,
-			disputedTraceIndex: 0,
-			expectValid:        true,
-		},
-		{
-			name:               "SecondChainOptimisticBlock",
-			agreedClaim:        step1Expected,
-			disputedClaim:      step2Expected,
-			disputedTraceIndex: 1,
-			expectValid:        true,
-		},
-		{
-			name:               "FirstPaddingStep",
-			agreedClaim:        step2Expected,
-			disputedClaim:      paddingStep(3),
-			disputedTraceIndex: 2,
-			expectValid:        true,
-		},
-		{
-			name:               "SecondPaddingStep",
-			agreedClaim:        paddingStep(3),
-			disputedClaim:      paddingStep(4),
-			disputedTraceIndex: 3,
-			expectValid:        true,
-		},
-		{
-			name:               "LastPaddingStep",
-			agreedClaim:        paddingStep(1022),
-			disputedClaim:      paddingStep(1023),
-			disputedTraceIndex: 1022,
-			expectValid:        true,
-		},
-		{
-			name:               "Consolidate-AllValid",
-			agreedClaim:        paddingStep(1023),
-			disputedClaim:      end.Marshal(),
-			disputedTraceIndex: 1023,
-			expectValid:        true,
-		},
-		{
-			name: "Consolidate-ReplaceInvalidBlock",
-			// Will need to generate an invalid block before this can be enabled
-			skipProgram:    true,
-			skipChallenger: true,
-		},
-		{
-			name: "Consolidate-ReplaceBlockInvalidatedByFirstInvalidatedBlock",
-			// Will need to generate an invalid block before this can be enabled
-			// Check that if a block B depends on a log in block A, and block A is found to have an invalid message
-			// that block B is also replaced with a deposit only block because A no longer contains the log it needs
-			skipProgram:    true,
-			skipChallenger: true,
-		},
-		{
-			name:               "AlreadyAtClaimedTimestamp",
-			agreedClaim:        end.Marshal(),
-			disputedClaim:      end.Marshal(),
-			disputedTraceIndex: 5000,
-			expectValid:        true,
-		},
+	// Assert the blocks are now cross-safe
+	require.Equal(t, chainAHead, actors.ChainA.Sequencer.SyncStatus().SafeL2)
+	require.Equal(t, chainBHead, actors.ChainB.Sequencer.SyncStatus().SafeL2)
 
-		{
-			name:               "FirstChainReachesL1Head",
-			agreedClaim:        start.Marshal(),
-			disputedClaim:      interop.InvalidTransition,
-			disputedTraceIndex: 0,
-			// The derivation reaches the L1 head before the next block can be created
-			l1Head:         actors.L1Miner.L1Chain().Genesis().Hash(),
-			expectValid:    true,
-			skipChallenger: true, // Challenger doesn't yet check if blocks were safe
-		},
-		{
-			name:               "SecondChainReachesL1Head",
-			agreedClaim:        step1Expected,
-			disputedClaim:      interop.InvalidTransition,
-			disputedTraceIndex: 1,
-			// The derivation reaches the L1 head before the next block can be created
-			l1Head:         actors.L1Miner.L1Chain().Genesis().Hash(),
-			expectValid:    true,
-			skipChallenger: true, // Challenger doesn't yet check if blocks were safe
-		},
-		{
-			name:               "SuperRootInvalidIfUnsupportedByL1Data",
-			agreedClaim:        step1Expected,
-			disputedClaim:      step2Expected,
-			disputedTraceIndex: 1,
-			// The derivation reaches the L1 head before the next block can be created
-			l1Head:         actors.L1Miner.L1Chain().Genesis().Hash(),
-			expectValid:    false,
-			skipChallenger: true, // Challenger doesn't yet check if blocks were safe
-		},
-		{
-			name:               "FromInvalidTransitionHash",
-			agreedClaim:        interop.InvalidTransition,
-			disputedClaim:      interop.InvalidTransition,
-			disputedTraceIndex: 2,
-			// The derivation reaches the L1 head before the next block can be created
-			l1Head:         actors.L1Miner.L1Chain().Genesis().Hash(),
-			expectValid:    true,
-			skipChallenger: true, // Challenger doesn't yet check if blocks were safe
-		},
-	}
-
-	for _, test := range tests {
-		test := test
-		gt.Run(fmt.Sprintf("%s-fpp", test.name), func(gt *testing.T) {
-			t := helpers.NewDefaultTesting(gt)
-			if test.skipProgram {
-				t.Skip("Not yet implemented")
-				return
-			}
-			logger := testlog.Logger(t, slog.LevelInfo)
-			checkResult := fpHelpers.ExpectNoError()
-			if !test.expectValid {
-				checkResult = fpHelpers.ExpectError(claim.ErrClaimNotValid)
-			}
-			l1Head := test.l1Head
-			if l1Head == (common.Hash{}) {
-				l1Head = actors.L1Miner.L1Chain().CurrentBlock().Hash()
-			}
-			fpHelpers.RunFaultProofProgram(
-				t,
-				logger,
-				actors.L1Miner,
-				checkResult,
-				WithInteropEnabled(actors, test.agreedClaim, crypto.Keccak256Hash(test.disputedClaim), endTimestamp),
-				fpHelpers.WithL1Head(l1Head),
-			)
-		})
-
-		gt.Run(fmt.Sprintf("%s-challenger", test.name), func(gt *testing.T) {
-			t := helpers.NewDefaultTesting(gt)
-			if test.skipChallenger {
-				t.Skip("Not yet implemented")
-				return
-			}
-			logger := testlog.Logger(t, slog.LevelInfo)
-			prestateProvider := super.NewSuperRootPrestateProvider(&actors.Supervisor.QueryFrontend, startTimestamp)
-			var l1Head eth.BlockID
-			if test.l1Head == (common.Hash{}) {
-				l1Head = eth.ToBlockID(eth.HeaderBlockInfo(actors.L1Miner.L1Chain().CurrentBlock()))
-			} else {
-				l1Head = eth.ToBlockID(actors.L1Miner.L1Chain().GetBlockByHash(test.l1Head))
-			}
-			gameDepth := challengerTypes.Depth(30)
-			provider := super.NewSuperTraceProvider(logger, prestateProvider, &actors.Supervisor.QueryFrontend, l1Head, gameDepth, startTimestamp, endTimestamp)
-			var agreedPrestate []byte
-			if test.disputedTraceIndex > 0 {
-				agreedPrestate, err = provider.GetPreimageBytes(ctx, challengerTypes.NewPosition(gameDepth, big.NewInt(test.disputedTraceIndex-1)))
-				require.NoError(t, err)
-			} else {
-				superRoot, err := provider.AbsolutePreState(ctx)
-				require.NoError(t, err)
-				agreedPrestate = superRoot.Marshal()
-			}
-			require.Equal(t, test.agreedClaim, agreedPrestate)
-
-			disputedClaim, err := provider.GetPreimageBytes(ctx, challengerTypes.NewPosition(gameDepth, big.NewInt(test.disputedTraceIndex)))
-			require.NoError(t, err)
-			if test.expectValid {
-				require.Equal(t, test.disputedClaim, disputedClaim, "Claim is correct so should match challenger's opinion")
-			} else {
-				require.NotEqual(t, test.disputedClaim, disputedClaim, "Claim is incorrect so should not match challenger's opinion")
-			}
-		})
-	}
-}
-
-func WithInteropEnabled(actors *InteropActors, agreedPrestate []byte, disputedClaim common.Hash, claimTimestamp uint64) fpHelpers.FixtureInputParam {
-	return func(f *fpHelpers.FixtureInputs) {
-		f.InteropEnabled = true
-		f.AgreedPrestate = agreedPrestate
-		f.L2OutputRoot = crypto.Keccak256Hash(agreedPrestate)
-		f.L2Claim = disputedClaim
-		f.L2BlockNumber = claimTimestamp
-
-		for _, chain := range []*Chain{actors.ChainA, actors.ChainB} {
-			f.L2Sources = append(f.L2Sources, &fpHelpers.FaultProofProgramL2Source{
-				Node:        chain.Sequencer.L2Verifier,
-				Engine:      chain.SequencerEngine,
-				ChainConfig: chain.L2Genesis.Config,
-			})
-		}
-	}
-}
-
-type transitionTest struct {
-	name               string
-	agreedClaim        []byte
-	disputedClaim      []byte
-	disputedTraceIndex int64
-	l1Head             common.Hash // Defaults to current L1 head if not set
-	expectValid        bool
-	skipProgram        bool
-	skipChallenger     bool
+	// Assert that the executing message in chain A only
+	// became cross-safe when the dependency of chain B became cross safe later.
+	source, err := actors.Supervisor.CrossDerivedFrom(t.Ctx(), actors.ChainA.ChainID, execTxIncludedIn.ID())
+	require.NoError(t, err)
+	require.Equal(t, chainBSubmittedIn.NumberU64(), source.Number)
 }

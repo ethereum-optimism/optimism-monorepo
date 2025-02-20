@@ -53,7 +53,7 @@ type ChannelConfig struct {
 
 // ChannelConfig returns a copy of the receiver.
 // This allows the receiver to be a static ChannelConfigProvider of itself.
-func (cc ChannelConfig) ChannelConfig() ChannelConfig {
+func (cc ChannelConfig) ChannelConfig(isPectra bool) ChannelConfig {
 	return cc
 }
 

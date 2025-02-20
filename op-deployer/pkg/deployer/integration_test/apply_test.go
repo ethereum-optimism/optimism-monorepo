@@ -10,9 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/broadcaster"
-	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/opcm"
-	"github.com/ethereum-optimism/optimism/op-deployer/pkg/env"
+	"github.com/ethereum-optimism/optimism/op-service/testutils/devnet"
 
 	altda "github.com/ethereum-optimism/optimism/op-alt-da"
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/inspect"
@@ -35,36 +33,11 @@ import (
 	"github.com/ethereum-optimism/optimism/op-chain-ops/genesis"
 	"github.com/ethereum-optimism/optimism/op-service/predeploys"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
-	"github.com/ethereum-optimism/optimism/op-service/testutils/kurtosisutil"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/stretchr/testify/require"
 )
-
-const TestParams = `
-participants:
-  - el_type: geth
-    el_extra_params:
-      - "--gcmode=archive"
-      - "--rpc.txfeecap=0"
-      - "--netrestrict=172.17.0.0/16"
-    cl_type: lighthouse
-network_params:
-  prefunded_accounts: '{ "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266": { "balance": "1000000ETH" } }'
-  additional_preloaded_contracts: '{
-    "0x4e59b44847b379578588920cA78FbF26c0B4956C": {
-      balance: "0ETH",
-      code: "0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe03601600081602082378035828234f58015156039578182fd5b8082525050506014600cf3",
-      storage: {},
-      nonce: 0,
-      secretKey: "0x"
-    }
-  }'
-  network_id: "77799777"
-  seconds_per_slot: 3
-  genesis_delay: 0
-`
 
 const defaultL1ChainID uint64 = 77799777
 
@@ -86,15 +59,14 @@ func TestEndToEndApply(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	enclaveCtx := kurtosisutil.StartEnclave(t, ctx, lgr, "github.com/ethpandaops/ethereum-package@4.4.0", TestParams)
-
-	service, err := enclaveCtx.GetServiceContext("el-1-geth-lighthouse")
+	anvil, err := devnet.NewAnvil(lgr, devnet.WithChainID(77799777))
 	require.NoError(t, err)
-
-	ip := service.GetMaybePublicIPAddress()
-	ports := service.GetPublicPorts()
-	rpcURL := fmt.Sprintf("http://%s:%d", ip, ports["rpc"].GetNumber())
-	l1Client, err := ethclient.Dial(rpcURL)
+	require.NoError(t, anvil.Start())
+	t.Cleanup(func() {
+		require.NoError(t, anvil.Stop())
+	})
+	l1RPC := anvil.RPCUrl()
+	l1Client, err := ethclient.Dial(l1RPC)
 	require.NoError(t, err)
 
 	pk, err := crypto.HexToECDSA("ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80")
@@ -117,7 +89,7 @@ func TestEndToEndApply(t *testing.T) {
 			ctx,
 			deployer.ApplyPipelineOpts{
 				DeploymentTarget:   deployer.DeploymentTargetLive,
-				L1RPCUrl:           rpcURL,
+				L1RPCUrl:           l1RPC,
 				DeployerPrivateKey: pk,
 				Intent:             intent,
 				State:              st,
@@ -134,7 +106,7 @@ func TestEndToEndApply(t *testing.T) {
 			ctx,
 			deployer.ApplyPipelineOpts{
 				DeploymentTarget:   deployer.DeploymentTargetLive,
-				L1RPCUrl:           rpcURL,
+				L1RPCUrl:           l1RPC,
 				DeployerPrivateKey: pk,
 				Intent:             intent,
 				State:              st,
@@ -156,7 +128,7 @@ func TestEndToEndApply(t *testing.T) {
 			ctx,
 			deployer.ApplyPipelineOpts{
 				DeploymentTarget:   deployer.DeploymentTargetLive,
-				L1RPCUrl:           rpcURL,
+				L1RPCUrl:           l1RPC,
 				DeployerPrivateKey: pk,
 				Intent:             intent,
 				State:              st,
@@ -173,7 +145,7 @@ func TestEndToEndApply(t *testing.T) {
 			ctx,
 			deployer.ApplyPipelineOpts{
 				DeploymentTarget:   deployer.DeploymentTargetCalldata,
-				L1RPCUrl:           rpcURL,
+				L1RPCUrl:           l1RPC,
 				DeployerPrivateKey: pk,
 				Intent:             intent,
 				State:              st,
@@ -561,47 +533,6 @@ func TestIntentConfiguration(t *testing.T) {
 	}
 }
 
-func TestManageDependencies(t *testing.T) {
-	t.Parallel()
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	l1ChainID := uint64(999)
-	l1ChainIDBig := new(big.Int).SetUint64(l1ChainID)
-
-	opts, intent, st := setupGenesisChain(t, l1ChainID)
-	intent.UseInterop = true
-	require.NoError(t, deployer.ApplyPipeline(ctx, opts))
-
-	dk, err := devkeys.NewMnemonicDevKeys(devkeys.TestMnemonic)
-	require.NoError(t, err)
-	sysConfigOwner, err := dk.Address(devkeys.SystemConfigOwner.Key(l1ChainIDBig))
-	require.NoError(t, err)
-
-	// Have to recreate the host again since deployer.ApplyPipeline
-	// doesn't expose the host directly.
-
-	loc, _ := testutil.LocalArtifacts(t)
-	afacts, _, err := artifacts.Download(ctx, loc, artifacts.NoopDownloadProgressor)
-	require.NoError(t, err)
-
-	host, err := env.DefaultScriptHost(
-		broadcaster.NoopBroadcaster(),
-		opts.Logger,
-		sysConfigOwner,
-		afacts,
-	)
-	require.NoError(t, err)
-	host.ImportState(st.L1StateDump.Data)
-
-	require.NoError(t, opcm.ManageDependencies(host, opcm.ManageDependenciesInput{
-		ChainId:      big.NewInt(1234),
-		SystemConfig: st.Chains[0].SystemConfigProxyAddress,
-		Remove:       false,
-	}))
-}
-
 func setupGenesisChain(t *testing.T, l1ChainID uint64) (deployer.ApplyPipelineOpts, *state.Intent, *state.State) {
 	lgr := testlog.Logger(t, slog.LevelDebug)
 
@@ -646,7 +577,7 @@ func newIntent(
 	l2Loc *artifacts.Locator,
 ) (*state.Intent, *state.State) {
 	intent := &state.Intent{
-		ConfigType: state.IntentConfigTypeCustom,
+		ConfigType: state.IntentTypeCustom,
 		L1ChainID:  l1ChainID.Uint64(),
 		SuperchainRoles: &state.SuperchainRoles{
 			ProxyAdminOwner:       addrFor(t, dk, devkeys.L1ProxyAdminOwnerRole.Key(l1ChainID)),

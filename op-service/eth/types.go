@@ -208,6 +208,7 @@ type (
 type ExecutionPayloadEnvelope struct {
 	ParentBeaconBlockRoot *common.Hash      `json:"parentBeaconBlockRoot,omitempty"`
 	ExecutionPayload      *ExecutionPayload `json:"executionPayload"`
+	RequestsHash          *common.Hash      `json:"requestsHash,omitempty"`
 }
 
 type ExecutionPayload struct {
@@ -265,14 +266,6 @@ func (s rawTransactions) EncodeIndex(i int, w *bytes.Buffer) {
 	w.Write(s[i])
 }
 
-func (payload *ExecutionPayload) CanyonBlock() bool {
-	return payload.Withdrawals != nil
-}
-
-func (payload *ExecutionPayload) IsthmusBlock() bool {
-	return payload.WithdrawalsRoot != nil
-}
-
 // CheckBlockHash recomputes the block hash and returns if the embedded block hash matches.
 func (envelope *ExecutionPayloadEnvelope) CheckBlockHash() (actual common.Hash, ok bool) {
 	payload := envelope.ExecutionPayload
@@ -297,12 +290,16 @@ func (envelope *ExecutionPayloadEnvelope) CheckBlockHash() (actual common.Hash, 
 		MixDigest:        common.Hash(payload.PrevRandao),
 		Nonce:            types.BlockNonce{}, // zeroed, proof-of-work legacy
 		BaseFee:          (*uint256.Int)(&payload.BaseFeePerGas).ToBig(),
+		WithdrawalsHash:  nil, // set below
+		BlobGasUsed:      (*uint64)(payload.BlobGasUsed),
+		ExcessBlobGas:    (*uint64)(payload.ExcessBlobGas),
 		ParentBeaconRoot: envelope.ParentBeaconBlockRoot,
+		RequestsHash:     envelope.RequestsHash,
 	}
 
-	if payload.IsthmusBlock() {
+	if payload.WithdrawalsRoot != nil {
 		header.WithdrawalsHash = payload.WithdrawalsRoot
-	} else if payload.CanyonBlock() {
+	} else if payload.Withdrawals != nil {
 		withdrawalHash := types.DeriveSha(*payload.Withdrawals, hasher)
 		header.WithdrawalsHash = &withdrawalHash
 	}
@@ -323,6 +320,9 @@ func BlockAsPayload(bl *types.Block, config *params.ChainConfig) (*ExecutionPayl
 			return nil, fmt.Errorf("tx %d failed to marshal: %w", i, err)
 		}
 		opaqueTxs[i] = otx
+	}
+	if baseFee == nil {
+		return nil, fmt.Errorf("base fee was nil")
 	}
 
 	payload := &ExecutionPayload{
@@ -363,6 +363,7 @@ func BlockAsPayloadEnv(bl *types.Block, config *params.ChainConfig) (*ExecutionP
 	return &ExecutionPayloadEnvelope{
 		ExecutionPayload:      payload,
 		ParentBeaconBlockRoot: bl.BeaconRoot(),
+		RequestsHash:          bl.RequestsHash(),
 	}, nil
 }
 
@@ -638,9 +639,11 @@ const (
 
 	NewPayloadV2 EngineAPIMethod = "engine_newPayloadV2"
 	NewPayloadV3 EngineAPIMethod = "engine_newPayloadV3"
+	NewPayloadV4 EngineAPIMethod = "engine_newPayloadV4"
 
 	GetPayloadV2 EngineAPIMethod = "engine_getPayloadV2"
 	GetPayloadV3 EngineAPIMethod = "engine_getPayloadV3"
+	GetPayloadV4 EngineAPIMethod = "engine_getPayloadV4"
 )
 
 // StorageKey is a marshaling utility for hex-encoded storage keys, which can have leading 0s and are

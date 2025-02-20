@@ -6,6 +6,7 @@
 !/op-batcher
 !/op-chain-ops
 !/op-deployer
+!/op-dripper
 !/op-challenger
 !/packages/contracts-bedrock/snapshots
 !/op-dispute-mon
@@ -22,3 +23,7 @@
 !/go.sum
 !/justfiles
 !/mise.toml
+
+**/bin
+**/testdata
+**/tests

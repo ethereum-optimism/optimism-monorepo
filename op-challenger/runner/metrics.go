@@ -19,6 +19,7 @@ type Metrics struct {
 	*contractMetrics.ContractMetrics
 	*metrics.VmMetrics
 
+	up                  prometheus.Gauge
 	vmLastExecutionTime *prometheus.GaugeVec
 	vmLastMemoryUsed    *prometheus.GaugeVec
 	successTotal        *prometheus.CounterVec
@@ -31,11 +32,11 @@ var _ Metricer = (*Metrics)(nil)
 // Metrics implementation must implement RegistryMetricer to allow the metrics server to work.
 var _ opmetrics.RegistryMetricer = (*Metrics)(nil)
 
-func NewMetrics() *Metrics {
+func NewMetrics(runConfigs []RunConfig) *Metrics {
 	registry := opmetrics.NewRegistry()
 	factory := opmetrics.With(registry)
 
-	return &Metrics{
+	metrics := &Metrics{
 		ns:       Namespace,
 		registry: registry,
 		factory:  factory,
@@ -43,6 +44,11 @@ func NewMetrics() *Metrics {
 		ContractMetrics: contractMetrics.MakeContractMetrics(Namespace, factory),
 		VmMetrics:       metrics.NewVmMetrics(Namespace, factory),
 
+		up: factory.NewGauge(prometheus.GaugeOpts{
+			Namespace: Namespace,
+			Name:      "up",
+			Help:      "The VM runner has started to run",
+		}),
 		vmLastExecutionTime: factory.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: Namespace,
 			Name:      "vm_last_execution_time",
@@ -69,10 +75,23 @@ func NewMetrics() *Metrics {
 			Help:      "Number of runs that determined the output root was invalid",
 		}, []string{"type"}),
 	}
+
+	for _, runConfig := range runConfigs {
+		metrics.successTotal.WithLabelValues(runConfig.Name).Add(0)
+		metrics.failuresTotal.WithLabelValues(runConfig.Name).Add(0)
+		metrics.invalidTotal.WithLabelValues(runConfig.Name).Add(0)
+		metrics.RecordUp()
+	}
+
+	return metrics
 }
 
 func (m *Metrics) Registry() *prometheus.Registry {
 	return m.registry
+}
+
+func (m *Metrics) RecordUp() {
+	m.up.Set(1)
 }
 
 func (m *Metrics) RecordVmExecutionTime(vmType string, dur time.Duration) {

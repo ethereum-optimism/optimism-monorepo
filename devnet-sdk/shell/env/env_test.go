@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/ethereum-optimism/optimism/devnet-sdk/descriptors"
+	"github.com/ethereum-optimism/optimism/devnet-sdk/types"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -29,7 +31,7 @@ func TestLoadDevnetEnv(t *testing.T) {
 			}],
 			"jwt": "0x1234567890abcdef",
 			"addresses": {
-				"deployer": "0x123"
+				"deployer": "0x1234567890123456789012345678901234567890"
 			}
 		},
 		"l2": [{
@@ -48,7 +50,7 @@ func TestLoadDevnetEnv(t *testing.T) {
 			}],
 			"jwt": "0xdeadbeef",
 			"addresses": {
-				"deployer": "0x456"
+				"deployer": "0x2345678901234567890123456789012345678901"
 			}
 		}]
 	}`
@@ -64,15 +66,15 @@ func TestLoadDevnetEnv(t *testing.T) {
 
 	// Test successful load
 	t.Run("successful load", func(t *testing.T) {
-		env, err := LoadDevnetEnv(tmpfile.Name())
+		env, err := LoadDevnetFromURL(tmpfile.Name())
 		require.NoError(t, err)
-		assert.Equal(t, "l1", env.config.L1.Name)
-		assert.Equal(t, "op", env.config.L2[0].Name)
+		assert.Equal(t, "l1", env.Config.L1.Name)
+		assert.Equal(t, "op", env.Config.L2[0].Name)
 	})
 
 	// Test loading non-existent file
 	t.Run("non-existent file", func(t *testing.T) {
-		_, err := LoadDevnetEnv("non-existent.json")
+		_, err := LoadDevnetFromURL("non-existent.json")
 		assert.Error(t, err)
 	})
 
@@ -82,14 +84,14 @@ func TestLoadDevnetEnv(t *testing.T) {
 		err := os.WriteFile(invalidFile, []byte("{invalid json}"), 0644)
 		require.NoError(t, err)
 
-		_, err = LoadDevnetEnv(invalidFile)
+		_, err = LoadDevnetFromURL(invalidFile)
 		assert.Error(t, err)
 	})
 }
 
 func TestGetChain(t *testing.T) {
 	devnet := &DevnetEnv{
-		config: descriptors.DevnetEnvironment{
+		Config: descriptors.DevnetEnvironment{
 			L1: &descriptors.Chain{
 				Name: "l1",
 				Nodes: []descriptors.Node{
@@ -129,7 +131,7 @@ func TestGetChain(t *testing.T) {
 				},
 			},
 		},
-		fname: "test.json",
+		URL: "test.json",
 	}
 
 	// Test getting L1 chain
@@ -174,25 +176,27 @@ func TestChainConfig(t *testing.T) {
 				},
 			},
 			JWT: "0x1234",
-			Addresses: map[string]string{
-				"deployer": "0x123",
+			Addresses: map[string]types.Address{
+				"deployer": common.HexToAddress("0x1234567890123456789012345678901234567890"),
 			},
 		},
-		devnetFile: "test.json",
-		name:       "test",
+		devnetURL: "test.json",
+		name:      "test",
 	}
 
 	// Test getting environment variables
 	t.Run("get environment variables", func(t *testing.T) {
-		env, err := chain.GetEnv()
+		env, err := chain.GetEnv(
+			WithCastIntegration(true),
+		)
 		require.NoError(t, err)
 
-		assert.Equal(t, "http://localhost:8545", env.EnvVars["ETH_RPC_URL"])
-		assert.Equal(t, "1234", env.EnvVars["ETH_RPC_JWT_SECRET"])
-		assert.Equal(t, "test.json", env.EnvVars[EnvFileVar])
-		assert.Equal(t, "test", env.EnvVars[ChainNameVar])
-		assert.Contains(t, env.Motd, "deployer")
-		assert.Contains(t, env.Motd, "0x123")
+		assert.Equal(t, "http://localhost:8545", env.envVars["ETH_RPC_URL"])
+		assert.Equal(t, "1234", env.envVars["ETH_RPC_JWT_SECRET"])
+		assert.Equal(t, "test.json", filepath.Base(env.envVars[EnvURLVar]))
+		assert.Equal(t, "test", env.envVars[ChainNameVar])
+		assert.Contains(t, env.motd, "deployer")
+		assert.Contains(t, env.motd, "0x1234567890123456789012345678901234567890")
 	})
 
 	// Test chain with no nodes
@@ -203,7 +207,9 @@ func TestChainConfig(t *testing.T) {
 				Nodes: []descriptors.Node{},
 			},
 		}
-		_, err := noNodesChain.GetEnv()
+		_, err := noNodesChain.GetEnv(
+			WithCastIntegration(true),
+		)
 		assert.Error(t, err)
 	})
 
@@ -219,7 +225,9 @@ func TestChainConfig(t *testing.T) {
 				},
 			},
 		}
-		_, err := missingServiceChain.GetEnv()
+		_, err := missingServiceChain.GetEnv(
+			WithCastIntegration(true),
+		)
 		assert.Error(t, err)
 	})
 
@@ -239,7 +247,9 @@ func TestChainConfig(t *testing.T) {
 				},
 			},
 		}
-		_, err := missingEndpointChain.GetEnv()
+		_, err := missingEndpointChain.GetEnv(
+			WithCastIntegration(true),
+		)
 		assert.Error(t, err)
 	})
 }

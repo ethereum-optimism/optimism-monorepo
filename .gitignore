@@ -20,6 +20,8 @@ cache
 !op-chain-ops/foundry/testdata/srcmaps/cache
 !op-chain-ops/foundry/testdata/srcmaps/artifacts
 
+!op-deployer/pkg/deployer/artifacts
+
 packages/contracts-bedrock/deployments/devnetL1
 packages/contracts-bedrock/deployments/anvil
 

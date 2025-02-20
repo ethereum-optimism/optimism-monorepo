@@ -289,14 +289,15 @@ func NewHost(
 		CallerOverride:      h.handleCaller,
 	}
 
-	h.env = vm.NewEVM(blockContext, txContext, h.state, h.chainCfg, vmCfg)
+	h.env = vm.NewEVM(blockContext, h.state, h.chainCfg, vmCfg)
+	h.env.SetTxContext(txContext)
 
 	return h
 }
 
 // AllowCheatcodes allows the given address to utilize the cheatcodes and logging precompiles
 func (h *Host) AllowCheatcodes(addr common.Address) {
-	h.log.Debug("Allowing cheatcodes", "address", addr, "label", h.labels[addr])
+	h.log.Trace("Allowing cheatcodes", "address", addr, "label", h.labels[addr])
 	h.allowedCheatcodes[addr] = struct{}{}
 }
 
@@ -566,6 +567,7 @@ func (h *Host) unwindCallstack(depth int) {
 							"from", bcast.From,
 							"to", bcast.To,
 							"input", bcast.Input,
+							"input_len", len(bcast.Input),
 							"value", bcast.Value,
 							"type", bcast.Type,
 						)
@@ -697,7 +699,7 @@ func (h *Host) StateDump() (*foundry.ForgeAllocs, error) {
 	baseState := h.baseState
 	// We have to commit the existing state to the trie,
 	// for all the state-changes to be captured by the trie iterator.
-	root, err := baseState.Commit(h.env.Context.BlockNumber.Uint64(), true)
+	root, err := baseState.Commit(h.env.Context.BlockNumber.Uint64(), true, false)
 	if err != nil {
 		return nil, fmt.Errorf("failed to commit state: %w", err)
 	}

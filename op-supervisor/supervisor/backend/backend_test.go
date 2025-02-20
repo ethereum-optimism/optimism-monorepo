@@ -71,10 +71,16 @@ func TestBackendLifetime(t *testing.T) {
 	l1Src := &testutils.MockL1Source{}
 	src := &MockProcessorSource{}
 
-	blockX := eth.BlockRef{
+	anchorBlock := eth.BlockRef{
 		Hash:       common.Hash{0xaa},
 		Number:     0,
 		ParentHash: common.Hash{}, // genesis has no parent hash
+		Time:       10000,
+	}
+	blockX := eth.BlockRef{
+		Hash:       common.Hash{0xaa},
+		Number:     1,
+		ParentHash: anchorBlock.Hash,
 		Time:       10000,
 	}
 	blockY := eth.BlockRef{
@@ -101,14 +107,40 @@ func TestBackendLifetime(t *testing.T) {
 	_, err = b.LocalUnsafe(context.Background(), chainA)
 	require.ErrorIs(t, err, types.ErrFuture, "no data yet, need local-unsafe")
 
-	src.ExpectBlockRefByNumber(0, blockX, nil)
+	src.ExpectBlockRefByNumber(0, anchorBlock, nil)
 	src.ExpectFetchReceipts(blockX.Hash, nil, nil)
 
-	src.ExpectBlockRefByNumber(1, blockY, nil)
+	src.ExpectBlockRefByNumber(1, blockX, nil)
+	src.ExpectFetchReceipts(blockX.Hash, nil, nil)
+
+	src.ExpectBlockRefByNumber(2, blockY, nil)
 	src.ExpectFetchReceipts(blockY.Hash, nil, nil)
 
-	src.ExpectBlockRefByNumber(2, eth.L1BlockRef{}, ethereum.NotFound)
+	src.ExpectBlockRefByNumber(3, eth.L1BlockRef{}, ethereum.NotFound)
 
+	// The first time a Local Unsafe is received, the database is not initialized,
+	// so the call to b.CrossUnsafe will fail.
+	b.emitter.Emit(superevents.LocalUnsafeReceivedEvent{
+		ChainID:        chainA,
+		NewLocalUnsafe: blockY,
+	})
+	require.NoError(t, ex.Drain())
+	_, err = b.CrossUnsafe(context.Background(), chainA)
+	require.ErrorIs(t, err, types.ErrFuture)
+
+	// After the anchor event, the database is initialized, and the call to update
+	// from the LocalUnsafe event will succeed.
+	src.ExpectBlockRefByNumber(1, blockX, nil)
+	src.ExpectFetchReceipts(blockX.Hash, nil, nil)
+	src.ExpectBlockRefByNumber(2, blockY, nil)
+	src.ExpectFetchReceipts(blockY.Hash, nil, nil)
+	b.emitter.Emit(superevents.AnchorEvent{
+		ChainID: chainA,
+		Anchor: types.DerivedBlockRefPair{
+			Derived: anchorBlock,
+			Source:  eth.L1BlockRef{},
+		}})
+	require.NoError(t, ex.Drain())
 	b.emitter.Emit(superevents.LocalUnsafeReceivedEvent{
 		ChainID:        chainA,
 		NewLocalUnsafe: blockY,
@@ -116,9 +148,9 @@ func TestBackendLifetime(t *testing.T) {
 	// Make the processing happen, so we can rely on the new chain information,
 	// and not run into errors for future data that isn't mocked at this time.
 	require.NoError(t, ex.Drain())
-
-	_, err = b.CrossUnsafe(context.Background(), chainA)
-	require.ErrorIs(t, err, types.ErrFuture, "still no data yet, need cross-unsafe")
+	v, err := b.CrossUnsafe(context.Background(), chainA)
+	require.NoError(t, err, "have a functioning cross unsafe value now post anchor")
+	require.Equal(t, blockY.ID(), v)
 
 	err = b.chainDBs.UpdateCrossUnsafe(chainA, types.BlockSeal{
 		Hash:      blockX.Hash,
@@ -127,13 +159,123 @@ func TestBackendLifetime(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	v, err := b.CrossUnsafe(context.Background(), chainA)
+	v, err = b.CrossUnsafe(context.Background(), chainA)
 	require.NoError(t, err, "have a functioning cross unsafe value now")
 	require.Equal(t, blockX.ID(), v)
 
 	err = b.Stop(context.Background())
 	require.NoError(t, err)
 	t.Log("stopped!")
+}
+
+func TestBackendCallsMetrics(t *testing.T) {
+	logger := testlog.Logger(t, log.LvlInfo)
+	mockMetrics := &MockMetrics{}
+	dataDir := t.TempDir()
+	chainA := eth.ChainIDFromUInt64(900)
+
+	// Set up mock metrics
+	mockMetrics.Mock.On("RecordDBEntryCount", chainA, mock.AnythingOfType("string"), mock.AnythingOfType("int64")).Return()
+	mockMetrics.Mock.On("RecordCrossUnsafeRef", chainA, mock.MatchedBy(func(_ eth.BlockRef) bool { return true })).Return()
+	mockMetrics.Mock.On("RecordCrossSafeRef", chainA, mock.MatchedBy(func(_ eth.BlockRef) bool { return true })).Return()
+
+	depSet, err := depset.NewStaticConfigDependencySet(
+		map[eth.ChainID]*depset.StaticConfigDependency{
+			chainA: {
+				ChainIndex:     900,
+				ActivationTime: 42,
+				HistoryMinTime: 100,
+			},
+		})
+	require.NoError(t, err)
+
+	cfg := &config.Config{
+		Version:               "test",
+		LogConfig:             oplog.CLIConfig{},
+		MetricsConfig:         opmetrics.CLIConfig{},
+		PprofConfig:           oppprof.CLIConfig{},
+		RPC:                   oprpc.CLIConfig{},
+		DependencySetSource:   depSet,
+		SynchronousProcessors: true,
+		MockRun:               false,
+		SyncSources:           &syncnode.CLISyncNodes{},
+		Datadir:               dataDir,
+	}
+
+	ex := event.NewGlobalSynchronous(context.Background())
+	b, err := NewSupervisorBackend(context.Background(), logger, mockMetrics, cfg, ex)
+	require.NoError(t, err)
+
+	// Assert that the metrics are called at initialization
+	mockMetrics.Mock.AssertCalled(t, "RecordDBEntryCount", chainA, "log", int64(0))
+	mockMetrics.Mock.AssertCalled(t, "RecordDBEntryCount", chainA, "local_derived", int64(0))
+	mockMetrics.Mock.AssertCalled(t, "RecordDBEntryCount", chainA, "cross_derived", int64(0))
+
+	// Start the backend
+	err = b.Start(context.Background())
+	require.NoError(t, err)
+
+	// Create a test block
+	block := eth.BlockRef{
+		Hash:       common.Hash{0xaa},
+		Number:     42,
+		ParentHash: common.Hash{0xbb},
+		Time:       10000,
+	}
+
+	b.chainDBs.ForceInitialized(chainA) // force init for test
+	// Assert that metrics are called on safety level updates
+	err = b.chainDBs.UpdateCrossUnsafe(chainA, types.BlockSeal{
+		Hash:      block.Hash,
+		Number:    block.Number,
+		Timestamp: block.Time,
+	})
+	require.NoError(t, err)
+	mockMetrics.Mock.AssertCalled(t, "RecordCrossUnsafeRef", chainA, mock.MatchedBy(func(ref eth.BlockRef) bool {
+		return ref.Hash == block.Hash && ref.Number == block.Number && ref.Time == block.Time
+	}))
+
+	err = b.chainDBs.UpdateCrossSafe(chainA, block, block)
+	require.NoError(t, err)
+	mockMetrics.Mock.AssertCalled(t, "RecordDBEntryCount", chainA, "cross_derived", int64(1))
+	mockMetrics.Mock.AssertCalled(t, "RecordCrossSafeRef", chainA, mock.MatchedBy(func(ref eth.BlockRef) bool {
+		return ref.Hash == block.Hash && ref.Number == block.Number && ref.Time == block.Time
+	}))
+
+	// Stop the backend
+	err = b.Stop(context.Background())
+	require.NoError(t, err)
+}
+
+type MockMetrics struct {
+	mock.Mock
+	event.NoopMetrics
+}
+
+var _ Metrics = (*MockMetrics)(nil)
+
+func (m *MockMetrics) CacheAdd(chainID eth.ChainID, label string, cacheSize int, evicted bool) {
+	m.Mock.Called(chainID, label, cacheSize, evicted)
+}
+
+func (m *MockMetrics) CacheGet(chainID eth.ChainID, label string, hit bool) {
+	m.Mock.Called(chainID, label, hit)
+}
+
+func (m *MockMetrics) RecordCrossUnsafeRef(chainID eth.ChainID, ref eth.BlockRef) {
+	m.Mock.Called(chainID, ref)
+}
+
+func (m *MockMetrics) RecordCrossSafeRef(chainID eth.ChainID, ref eth.BlockRef) {
+	m.Mock.Called(chainID, ref)
+}
+
+func (m *MockMetrics) RecordDBEntryCount(chainID eth.ChainID, kind string, count int64) {
+	m.Mock.Called(chainID, kind, count)
+}
+
+func (m *MockMetrics) RecordDBSearchEntriesRead(chainID eth.ChainID, count int64) {
+	m.Mock.Called(chainID, count)
 }
 
 type MockProcessorSource struct {
@@ -157,5 +299,5 @@ func (m *MockProcessorSource) BlockRefByNumber(ctx context.Context, num uint64) 
 }
 
 func (m *MockProcessorSource) ExpectBlockRefByNumber(num uint64, ref eth.BlockRef, err error) {
-	m.Mock.On("BlockRefByNumber", num).Once().Return(ref, err)
+	m.Mock.On("BlockRefByNumber", num).Return(ref, err)
 }

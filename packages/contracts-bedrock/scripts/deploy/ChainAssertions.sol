@@ -499,7 +499,7 @@ library ChainAssertions {
         require(impls.l1StandardBridgeImpl == _impls.L1StandardBridge, "CHECK-OPCM-100");
         require(impls.disputeGameFactoryImpl == _impls.DisputeGameFactory, "CHECK-OPCM-110");
         require(impls.delayedWETHImpl == _impls.DelayedWETH, "CHECK-OPCM-120");
-        require(impls.mips64Impl == address(_mips), "CHECK-OPCM-130");
+        require(impls.mipsImpl == address(_mips), "CHECK-OPCM-130");
         require(impls.superchainConfigImpl == _impls.SuperchainConfig, "CHECK-OPCM-140");
         require(impls.protocolVersionsImpl == _impls.ProtocolVersions, "CHECK-OPCM-150");
 

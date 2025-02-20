@@ -2,7 +2,7 @@ package wrappers
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"strings"
 
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/api/interfaces"
@@ -156,21 +156,21 @@ func (w *starlarkRunFinishedEventWrapper) GetIsRunSuccessful() bool {
 
 func (w *starlarkErrorWrapper) GetInterpretationError() error {
 	if err := w.StarlarkError.GetInterpretationError(); err != nil {
-		return fmt.Errorf("%v", err)
+		return errors.New(err.GetErrorMessage())
 	}
 	return nil
 }
 
 func (w *starlarkErrorWrapper) GetValidationError() error {
 	if err := w.StarlarkError.GetValidationError(); err != nil {
-		return fmt.Errorf("%v", err)
+		return errors.New(err.GetErrorMessage())
 	}
 	return nil
 }
 
 func (w *starlarkErrorWrapper) GetExecutionError() error {
 	if err := w.StarlarkError.GetExecutionError(); err != nil {
-		return fmt.Errorf("%v", err)
+		return errors.New(err.GetErrorMessage())
 	}
 	return nil
 }

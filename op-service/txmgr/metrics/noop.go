@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"math/big"
+	"sync/atomic"
 
 	"github.com/ethereum/go-ethereum/core/types"
 )
@@ -18,3 +19,16 @@ func (*NoopTxMetrics) RecordBaseFee(*big.Int)            {}
 func (*NoopTxMetrics) RecordBlobBaseFee(*big.Int)        {}
 func (*NoopTxMetrics) RecordTipCap(*big.Int)             {}
 func (*NoopTxMetrics) RPCError()                         {}
+
+type FakeTxMetrics struct {
+	NoopTxMetrics
+	pendingTxs atomic.Uint64
+}
+
+func (m *FakeTxMetrics) RecordPendingTx(p int64) {
+	m.pendingTxs.Store(uint64(p))
+}
+
+func (m *FakeTxMetrics) PendingTxs() uint64 {
+	return m.pendingTxs.Load()
+}

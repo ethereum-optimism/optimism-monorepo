@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/ethereum-optimism/optimism/op-node/chaincfg"
+	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	preimage "github.com/ethereum-optimism/optimism/op-preimage"
 	"github.com/ethereum-optimism/optimism/op-program/client/l2"
 	hostcommon "github.com/ethereum-optimism/optimism/op-program/host/common"
@@ -19,6 +20,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/sources"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
+	"github.com/ethereum/go-ethereum/params"
 )
 
 type Prefetcher interface {
@@ -116,15 +118,51 @@ func (p *programExecutor) RunProgram(
 	db l2.KeyValueStore,
 ) error {
 	newCfg := *p.cfg
-	newCfg.L2ChainID = chainID
+	newCfg.ExecCmd = "" // ensure we run the program in the same process
 	newCfg.L2ClaimBlockNumber = blockNum
+	newCfg.InteropEnabled = false
+	// Leave the newCfg.L2ChainID as is. It may be set to the customChainID for testing.
+	// newCfg.L2ChainConfigs and newCfg.Rollups will be reconfigured to the specified chainID for the program execution.
+
+	// Since the ProgramExecutor can be used for interop with custom chain configs, we need to
+	// restrict the host's chain configuration to a single chain.
+	var l2ChainConfig *params.ChainConfig
+	for _, c := range newCfg.L2ChainConfigs {
+		if eth.ChainIDFromBig(c.ChainID).Cmp(chainID) == 0 {
+			l2ChainConfig = c
+			break
+		}
+	}
+	if l2ChainConfig == nil {
+		return fmt.Errorf("could not find L2 chain config in the host for chain ID %v", chainID)
+	}
+	var rollupConfig *rollup.Config
+	for _, c := range newCfg.Rollups {
+		if eth.ChainIDFromBig(c.L2ChainID).Cmp(chainID) == 0 {
+			rollupConfig = c
+			break
+		}
+	}
+	if rollupConfig == nil {
+		return fmt.Errorf("could not find rollup config in the host for chain ID %v", chainID)
+	}
+	newCfg.L2ChainConfigs = []*params.ChainConfig{l2ChainConfig}
+	newCfg.Rollups = []*rollup.Config{rollupConfig}
 
 	withPrefetcher := hostcommon.WithPrefetcher(
 		func(context.Context, log.Logger, kvstore.KV, *config.Config) (hostcommon.Prefetcher, error) {
 			// TODO(#13663): prevent recursive block execution
 			return prefetcher, nil
 		})
-	return hostcommon.FaultProofProgram(ctx, p.logger, &newCfg, withPrefetcher, hostcommon.WithSkipValidation(true), hostcommon.WithDB(db))
+	return hostcommon.FaultProofProgram(
+		ctx,
+		p.logger,
+		&newCfg,
+		withPrefetcher,
+		hostcommon.WithSkipValidation(true),
+		hostcommon.WithDB(db),
+		hostcommon.WithStoreBlockData(true),
+	)
 }
 
 func MakeProgramExecutor(logger log.Logger, cfg *config.Config) prefetcher.ProgramExecutor {

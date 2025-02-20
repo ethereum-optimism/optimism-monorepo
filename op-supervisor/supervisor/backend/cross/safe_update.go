@@ -19,7 +19,7 @@ type CrossSafeDeps interface {
 	SafeStartDeps
 
 	CandidateCrossSafe(chain eth.ChainID) (candidate types.DerivedBlockRefPair, err error)
-	NextDerivedFrom(chain eth.ChainID, derivedFrom eth.BlockID) (after eth.BlockRef, err error)
+	NextSource(chain eth.ChainID, source eth.BlockID) (after eth.BlockRef, err error)
 	PreviousDerived(chain eth.ChainID, derived eth.BlockID) (prevDerived types.BlockSeal, err error)
 
 	OpenBlock(chainID eth.ChainID, blockNum uint64) (ref eth.BlockRef, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error)
@@ -49,21 +49,21 @@ func CrossSafeUpdate(logger log.Logger, chainID eth.ChainID, d CrossSafeDeps) er
 	}
 	if errors.Is(err, types.ErrConflict) {
 		logger.Warn("Found a conflicting local-safe block that cannot be promoted to cross-safe",
-			"scope", candidate.DerivedFrom, "invalidated", candidate, "err", err)
+			"scope", candidate.Source, "invalidated", candidate, "err", err)
 		return d.InvalidateLocalSafe(chainID, candidate)
 	}
 	if !errors.Is(err, types.ErrOutOfScope) {
 		return fmt.Errorf("failed to determine cross-safe update scope of chain %s: %w", chainID, err)
 	}
 	// candidate scope is expected to be set if ErrOutOfScope is returned.
-	if candidate.DerivedFrom == (eth.BlockRef{}) {
+	if candidate.Source == (eth.BlockRef{}) {
 		return fmt.Errorf("expected L1 scope to be defined with ErrOutOfScope: %w", err)
 	}
-	logger.Debug("Cross-safe updating ran out of L1 scope", "scope", candidate.DerivedFrom, "err", err)
+	logger.Debug("Cross-safe updating ran out of L1 scope", "scope", candidate.Source, "err", err)
 	// bump the L1 scope up, and repeat the prev L2 block, not the candidate
-	newScope, err := d.NextDerivedFrom(chainID, candidate.DerivedFrom.ID())
+	newScope, err := d.NextSource(chainID, candidate.Source.ID())
 	if err != nil {
-		return fmt.Errorf("failed to identify new L1 scope to expand to after %s: %w", candidate.DerivedFrom, err)
+		return fmt.Errorf("failed to identify new L1 scope to expand to after %s: %w", candidate.Source, err)
 	}
 	currentCrossSafe, err := d.CrossSafe(chainID)
 	if err != nil {
@@ -77,7 +77,7 @@ func CrossSafeUpdate(logger log.Logger, chainID eth.ChainID, d CrossSafeDeps) er
 	crossSafeRef := currentCrossSafe.Derived.MustWithParent(parent.ID())
 	logger.Debug("Bumping cross-safe scope", "scope", newScope, "crossSafe", crossSafeRef)
 	if err := d.UpdateCrossSafe(chainID, newScope, crossSafeRef); err != nil {
-		return fmt.Errorf("failed to update cross-safe head with L1 scope increment to %s and repeat of L2 block %s: %w", candidate.DerivedFrom, crossSafeRef, err)
+		return fmt.Errorf("failed to update cross-safe head with L1 scope increment to %s and repeat of L2 block %s: %w", candidate.Source, crossSafeRef, err)
 	}
 	return nil
 }
@@ -91,7 +91,7 @@ func scopedCrossSafeUpdate(logger log.Logger, chainID eth.ChainID, d CrossSafeDe
 	if err != nil {
 		return candidate, fmt.Errorf("failed to determine candidate block for cross-safe: %w", err)
 	}
-	logger.Debug("Candidate cross-safe", "scope", candidate.DerivedFrom, "candidate", candidate.Derived)
+	logger.Debug("Candidate cross-safe", "scope", candidate.Source, "candidate", candidate.Derived)
 	opened, _, execMsgs, err := d.OpenBlock(chainID, candidate.Derived.Number)
 	if err != nil {
 		return candidate, fmt.Errorf("failed to open block %s: %w", candidate.Derived, err)
@@ -99,11 +99,11 @@ func scopedCrossSafeUpdate(logger log.Logger, chainID eth.ChainID, d CrossSafeDe
 	if opened.ID() != candidate.Derived.ID() {
 		return candidate, fmt.Errorf("unsafe L2 DB has %s, but candidate cross-safe was %s: %w", opened, candidate.Derived, types.ErrConflict)
 	}
-	hazards, err := CrossSafeHazards(d, chainID, candidate.DerivedFrom.ID(), types.BlockSealFromRef(opened), sliceOfExecMsgs(execMsgs))
+	hazards, err := CrossSafeHazards(d, chainID, candidate.Source.ID(), types.BlockSealFromRef(opened), sliceOfExecMsgs(execMsgs))
 	if err != nil {
 		return candidate, fmt.Errorf("failed to determine dependencies of cross-safe candidate %s: %w", candidate.Derived, err)
 	}
-	if err := HazardSafeFrontierChecks(d, candidate.DerivedFrom.ID(), hazards); err != nil {
+	if err := HazardSafeFrontierChecks(d, candidate.Source.ID(), hazards); err != nil {
 		return candidate, fmt.Errorf("failed to verify block %s in cross-safe frontier: %w", candidate.Derived, err)
 	}
 	if err := HazardCycleChecks(d.DependencySet(), d, candidate.Derived.Time, hazards); err != nil {
@@ -111,8 +111,8 @@ func scopedCrossSafeUpdate(logger log.Logger, chainID eth.ChainID, d CrossSafeDe
 	}
 
 	// promote the candidate block to cross-safe
-	if err := d.UpdateCrossSafe(chainID, candidate.DerivedFrom, candidate.Derived); err != nil {
-		return candidate, fmt.Errorf("failed to update cross-safe head to %s, derived from scope %s: %w", candidate.Derived, candidate.DerivedFrom, err)
+	if err := d.UpdateCrossSafe(chainID, candidate.Source, candidate.Derived); err != nil {
+		return candidate, fmt.Errorf("failed to update cross-safe head to %s, derived from scope %s: %w", candidate.Derived, candidate.Source, err)
 	}
 	return candidate, nil
 }

@@ -434,6 +434,7 @@ func TestEVM_SingleStep_MfhiMflo(t *testing.T) {
 }
 
 func TestEVM_SingleStep_MulDiv(t *testing.T) {
+	flip := testutil.FlipSign
 	cases := []mulDivTestCase{
 		{name: "mul", funct: uint32(0x2), opcode: uint32(28), rs: Word(5), rt: Word(2), rdReg: uint32(0x8), expectRes: Word(10)},                                    // mul t0, t1, t2
 		{name: "mul", funct: uint32(0x2), opcode: uint32(28), rs: Word(0x1), rt: ^Word(0), rdReg: uint32(0x8), expectRes: ^Word(0)},                                 // mul t1, t2
@@ -451,9 +452,17 @@ func TestEVM_SingleStep_MulDiv(t *testing.T) {
 		{name: "multu", funct: uint32(0x19), rs: Word(0xFF_FF_FF_D3), rt: Word(0xAA_BB_CC_DD), rdReg: uint32(0x0), opcode: uint32(0), expectHi: Word(0xAA_BB_CC_BE), expectLo: Word(0xFC_FC_FD_27)}, // multu t1, t2
 		{name: "multu", funct: uint32(0x19), rs: Word(0xFF_FF_FF_D3), rt: Word(0xAA_BB_CC_BE), rdReg: uint32(0x0), opcode: uint32(0), expectHi: Word(0xAA_BB_CC_9F), expectLo: Word(0xFC_FD_02_9A)}, // multu t1, t2
 
-		{name: "div", funct: uint32(0x1a), rs: Word(5), rt: Word(2), rdReg: uint32(0x0), opcode: uint32(0), expectHi: Word(1), expectLo: Word(2)},                                           // div t1, t2
-		{name: "div by zero", funct: uint32(0x1a), rs: Word(5), rt: Word(0), rdReg: uint32(0x0), opcode: uint32(0), panicMsg: "instruction divide by zero", revertMsg: "division by zero"},  // div t1, t2
-		{name: "divu", funct: uint32(0x1b), rs: Word(5), rt: Word(2), rdReg: uint32(0x0), opcode: uint32(0), expectHi: Word(1), expectLo: Word(2)},                                          // divu t1, t2
+		{name: "div", funct: uint32(0x1a), rs: Word(5), rt: Word(2), rdReg: uint32(0x0), opcode: uint32(0), expectHi: Word(1), expectLo: Word(2)},                                          // div t1, t2
+		{name: "div w neg dividend", funct: uint32(0x1a), rs: flip(9), rt: Word(2), rdReg: uint32(0x0), opcode: uint32(0), expectHi: flip(1), expectLo: flip(4)},                           // div t1, t2
+		{name: "div w neg divisor", funct: uint32(0x1a), rs: 9, rt: flip(2), rdReg: uint32(0x0), opcode: uint32(0), expectHi: 1, expectLo: flip(4)},                                        // div t1, t2
+		{name: "div w neg operands", funct: uint32(0x1a), rs: flip(9), rt: flip(2), rdReg: uint32(0x0), opcode: uint32(0), expectHi: flip(1), expectLo: 4},                                 // div t1, t2
+		{name: "div by zero", funct: uint32(0x1a), rs: Word(5), rt: Word(0), rdReg: uint32(0x0), opcode: uint32(0), panicMsg: "instruction divide by zero", revertMsg: "division by zero"}, // div t1, t2
+		{name: "divu", funct: uint32(0x1b), rs: Word(5), rt: Word(2), rdReg: uint32(0x0), opcode: uint32(0), expectHi: Word(1), expectLo: Word(2)},
+		{name: "divu w neg dividend", funct: uint32(0x1b), rs: flip(9), rt: Word(2), rdReg: uint32(0x0), opcode: uint32(0), expectHi: 1, expectLo: (flip(9) & exec.U32Mask) >> 1},           // div t1, t2
+		{name: "divu w neg divisor", funct: uint32(0x1b), rs: 9, rt: flip(2), rdReg: uint32(0x0), opcode: uint32(0), expectHi: 9, expectLo: 0},                                              // div t1, t2
+		{name: "divu w neg divisor #2", funct: uint32(0x1b), rs: 2, rt: flip(9), rdReg: uint32(0x0), opcode: uint32(0), expectHi: 2, expectLo: 0},                                           // div t1, t2
+		{name: "divu w neg operands", funct: uint32(0x1b), rs: flip(9), rt: flip(2), rdReg: uint32(0x0), opcode: uint32(0), expectHi: flip(9), expectLo: 0},                                 // divu t1, t2
+		{name: "divu w neg operands #2", funct: uint32(0x1b), rs: flip(2), rt: flip(9), rdReg: uint32(0x0), opcode: uint32(0), expectHi: 7, expectLo: 1},                                    // divu t1, t2
 		{name: "divu by zero", funct: uint32(0x1b), rs: Word(5), rt: Word(0), rdReg: uint32(0x0), opcode: uint32(0), panicMsg: "instruction divide by zero", revertMsg: "division by zero"}, // divu t1, t2
 	}
 
@@ -552,12 +561,24 @@ func TestEVM_SingleStep_SlSr(t *testing.T) {
 		funct     uint16
 		expectVal Word
 	}{
-		{name: "sll", funct: uint16(4) << 6, rt: Word(0x20), rsReg: uint32(0x0), expectVal: Word(0x20) << uint8(4)},                         // sll t0, t1, 3
-		{name: "srl", funct: uint16(4)<<6 | 2, rt: Word(0x20), rsReg: uint32(0x0), expectVal: Word(0x20) >> uint8(4)},                       // srl t0, t1, 3
-		{name: "sra", funct: uint16(4)<<6 | 3, rt: Word(0x80_00_00_20), rsReg: uint32(0x0), expectVal: signExtend64(0xF8_00_00_02)},         // sra t0, t1, 3
-		{name: "sllv", funct: uint16(4), rt: Word(0x20), rs: Word(4), rsReg: uint32(0xa), expectVal: Word(0x20) << Word(4)},                 // sllv t0, t1, t2
-		{name: "srlv", funct: uint16(6), rt: Word(0x20_00), rs: Word(4), rsReg: uint32(0xa), expectVal: Word(0x20_00) >> Word(4)},           // srlv t0, t1, t2
-		{name: "srav", funct: uint16(7), rt: Word(0xdeafbeef), rs: Word(12), rsReg: uint32(0xa), expectVal: signExtend64(Word(0xfffdeafb))}, // srav t0, t1, t2
+		{name: "sll", funct: uint16(4) << 6, rt: Word(0x20), rsReg: uint32(0x0), expectVal: Word(0x20) << uint8(4)}, // sll t0, t1, 3
+		{name: "sll with overflow", funct: uint16(1) << 6, rt: Word(0x8000_0000), rsReg: uint32(0x0), expectVal: 0x0},
+		{name: "sll with sign extension", funct: uint16(4) << 6, rt: Word(0x0800_0000), rsReg: uint32(0x0), expectVal: signExtend64(0x8000_0000)},
+		{name: "sll with max shift, sign extension", funct: uint16(31) << 6, rt: Word(0x01), rsReg: uint32(0x0), expectVal: signExtend64(0x8000_0000)},
+		{name: "sll with max shift, overflow", funct: uint16(31) << 6, rt: Word(0x02), rsReg: uint32(0x0), expectVal: 0x0},
+		{name: "srl", funct: uint16(4)<<6 | 2, rt: Word(0x20), rsReg: uint32(0x0), expectVal: Word(0x20) >> uint8(4)},                                   // srl t0, t1, 3
+		{name: "srl with sign extension", funct: uint16(0)<<6 | 2, rt: Word(0x8000_0000), rsReg: uint32(0x0), expectVal: signExtend64(0x8000_0000)},     // srl t0, t1, 3
+		{name: "sra", funct: uint16(4)<<6 | 3, rt: Word(0x70_00_00_20), rsReg: uint32(0x0), expectVal: signExtend64(0x07_00_00_02)},                     // sra t0, t1, 3
+		{name: "sra with sign extension", funct: uint16(4)<<6 | 3, rt: Word(0x80_00_00_20), rsReg: uint32(0x0), expectVal: signExtend64(0xF8_00_00_02)}, // sra t0, t1, 3
+		{name: "sllv", funct: uint16(4), rt: Word(0x20), rs: Word(4), rsReg: uint32(0xa), expectVal: Word(0x20) << Word(4)},                             // sllv t0, t1, t2
+		{name: "sllv with overflow", funct: uint16(4), rt: Word(0x8000_0000), rs: Word(1), rsReg: uint32(0xa), expectVal: 0x0},
+		{name: "sllv with sign extension", funct: uint16(4), rt: Word(0x0800_0000), rs: Word(4), rsReg: uint32(0xa), expectVal: signExtend64(0x8000_0000)},
+		{name: "sllv with max shift, sign extension", funct: uint16(4), rt: Word(0x01), rs: Word(31), rsReg: uint32(0xa), expectVal: signExtend64(0x8000_0000)},
+		{name: "sllv with max shift, overflow", funct: uint16(4), rt: Word(0x02), rs: Word(31), rsReg: uint32(0xa), expectVal: 0x0},
+		{name: "srlv", funct: uint16(6), rt: Word(0x20_00), rs: Word(4), rsReg: uint32(0xa), expectVal: Word(0x20_00) >> Word(4)},                               // srlv t0, t1, t2
+		{name: "srlv with sign extension", funct: uint16(6), rt: Word(0x8000_0000), rs: Word(0), rsReg: uint32(0xa), expectVal: signExtend64(0x8000_0000)},      // srlv t0, t1, t2
+		{name: "srav", funct: uint16(7), rt: Word(0x1deafbee), rs: Word(12), rsReg: uint32(0xa), expectVal: signExtend64(Word(0x0001deaf))},                     // srav t0, t1, t2
+		{name: "srav with sign extension", funct: uint16(7), rt: Word(0xdeafbeef), rs: Word(12), rsReg: uint32(0xa), expectVal: signExtend64(Word(0xfffdeafb))}, // srav t0, t1, t2
 	}
 
 	for _, v := range versions {

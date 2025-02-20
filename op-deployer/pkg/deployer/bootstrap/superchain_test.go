@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum-optimism/optimism/op-service/testutils/devnet"
+
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/artifacts"
-	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/retryproxy"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
-	"github.com/ethereum-optimism/optimism/op-service/testutils/anvil"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/params"
@@ -47,25 +47,15 @@ func testSuperchain(t *testing.T, forkRPCURL string, version string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
-	retryProxy := retryproxy.New(lgr, forkRPCURL)
-	require.NoError(t, retryProxy.Start())
-	t.Cleanup(func() {
-		require.NoError(t, retryProxy.Stop())
-	})
-
-	runner, err := anvil.New(
-		retryProxy.Endpoint(),
-		lgr,
-	)
+	forkedL1, stopL1, err := devnet.NewForked(lgr, forkRPCURL)
 	require.NoError(t, err)
-
-	require.NoError(t, runner.Start(ctx))
 	t.Cleanup(func() {
-		require.NoError(t, runner.Stop())
+		require.NoError(t, stopL1())
 	})
+	l1RPC := forkedL1.RPCUrl()
 
 	out, err := Superchain(ctx, SuperchainConfig{
-		L1RPCUrl:         runner.RPCUrl(),
+		L1RPCUrl:         l1RPC,
 		PrivateKey:       "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
 		ArtifactsLocator: artifacts.MustNewLocatorFromTag("op-contracts/" + version),
 		Logger:           lgr,
@@ -79,7 +69,7 @@ func testSuperchain(t *testing.T, forkRPCURL string, version string) {
 	})
 	require.NoError(t, err)
 
-	client, err := ethclient.Dial(runner.RPCUrl())
+	client, err := ethclient.Dial(l1RPC)
 	require.NoError(t, err)
 
 	addresses := []common.Address{
