@@ -33,12 +33,12 @@ Version increments follow the [style guide rules](./STYLE_GUIDE.md#versioning) f
 
 Versioning for individual contracts works as follows:
 
-- A contract is only `X.Y.Z` on `develop` if it has been governance approved. If it's `X.Y.Z` before that, it must be on a branch. More on this below.
+- A contract on develop always has a version of X.Y.Z, regardless of whether is has been governance approved and meets our security bar. This DOES NOT indicate these contracts are always safe for production use. More on this below.
 - For contracts with feature-specific changes, a `+feature-name` identifier must be appended to the version number. See the [Smart Contract Feature Development](https://github.com/ethereum-optimism/design-docs/blob/main/smart-contract-feature-development.md) design document to learn more.
 - When making changes to a contract, always bump to the lowest possible version based on the specific change you are making. We do not want to e.g. optimistically bump to a major version, because protocol development sequencing may change unexpectedly. Use these examples to know how to bump the version:
   - Example 1: A contract is currently on `1.2.3`.
     - We don't yet know when the next release of this contract will be. However, you are simply fixing typos in comments so you bump the version to `1.2.4`.
-    - The next PR made to that same contract clarifies some comments, but we haven't merged to `develop` yet. The version is still `1.2.4`.
+    - The next PR made to that same contract clarifies some comments, so we again bump the patch version, and the version is now still `1.2.5`.
     - The next PR introduces a breaking change, which bumps the version from `1.2.4` to `2.0.0`.
   - Example 2: A contract is currently on `2.4.7`.
     - We know the next release of this contract will be a breaking change. Regardless, as you start development by fixing typos in comments, bump the version to `2.4.8`. This is because we may end up putting out a release before the breaking change is added.
@@ -67,11 +67,11 @@ Versioning for monorepo releases works as follows:
 
 ## Optimism Contracts Manager (OPCM) Versioning
 
-The [OPCM](https://github.com/ethereum-optimism/optimism/blob/main/packages/contracts-bedrock/src/L1/OPContractsManager.sol) is the contract that manages the deployment of all contracts on L1. Its version is the same as the [associated monorepo contracts release](./VERSIONING.md#monorepo-contracts-release-versioning).
+The [OPCM](https://github.com/ethereum-optimism/optimism/blob/main/packages/contracts-bedrock/src/L1/OPContractsManager.sol) is the contract that manages the deployment of all contracts on L1.
 
 The `OPCM` is the source of truth for the contracts that belong in a release, available as on-chain addresses by querying [the `getImplementations` function](https://github.com/ethereum-optimism/optimism/blob/4c8764f0453e141555846d8c9dd2af9edbc1d014/packages/contracts-bedrock/src/L1/OPContractsManager.sol#L1061).
 
-When developing a new version of the OPCM, [the `isRC` flag](https://github.com/ethereum-optimism/optimism/blob/4c8764f0453e141555846d8c9dd2af9edbc1d014/packages/contracts-bedrock/src/L1/OPContractsManager.sol#L181) must be set to `true` to indicate that the OPCM is in a release candidate state. The flag [will be set to `false`](https://github.com/ethereum-optimism/optimism/blob/4c8764f0453e141555846d8c9dd2af9edbc1d014/packages/contracts-bedrock/src/L1/OPContractsManager.sol#L453) when the OPCM is deployed to L1 using the `upgrade` function.
+When developing a new release of the contracts, [the `isRC` flag](https://github.com/ethereum-optimism/optimism/blob/4c8764f0453e141555846d8c9dd2af9edbc1d014/packages/contracts-bedrock/src/L1/OPContractsManager.sol#L181) must be set to `true` to indicate that the OPCM refers to a release candidate. The flag [will be set to `false`](https://github.com/ethereum-optimism/optimism/blob/4c8764f0453e141555846d8c9dd2af9edbc1d014/packages/contracts-bedrock/src/L1/OPContractsManager.sol#L453) the first time the OPCM `upgrade` method is invoked from governance's Upgrade Controller Safe. This Safe is a 2/2 held by the Security Council and Optimism Foundation.
 
 ## Release Process
 
