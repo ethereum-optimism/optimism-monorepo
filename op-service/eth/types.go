@@ -211,6 +211,14 @@ type ExecutionPayloadEnvelope struct {
 	RequestsHash          *common.Hash      `json:"requestsHash,omitempty"`
 }
 
+func (env *ExecutionPayloadEnvelope) ID() BlockID {
+	return env.ExecutionPayload.ID()
+}
+
+func (env *ExecutionPayloadEnvelope) String() string {
+	return fmt.Sprintf("envelope(%s)", env.ID())
+}
+
 type ExecutionPayload struct {
 	ParentHash    common.Hash     `json:"parentHash"`
 	FeeRecipient  common.Address  `json:"feeRecipient"`
@@ -240,6 +248,10 @@ type ExecutionPayload struct {
 
 func (payload *ExecutionPayload) ID() BlockID {
 	return BlockID{Hash: payload.BlockHash, Number: uint64(payload.BlockNumber)}
+}
+
+func (payload *ExecutionPayload) String() string {
+	return fmt.Sprintf("payload(%s)", payload.ID())
 }
 
 func (payload *ExecutionPayload) ParentID() BlockID {
