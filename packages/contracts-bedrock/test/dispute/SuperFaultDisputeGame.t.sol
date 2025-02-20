@@ -136,6 +136,13 @@ contract SuperFaultDisputeGame_Test is SuperFaultDisputeGame_Init {
         absolutePrestate = _changeClaimStatus(Claim.wrap(keccak256(absolutePrestateData)), VMStatuses.UNFINISHED);
 
         super.setUp();
+
+        if (isForkTest()) {
+            // Set the init bond of anchor game type 0 to be 0.
+            vm.store(
+                address(disputeGameFactory), keccak256(abi.encode(GameType.wrap(0), uint256(102))), bytes32(uint256(0))
+            );
+        }
         super.init({ rootClaim: ROOT_CLAIM, absolutePrestate: absolutePrestate, l2BlockNumber: 0x10 });
     }
 
