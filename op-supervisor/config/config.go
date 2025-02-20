@@ -43,7 +43,7 @@ type Config struct {
 	Datadir             string
 	DatadirSyncEndpoint string
 
-	// OverrideMessageExpiryWindow overrides the message expiry window for testing
+	// OverrideMessageExpiryWindow overrides the protocol-defined message expiry window for testing
 	OverrideMessageExpiryWindow uint64
 }
 

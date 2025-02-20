@@ -64,7 +64,7 @@ var (
 	}
 	OverrideMessageExpiryWindowFlag = &cli.Uint64Flag{
 		Name:    "override-message-expiry-window",
-		Usage:   "Override the message expiry window for testing",
+		Usage:   "Override the protocol-defined message expiry window for testing",
 		EnvVars: prefixEnvVars("OVERRIDE_MESSAGE_EXPIRY_WINDOW"),
 		Hidden:  true,
 	}
