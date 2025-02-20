@@ -19,6 +19,8 @@ Supported 63 instructions:
 | `Conditional Branch` | `bne`         | Branch on not equal.                         |
 | `Logical`            | `clo`         | Count leading ones.                          |
 | `Logical`            | `clz`         | Count leading zeros.                         |
+| `Logical`            | `dclo`        | Count Leading Ones in Doubleword.            |
+| `Logical`            | `dclz`        | Count Leading Zeros in Doubleword.           |
 | `Arithmetic`         | `div`         | Divide.                                      |
 | `Arithmetic`         | `divu`        | Divide unsigned.                             |
 | `Unconditional Jump` | `j`           | Jump.                                        |
