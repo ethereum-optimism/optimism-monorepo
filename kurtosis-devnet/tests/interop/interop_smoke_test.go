@@ -18,7 +18,7 @@ func smokeTestScenario(chainIdx uint64, walletGetter validators.WalletGetter) sy
 		ctx := t.Context()
 		logger := slog.With("test", "TestMinimal", "devnet", sys.Identifier())
 
-		chain := sys.L2(chainIdx)
+		chain := sys.L2s()[chainIdx]
 		logger = logger.With("chain", chain.ID())
 		logger.InfoContext(ctx, "starting test")
 
@@ -93,3 +93,19 @@ func TestInteropSystemNoop(t *testing.T) {
 // 	require.True(t, rt.Failed(), "test should have failed")
 // 	require.Contains(t, rt.Logs(), "transaction failure", "unexpected failure message")
 // }
+
+func lowLevelSystemScenario(sysGetter validators.LowLevelSystemGetter) systest.SystemTestFunc {
+	return func(t systest.T, sys system.System) {
+		logger := slog.With("test", "TestLowLevelSystem", "devnet", sys.Identifier())
+		_ = sysGetter(t.Context())
+		logger.InfoContext(t.Context(), "low level system acquired")
+	}
+}
+
+func TestLowLevelSystem(t *testing.T) {
+	lowLevelSys, validator := validators.AcquireLowLevelSystem()
+	systest.SystemTest(t,
+		lowLevelSystemScenario(lowLevelSys),
+		validator,
+	)
+}
