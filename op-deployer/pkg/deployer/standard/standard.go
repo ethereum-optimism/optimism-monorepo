@@ -187,6 +187,9 @@ func GuardianAddressFor(chainID uint64) (common.Address, error) {
 		return common.HexToAddress("0x09f7150D8c019BeF34450d6920f6B3608ceFdAf2"), nil
 	case 11155111:
 		return common.HexToAddress("0x7a50f00e8D05b95F98fE38d8BeE366a7324dCf7E"), nil
+	case 17000:
+		// doesn't matter
+		return common.HexToAddress("0x1110000000000000000000000000000000000000"), nil
 	default:
 		return common.Address{}, fmt.Errorf("unsupported chain ID: %d", chainID)
 	}
@@ -209,6 +212,15 @@ func SuperchainFor(chainID uint64) (*superchain.Superchain, error) {
 		return superchain.Superchains["mainnet"], nil
 	case 11155111:
 		return superchain.Superchains["sepolia"], nil
+	case 17000:
+		pver := common.HexToAddress("0xb0e961d5c73546d4ef3b574681538af7e50da2d8")
+		supCfg := common.HexToAddress("0x885c53fa5f5d03efc781a7feb8aabab67ba4e3bc")
+		return &superchain.Superchain{
+			Config: superchain.SuperchainConfig{
+				ProtocolVersionsAddr: (*superchain.Address)(&pver),
+				SuperchainConfigAddr: (*superchain.Address)(&supCfg),
+			},
+		}, nil
 	default:
 		return nil, fmt.Errorf("unsupported chain ID: %d", chainID)
 	}
@@ -289,6 +301,8 @@ func SuperchainProxyAdminAddrFor(chainID uint64) (common.Address, error) {
 		return common.HexToAddress("0x543bA4AADBAb8f9025686Bd03993043599c6fB04"), nil
 	case 11155111:
 		return common.HexToAddress("0x189aBAAaa82DfC015A588A7dbaD6F13b1D3485Bc"), nil
+	case 17000:
+		return common.HexToAddress("0xfee222a4fa606a9dd0b05cd0a8e1e40e60fd809a"), nil
 	default:
 		return common.Address{}, fmt.Errorf("unsupported chain ID: %d", chainID)
 	}
@@ -313,6 +327,8 @@ func L1ProxyAdminOwner(chainID uint64) (common.Address, error) {
 		return common.HexToAddress("0x5a0Aae59D09fccBdDb6C6CcEB07B7279367C3d2A"), nil
 	case 11155111:
 		return common.HexToAddress("0x1Eb2fFc903729a0F03966B917003800b145F56E2"), nil
+	case 17000:
+		return common.HexToAddress("0xa6afc9612b504202e0a5f6cf3c8e89c49ea06037"), nil
 	default:
 		return common.Address{}, fmt.Errorf("unsupported chain ID: %d", chainID)
 	}
