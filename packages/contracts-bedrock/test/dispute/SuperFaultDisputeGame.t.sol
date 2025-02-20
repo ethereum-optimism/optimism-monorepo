@@ -1948,15 +1948,14 @@ contract SuperFaultDisputeGame_Test is SuperFaultDisputeGame_Init {
         Position disputedPos = LibPosition.wrap(4, 0);
 
         // Expected local data
-        bytes32[5] memory data = [
+        bytes32[4] memory data = [
             gameProxy.l1Head().raw(),
             startingClaim,
             disputedClaim,
-            bytes32(uint256(gameProxy.l2BlockNumber()) << 0xC0),
-            bytes32(gameProxy.l2ChainId() << 0xC0)
+            bytes32(uint256(gameProxy.l2BlockNumber()) << 0xC0)
         ];
 
-        for (uint256 i = 1; i <= 5; i++) {
+        for (uint256 i = 1; i <= 4; i++) {
             uint256 expectedLen = i > 3 ? 8 : 32;
             bytes32 key = _getKey(i, keccak256(abi.encode(disputedClaim, disputedPos)));
 
@@ -1999,15 +1998,14 @@ contract SuperFaultDisputeGame_Test is SuperFaultDisputeGame_Init {
         Position disputedPos = LibPosition.wrap(3, 0);
 
         // Expected local data
-        bytes32[5] memory data = [
+        bytes32[4] memory data = [
             gameProxy.l1Head().raw(),
             startingClaim,
             disputedClaim,
-            bytes32(uint256(gameProxy.l2BlockNumber()) << 0xC0),
-            bytes32(gameProxy.l2ChainId() << 0xC0)
+            bytes32(uint256(gameProxy.l2BlockNumber()) << 0xC0)
         ];
 
-        for (uint256 i = 1; i <= 5; i++) {
+        for (uint256 i = 1; i <= 4; i++) {
             uint256 expectedLen = i > 3 ? 8 : 32;
             bytes32 key = _getKey(i, keccak256(abi.encode(startingClaim, startingPos, disputedClaim, disputedPos)));
 

@@ -600,9 +600,6 @@ contract SuperFaultDisputeGame is Clone, ISemver {
             oracle.loadLocalData(_ident, uuid.raw(), disputed.raw(), 32, _partOffset);
         } else if (_ident == LocalPreimageKey.DISPUTED_L2_BLOCK_NUMBER) {
             oracle.loadLocalData(_ident, uuid.raw(), bytes32(l2BlockNumber() << 0xC0), 8, _partOffset);
-        } else if (_ident == LocalPreimageKey.CHAIN_ID) {
-            // Load the chain ID as a big-endian uint64 in the high order 8 bytes of the word.
-            oracle.loadLocalData(_ident, uuid.raw(), bytes32(L2_CHAIN_ID << 0xC0), 8, _partOffset);
         } else {
             revert InvalidLocalIdent();
         }
