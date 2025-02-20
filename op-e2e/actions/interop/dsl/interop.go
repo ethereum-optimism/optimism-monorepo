@@ -176,10 +176,11 @@ func NewSupervisor(t helpers.Testing, logger log.Logger, depSet depset.Dependenc
 	supervisorDataDir := t.TempDir()
 	logger.Info("supervisor data dir", "dir", supervisorDataDir)
 	svCfg := &config.Config{
-		DependencySetSource:   depSet,
-		SynchronousProcessors: true,
-		Datadir:               supervisorDataDir,
-		SyncSources:           &syncnode.CLISyncNodes{}, // sources are added dynamically afterwards
+		DependencySetSource:         depSet,
+		SynchronousProcessors:       true,
+		Datadir:                     supervisorDataDir,
+		SyncSources:                 &syncnode.CLISyncNodes{}, // sources are added dynamically afterwards
+		OverrideMessageExpiryWindow: messageExpiryTime,
 	}
 	evExec := event.NewGlobalSynchronous(t.Ctx())
 	b, err := backend.NewSupervisorBackend(t.Ctx(), logger, metrics.NoopMetrics, svCfg, evExec)

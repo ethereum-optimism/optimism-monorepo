@@ -11,6 +11,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/log"
 
+	"github.com/ethereum-optimism/optimism/op-node/params"
 	"github.com/ethereum-optimism/optimism/op-service/cliapp"
 	"github.com/ethereum-optimism/optimism/op-supervisor/config"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
@@ -78,6 +79,17 @@ func TestMockRun(t *testing.T) {
 	t.Run("Valid", func(t *testing.T) {
 		cfg := configForArgs(t, addRequiredArgs("--mock-run"))
 		require.Equal(t, true, cfg.MockRun)
+	})
+}
+
+func TestOverrideMessageExpiryWindow(t *testing.T) {
+	t.Run("Override", func(t *testing.T) {
+		cfg := configForArgs(t, addRequiredArgs("--override-message-expiry-window", "100"))
+		require.Equal(t, uint64(100), cfg.OverrideMessageExpiryWindow)
+	})
+	t.Run("Default", func(t *testing.T) {
+		cfg := configForArgs(t, addRequiredArgs())
+		require.Equal(t, uint64(params.MessageExpiryTimeSecondsInterop), cfg.MessageExpiryWindow())
 	})
 }
 

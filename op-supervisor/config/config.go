@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 
+	"github.com/ethereum-optimism/optimism/op-node/params"
 	oplog "github.com/ethereum-optimism/optimism/op-service/log"
 	opmetrics "github.com/ethereum-optimism/optimism/op-service/metrics"
 	"github.com/ethereum-optimism/optimism/op-service/oppprof"
@@ -41,6 +42,9 @@ type Config struct {
 
 	Datadir             string
 	DatadirSyncEndpoint string
+
+	// OverrideMessageExpiryWindow overrides the message expiry window for testing
+	OverrideMessageExpiryWindow uint64
 }
 
 func (c *Config) Check() error {
@@ -76,4 +80,13 @@ func NewConfig(l1RPC string, syncSrcs syncnode.SyncNodeCollection, depSet depset
 		SyncSources:         syncSrcs,
 		Datadir:             datadir,
 	}
+}
+
+// MessageExpiryWindow returns the message expiry window to use.
+// If configured with an override, it returns that, otherwise it returns protocol-defined value.
+func (c *Config) MessageExpiryWindow() uint64 {
+	if c.OverrideMessageExpiryWindow != 0 {
+		return c.OverrideMessageExpiryWindow
+	}
+	return params.MessageExpiryTimeSecondsInterop
 }

@@ -15,6 +15,8 @@ type UnsafeStartDeps interface {
 	IsCrossUnsafe(chainID eth.ChainID, block eth.BlockID) error
 
 	DependencySet() depset.DependencySet
+
+	MessageExpiryWindow() uint64
 }
 
 // CrossUnsafeHazards checks if the given messages all exist and pass invariants.
@@ -74,6 +76,10 @@ func CrossUnsafeHazards(d UnsafeStartDeps, chainID eth.ChainID,
 			}
 			if includedIn.Timestamp != msg.Timestamp {
 				return nil, fmt.Errorf("executing msg %s exists, but has different timestamp than block %s: %w", msg, includedIn, types.ErrConflict)
+			}
+			// Run expiry window invariant check *after* verifying that the message is non-conflicting.
+			if msg.Timestamp+d.MessageExpiryWindow() < candidate.Timestamp {
+				return nil, fmt.Errorf("timestamp of message %s (chain %s) has expired: %d < %d: %w", msg, chainID, msg.Timestamp+d.MessageExpiryWindow(), candidate.Timestamp, types.ErrExpired)
 			}
 		} else if msg.Timestamp == candidate.Timestamp {
 			// If timestamp is equal: we have to inspect ordering of individual

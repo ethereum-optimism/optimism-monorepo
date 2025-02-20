@@ -125,19 +125,23 @@ type ChainsDB struct {
 	emitter event.Emitter
 
 	m Metrics
+
+	// messageExpiryWindow may be different from the protocol constant for testing
+	messageExpiryWindow uint64
 }
 
 var _ event.AttachEmitter = (*ChainsDB)(nil)
 
-func NewChainsDB(l log.Logger, depSet depset.DependencySet, m Metrics) *ChainsDB {
+func NewChainsDB(l log.Logger, depSet depset.DependencySet, m Metrics, messageExpiryWindow uint64) *ChainsDB {
 	if m == nil {
 		m = metrics.NoopMetrics
 	}
 
 	return &ChainsDB{
-		logger: l,
-		depSet: depSet,
-		m:      m,
+		logger:              l,
+		depSet:              depSet,
+		m:                   m,
+		messageExpiryWindow: messageExpiryWindow,
 	}
 }
 
@@ -218,6 +222,10 @@ func (db *ChainsDB) ResumeFromLastSealedBlock() error {
 
 func (db *ChainsDB) DependencySet() depset.DependencySet {
 	return db.depSet
+}
+
+func (db *ChainsDB) MessageExpiryWindow() uint64 {
+	return db.messageExpiryWindow
 }
 
 func (db *ChainsDB) Close() error {

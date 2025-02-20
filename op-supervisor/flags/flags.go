@@ -62,6 +62,12 @@ var (
 		EnvVars: prefixEnvVars("MOCK_RUN"),
 		Hidden:  true, // this is for testing only
 	}
+	OverrideMessageExpiryWindowFlag = &cli.Uint64Flag{
+		Name:    "override-message-expiry-window",
+		Usage:   "Override the message expiry window for testing",
+		EnvVars: prefixEnvVars("OVERRIDE_MESSAGE_EXPIRY_WINDOW"),
+		Hidden:  true,
+	}
 )
 
 var requiredFlags = []cli.Flag{
@@ -75,6 +81,7 @@ var requiredFlags = []cli.Flag{
 var optionalFlags = []cli.Flag{
 	MockRunFlag,
 	DataDirSyncEndpointFlag,
+	OverrideMessageExpiryWindowFlag,
 }
 
 func init() {
@@ -101,17 +108,18 @@ func CheckRequired(ctx *cli.Context) error {
 
 func ConfigFromCLI(ctx *cli.Context, version string) *config.Config {
 	return &config.Config{
-		Version:             version,
-		LogConfig:           oplog.ReadCLIConfig(ctx),
-		MetricsConfig:       opmetrics.ReadCLIConfig(ctx),
-		PprofConfig:         oppprof.ReadCLIConfig(ctx),
-		RPC:                 oprpc.ReadCLIConfig(ctx),
-		DependencySetSource: &depset.JsonDependencySetLoader{Path: ctx.Path(DependencySetFlag.Name)},
-		MockRun:             ctx.Bool(MockRunFlag.Name),
-		L1RPC:               ctx.String(L1RPCFlag.Name),
-		SyncSources:         syncSourceSetups(ctx),
-		Datadir:             ctx.Path(DataDirFlag.Name),
-		DatadirSyncEndpoint: ctx.Path(DataDirSyncEndpointFlag.Name),
+		Version:                     version,
+		LogConfig:                   oplog.ReadCLIConfig(ctx),
+		MetricsConfig:               opmetrics.ReadCLIConfig(ctx),
+		PprofConfig:                 oppprof.ReadCLIConfig(ctx),
+		RPC:                         oprpc.ReadCLIConfig(ctx),
+		DependencySetSource:         &depset.JsonDependencySetLoader{Path: ctx.Path(DependencySetFlag.Name)},
+		MockRun:                     ctx.Bool(MockRunFlag.Name),
+		OverrideMessageExpiryWindow: ctx.Uint64(OverrideMessageExpiryWindowFlag.Name),
+		L1RPC:                       ctx.String(L1RPCFlag.Name),
+		SyncSources:                 syncSourceSetups(ctx),
+		Datadir:                     ctx.Path(DataDirFlag.Name),
+		DatadirSyncEndpoint:         ctx.Path(DataDirSyncEndpointFlag.Name),
 	}
 }
 

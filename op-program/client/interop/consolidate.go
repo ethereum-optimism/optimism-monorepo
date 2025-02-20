@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum-optimism/optimism/op-program/client/boot"
 	"github.com/ethereum-optimism/optimism/op-program/client/interop/types"
 	"github.com/ethereum-optimism/optimism/op-program/client/l1"
@@ -102,11 +101,7 @@ func RunConsolidation(
 			Number:    optimisticBlock.NumberU64(),
 			Timestamp: optimisticBlock.Time(),
 		}
-		rollupCfg, err := bootInfo.Configs.RollupConfig(chain.ChainID)
-		if err != nil {
-			return eth.Bytes32{}, fmt.Errorf("no rollup config available for chain ID %v: %w", chain.ChainID, err)
-		}
-		if err := checkHazards(rollupCfg, deps, candidate, chain.ChainID, execMsgs); err != nil {
+		if err := checkHazards(deps, candidate, chain.ChainID, execMsgs); err != nil {
 			if !isInvalidMessageError(err) {
 				return eth.Bytes32{}, err
 			}
@@ -153,33 +148,22 @@ func isInvalidMessageError(err error) bool {
 	return errors.Is(err, supervisortypes.ErrConflict) ||
 		errors.Is(err, cross.ErrExecMsgHasInvalidIndex) ||
 		errors.Is(err, cross.ErrExecMsgUnknownChain) ||
-		errors.Is(err, cross.ErrCycle) || errors.Is(err, supervisortypes.ErrUnknownChain)
+		errors.Is(err, cross.ErrCycle) || errors.Is(err, supervisortypes.ErrUnknownChain) ||
+		errors.Is(err, supervisortypes.ErrExpired)
 }
 
 type ConsolidateCheckDeps interface {
 	cross.UnsafeFrontierCheckDeps
 	cross.CycleCheckDeps
-	Contains(chain eth.ChainID, query supervisortypes.ContainsQuery) (includedIn supervisortypes.BlockSeal, err error)
+	cross.UnsafeStartDeps
 }
 
 func checkHazards(
-	rollupCfg *rollup.Config,
 	deps ConsolidateCheckDeps,
 	candidate supervisortypes.BlockSeal,
 	chainID eth.ChainID,
 	execMsgs []*supervisortypes.ExecutingMessage,
 ) error {
-	// TODO(#14234): remove this check once the supervisor is updated handle msg expiry
-	messageExpiryTimeSeconds := rollupCfg.GetMessageExpiryTimeInterop()
-	for _, msg := range execMsgs {
-		if msg.Timestamp+messageExpiryTimeSeconds < candidate.Timestamp {
-			return fmt.Errorf(
-				"message timestamp is too old: %d < %d: %w",
-				msg.Timestamp+messageExpiryTimeSeconds, candidate.Timestamp, supervisortypes.ErrConflict,
-			)
-		}
-	}
-
 	hazards, err := cross.CrossUnsafeHazards(deps, chainID, candidate, execMsgs)
 	if err != nil {
 		return err
@@ -194,9 +178,10 @@ func checkHazards(
 }
 
 type consolidateCheckDeps struct {
-	oracle      l2.Oracle
-	depset      depset.DependencySet
-	canonBlocks map[eth.ChainID]*l2.FastCanonicalBlockHeaderOracle
+	oracle              l2.Oracle
+	depset              depset.DependencySet
+	canonBlocks         map[eth.ChainID]*l2.FastCanonicalBlockHeaderOracle
+	messageExpiryWindow uint64
 }
 
 func newConsolidateCheckDeps(
@@ -224,11 +209,16 @@ func newConsolidateCheckDeps(
 		fallback := l2.NewCanonicalBlockHeaderOracle(head.Header(), blockByHash)
 		canonBlocks[chain.ChainID] = l2.NewFastCanonicalBlockHeaderOracle(head.Header(), blockByHash, l2ChainConfig, oracle, rawdb.NewMemoryDatabase(), fallback)
 	}
+	rollupCfg, err := bootInfo.Configs.RollupConfig(chains[0].ChainID)
+	if err != nil {
+		return nil, fmt.Errorf("no rollup config available for chain ID %v: %w", chains[0].ChainID, err)
+	}
 
 	return &consolidateCheckDeps{
-		oracle:      oracle,
-		depset:      depset,
-		canonBlocks: canonBlocks,
+		oracle:              oracle,
+		depset:              depset,
+		canonBlocks:         canonBlocks,
+		messageExpiryWindow: rollupCfg.GetMessageExpiryTimeInterop(),
 	}, nil
 }
 
@@ -314,6 +304,10 @@ func (d *consolidateCheckDeps) OpenBlock(
 
 func (d *consolidateCheckDeps) DependencySet() depset.DependencySet {
 	return d.depset
+}
+
+func (d *consolidateCheckDeps) MessageExpiryWindow() uint64 {
+	return d.messageExpiryWindow
 }
 
 func (d *consolidateCheckDeps) CanonBlockByNumber(oracle l2.Oracle, blockNum uint64, chainID eth.ChainID) (*ethtypes.Block, error) {

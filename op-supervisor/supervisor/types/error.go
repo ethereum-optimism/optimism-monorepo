@@ -35,4 +35,6 @@ var (
 	ErrNoRPCSource = errors.New("no RPC client configured")
 	// ErrUninitialized happens when a chain database is not initialized yet
 	ErrUninitialized = errors.New("uninitialized chain database")
+	// ErrExpired happens when a message is too old to be executed
+	ErrExpired = errors.New("message expired")
 )

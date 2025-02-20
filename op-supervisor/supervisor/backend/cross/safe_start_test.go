@@ -314,10 +314,41 @@ func TestCrossSafeHazards(t *testing.T) {
 		require.NoError(t, err)
 		require.Empty(t, hazards)
 	})
+	t.Run("message expiry", func(t *testing.T) {
+		ssd := &mockSafeStartDeps{}
+		ssd.expiryWindow = 10
+		chainID := eth.ChainIDFromUInt64(0)
+		inL1Source := eth.BlockID{Number: 1}
+		candidate := types.BlockSeal{Timestamp: 12}
+		em1 := &types.ExecutingMessage{Chain: types.ChainIndex(0), Timestamp: 1}
+		execMsgs := []*types.ExecutingMessage{em1}
+		// when there is one execMsg, and the timestamp is less than the candidate,
+		// and DerivedToSource returns a BlockSeal with a equal to the Number of inL1Source,
+		// no error is returned
+		hazards, err := CrossSafeHazards(ssd, chainID, inL1Source, candidate, execMsgs)
+		require.ErrorIs(t, err, types.ErrExpired)
+		require.Empty(t, hazards)
+	})
+	t.Run("message close to expiry", func(t *testing.T) {
+		ssd := &mockSafeStartDeps{}
+		ssd.expiryWindow = 10
+		chainID := eth.ChainIDFromUInt64(0)
+		inL1Source := eth.BlockID{Number: 1}
+		candidate := types.BlockSeal{Timestamp: 11}
+		em1 := &types.ExecutingMessage{Chain: types.ChainIndex(0), Timestamp: 1}
+		execMsgs := []*types.ExecutingMessage{em1}
+		// when there is one execMsg, and the timestamp is less than the candidate,
+		// and DerivedToSource returns a BlockSeal with a equal to the Number of inL1Source,
+		// no error is returned
+		hazards, err := CrossSafeHazards(ssd, chainID, inL1Source, candidate, execMsgs)
+		require.NoError(t, err)
+		require.Empty(t, hazards)
+	})
 }
 
 type mockSafeStartDeps struct {
 	deps           mockDependencySet
+	expiryWindow   uint64
 	checkFn        func() (includedIn types.BlockSeal, err error)
 	derivedToSrcFn func() (source types.BlockSeal, err error)
 }
@@ -338,4 +369,8 @@ func (m *mockSafeStartDeps) CrossDerivedToSource(chainID eth.ChainID, derived et
 
 func (m *mockSafeStartDeps) DependencySet() depset.DependencySet {
 	return m.deps
+}
+
+func (m *mockSafeStartDeps) MessageExpiryWindow() uint64 {
+	return m.expiryWindow
 }

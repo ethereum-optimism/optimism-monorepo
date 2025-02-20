@@ -253,12 +253,38 @@ func TestCrossUnsafeHazards(t *testing.T) {
 		require.NoError(t, err)
 		require.Empty(t, hazards)
 	})
+	t.Run("message expiry", func(t *testing.T) {
+		usd := &mockUnsafeStartDeps{}
+		usd.messageExpiryWindow = 10
+		chainID := eth.ChainIDFromUInt64(0)
+		candidate := types.BlockSeal{Timestamp: 12}
+		em1 := &types.ExecutingMessage{Chain: types.ChainIndex(0), Timestamp: 1}
+		execMsgs := []*types.ExecutingMessage{em1}
+		// when there is one execMsg that has just expired,
+		// ErrExpired is returned
+		hazards, err := CrossUnsafeHazards(usd, chainID, candidate, execMsgs)
+		require.ErrorIs(t, err, types.ErrExpired)
+		require.Empty(t, hazards)
+	})
+	t.Run("message near expiry", func(t *testing.T) {
+		usd := &mockUnsafeStartDeps{}
+		usd.messageExpiryWindow = 10
+		chainID := eth.ChainIDFromUInt64(0)
+		candidate := types.BlockSeal{Timestamp: 11}
+		em1 := &types.ExecutingMessage{Chain: types.ChainIndex(0), Timestamp: 1}
+		execMsgs := []*types.ExecutingMessage{em1}
+		// when there is one execMsg that is near expiry, then no error is returned
+		hazards, err := CrossUnsafeHazards(usd, chainID, candidate, execMsgs)
+		require.NoError(t, err)
+		require.Empty(t, hazards)
+	})
 }
 
 type mockUnsafeStartDeps struct {
-	deps            mockDependencySet
-	checkFn         func() (includedIn types.BlockSeal, err error)
-	isCrossUnsafeFn func() error
+	deps                mockDependencySet
+	messageExpiryWindow uint64
+	checkFn             func() (includedIn types.BlockSeal, err error)
+	isCrossUnsafeFn     func() error
 }
 
 func (m *mockUnsafeStartDeps) Contains(chain eth.ChainID, q types.ContainsQuery) (includedIn types.BlockSeal, err error) {
@@ -277,4 +303,8 @@ func (m *mockUnsafeStartDeps) IsCrossUnsafe(chainID eth.ChainID, derived eth.Blo
 
 func (m *mockUnsafeStartDeps) DependencySet() depset.DependencySet {
 	return m.deps
+}
+
+func (m *mockUnsafeStartDeps) MessageExpiryWindow() uint64 {
+	return m.messageExpiryWindow
 }
