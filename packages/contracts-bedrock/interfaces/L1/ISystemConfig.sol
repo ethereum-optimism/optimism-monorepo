@@ -53,7 +53,8 @@ interface ISystemConfig {
         address _unsafeBlockSigner,
         IResourceMetering.ResourceConfig memory _config,
         address _batchInbox,
-        Addresses memory _addresses
+        Addresses memory _addresses,
+        bytes32 _foo
     )
         external;
     function l1CrossDomainMessenger() external view returns (address addr_);

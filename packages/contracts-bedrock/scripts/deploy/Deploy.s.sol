@@ -521,7 +521,8 @@ contract Deploy is Deployer {
                         disputeGameFactory: artifacts.mustGetAddress("DisputeGameFactoryProxy"),
                         optimismPortal: artifacts.mustGetAddress("OptimismPortalProxy"),
                         optimismMintableERC20Factory: artifacts.mustGetAddress("OptimismMintableERC20FactoryProxy")
-                    })
+                    }),
+                    bytes32(0)
                 )
             )
         });

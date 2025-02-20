@@ -883,7 +883,8 @@ contract OPContractsManager is ISemver {
                 _input.roles.unsafeBlockSigner,
                 referenceResourceConfig,
                 chainIdToBatchInboxAddress(_input.l2ChainId),
-                opChainAddrs
+                opChainAddrs,
+                bytes32(0)
             )
         );
     }

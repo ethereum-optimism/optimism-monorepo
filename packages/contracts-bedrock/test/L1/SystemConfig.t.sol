@@ -145,7 +145,8 @@ contract SystemConfig_Initialize_TestFail is SystemConfig_Initialize_Test {
                 disputeGameFactory: address(0),
                 optimismPortal: address(0),
                 optimismMintableERC20Factory: address(0)
-            })
+            }),
+            _foo: bytes32(0)
         });
     }
 
@@ -174,7 +175,8 @@ contract SystemConfig_Initialize_TestFail is SystemConfig_Initialize_Test {
                 disputeGameFactory: address(0),
                 optimismPortal: address(0),
                 optimismMintableERC20Factory: address(0)
-            })
+            }),
+            _foo: bytes32(0)
         });
         assertEq(systemConfig.startBlock(), block.number);
     }
@@ -204,7 +206,8 @@ contract SystemConfig_Initialize_TestFail is SystemConfig_Initialize_Test {
                 disputeGameFactory: address(0),
                 optimismPortal: address(0),
                 optimismMintableERC20Factory: address(0)
-            })
+            }),
+            _foo: bytes32(0)
         });
         assertEq(systemConfig.startBlock(), 1);
     }
@@ -318,7 +321,8 @@ contract SystemConfig_Init_ResourceConfig is SystemConfig_Init {
                 disputeGameFactory: address(0),
                 optimismPortal: address(0),
                 optimismMintableERC20Factory: address(0)
-            })
+            }),
+            _foo: bytes32(0)
         });
     }
 }

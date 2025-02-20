@@ -154,6 +154,7 @@ contract SystemConfig is OwnableUpgradeable, ISemver {
     /// @param _batchInbox        Batch inbox address. An identifier for the op-node to find
     ///                           canonical data.
     /// @param _addresses         Set of L1 contract addresses. These should be the proxies.
+    /// @param _foo               A dummy value for research purposes
     function initialize(
         address _owner,
         uint32 _basefeeScalar,
@@ -163,7 +164,8 @@ contract SystemConfig is OwnableUpgradeable, ISemver {
         address _unsafeBlockSigner,
         IResourceMetering.ResourceConfig memory _config,
         address _batchInbox,
-        SystemConfig.Addresses memory _addresses
+        SystemConfig.Addresses memory _addresses,
+        bytes32 _foo
     )
         public
         initializer
