@@ -1,6 +1,7 @@
 package interop
 
 import (
+	"context"
 	"log/slog"
 	"math/big"
 	"testing"
@@ -10,6 +11,7 @@ import (
 	"github.com/ethereum-optimism/optimism/devnet-sdk/testing/systest"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/testing/testlib/validators"
 	sdktypes "github.com/ethereum-optimism/optimism/devnet-sdk/types"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
 )
 
@@ -63,36 +65,33 @@ func TestInteropSystemNoop(t *testing.T) {
 	})
 }
 
-// TODO Since the mocked wallet now has to receive a valid private key,
-// this test makes little sense
-//
-// func TestSmokeTestFailure(t *testing.T) {
-// 	// Create mock failing system
-// 	mockAddr := common.HexToAddress("0x1234567890123456789012345678901234567890")
-// 	mockWallet := &mockFailingWallet{
-// 		addr: mockAddr,
-// 		key:  "mock-key",
-// 		bal:  sdktypes.NewBalance(big.NewInt(1000000)),
-// 	}
-// 	mockChain := &mockFailingChain{
-// 		id:     sdktypes.ChainID(big.NewInt(1234)),
-// 		wallet: mockWallet,
-// 		reg:    &mockRegistry{},
-// 	}
-// 	mockSys := &mockFailingSystem{chain: mockChain}
+func TestSmokeTestFailure(t *testing.T) {
+	// Create mock failing system
+	mockAddr := common.HexToAddress("0x1234567890123456789012345678901234567890")
+	mockWallet := &mockFailingWallet{
+		addr: mockAddr,
+		bal:  sdktypes.NewBalance(big.NewInt(1000000)),
+	}
+	mockChain := newMockFailingChain(
+		sdktypes.ChainID(big.NewInt(1234)),
+		[]system.Wallet{mockWallet},
+	)
+	mockSys := &mockFailingSystem{chain: mockChain}
 
-// 	// Run the smoke test logic and capture failures
-// 	sentinel := &struct{}{}
-// 	rt := NewRecordingT(context.WithValue(context.TODO(), sentinel, mockWallet))
-// 	rt.TestScenario(
-// 		smokeTestScenario(0, sentinel),
-// 		mockSys,
-// 	)
+	// Run the smoke test logic and capture failures
+	getter := func(ctx context.Context) system.Wallet {
+		return mockWallet
+	}
+	rt := NewRecordingT(context.TODO())
+	rt.TestScenario(
+		smokeTestScenario(0, getter),
+		mockSys,
+	)
 
-// 	// Verify that the test failed due to SendETH error
-// 	require.True(t, rt.Failed(), "test should have failed")
-// 	require.Contains(t, rt.Logs(), "transaction failure", "unexpected failure message")
-// }
+	// Verify that the test failed due to SendETH error
+	require.True(t, rt.Failed(), "test should have failed")
+	require.Contains(t, rt.Logs(), "transaction failure", "unexpected failure message")
+}
 
 func lowLevelSystemScenario(sysGetter validators.LowLevelSystemGetter) systest.SystemTestFunc {
 	return func(t systest.T, sys system.System) {
