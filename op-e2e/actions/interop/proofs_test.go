@@ -392,8 +392,8 @@ func TestInteropFaultProofs_Cycle(gt *testing.T) {
 	// execute them within the same block
 	actExecA := system.InboxContract.Execute(alice, emitTxB) // Exec msg on chain A referencing chain B
 	actExecB := system.InboxContract.Execute(alice, emitTxA) // Exec msg on chain B referencing chain A
-	actExecA(actors.ChainB).Include(actors.ChainB.SequencerEngine.EngineApi)
-	actExecB(actors.ChainA).Include(actors.ChainA.SequencerEngine.EngineApi)
+	actExecA(actors.ChainA).Include(actors.ChainA.SequencerEngine.EngineApi)
+	actExecB(actors.ChainB).Include(actors.ChainB.SequencerEngine.EngineApi)
 
 	actors.ChainA.Sequencer.ActL2EndBlock(t)
 	actors.ChainB.Sequencer.ActL2EndBlock(t)
