@@ -525,11 +525,11 @@ func TestEVM_SingleStep_CloClz64(t *testing.T) {
 		expectedResult Word
 	}{
 		// dclo
-		{name: "dclo", rs: Word(0xFFFF_FFFF_FFFF_FFFF), expectedResult: Word(64), funct: 0b10_0101},
-		{name: "dclo", rs: Word(0xFFFF_FFFF_FFFF_FFFE), expectedResult: Word(63), funct: 0b10_0101},
-		{name: "dclo", rs: Word(0xFFFF_FFFF_0000_0000), expectedResult: Word(32), funct: 0b10_0101},
-		{name: "dclo", rs: Word(0x8000_0000_0000_0000), expectedResult: Word(1), funct: 0b10_0101},
-		{name: "dclo", rs: Word(0x0000_0000_0000_0000), expectedResult: Word(0), funct: 0b10_0101},
+		{name: "dclo", rs: Word(0xFF_FF_FF_FF_FF_FF_FF_FF), expectedResult: Word(64), funct: 0b10_0101},
+		{name: "dclo", rs: Word(0xFF_FF_FF_FF_FF_FF_FF_FE), expectedResult: Word(63), funct: 0b10_0101},
+		{name: "dclo", rs: Word(0xFF_FF_FF_FF_00_00_00_00), expectedResult: Word(32), funct: 0b10_0101},
+		{name: "dclo", rs: Word(0x80_00_00_00_00_00_00_00), expectedResult: Word(1), funct: 0b10_0101},
+		{name: "dclo", rs: Word(0x0), expectedResult: Word(0), funct: 0b10_0101},
 		// dclz
 		{name: "dclz", rs: Word(0x0), expectedResult: Word(64), funct: 0b10_0100},
 		{name: "dclz", rs: Word(0x1), expectedResult: Word(63), funct: 0b10_0100},
