@@ -71,7 +71,7 @@ func TestVerifyBlockSignature(t *testing.T) {
 	t.Run("Valid", func(t *testing.T) {
 		runCfg := &testutils.MockRuntimeConfig{P2PSeqAddress: crypto.PubkeyToAddress(secrets.PublicKey)}
 		signer := &PreparedSigner{Signer: NewLocalSigner(secrets)}
-		sig, err := signer.Sign(context.Background(), SigningDomainBlocksV1, cfg.L2ChainID, msg)
+		sig, err := signer.Sign(context.Background(), SigningDomainBlocksV1, eth.ChainIDFromBig(cfg.L2ChainID), opsigner.PayloadHash(msg))
 		require.NoError(t, err)
 		result := verifyBlockSignature(logger, cfg, runCfg, peerId, sig[:], msg)
 		require.Equal(t, pubsub.ValidationAccept, result)
@@ -80,7 +80,7 @@ func TestVerifyBlockSignature(t *testing.T) {
 	t.Run("WrongSigner", func(t *testing.T) {
 		runCfg := &testutils.MockRuntimeConfig{P2PSeqAddress: common.HexToAddress("0x1234")}
 		signer := &PreparedSigner{Signer: NewLocalSigner(secrets)}
-		sig, err := signer.Sign(context.Background(), SigningDomainBlocksV1, cfg.L2ChainID, msg)
+		sig, err := signer.Sign(context.Background(), SigningDomainBlocksV1, eth.ChainIDFromBig(cfg.L2ChainID), opsigner.PayloadHash(msg))
 		require.NoError(t, err)
 		result := verifyBlockSignature(logger, cfg, runCfg, peerId, sig[:], msg)
 		require.Equal(t, pubsub.ValidationReject, result)
@@ -96,7 +96,7 @@ func TestVerifyBlockSignature(t *testing.T) {
 	t.Run("NoSequencer", func(t *testing.T) {
 		runCfg := &testutils.MockRuntimeConfig{}
 		signer := &PreparedSigner{Signer: NewLocalSigner(secrets)}
-		sig, err := signer.Sign(context.Background(), SigningDomainBlocksV1, cfg.L2ChainID, msg)
+		sig, err := signer.Sign(context.Background(), SigningDomainBlocksV1, eth.ChainIDFromBig(cfg.L2ChainID), opsigner.PayloadHash(msg))
 		require.NoError(t, err)
 		result := verifyBlockSignature(logger, cfg, runCfg, peerId, sig[:], msg)
 		require.Equal(t, pubsub.ValidationIgnore, result)
@@ -108,10 +108,11 @@ type mockRemoteSigner struct {
 }
 
 func (t *mockRemoteSigner) SignBlockPayload(args opsigner.BlockPayloadArgs) (hexutil.Bytes, error) {
-	signingHash, err := args.ToSigningHash()
+	msg, err := args.Message()
 	if err != nil {
 		return nil, err
 	}
+	signingHash := msg.ToSigningHash()
 	signature, err := crypto.Sign(signingHash[:], t.priv)
 	if err != nil {
 		return nil, err
@@ -161,7 +162,7 @@ func TestVerifyBlockSignatureWithRemoteSigner(t *testing.T) {
 		remoteSigner, err := NewRemoteSigner(logger, signerCfg)
 		require.NoError(t, err)
 		signer := &PreparedSigner{Signer: remoteSigner}
-		sig, err := signer.Sign(context.Background(), SigningDomainBlocksV1, cfg.L2ChainID, msg)
+		sig, err := signer.Sign(context.Background(), SigningDomainBlocksV1, eth.ChainIDFromBig(cfg.L2ChainID), opsigner.PayloadHash(msg))
 		require.NoError(t, err)
 		result := verifyBlockSignature(logger, cfg, runCfg, peerId, sig[:], msg)
 		require.Equal(t, pubsub.ValidationAccept, result)
@@ -172,7 +173,7 @@ func TestVerifyBlockSignatureWithRemoteSigner(t *testing.T) {
 		remoteSigner, err := NewRemoteSigner(logger, signerCfg)
 		require.NoError(t, err)
 		signer := &PreparedSigner{Signer: remoteSigner}
-		sig, err := signer.Sign(context.Background(), SigningDomainBlocksV1, cfg.L2ChainID, msg)
+		sig, err := signer.Sign(context.Background(), SigningDomainBlocksV1, eth.ChainIDFromBig(cfg.L2ChainID), opsigner.PayloadHash(msg))
 		require.NoError(t, err)
 		result := verifyBlockSignature(logger, cfg, runCfg, peerId, sig[:], msg)
 		require.Equal(t, pubsub.ValidationReject, result)
@@ -190,7 +191,7 @@ func TestVerifyBlockSignatureWithRemoteSigner(t *testing.T) {
 		remoteSigner, err := NewRemoteSigner(logger, signerCfg)
 		require.NoError(t, err)
 		signer := &PreparedSigner{Signer: remoteSigner}
-		sig, err := signer.Sign(context.Background(), SigningDomainBlocksV1, cfg.L2ChainID, msg)
+		sig, err := signer.Sign(context.Background(), SigningDomainBlocksV1, eth.ChainIDFromBig(cfg.L2ChainID), opsigner.PayloadHash(msg))
 		require.NoError(t, err)
 		result := verifyBlockSignature(logger, cfg, runCfg, peerId, sig[:], msg)
 		require.Equal(t, pubsub.ValidationIgnore, result)
@@ -231,7 +232,7 @@ func createSignedP2Payload(payload MarshalSSZ, signer Signer, l2ChainID *big.Int
 	}
 	data := buf.Bytes()
 	payloadData := data[65:]
-	sig, err := signer.Sign(context.TODO(), SigningDomainBlocksV1, l2ChainID, payloadData)
+	sig, err := signer.Sign(context.TODO(), SigningDomainBlocksV1, eth.ChainIDFromBig(l2ChainID), opsigner.PayloadHash(payloadData))
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign execution payload with signer: %w", err)
 	}
