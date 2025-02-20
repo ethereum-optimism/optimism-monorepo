@@ -32,7 +32,7 @@ RUN wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_$TARG
 
 # Install versioned toolchain
 COPY ./mise.toml .
-RUN mise trust && mise install -v -y just && cp $(mise which just) /usr/local/bin/just
+RUN mise trust && mise install -v -y just && cp $(mise which just) /usr/local/bin/just && just --version
 
 # We copy the go.mod/sum first, so the `go mod download` does not have to re-run if dependencies do not change.
 COPY ./go.mod /app/go.mod
