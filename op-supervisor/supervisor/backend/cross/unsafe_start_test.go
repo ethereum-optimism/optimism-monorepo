@@ -256,6 +256,10 @@ func TestCrossUnsafeHazards(t *testing.T) {
 	t.Run("message expiry", func(t *testing.T) {
 		usd := &mockUnsafeStartDeps{}
 		usd.messageExpiryWindow = 10
+		sampleBlockSeal := types.BlockSeal{Timestamp: 1}
+		usd.checkFn = func() (includedIn types.BlockSeal, err error) {
+			return sampleBlockSeal, nil
+		}
 		chainID := eth.ChainIDFromUInt64(0)
 		candidate := types.BlockSeal{Timestamp: 12}
 		em1 := &types.ExecutingMessage{Chain: types.ChainIndex(0), Timestamp: 1}
@@ -269,6 +273,10 @@ func TestCrossUnsafeHazards(t *testing.T) {
 	t.Run("message near expiry", func(t *testing.T) {
 		usd := &mockUnsafeStartDeps{}
 		usd.messageExpiryWindow = 10
+		sampleBlockSeal := types.BlockSeal{Timestamp: 1}
+		usd.checkFn = func() (includedIn types.BlockSeal, err error) {
+			return sampleBlockSeal, nil
+		}
 		chainID := eth.ChainIDFromUInt64(0)
 		candidate := types.BlockSeal{Timestamp: 11}
 		em1 := &types.ExecutingMessage{Chain: types.ChainIndex(0), Timestamp: 1}
@@ -306,5 +314,8 @@ func (m *mockUnsafeStartDeps) DependencySet() depset.DependencySet {
 }
 
 func (m *mockUnsafeStartDeps) MessageExpiryWindow() uint64 {
+	if m.messageExpiryWindow == 0 {
+		return 100
+	}
 	return m.messageExpiryWindow
 }

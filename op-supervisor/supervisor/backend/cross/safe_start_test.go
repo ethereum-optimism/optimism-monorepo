@@ -372,5 +372,8 @@ func (m *mockSafeStartDeps) DependencySet() depset.DependencySet {
 }
 
 func (m *mockSafeStartDeps) MessageExpiryWindow() uint64 {
+	if m.expiryWindow == 0 {
+		return 100
+	}
 	return m.expiryWindow
 }
