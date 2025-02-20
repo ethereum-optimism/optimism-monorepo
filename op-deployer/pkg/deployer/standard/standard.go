@@ -220,6 +220,8 @@ func ChainNameFor(chainID uint64) (string, error) {
 		return "mainnet", nil
 	case 11155111:
 		return "sepolia", nil
+	case 17000:
+		return "holesky", nil
 	default:
 		return "", fmt.Errorf("unrecognized l1 chain ID: %d", chainID)
 	}
@@ -265,6 +267,13 @@ func ManagerImplementationAddrFor(chainID uint64, tag string) (common.Address, e
 			return common.HexToAddress("0xefb0779120d9cc3582747e5eb787d859e3a53a5c"), nil
 		default:
 			return common.Address{}, fmt.Errorf("unsupported sepolia tag: %s", tag)
+		}
+	case 17000:
+		switch tag {
+		case "op-contracts/v1.8.0-rc.4":
+			return common.HexToAddress("0x9ef315df7ed064c87c182c64fc6db1c080941118"), nil
+		default:
+			return common.Address{}, fmt.Errorf("unsupported holesky tag: %s", tag)
 		}
 	default:
 		return common.Address{}, fmt.Errorf("unsupported chain ID: %d", chainID)
