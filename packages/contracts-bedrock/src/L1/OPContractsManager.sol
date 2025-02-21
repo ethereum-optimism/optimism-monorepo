@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
+import { Script } from "forge-std/Script.sol";
+
 // Libraries
 import { Blueprint } from "src/libraries/Blueprint.sol";
 import { Constants } from "src/libraries/Constants.sol";
@@ -30,6 +32,8 @@ import { IL1ERC721Bridge } from "interfaces/L1/IL1ERC721Bridge.sol";
 import { IL1StandardBridge } from "interfaces/L1/IL1StandardBridge.sol";
 import { IOptimismMintableERC20Factory } from "interfaces/universal/IOptimismMintableERC20Factory.sol";
 import { IHasSuperchainConfig } from "interfaces/L1/IHasSuperchainConfig.sol";
+
+import { FaultDisputeGame } from "src/dispute/FaultDisputeGame.sol";
 
 contract OPContractsManager is ISemver {
     // -------- Structs --------
@@ -1200,3 +1204,51 @@ contract OPContractsManager is ISemver {
         setDGFImplementation(IDisputeGameFactory(_opChainAddrs.disputeGameFactory), _gameType, IDisputeGame(newGame));
     }
 }
+
+contract AddFdg is Script {
+    IPermissionedDisputeGame permissionedDisputeGameAddress =
+        IPermissionedDisputeGame(0xc0B6c36E14755296476d5D8343654706FE0978a8);
+    IDisputeGameFactory disputeGameFactoryProxyAddress =
+        IDisputeGameFactory(0xF1408Ef0c263F8c42CefCc59146f90890615A191);
+    IOptimismPortal2 optimismPortalProxyAddress = IOptimismPortal2(payable(0x8A2e914dfA08d36761fFE0E9cCBBce4f095DFbd2));
+
+    function run() external {
+        // Get params from existing permissioned dispute game
+        FaultDisputeGame.GameConstructorParams memory params =
+            getGameConstructorParams(IFaultDisputeGame(address(permissionedDisputeGameAddress)));
+
+        vm.startBroadcast(msg.sender);
+        // Deploy new fault dispute game with same params
+        FaultDisputeGame newFDG = new FaultDisputeGame(params);
+
+        // Set implementation in dispute game factory
+        disputeGameFactoryProxyAddress.setImplementation(GameTypes.CANNON, IDisputeGame(address(newFDG)));
+
+        // Set initial bond amount
+        disputeGameFactoryProxyAddress.setInitBond(GameTypes.CANNON, 0.1 ether);
+
+        vm.stopBroadcast();
+    }
+
+    /// @notice Retrieves the constructor params for a given game.
+    function getGameConstructorParams(IFaultDisputeGame _disputeGame)
+        internal
+        view
+        returns (FaultDisputeGame.GameConstructorParams memory)
+    {
+        FaultDisputeGame.GameConstructorParams memory params = FaultDisputeGame.GameConstructorParams({
+            gameType: _disputeGame.gameType(),
+            absolutePrestate: _disputeGame.absolutePrestate(),
+            maxGameDepth: _disputeGame.maxGameDepth(),
+            splitDepth: _disputeGame.splitDepth(),
+            clockExtension: _disputeGame.clockExtension(),
+            maxClockDuration: _disputeGame.maxClockDuration(),
+            vm: _disputeGame.vm(),
+            weth: _disputeGame.weth(),
+            anchorStateRegistry: _disputeGame.anchorStateRegistry(),
+            l2ChainId: _disputeGame.l2ChainId()
+        });
+        return params;
+    }
+}
+
