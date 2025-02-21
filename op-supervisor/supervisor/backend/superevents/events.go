@@ -160,3 +160,15 @@ type ChainRewoundEvent struct {
 func (ev ChainRewoundEvent) String() string {
 	return "chain-rewound"
 }
+
+// ResetReadyEvent is sent when the supervisor is ready to reset a particular node
+// it should be passed to OnEvent directly, not emitted
+type ResetReadyEvent struct {
+	Unsafe    eth.BlockID
+	Safe      eth.BlockID
+	Finalized eth.BlockID
+}
+
+func (ev ResetReadyEvent) String() string {
+	return "reset-ready"
+}

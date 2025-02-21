@@ -522,6 +522,14 @@ func (su *SupervisorBackend) SafeDerivedAt(ctx context.Context, chainID eth.Chai
 	return v.ID(), nil
 }
 
+func (su *SupervisorBackend) FindSealedBlock(ctx context.Context, chainID eth.ChainID, number uint64) (eth.BlockID, error) {
+	seal, err := su.chainDBs.FindSealedBlock(chainID, number)
+	if err != nil {
+		return eth.BlockID{}, err
+	}
+	return seal.ID(), nil
+}
+
 // AllSafeDerivedAt returns the last derived block for each chain, from the given L1 block
 func (su *SupervisorBackend) AllSafeDerivedAt(ctx context.Context, source eth.BlockID) (map[eth.ChainID]eth.BlockID, error) {
 	chains := su.depSet.Chains()

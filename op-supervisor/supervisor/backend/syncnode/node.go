@@ -24,6 +24,7 @@ import (
 type backend interface {
 	LocalSafe(ctx context.Context, chainID eth.ChainID) (pair types.DerivedIDPair, err error)
 	LocalUnsafe(ctx context.Context, chainID eth.ChainID) (eth.BlockID, error)
+	FindSealedBlock(ctx context.Context, chainID eth.ChainID, number uint64) (eth.BlockID, error)
 	IsLocalSafe(ctx context.Context, chainID eth.ChainID, block eth.BlockID) error
 	IsLocalUnsafe(ctx context.Context, chainID eth.ChainID, block eth.BlockID) error
 	CrossSafe(ctx context.Context, chainID eth.ChainID) (pair types.DerivedIDPair, err error)
@@ -59,7 +60,7 @@ type ManagedNode struct {
 	cancel context.CancelFunc
 	wg     sync.WaitGroup
 
-	lastState consistencyState
+	lastState trackedState
 }
 
 var _ event.AttachEmitter = (*ManagedNode)(nil)
@@ -87,6 +88,16 @@ func (m *ManagedNode) AttachEmitter(em event.Emitter) {
 }
 
 func (m *ManagedNode) OnEvent(ev event.Event) bool {
+	// if a reset is ready, always process it
+	if reset, ok := ev.(superevents.ResetReadyEvent); ok {
+		m.OnResetReady(reset.Unsafe, reset.Safe, reset.Finalized)
+		return true
+	}
+	// if we're in the middle of a reset, don't process any other events
+	if m.lastState.ongoingReset != nil {
+		m.log.Debug("Ignoring event during ongoing reset", "event", ev)
+		return false
+	}
 	switch x := ev.(type) {
 	case superevents.InvalidateLocalSafeEvent:
 		if x.ChainID != m.chainID {
@@ -112,7 +123,6 @@ func (m *ManagedNode) OnEvent(ev event.Event) bool {
 		if x.ChainID != m.chainID {
 			return false
 		}
-		m.recovery()
 	default:
 		return false
 	}
@@ -200,6 +210,10 @@ func (m *ManagedNode) PullEvents(ctx context.Context) (pulledAny bool, err error
 }
 
 func (m *ManagedNode) onNodeEvent(ev *types.ManagedEvent) {
+	if m.lastState.ongoingReset != nil {
+		m.log.Debug("Ignoring event during ongoing reset", "event", ev)
+		return
+	}
 	if ev == nil {
 		m.log.Warn("Received nil event")
 		return
@@ -224,14 +238,28 @@ func (m *ManagedNode) onNodeEvent(ev *types.ManagedEvent) {
 	}
 }
 
+// onResetEvent handles a reset event from the node
 func (m *ManagedNode) onResetEvent(errStr string) {
 	m.log.Warn("Node sent us a reset error", "err", errStr)
 	if strings.Contains(errStr, "cannot continue derivation until Engine has been reset") {
 		// TODO
 		return
 	}
+}
 
-	m.recovery()
+// OnResetReady handles a reset-ready event from the supervisor
+func (m *ManagedNode) OnResetReady(unsafe, safe, finalized eth.BlockID) {
+	m.log.Info("Reset ready event received", "unsafe", unsafe, "safe", safe, "finalized", finalized)
+	ctx, cancel := context.WithTimeout(m.ctx, nodeTimeout)
+	defer cancel()
+	if err := m.Node.Reset(ctx, unsafe, safe, finalized); err != nil {
+		m.log.Error("Failed to reset node", "err", err)
+		// clear the ongoing reset, and immediately check consistency again
+		m.lastState.ongoingReset = nil
+		m.checkConsistencyWithDB()
+	}
+	// reset was successful, clear the ongoing reset
+	m.lastState.ongoingReset = nil
 }
 
 func (m *ManagedNode) onCrossUnsafeUpdate(seal types.BlockSeal) {
@@ -278,7 +306,7 @@ func (m *ManagedNode) onUnsafeBlock(unsafeRef eth.BlockRef) {
 	})
 	// this new unsafe block may conflict with the supervisor's unsafe block
 	m.lastState.lastNodeLocalUnsafe = unsafeRef.ID()
-	m.checkConsistencyState()
+	m.checkConsistencyWithDB()
 }
 
 func (m *ManagedNode) onDerivationUpdate(pair types.DerivedBlockRefPair) {
@@ -289,7 +317,7 @@ func (m *ManagedNode) onDerivationUpdate(pair types.DerivedBlockRefPair) {
 		Derived: pair,
 	})
 	m.lastState.lastNodeLocalSafe = pair.Derived.ID()
-	m.checkConsistencyState()
+	m.checkConsistencyWithDB()
 }
 
 func (m *ManagedNode) onDerivationOriginUpdate(origin eth.BlockRef) {
@@ -298,18 +326,6 @@ func (m *ManagedNode) onDerivationOriginUpdate(origin eth.BlockRef) {
 		ChainID: m.chainID,
 		Origin:  origin,
 	})
-}
-
-func (m *ManagedNode) maybeRecover() {
-	m.recovery()
-}
-
-func (m *ManagedNode) recovery() {
-	// TODO: trigger event to continue reducing of search space,
-	//  which then triggers eventual reset.
-	// -- I'm not sure triggering events is a good idea here, since the OnEvent handlers
-	// -- still need to filter down to which host is being referenced. Maybe this can just be
-	// -- an async job that is triggered and then sets a recovery flag when ready
 }
 
 func (m *ManagedNode) onNodeLocalSafeUpdate(update eth.BlockRef) {
@@ -324,40 +340,6 @@ func (m *ManagedNode) onNodeLocalUnsafeUpdate(update eth.BlockRef) {
 
 	// TODO also check DB
 	// if mismatch, start recovery
-}
-func (m *ManagedNode) onSupervisorLocalSafeUpdate(update eth.BlockRef) {
-	if m.lastSupervisorLocalSafe.Hash != update.Hash && m.lastSupervisorLocalSafe.Hash != update.ParentHash {
-		// reorg may have continued!
-		m.recovery()
-	}
-}
-
-func (m *ManagedNode) onSupervisorLocalUnsafeUpdate(update eth.BlockRef) {
-	if m.lastSupervisorUnsafe.Hash != update.Hash && m.lastSupervisorUnsafe.Hash != update.ParentHash {
-		// reorg may have continued!
-		m.recovery()
-	}
-}
-
-func (m *ManagedNode) reduceSearchSpace() {
-	hi := m.lastConflictingBlock.Number
-	lo := m.lastCommonBlock.Number
-	if hi == lo {
-		// found the matching tip of the chain, time to reset
-		m.resetTo(hi)
-	}
-	if hi < lo {
-		// abort
-		return
-	}
-	pivot := (lo + hi) / 2
-	// TODO load pivot from both op-node and supervisor
-
-	// TODO check if pivot matches
-	// if it matches, set lastCommonBlock to pivot
-	// if it does not, set lastConflictingBlock to pivot
-
-	// TODO: trigger event to continue reducing of search space
 }
 
 // resetTo prepares a reset to the given block,
