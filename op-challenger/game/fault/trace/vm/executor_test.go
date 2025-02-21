@@ -2,6 +2,7 @@ package vm
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"math/big"
 	"os/exec"
@@ -82,11 +83,30 @@ func TestGenerateProof(t *testing.T) {
 		validateMetrics(t, m, info, cfg)
 	})
 
-	t.Run("PanickingExecCmd", func(t *testing.T) {
+	t.Run("ExecPanics", func(t *testing.T) {
 		m := newMetrics()
 		cfg.DebugInfo = true
 		cfg.BinarySnapshots = false
-		err, _ := panickingExec(t, dir, cfg, inputs, info, 100, m)
+		err, _ := customExec(t, panickingExecCmd(), dir, cfg, inputs, info, 100, m)
+		require.Equal(t, ErrVMPanic, err)
+		requireEmptyMetrics(t, m)
+	})
+
+	t.Run("ExecExitCode1", func(t *testing.T) {
+		m := newMetrics()
+		cfg.DebugInfo = true
+		cfg.BinarySnapshots = false
+		err, _ := customExec(t, failingExecCmd(1), dir, cfg, inputs, info, 100, m)
+		require.NotNil(t, err)
+		require.NotEqual(t, ErrVMPanic, err)
+		requireEmptyMetrics(t, m)
+	})
+
+	t.Run("ExecExitCode2", func(t *testing.T) {
+		m := newMetrics()
+		cfg.DebugInfo = true
+		cfg.BinarySnapshots = false
+		err, _ := customExec(t, failingExecCmd(2), dir, cfg, inputs, info, 100, m)
 		require.Equal(t, ErrVMPanic, err)
 		requireEmptyMetrics(t, m)
 	})
@@ -118,7 +138,23 @@ func captureExec(t *testing.T, dir string, cfg Config, inputs utils.LocalGameInp
 	return binary, subcommand, args
 }
 
-func panickingExec(t *testing.T, dir string, cfg Config, inputs utils.LocalGameInputs, info *mipsevm.DebugInfo, proofAt uint64, m Metricer) (error, map[string]string) {
+func failingExecCmd(exitCode int) *exec.Cmd {
+	exitCmd := fmt.Sprintf("exit %d", exitCode)
+	return exec.Command("sh", "-c", exitCmd)
+}
+
+func panickingExecCmd() *exec.Cmd {
+	cmd := exec.Command("go", "run", "-e", "-")
+	cmd.Stdin = strings.NewReader(`
+			package main
+			func main() {
+				panic("simulated panic")
+			}
+		`)
+	return cmd
+}
+
+func customExec(t *testing.T, cmd *exec.Cmd, dir string, cfg Config, inputs utils.LocalGameInputs, info *mipsevm.DebugInfo, proofAt uint64, m Metricer) (error, map[string]string) {
 	input := "starting.json"
 	prestate := "pre.json"
 	executor := NewExecutor(testlog.Logger(t, log.LevelInfo), m, cfg, &noArgServerExecutor{}, prestate, inputs)
@@ -134,15 +170,6 @@ func panickingExec(t *testing.T, dir string, cfg Config, inputs utils.LocalGameI
 		debugPath := args["--debug-info"]
 		err := jsonutil.WriteJSON(info, ioutil.ToStdOutOrFileOrNoop(debugPath, 0o755))
 		require.NoError(t, err)
-
-		// Execute a command that panics
-		cmd := exec.Command("go", "run", "-e", "-")
-		cmd.Stdin = strings.NewReader(`
-			package main
-			func main() {
-				panic("simulated panic")
-			}
-		`)
 
 		cmdError := cmd.Run()
 
