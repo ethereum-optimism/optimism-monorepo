@@ -364,7 +364,7 @@ func TestInteropFaultProofs(gt *testing.T) {
 func TestInteropFaultProofs_Cycle(gt *testing.T) {
 	t := helpers.NewDefaultTesting(gt)
 	// TODO(#14425): Handle cyclic valid messages
-	t.Skip("Cyclic valid messages does not work")
+	//t.Skip("Cyclic valid messages does not work")
 
 	system := dsl.NewInteropDSL(t)
 	actors := system.Actors
@@ -385,15 +385,15 @@ func TestInteropFaultProofs_Cycle(gt *testing.T) {
 
 	// create init messages
 	emitTxA := actEmitA(actors.ChainA)
-	emitTxA.Include(actors.ChainA.SequencerEngine.EngineApi)
+	emitTxA.Include()
 	emitTxB := actEmitB(actors.ChainB)
-	emitTxB.Include(actors.ChainB.SequencerEngine.EngineApi)
+	emitTxB.Include()
 
 	// execute them within the same block
 	actExecA := system.InboxContract.Execute(alice, emitTxB) // Exec msg on chain A referencing chain B
 	actExecB := system.InboxContract.Execute(alice, emitTxA) // Exec msg on chain B referencing chain A
-	actExecA(actors.ChainA).Include(actors.ChainA.SequencerEngine.EngineApi)
-	actExecB(actors.ChainB).Include(actors.ChainB.SequencerEngine.EngineApi)
+	actExecA(actors.ChainA).Include()
+	actExecB(actors.ChainB).Include()
 
 	actors.ChainA.Sequencer.ActL2EndBlock(t)
 	actors.ChainB.Sequencer.ActL2EndBlock(t)

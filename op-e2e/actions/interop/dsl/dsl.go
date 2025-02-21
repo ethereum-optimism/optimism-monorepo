@@ -150,8 +150,7 @@ func (d *InteropDSL) AddL2Block(chain *Chain, optionalArgs ...func(*AddL2BlockOp
 		priorSyncStatus := chain.Sequencer.SyncStatus()
 		chain.Sequencer.ActL2StartBlock(d.t)
 		for _, creator := range opts.TransactionCreators {
-			tx := creator(chain)
-			tx.Include(chain.SequencerEngine.EngineApi)
+			creator(chain).Include()
 		}
 		chain.Sequencer.ActL2EndBlock(d.t)
 		chain.Sequencer.SyncSupervisor(d.t)

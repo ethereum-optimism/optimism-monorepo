@@ -34,8 +34,8 @@ func NewGeneratedTransaction(t helpers.Testing, chain *Chain, tx *types.Transact
 	}
 }
 
-func (m *GeneratedTransaction) Include(includer TxIncluder) {
-	rcpt, err := includer.IncludeTx(m.tx, m.from)
+func (m *GeneratedTransaction) Include() {
+	rcpt, err := m.chain.SequencerEngine.EngineApi.IncludeTx(m.tx, m.from)
 	require.NoError(m.t, err)
 	m.rcpt = rcpt
 }
