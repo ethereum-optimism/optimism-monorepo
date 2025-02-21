@@ -211,7 +211,6 @@ func TestSimpleGetters(t *testing.T) {
 }
 
 func TestBondDistributionMode(t *testing.T) {
-	// Maybe should add vers1.2.0 - this was only added in 1.4.0
 	unsupportedVersions := []string{vers080, vers0180, vers111, vers120, vers131}
 	for _, version := range versions {
 		version := version
