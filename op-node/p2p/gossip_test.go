@@ -128,13 +128,11 @@ func TestVerifyBlockSignatureWithRemoteSigner(t *testing.T) {
 		"127.0.0.1",
 		0,
 		"test",
-		oprpc.WithAPIs([]rpc.API{
-			{
-				Namespace: "opsigner",
-				Service:   remoteSigner,
-			},
-		}),
 	)
+	server.AddAPI(rpc.API{
+		Namespace: "opsigner",
+		Service:   remoteSigner,
+	})
 
 	require.NoError(t, server.Start())
 	defer func() {
