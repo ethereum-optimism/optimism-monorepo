@@ -36,7 +36,7 @@ func (m *RWMap[K, V]) CreateIfMissing(key K, fn func() V) (changed bool) {
 }
 
 // SetIfMissing is a convenience function to set a missing value if it does not already exist.
-// To lazy-init the value, see Default.
+// To lazy-init the value, see CreateIfMissing.
 func (m *RWMap[K, V]) SetIfMissing(key K, v V) (changed bool) {
 	return m.CreateIfMissing(key, func() V {
 		return v
