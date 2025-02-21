@@ -29,9 +29,9 @@ just = "1.37.0"
 # Foundry is a special case because it supplies multiple binaries at the same
 # GitHub release, so we need to use the aliasing trick to get mise to not error
 # The git ref here should be on the `stable` branch.
-forge = "stable"
-cast = "stable"
-anvil = "stable"
+forge = "v1.0.0"
+cast = "v1.0.0"
+anvil = "v1.0.0"
 
 # Other dependencies
 codecov-uploader = "0.8.0"
