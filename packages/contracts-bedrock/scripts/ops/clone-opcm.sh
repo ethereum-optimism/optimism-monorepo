@@ -42,7 +42,6 @@ fi
 
 get_contract_creation_tx() {
   local contract_address=$1
-  local api_key=$2
 
   curl -s -X GET "https://api.etherscan.io/api?module=contract&action=getcontractcreation&contractaddresses=$contract_address&apikey=$ETHERSCAN_API_KEY" | jq -r '.result[0].txHash'
 }
@@ -50,12 +49,12 @@ get_contract_creation_tx() {
 get_contract_creation_info() {
   local tx_hash=$1
 
-  cast tx $tx_hash --rpc-url $SOURCE_RPC --json
+  cast tx "$tx_hash" --rpc-url "$SOURCE_RPC" --json
 }
 
 # Get implementation addresses from OPCM
 echo "Fetching implementation addresses..."
-IMPLEMENTATIONS=$(cast call $OPCM_ADDRESS 'implementations()(address,address,address,address,address,address,address,address,address)' --rpc-url $SOURCE_RPC)
+IMPLEMENTATIONS=$(cast call "$OPCM_ADDRESS" 'implementations()(address,address,address,address,address,address,address,address,address)' --rpc-url "$SOURCE_RPC")
 
 # Parse the implementation addresses into individual variables
 L1_ERC721_BRIDGE_IMPL=$(echo "$IMPLEMENTATIONS" | sed -n '1p')
@@ -109,13 +108,13 @@ for i in "${!IMPL_NAMES[@]}"; do
 
         # Get the preimage oracle address from the MIPS contract
         echo "Getting preimage oracle address from MIPS contract..."
-        old_oracle_address=$(cast call $impl_address "oracle()(address)" --rpc-url $SOURCE_RPC)
+        old_oracle_address=$(cast call "$impl_address" "oracle()(address)" --rpc-url "$SOURCE_RPC")
         echo "Found preimage oracle at $old_oracle_address"
 
         # Clone the preimage oracle first
         echo "Cloning preimage oracle..."
-        oracle_tx=$(get_contract_creation_tx $old_oracle_address $ETHERSCAN_API_KEY)
-        oracle_info=$(get_contract_creation_info $oracle_tx)
+        oracle_tx=$(get_contract_creation_tx "$old_oracle_address" "$ETHERSCAN_API_KEY")
+        oracle_info=$(get_contract_creation_info "$oracle_tx")
         oracle_input=$(echo "$oracle_info" | jq -r '.input')
 
         # Remove 0x prefix
@@ -129,16 +128,16 @@ for i in "${!IMPL_NAMES[@]}"; do
         new_oracle_address=$(cast create2 -d $CREATE2_DEPLOYER --salt "0x$oracle_salt" -i "0x$oracle_code")
 
         # Deploy oracle if not already deployed
-        code=$(cast code $new_oracle_address --rpc-url $TARGET_RPC)
+        code=$(cast code "$new_oracle_address" --rpc-url "$TARGET_RPC")
         if [ "$code" = "0x" ]; then
             echo "Deploying oracle..."
-            cast send --private-key $PRIVATE_KEY --rpc-url $TARGET_RPC $CREATE2_DEPLOYER "0x$oracle_input"
+            cast send --private-key "$PRIVATE_KEY" --rpc-url "$TARGET_RPC" $CREATE2_DEPLOYER "0x$oracle_input"
         fi
         echo "Preimage oracle at $new_oracle_address"
 
         # Now handle MIPS deployment with the new oracle address
-        creation_tx=$(get_contract_creation_tx $impl_address $ETHERSCAN_API_KEY)
-        creation_info=$(get_contract_creation_info $creation_tx)
+        creation_tx=$(get_contract_creation_tx "$impl_address" "$ETHERSCAN_API_KEY")
+        creation_info=$(get_contract_creation_info "$creation_tx")
         creation_input=$(echo "$creation_info" | jq -r '.input')
 
         # Remove 0x prefix for string manipulation
@@ -151,12 +150,13 @@ for i in "${!IMPL_NAMES[@]}"; do
         new_oracle_lower=$(echo "$new_oracle_address" | tr '[:upper:]' '[:lower:]')
         new_oracle_lower=${new_oracle_lower:2}  # Remove 0x
 
+        # shellcheck disable=SC2001
         modified_input=$(echo "$creation_input" | sed "s/$old_oracle_lower/$new_oracle_lower/g")
 
         # Deploy MIPS using Create1
         echo "Deploying MIPS via Create1..."
-        new_address=$(cast send --private-key $PRIVATE_KEY \
-            --rpc-url $TARGET_RPC \
+        new_address=$(cast send --private-key "$PRIVATE_KEY" \
+            --rpc-url "$TARGET_RPC" \
             --create "0x$modified_input" \
             --json | jq -r '.contractAddress')
 
@@ -168,7 +168,7 @@ for i in "${!IMPL_NAMES[@]}"; do
     # Regular implementation handling for non-MIPS contracts
     # Get the contract creation transaction
     echo "Fetching contract creation transaction..."
-    creation_tx=$(get_contract_creation_tx $impl_address $ETHERSCAN_API_KEY)
+    creation_tx=$(get_contract_creation_tx "$impl_address" "$ETHERSCAN_API_KEY")
 
     if [ -z "$creation_tx" ]; then
         echo "Failed to get creation transaction for $impl_name"
@@ -177,7 +177,7 @@ for i in "${!IMPL_NAMES[@]}"; do
 
     # Get the contract creation input
     echo "Fetching contract creation input..."
-    creation_info=$(get_contract_creation_info $creation_tx)
+    creation_info=$(get_contract_creation_info "$creation_tx")
     creation_input=$(echo "$creation_info" | jq -r '.input')
     # Remove the 0x from the input since we need to slice it
     creation_input=${creation_input:2}
@@ -200,7 +200,7 @@ for i in "${!IMPL_NAMES[@]}"; do
         echo "Precomputed address: $precomputed_address"
 
         echo "Checking if the new address already has code..."
-        code=$(cast code $precomputed_address --rpc-url $TARGET_RPC)
+        code=$(cast code "$precomputed_address" --rpc-url "$TARGET_RPC")
         if [ "$code" != "0x" ]; then
             echo "The new address already has code, skipping..."
             NEW_IMPL_ADDRESSES+=("$precomputed_address")
@@ -210,14 +210,14 @@ for i in "${!IMPL_NAMES[@]}"; do
         # Deploy the contract to the target chain using Create2Deployer
         echo "Deploying $impl_name to target chain via Create2..."
 
-        cast send --private-key $PRIVATE_KEY \
-            --rpc-url $TARGET_RPC \
+        cast send --private-key "$PRIVATE_KEY" \
+            --rpc-url "$TARGET_RPC" \
             $CREATE2_DEPLOYER \
             "0x$creation_input"
 
         # Validate that the new address has code
         echo "Validating that the new address has code..."
-        code=$(cast code $precomputed_address --rpc-url $TARGET_RPC)
+        code=$(cast code "$precomputed_address" --rpc-url "$TARGET_RPC")
         if [ "$code" == "0x" ]; then
             echo "❌ No code was deployed for $impl_name"
             continue
@@ -231,9 +231,9 @@ for i in "${!IMPL_NAMES[@]}"; do
         initcode="0x$creation_input"
 
         echo "Deploying $impl_name to target chain via Create..."
-        new_address=$(cast send --private-key $PRIVATE_KEY \
-            --rpc-url $TARGET_RPC \
-            --create $initcode \
+        new_address=$(cast send --private-key "$PRIVATE_KEY" \
+            --rpc-url "$TARGET_RPC" \
+            --create "$initcode" \
             --json | jq -r '.contractAddress')
 
         echo "✅ Successfully cloned $impl_name to $new_address"
@@ -242,7 +242,7 @@ for i in "${!IMPL_NAMES[@]}"; do
 done
 
 echo "Fetching blueprint addresses..."
-BLUEPRINT_ADDRESSES=$(cast call $OPCM_ADDRESS 'blueprints()(address,address,address,address,address,address,address,address)' --rpc-url $SOURCE_RPC)
+BLUEPRINT_ADDRESSES=$(cast call "$OPCM_ADDRESS" 'blueprints()(address,address,address,address,address,address,address,address)' --rpc-url "$SOURCE_RPC")
 
 # Parse the blueprint addresses into individual variables
 ADDRESS_MANAGER_BLUEPRINT=$(echo "$BLUEPRINT_ADDRESSES" | sed -n '1p')
@@ -297,7 +297,7 @@ for i in "${!BLUEPRINT_NAMES[@]}"; do
 
     # Get the deployed bytecode from the source chain
     echo "Fetching blueprint bytecode..."
-    deployed_code=$(cast code $blueprint_address --rpc-url $SOURCE_RPC)
+    deployed_code=$(cast code "$blueprint_address" --rpc-url "$SOURCE_RPC")
     if [ -z "$deployed_code" ] || [ "$deployed_code" = "0x" ]; then
         echo "Bad bytecode for $blueprint_name"
         continue
@@ -323,7 +323,7 @@ for i in "${!BLUEPRINT_NAMES[@]}"; do
 
     # Check if the contract is already deployed
     echo "Checking if the new address already has code..."
-    code=$(cast code $precomputed_address --rpc-url $TARGET_RPC)
+    code=$(cast code "$precomputed_address" --rpc-url "$TARGET_RPC")
     if [ "$code" != "0x" ]; then
         echo "The new address already has code, skipping..."
         NEW_BLUEPRINT_ADDRESSES+=("$precomputed_address")
@@ -332,14 +332,14 @@ for i in "${!BLUEPRINT_NAMES[@]}"; do
 
     # Deploy the blueprint using Create2
     echo "Deploying $blueprint_name blueprint via Create2..."
-    cast send --private-key $PRIVATE_KEY \
-        --rpc-url $TARGET_RPC \
+    cast send --private-key "$PRIVATE_KEY" \
+        --rpc-url "$TARGET_RPC" \
         $CREATE2_DEPLOYER \
         "0x${salt:2}$deployer_bytecode"
 
     # Validate that the new address has code
     echo "Validating that the new address has code..."
-    code=$(cast code $precomputed_address --rpc-url $TARGET_RPC)
+    code=$(cast code "$precomputed_address" --rpc-url "$TARGET_RPC")
     if [ "$code" == "0x" ]; then
         echo "❌ No code was deployed for $blueprint_name"
         exit 1
@@ -366,11 +366,11 @@ echo "Deploying OPCM..."
 
 # Get the contract creation transaction
 echo "Fetching OPCM creation transaction..."
-opcm_creation_tx=$(get_contract_creation_tx $OPCM_ADDRESS $ETHERSCAN_API_KEY)
+opcm_creation_tx=$(get_contract_creation_tx "$OPCM_ADDRESS" "$ETHERSCAN_API_KEY")
 
 # Get the contract creation input
 echo "Fetching OPCM creation input..."
-opcm_creation_info=$(get_contract_creation_info $opcm_creation_tx)
+opcm_creation_info=$(get_contract_creation_info "$opcm_creation_tx")
 opcm_creation_input=$(echo "$opcm_creation_info" | jq -r '.input')
 # Remove 0x prefix
 opcm_creation_input=${opcm_creation_input:2}
@@ -385,8 +385,8 @@ deployment_input="0x${opcm_creation_input:0:$cut_position}${CONSTRUCTOR_ARGS}"
 
 # Deploy OPCM to the target chain
 echo "Deploying OPCM to target chain..."
-new_opcm_address=$(cast send --private-key $PRIVATE_KEY \
-    --rpc-url $TARGET_RPC \
+new_opcm_address=$(cast send --private-key "$PRIVATE_KEY" \
+    --rpc-url "$TARGET_RPC" \
     --create "$deployment_input" \
     --json | jq -r '.contractAddress')
 
