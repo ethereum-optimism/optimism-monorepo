@@ -57,7 +57,7 @@
   {
     "version": "1.4.0-unichain-mainnet",
     "hash": "0x03d5baff435a6828cfa13679e7ef34ac73d4d674550426c7d9a8005deb6a6db3",
-    "type": "cannon64",
+    "type": "cannon64"
   },
   {
     "version": "1.4.0-unichain-mainnet",
