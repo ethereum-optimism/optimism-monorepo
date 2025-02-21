@@ -66,6 +66,7 @@ type ManagedNode struct {
 
 	ongoingReset *ongoingReset
 	resetting    atomic.Bool
+	cancelReset  atomic.Bool
 }
 
 var _ event.AttachEmitter = (*ManagedNode)(nil)
@@ -95,6 +96,10 @@ func (m *ManagedNode) AttachEmitter(em event.Emitter) {
 func (m *ManagedNode) OnEvent(ev event.Event) bool {
 	// if we're resetting, ignore all events
 	if m.resetting.Load() {
+		// even if we are resetting, cancel the reset if the L1 rewinds
+		if _, ok := ev.(superevents.ChainRewoundEvent); ok {
+			m.CancelReset()
+		}
 		m.log.Debug("Ignoring event during ongoing reset", "event", ev)
 		return false
 	}
@@ -127,6 +132,13 @@ func (m *ManagedNode) OnEvent(ev event.Event) bool {
 		return false
 	}
 	return true
+}
+
+func (m *ManagedNode) CancelReset() {
+	if !m.resetting.Load() {
+		return
+	}
+	m.cancelReset.Store(true)
 }
 
 func (m *ManagedNode) SubscribeToNodeEvents() {

@@ -45,9 +45,8 @@ func (m *ManagedNode) checkConsistencyWithDB() {
 
 	// there is inconsistency. initiate reset
 	if z != (eth.BlockID{}) {
-		// block this ManagedNode from processing any more events
-		// until the reset is complete
 		m.resetting.Store(true)
+		m.cancelReset.Store(false)
 		m.ongoingReset = &ongoingReset{a: eth.BlockID{}, z: z}
 		// trigger the reset asynchronously
 		go m.prepareReset()
@@ -58,11 +57,7 @@ func (m *ManagedNode) checkConsistencyWithDB() {
 	}
 }
 
-func (m *ManagedNode) newReset() {
-
-}
-
-// prepareReset prepares the reset by bisectioning the the search range
+// prepareReset prepares the reset by bisecting the the search range
 // until the last consistent block is found. It then identifies the correct
 // unsafe, safe, and finalized blocks to target for the reset.
 func (m *ManagedNode) prepareReset() {
@@ -72,6 +67,12 @@ func (m *ManagedNode) prepareReset() {
 	defer nCancel()
 	// repeatedly bisect the range until the last consistent block is found
 	for {
+		if m.cancelReset.Load() {
+			m.log.Info("reset cancelled")
+			m.resetting.Store(false)
+			m.ongoingReset = nil
+			return
+		}
 		if m.ongoingReset.a.Number >= m.ongoingReset.z.Number {
 			m.log.Error("no reset target found. restarting reset",
 				"a", m.ongoingReset.a,
@@ -82,7 +83,6 @@ func (m *ManagedNode) prepareReset() {
 			return
 		}
 		if m.ongoingReset.a.Number+1 == m.ongoingReset.z.Number {
-			m.log.Info("reset is prepared", "target", m.ongoingReset.a)
 			break
 		}
 		m.bisectRecoveryRange(internalCtx, nodeCtx)
@@ -90,6 +90,7 @@ func (m *ManagedNode) prepareReset() {
 
 	// the bisection is now complete. a is the last consistent block, and z is the first inconsistent block
 	target := m.ongoingReset.a
+	m.log.Info("reset point has been found", "target", target)
 	var unsafe, safe, finalized eth.BlockID
 
 	// the unsafe block is always the last block we found to be consistent
