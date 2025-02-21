@@ -4,11 +4,13 @@ orbs:
 
 
 jobs:
-  process-webhook:
+  close-issue:
     machine:
       image: ubuntu-2204:2024.08.1
     parameters:
       label_name:
+        type: string
+      message:
         type: string
     steps:
       - utils/get-webhook-payload:
@@ -25,11 +27,7 @@ jobs:
             echo "Closing issue $ISSUE_NUMBER if label $LABEL_NAME is added on repository ${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}"
 
             if [ ! -z "$ISSUE_NUMBER" ] && [ "$LABEL_NAME" = "<< parameters.label_name >>" ] && [ "$ACTION" = "labeled" ]; then
-                MESSAGE="Thank you for your interest in contributing!
-                At this time, we are not accepting contributions that primarily fix spelling, stylistic, or grammatical errors in documentation, code, or elsewhere.
-                Please check our [contribution guidelines](https://github.com/ethereum-optimism/optimism/blob/develop/CONTRIBUTING.md#contributions-related-to-spelling-and-grammar) for more information.
-                This issue will be closed now."
-
+                MESSAGE="<< parameters.message >>"
                 export GH_TOKEN=$GITHUB_TOKEN_GOVERNANCE
                 gh issue close --repo "${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}" "$ISSUE_NUMBER" --comment "$MESSAGE"
             fi
@@ -37,7 +35,11 @@ jobs:
 workflows:
   webhook-workflow:
     jobs:
-      - process-webhook:
-         label_name: "typo"
+      - close-issue:
+         label_name: "auto-close-trivial-contribution"
+         message: "Thank you for your interest in contributing!
+                At this time, we are not accepting contributions that primarily fix spelling, stylistic, or grammatical errors in documentation, code, or elsewhere.
+                Please check our [contribution guidelines](https://github.com/ethereum-optimism/optimism/blob/develop/CONTRIBUTING.md#contributions-related-to-spelling-and-grammar) for more information.
+                This issue will be closed now."
          context:
           - circleci-repo-optimism
