@@ -537,7 +537,7 @@ func (s *L2Batcher) ActSubmitSetCodeTx(t Testing) {
 	nonce, err := s.l1.PendingNonceAt(t.Ctx(), s.BatcherAddr)
 	require.NoError(t, err, "need batcher nonce")
 
-	tx, err := prepareSignedSetCodeTx(chainId, s.l2BatcherCfg.BatcherKey, s.l1Signer, nonce, s.rollupCfg.BatchInboxAddress, s.ReadNextOutputFrame(t))
+	tx, err := PrepareSignedSetCodeTx(chainId, s.l2BatcherCfg.BatcherKey, s.l1Signer, nonce, s.rollupCfg.BatchInboxAddress, s.ReadNextOutputFrame(t))
 	require.NoError(t, err, "need to sign tx")
 
 	t.Log("submitting EIP 7702 Set Code Batcher Transaction...")
@@ -546,7 +546,7 @@ func (s *L2Batcher) ActSubmitSetCodeTx(t Testing) {
 	s.LastSubmitted = tx
 }
 
-func prepareSignedSetCodeTx(chainId uint256.Int, privateKey *ecdsa.PrivateKey, signer types.Signer, nonce uint64, to common.Address, data []byte) (*types.Transaction, error) {
+func PrepareSignedSetCodeTx(chainId uint256.Int, privateKey *ecdsa.PrivateKey, signer types.Signer, nonce uint64, to common.Address, data []byte) (*types.Transaction, error) {
 
 	setCodeAuthorization := types.SetCodeAuthorization{
 		ChainID: chainId,

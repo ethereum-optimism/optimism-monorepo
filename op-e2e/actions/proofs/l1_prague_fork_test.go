@@ -11,6 +11,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-program/client/claim"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/holiman/uint256"
 	"github.com/stretchr/testify/require"
 )
 
@@ -54,7 +55,9 @@ func TestPragueForkAfterGenesis(gt *testing.T) {
 		}
 
 		buildUnsafeL2AndSubmit := func(useSetCode bool) {
-			sequencer.ActL2EmptyBlock(t)
+			sequencer.ActL1HeadSignal(t)
+			sequencer.ActBuildToL1Head(t)
+
 			miner.ActL1StartBlock(12)(t)
 			if useSetCode {
 				batcher.ActBufferAll(t)
@@ -91,10 +94,24 @@ func TestPragueForkAfterGenesis(gt *testing.T) {
 		sequencer.ActL2PipelineFull(t)
 		verifier.ActL2PipelineFull(t)
 
-		// Build empty L1 blocks, crossing the fork boundary
-		miner.ActEmptyBlock(t)
-		miner.ActEmptyBlock(t) // Prague activates here
-		miner.ActEmptyBlock(t)
+		// Build L1 blocks, crossing the fork boundary
+		miner.ActEmptyBlock(t) // block 1
+		miner.ActEmptyBlock(t) // Prague activates here (block 2)
+
+		// Here's a block with a type 4 deposit transaction
+		miner.ActL1StartBlock(12)(t) // block 3
+		tx, err := actionsHelpers.PrepareSignedSetCodeTx(
+			*uint256.MustFromBig(env.Sd.L1Cfg.Config.ChainID),
+			env.Dp.Secrets.Alice,
+			env.Alice.L1.Signer(),
+			env.Alice.L1.PendingNonce(t), // nonce
+			env.Sd.DeploymentsL1.OptimismPortalProxy,
+			[]byte{})
+		require.NoError(t, err, "failed to prepare set code tx")
+		err = miner.EthClient().SendTransaction(t.Ctx(), tx)
+		require.NoError(t, err, "failed to send set code tx")
+		miner.ActL1IncludeTx(env.Alice.Address())(t)
+		miner.ActL1EndBlock(t)
 
 		// Check that Prague is active on L1
 		checkPragueStatusOnL1(true)
@@ -115,8 +132,10 @@ func TestPragueForkAfterGenesis(gt *testing.T) {
 		safeL2After := verifier.SyncStatus().SafeL2
 		if testCfg.Custom.useSetCodeTx {
 			require.Equal(t, safeL2Before, safeL2After, "safe head should not have changed (set code batcher tx ignored)")
+			require.Equal(t, uint64(0), verifier.SyncStatus().SafeL2.L1Origin.Number, "l1 origin of l2 safe should not have changed (set code batcher tx ignored)")
 		} else {
 			require.Greater(t, safeL2After.Number, safeL2Before.Number, "safe head should have progressed (calldata batcher tx derived from)")
+			require.Equal(t, uint64(3), verifier.SyncStatus().SafeL2.L1Origin.Number, "l1 origin of l2 safe should have progressed (calldata batcher tx derived from)")
 		}
 
 		env.RunFaultProofProgram(t, safeL2After.Number, testCfg.CheckResult, testCfg.InputParams...)
