@@ -87,7 +87,7 @@ func TestBondEnricher(t *testing.T) {
 			recipients[1]: big.NewInt(30),
 			recipients[2]: big.NewInt(40),
 		}
-		caller := &mockGameCaller{credits: expectedCredits}
+		caller := &mockGameCaller{credits: expectedCredits, bondDistributionMode: faultTypes.RefundDistributionMode}
 		err := enricher.Enrich(context.Background(), rpcblock.Latest, caller, game)
 		require.NoError(t, err)
 
@@ -96,5 +96,6 @@ func TestBondEnricher(t *testing.T) {
 			require.Contains(t, caller.requestedCredits, recipient)
 		}
 		require.Equal(t, expectedCredits, game.Credits)
+		require.Equal(t, faultTypes.RefundDistributionMode, game.BondDistributionMode)
 	})
 }
