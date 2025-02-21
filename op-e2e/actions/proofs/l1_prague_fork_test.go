@@ -116,7 +116,7 @@ func TestPragueForkAfterGenesis(gt *testing.T) {
 		if testCfg.Custom.useSetCodeTx {
 			require.Equal(t, safeL2Before, safeL2After, "safe head should not have changed (set code batcher tx ignored)")
 		} else {
-			require.Greater(t, safeL2After.Number, safeL2Before.Number, "safe head should have progressed (calldata batcher tx included)")
+			require.Greater(t, safeL2After.Number, safeL2Before.Number, "safe head should have progressed (calldata batcher tx derived from)")
 		}
 
 		env.RunFaultProofProgram(t, safeL2After.Number, testCfg.CheckResult, testCfg.InputParams...)
