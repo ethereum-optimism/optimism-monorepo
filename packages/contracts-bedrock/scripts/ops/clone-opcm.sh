@@ -103,6 +103,69 @@ for i in "${!IMPL_NAMES[@]}"; do
     impl_address="${IMPL_ADDRESSES[$i]}"
     echo "Processing $impl_name at address $impl_address..."
 
+    # Special handling for MIPS due to immutable preimage oracle
+    if [ "$impl_name" = "MIPS" ]; then
+        echo "Special handling for MIPS contract..."
+
+        # Get the preimage oracle address from the MIPS contract
+        echo "Getting preimage oracle address from MIPS contract..."
+        old_oracle_address=$(cast call $impl_address "oracle()(address)" --rpc-url $SOURCE_RPC)
+        echo "Found preimage oracle at $old_oracle_address"
+
+        # Clone the preimage oracle first
+        echo "Cloning preimage oracle..."
+        oracle_tx=$(get_contract_creation_tx $old_oracle_address $ETHERSCAN_API_KEY)
+        oracle_info=$(get_contract_creation_info $oracle_tx)
+        oracle_input=$(echo "$oracle_info" | jq -r '.input')
+
+        # Remove 0x prefix
+        oracle_input=${oracle_input:2}
+
+        # Extract salt and initcode from the creation input
+        oracle_salt="${oracle_input:0:64}"
+        oracle_code="${oracle_input:64}"
+
+        # Precompute the oracle address
+        new_oracle_address=$(cast create2 -d $CREATE2_DEPLOYER --salt "0x$oracle_salt" -i "0x$oracle_code")
+
+        # Deploy oracle if not already deployed
+        code=$(cast code $new_oracle_address --rpc-url $TARGET_RPC)
+        if [ "$code" = "0x" ]; then
+            echo "Deploying oracle..."
+            cast send --private-key $PRIVATE_KEY --rpc-url $TARGET_RPC $CREATE2_DEPLOYER "0x$oracle_input"
+        fi
+        echo "Preimage oracle at $new_oracle_address"
+
+        # Now handle MIPS deployment with the new oracle address
+        creation_tx=$(get_contract_creation_tx $impl_address $ETHERSCAN_API_KEY)
+        creation_info=$(get_contract_creation_info $creation_tx)
+        creation_input=$(echo "$creation_info" | jq -r '.input')
+
+        # Remove 0x prefix for string manipulation
+        creation_input=${creation_input:2}
+
+        # Replace old oracle address with new one in the bytecode
+        # Convert addresses to lowercase for consistent replacement
+        old_oracle_lower=$(echo "$old_oracle_address" | tr '[:upper:]' '[:lower:]')
+        old_oracle_lower=${old_oracle_lower:2}  # Remove 0x
+        new_oracle_lower=$(echo "$new_oracle_address" | tr '[:upper:]' '[:lower:]')
+        new_oracle_lower=${new_oracle_lower:2}  # Remove 0x
+
+        modified_input=$(echo "$creation_input" | sed "s/$old_oracle_lower/$new_oracle_lower/g")
+
+        # Deploy MIPS using Create1
+        echo "Deploying MIPS via Create1..."
+        new_address=$(cast send --private-key $PRIVATE_KEY \
+            --rpc-url $TARGET_RPC \
+            --create "0x$modified_input" \
+            --json | jq -r '.contractAddress')
+
+        echo "✅ Successfully deployed MIPS to $new_address"
+        NEW_IMPL_ADDRESSES+=("$new_address")
+        continue
+    fi
+
+    # Regular implementation handling for non-MIPS contracts
     # Get the contract creation transaction
     echo "Fetching contract creation transaction..."
     creation_tx=$(get_contract_creation_tx $impl_address $ETHERSCAN_API_KEY)
