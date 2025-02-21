@@ -13,17 +13,6 @@ import (
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/sources/spec"
 )
 
-var (
-	// Default implementation of any required OS functionality
-	osImpl osInterface = &defaultOSImpl{}
-
-	// Default implementation of any required spec functionality
-	specImpl specInterface = &defaultSpecImpl{}
-
-	// Default implementation of any required kurtosis functionality
-	kurtosisImpl kurtosisInterface = &defaultKurtosisImpl{}
-)
-
 // parseKurtosisURL parses a Kurtosis URL of the form kt://enclave/artifact/file
 // If artifact is omitted, it defaults to "devnet"
 // If file is omitted, it defaults to "env.json"
@@ -34,8 +23,12 @@ func parseKurtosisNativeURL(u *url.URL) (enclave, argsFileName string) {
 	return
 }
 
-// fetchKurtosisData reads data from a Kurtosis artifact
+// fetchKurtosisData reads data directly from kurtosis API
 func fetchKurtosisNativeData(u *url.URL) (string, []byte, error) {
+	return fetchKurtosisNativeDataInternal(u, &defaultOSImpl{}, &defaultSpecImpl{}, &defaultKurtosisImpl{})
+}
+
+func fetchKurtosisNativeDataInternal(u *url.URL, osImpl osInterface, specImpl specInterface, kurtosisImpl kurtosisInterface) (string, []byte, error) {
 	// First let's parse the kurtosis URL
 	enclave, argsFileName := parseKurtosisNativeURL(u)
 

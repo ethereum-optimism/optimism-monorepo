@@ -64,11 +64,11 @@ func TestFetchKurtosisNativeDataFailures(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("non-existent args file", func(t *testing.T) {
-		osImpl = &mockOSImpl{
+		osImpl := &mockOSImpl{
 			err: fmt.Errorf("oh no"),
 		}
 
-		_, _, err = fetchKurtosisNativeData(url)
+		_, _, err = fetchKurtosisNativeDataInternal(url, osImpl, &defaultSpecImpl{}, &defaultKurtosisImpl{})
 		require.ErrorContains(t, err, "error reading arguments file: oh no")
 	})
 
@@ -76,11 +76,11 @@ func TestFetchKurtosisNativeDataFailures(t *testing.T) {
 		file, err := kurtosisTestData.Open("testdata/kurtosis/args--malformed.txt")
 		require.NoError(t, err)
 
-		osImpl = &mockOSImpl{
+		osImpl := &mockOSImpl{
 			value: file,
 		}
 
-		_, _, err = fetchKurtosisNativeData(url)
+		_, _, err = fetchKurtosisNativeDataInternal(url, osImpl, &defaultSpecImpl{}, &defaultKurtosisImpl{})
 		require.ErrorContains(t, err, "error extracting enclave spec: failed to decode YAML: yaml: unmarshal errors:")
 	})
 
@@ -88,15 +88,15 @@ func TestFetchKurtosisNativeDataFailures(t *testing.T) {
 		file, err := kurtosisTestData.Open("testdata/kurtosis/args--simple.yaml")
 		require.NoError(t, err)
 
-		osImpl = &mockOSImpl{
+		osImpl := &mockOSImpl{
 			value: file,
 		}
 
-		specImpl = &mockSpecImpl{
+		specImpl := &mockSpecImpl{
 			err: fmt.Errorf("oh no"),
 		}
 
-		_, _, err = fetchKurtosisNativeData(url)
+		_, _, err = fetchKurtosisNativeDataInternal(url, osImpl, specImpl, &defaultKurtosisImpl{})
 		require.ErrorContains(t, err, "error extracting enclave spec: oh no")
 	})
 
@@ -104,15 +104,15 @@ func TestFetchKurtosisNativeDataFailures(t *testing.T) {
 		file, err := kurtosisTestData.Open("testdata/kurtosis/args--simple.yaml")
 		require.NoError(t, err)
 
-		osImpl = &mockOSImpl{
+		osImpl := &mockOSImpl{
 			value: file,
 		}
 
-		kurtosisImpl = &mockKurtosisImpl{
+		kurtosisImpl := &mockKurtosisImpl{
 			err: fmt.Errorf("oh no"),
 		}
 
-		_, _, err = fetchKurtosisNativeData(url)
+		_, _, err = fetchKurtosisNativeDataInternal(url, osImpl, &defaultSpecImpl{}, kurtosisImpl)
 		require.ErrorContains(t, err, "error creating deployer: oh no")
 	})
 
@@ -120,7 +120,7 @@ func TestFetchKurtosisNativeDataFailures(t *testing.T) {
 		file, err := kurtosisTestData.Open("testdata/kurtosis/args--simple.yaml")
 		require.NoError(t, err)
 
-		osImpl = &mockOSImpl{
+		osImpl := &mockOSImpl{
 			value: file,
 		}
 
@@ -128,11 +128,11 @@ func TestFetchKurtosisNativeDataFailures(t *testing.T) {
 			err: fmt.Errorf("oh no"),
 		}
 
-		kurtosisImpl = &mockKurtosisImpl{
+		kurtosisImpl := &mockKurtosisImpl{
 			value: kurtosisDeployer,
 		}
 
-		_, _, err = fetchKurtosisNativeData(url)
+		_, _, err = fetchKurtosisNativeDataInternal(url, osImpl, &defaultSpecImpl{}, kurtosisImpl)
 		require.ErrorContains(t, err, "error getting environment info: oh no")
 	})
 }
@@ -158,11 +158,11 @@ func TestFetchKurtosisNativeDataSuccess(t *testing.T) {
 		jsonEnv, err := json.MarshalIndent(env, "", "  ")
 		require.NoError(t, err)
 
-		osImpl = &mockOSImpl{
+		osImpl := &mockOSImpl{
 			value: file,
 		}
 
-		specImpl = &mockSpecImpl{
+		specImpl := &mockSpecImpl{
 			value: envSpec,
 		}
 
@@ -170,11 +170,11 @@ func TestFetchKurtosisNativeDataSuccess(t *testing.T) {
 			value: env,
 		}
 
-		kurtosisImpl = &mockKurtosisImpl{
+		kurtosisImpl := &mockKurtosisImpl{
 			value: kurtosisDeployer,
 		}
 
-		enclave, jsonDescriptor, err := fetchKurtosisNativeData(url)
+		enclave, jsonDescriptor, err := fetchKurtosisNativeDataInternal(url, osImpl, specImpl, kurtosisImpl)
 		require.NoError(t, err)
 		require.Equal(t, "enclave", enclave)
 		require.Equal(t, jsonDescriptor, jsonEnv)
