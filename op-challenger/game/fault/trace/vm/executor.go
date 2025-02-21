@@ -34,7 +34,7 @@ var (
 	ErrMissingL2Genesis    = errors.New("missing network or l2 genesis path")
 	ErrNetworkUnknown      = errors.New("unknown network")
 
-	ErrVMNonZeroExitCode = errors.New("vm exited with non-zero exit code")
+	ErrVMPanic = errors.New("vm exited with non-zero exit code")
 )
 
 type Metricer = metrics.TypedVmMetricer
@@ -184,7 +184,10 @@ func (e *Executor) DoGenerateProof(ctx context.Context, dir string, begin uint64
 	var exitErr *exec.ExitError
 	if errors.As(err, &exitErr) {
 		e.logger.Error("VM command exited with non-zero exit code", "exit_code", exitErr.ExitCode())
-		err = ErrVMNonZeroExitCode
+		if exitErr.ExitCode() == 2 {
+			// Handle panics specially
+			err = ErrVMPanic
+		}
 	}
 	execTime := time.Since(execStart)
 	memoryUsed := "unknown"

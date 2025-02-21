@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -81,12 +82,12 @@ func TestGenerateProof(t *testing.T) {
 		validateMetrics(t, m, info, cfg)
 	})
 
-	t.Run("FailingExecCmd", func(t *testing.T) {
+	t.Run("PanickingExecCmd", func(t *testing.T) {
 		m := newMetrics()
 		cfg.DebugInfo = true
 		cfg.BinarySnapshots = false
-		err, _ := failingExec(t, dir, cfg, inputs, info, 100, m)
-		require.Equal(t, ErrVMNonZeroExitCode, err)
+		err, _ := panickingExec(t, dir, cfg, inputs, info, 100, m)
+		require.Equal(t, ErrVMPanic, err)
 		requireEmptyMetrics(t, m)
 	})
 }
@@ -117,7 +118,7 @@ func captureExec(t *testing.T, dir string, cfg Config, inputs utils.LocalGameInp
 	return binary, subcommand, args
 }
 
-func failingExec(t *testing.T, dir string, cfg Config, inputs utils.LocalGameInputs, info *mipsevm.DebugInfo, proofAt uint64, m Metricer) (error, map[string]string) {
+func panickingExec(t *testing.T, dir string, cfg Config, inputs utils.LocalGameInputs, info *mipsevm.DebugInfo, proofAt uint64, m Metricer) (error, map[string]string) {
 	input := "starting.json"
 	prestate := "pre.json"
 	executor := NewExecutor(testlog.Logger(t, log.LevelInfo), m, cfg, &noArgServerExecutor{}, prestate, inputs)
@@ -134,8 +135,15 @@ func failingExec(t *testing.T, dir string, cfg Config, inputs utils.LocalGameInp
 		err := jsonutil.WriteJSON(info, ioutil.ToStdOutOrFileOrNoop(debugPath, 0o755))
 		require.NoError(t, err)
 
-		// Get a non-zero exit error
-		cmd := exec.Command("sh", "-c", "exit 2") // On Windows, use `cmd /C exit 2`
+		// Execute a command that panics
+		cmd := exec.Command("go", "run", "-e", "-")
+		cmd.Stdin = strings.NewReader(`
+			package main
+			func main() {
+				panic("simulated panic")
+			}
+		`)
+
 		cmdError := cmd.Run()
 
 		return cmdError
