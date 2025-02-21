@@ -101,6 +101,8 @@ func (m *mockSyncControl) String() string {
 var _ SyncControl = (*mockSyncControl)(nil)
 
 type mockBackend struct {
+	localSafeFn       func(ctx context.Context, chainID eth.ChainID) (pair types.DerivedIDPair, err error)
+	finalizedFn       func(ctx context.Context, chainID eth.ChainID) (eth.BlockID, error)
 	safeDerivedAtFn   func(ctx context.Context, chainID eth.ChainID, source eth.BlockID) (eth.BlockID, error)
 	findSealedBlockFn func(ctx context.Context, chainID eth.ChainID, num uint64) (eth.BlockID, error)
 	isLocalSafeFn     func(ctx context.Context, chainID eth.ChainID, blockID eth.BlockID) error
@@ -115,6 +117,9 @@ func (m *mockBackend) FindSealedBlock(ctx context.Context, chainID eth.ChainID, 
 }
 
 func (m *mockBackend) LocalSafe(ctx context.Context, chainID eth.ChainID) (pair types.DerivedIDPair, err error) {
+	if m.localSafeFn != nil {
+		return m.localSafeFn(ctx, chainID)
+	}
 	return types.DerivedIDPair{}, nil
 }
 
@@ -148,6 +153,9 @@ func (m *mockBackend) SafeDerivedAt(ctx context.Context, chainID eth.ChainID, so
 }
 
 func (m *mockBackend) Finalized(ctx context.Context, chainID eth.ChainID) (eth.BlockID, error) {
+	if m.finalizedFn != nil {
+		return m.finalizedFn(ctx, chainID)
+	}
 	return eth.BlockID{}, nil
 }
 

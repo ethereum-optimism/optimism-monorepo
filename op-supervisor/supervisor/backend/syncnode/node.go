@@ -6,6 +6,7 @@ import (
 	"io"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/ethereum-optimism/optimism/op-service/rpc"
@@ -60,7 +61,11 @@ type ManagedNode struct {
 	cancel context.CancelFunc
 	wg     sync.WaitGroup
 
-	lastState trackedState
+	lastNodeLocalUnsafe eth.BlockID
+	lastNodeLocalSafe   eth.BlockID
+
+	ongoingReset *ongoingReset
+	resetting    atomic.Bool
 }
 
 var _ event.AttachEmitter = (*ManagedNode)(nil)
@@ -88,13 +93,8 @@ func (m *ManagedNode) AttachEmitter(em event.Emitter) {
 }
 
 func (m *ManagedNode) OnEvent(ev event.Event) bool {
-	// if a reset is ready, always process it
-	if reset, ok := ev.(superevents.ResetReadyEvent); ok {
-		m.OnResetReady(reset.Unsafe, reset.Safe, reset.Finalized)
-		return true
-	}
-	// if we're in the middle of a reset, don't process any other events
-	if m.lastState.ongoingReset != nil {
+	// if we're resetting, ignore all events
+	if m.resetting.Load() {
 		m.log.Debug("Ignoring event during ongoing reset", "event", ev)
 		return false
 	}
@@ -210,7 +210,7 @@ func (m *ManagedNode) PullEvents(ctx context.Context) (pulledAny bool, err error
 }
 
 func (m *ManagedNode) onNodeEvent(ev *types.ManagedEvent) {
-	if m.lastState.ongoingReset != nil {
+	if m.resetting.Load() {
 		m.log.Debug("Ignoring event during ongoing reset", "event", ev)
 		return
 	}
@@ -254,12 +254,12 @@ func (m *ManagedNode) OnResetReady(unsafe, safe, finalized eth.BlockID) {
 	defer cancel()
 	if err := m.Node.Reset(ctx, unsafe, safe, finalized); err != nil {
 		m.log.Error("Failed to reset node", "err", err)
-		// clear the ongoing reset, and immediately check consistency again
-		m.lastState.ongoingReset = nil
+		// if we failed to reset, immediately check consistency again
 		m.checkConsistencyWithDB()
 	}
 	// reset was successful, clear the ongoing reset
-	m.lastState.ongoingReset = nil
+	m.resetting.Store(false)
+	m.ongoingReset = nil
 }
 
 func (m *ManagedNode) onCrossUnsafeUpdate(seal types.BlockSeal) {
@@ -304,8 +304,10 @@ func (m *ManagedNode) onUnsafeBlock(unsafeRef eth.BlockRef) {
 		ChainID:        m.chainID,
 		NewLocalUnsafe: unsafeRef,
 	})
-	// this new unsafe block may conflict with the supervisor's unsafe block
-	m.lastState.lastNodeLocalUnsafe = unsafeRef.ID()
+	// update the last unsafe block we saw
+	// and check if it's consistent with the logs db
+	// (reset will be initiated if it's not)
+	m.lastNodeLocalUnsafe = unsafeRef.ID()
 	m.checkConsistencyWithDB()
 }
 
@@ -316,7 +318,10 @@ func (m *ManagedNode) onDerivationUpdate(pair types.DerivedBlockRefPair) {
 		ChainID: m.chainID,
 		Derived: pair,
 	})
-	m.lastState.lastNodeLocalSafe = pair.Derived.ID()
+	// update the last derived block we saw
+	// and check if it's consistent with the logs db
+	// (reset will be initiated if it's not)
+	m.lastNodeLocalSafe = pair.Derived.ID()
 	m.checkConsistencyWithDB()
 }
 
@@ -326,38 +331,6 @@ func (m *ManagedNode) onDerivationOriginUpdate(origin eth.BlockRef) {
 		ChainID: m.chainID,
 		Origin:  origin,
 	})
-}
-
-func (m *ManagedNode) onNodeLocalSafeUpdate(update eth.BlockRef) {
-	// TODO  like below
-
-	// TODO also check DB
-	// if mismatch, start recovery
-}
-
-func (m *ManagedNode) onNodeLocalUnsafeUpdate(update eth.BlockRef) {
-	// TODO  like below
-
-	// TODO also check DB
-	// if mismatch, start recovery
-}
-
-// resetTo prepares a reset to the given block,
-// with safety levels adjusted to match the supervisor
-func (m *ManagedNode) resetTo(blockNum uint64) {
-	var unsafe, safe, finalized eth.BlockID
-	// TODO: determine safety levels, given the part of the chain that matches
-
-	// if supervisor has conflicting data after common point:
-	//  limit the unsafe block
-	// if supervisor has no conflicting data after common point:
-	//  no-op the unsafe block, we don't want to rewind the node.
-
-	ctx, cancel := context.WithTimeout(m.ctx, nodeTimeout)
-	defer cancel()
-	if err := m.Node.Reset(ctx, unsafe, safe, finalized); err != nil {
-
-	}
 }
 
 func (m *ManagedNode) onExhaustL1Event(completed types.DerivedBlockRefPair) {

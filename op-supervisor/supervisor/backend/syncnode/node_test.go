@@ -90,3 +90,80 @@ func TestEventResponse(t *testing.T) {
 			mon.localDerivedOriginUpdate >= 1
 	}, 4*time.Second, 250*time.Millisecond)
 }
+
+func TestPrepareReset(t *testing.T) {
+	chainID := eth.ChainIDFromUInt64(1)
+	logger := testlog.Logger(t, log.LvlInfo)
+	syncCtrl := &mockSyncControl{}
+	backend := &mockBackend{}
+
+	ex := event.NewGlobalSynchronous(context.Background())
+	eventSys := event.NewSystem(logger, ex)
+
+	mon := &eventMonitor{}
+	eventSys.Register("monitor", mon, event.DefaultRegisterOpts())
+
+	node := NewManagedNode(logger, chainID, syncCtrl, backend, false)
+	eventSys.Register("node", node, event.DefaultRegisterOpts())
+
+	// mock: return a block of the same number as requested
+	syncCtrl.blockRefByNumFn = func(ctx context.Context, number uint64) (eth.BlockRef, error) {
+		return eth.BlockRef{Number: number}, nil
+	}
+
+	// mock: control whether the blocks appear valid or not
+	var pivot uint64
+	backend.isLocalUnsafeFn = func(ctx context.Context, chainID eth.ChainID, id eth.BlockID) error {
+		if id.Number > uint64(pivot) {
+			return types.ErrConflict
+		}
+		return nil
+	}
+
+	// mock: record the reset signal given to the node
+	var unsafe, safe, finalized eth.BlockID
+	syncCtrl.resetFn = func(ctx context.Context, u, s, f eth.BlockID) error {
+		unsafe = u
+		safe = s
+		finalized = f
+		return nil
+	}
+
+	// test that the bisection finds the correct block,
+	// anywhere inside the min-max range
+	min, max := uint64(0), uint64(235)
+	for i := min; i < max; i++ {
+		node.ongoingReset = &ongoingReset{
+			a: eth.BlockID{Number: min},
+			z: eth.BlockID{Number: max},
+		}
+		pivot = i
+		node.prepareReset()
+		require.Equal(t, i, unsafe.Number)
+		require.Equal(t, uint64(0), safe.Number)
+		require.Equal(t, uint64(0), finalized.Number)
+	}
+
+	// mock: return local safe and finalized blocks which are *ahead* of the pivot
+	backend.localSafeFn = func(ctx context.Context, chainID eth.ChainID) (types.DerivedIDPair, error) {
+		return types.DerivedIDPair{
+			Derived: eth.BlockID{Number: pivot + 1},
+		}, nil
+	}
+	backend.finalizedFn = func(ctx context.Context, chainID eth.ChainID) (eth.BlockID, error) {
+		return eth.BlockID{Number: pivot + 1}, nil
+	}
+	// test that the bisection finds the correct block,
+	// AND that the safe and finalized blocks are updated to match the unsafe block
+	for i := min; i < max; i++ {
+		node.ongoingReset = &ongoingReset{
+			a: eth.BlockID{Number: min},
+			z: eth.BlockID{Number: max},
+		}
+		pivot = i
+		node.prepareReset()
+		require.Equal(t, i, unsafe.Number)
+		require.Equal(t, i, safe.Number)
+		require.Equal(t, i, finalized.Number)
+	}
+}

@@ -8,20 +8,12 @@ import (
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 )
 
-// trackedState is used to track the state of most recent blocks
-// from the node, in order to determine if the node is in sync with the logs db
-type trackedState struct {
-	lastNodeLocalUnsafe eth.BlockID
-	lastNodeLocalSafe   eth.BlockID
-
-	// signals for handling the recovery bisection and reset
-	ongoingReset *ongoingReset
-	cancelReset  bool
-}
-
 // ongoingReset represents a bisection,
 // where a is the earliest in the range,
 // and z is the latest in the range.
+// when a and z are directly adjacent, the
+// bisection is complete. a is the last consistent
+// block, and z is the first inconsistent block.
 type ongoingReset struct {
 	a eth.BlockID
 	z eth.BlockID
@@ -34,57 +26,70 @@ func (m *ManagedNode) checkConsistencyWithDB() {
 	var z eth.BlockID
 
 	// check if the last unsafe block we saw is consistent with the logs db
-	err := m.backend.IsLocalUnsafe(ctx, m.chainID, m.lastState.lastNodeLocalUnsafe)
+	err := m.backend.IsLocalUnsafe(ctx, m.chainID, m.lastNodeLocalUnsafe)
 	if errors.Is(err, types.ErrConflict) {
-		m.log.Warn("local unsafe block is inconsistent with logs db. Initiating recovery",
-			"lastUnsafeblock", m.lastState.lastNodeLocalUnsafe,
+		m.log.Warn("local unsafe block is inconsistent with logs db. Initiating reset",
+			"lastUnsafeblock", m.lastNodeLocalUnsafe,
 			"err", err)
-		z = m.lastState.lastNodeLocalUnsafe
+		z = m.lastNodeLocalUnsafe
 	}
 
 	// check if the last safe block we saw is consistent with the local safe db
-	err = m.backend.IsLocalSafe(ctx, m.chainID, m.lastState.lastNodeLocalSafe)
+	err = m.backend.IsLocalSafe(ctx, m.chainID, m.lastNodeLocalSafe)
 	if errors.Is(err, types.ErrConflict) {
-		m.log.Warn("local safe block is inconsistent with logs db. Initiating recovery",
-			"lastSafeblock", m.lastState.lastNodeLocalSafe,
+		m.log.Warn("local safe block is inconsistent with logs db. Initiating reset",
+			"lastSafeblock", m.lastNodeLocalSafe,
 			"err", err)
-		z = m.lastState.lastNodeLocalSafe
+		z = m.lastNodeLocalSafe
 	}
 
+	// there is inconsistency. initiate reset
 	if z != (eth.BlockID{}) {
-		m.lastState.cancelReset = false
-		m.lastState.ongoingReset = &ongoingReset{a: eth.BlockID{}, z: z}
-		m.prepareReset()
+		// block this ManagedNode from processing any more events
+		// until the reset is complete
+		m.resetting.Store(true)
+		m.ongoingReset = &ongoingReset{a: eth.BlockID{}, z: z}
+		// trigger the reset asynchronously
+		go m.prepareReset()
+	} else {
+		m.log.Debug("no inconsistency found")
+		m.resetting.Store(false)
+		m.ongoingReset = nil
 	}
 }
 
-// prepareReset identifies the heads needed for a node reset
-// it manages the ongoingReset state until the reset is ready to be triggered
+func (m *ManagedNode) newReset() {
+
+}
+
+// prepareReset prepares the reset by bisectioning the the search range
+// until the last consistent block is found. It then identifies the correct
+// unsafe, safe, and finalized blocks to target for the reset.
 func (m *ManagedNode) prepareReset() {
 	internalCtx, iCancel := context.WithTimeout(m.ctx, internalTimeout)
 	defer iCancel()
 	nodeCtx, nCancel := context.WithTimeout(m.ctx, nodeTimeout)
 	defer nCancel()
+	// repeatedly bisect the range until the last consistent block is found
 	for {
-		if m.lastState.cancelReset {
-			m.log.Info("reset was cancelled")
+		if m.ongoingReset.a.Number >= m.ongoingReset.z.Number {
+			m.log.Error("no reset target found. restarting reset",
+				"a", m.ongoingReset.a,
+				"z", m.ongoingReset.z)
+			// check consistency again once this function returns
+			// the reset failed, and may need to be retried
+			defer m.checkConsistencyWithDB()
 			return
 		}
-		if m.lastState.ongoingReset.a.Number >= m.lastState.ongoingReset.z.Number {
-			m.log.Error("no recovery target found. cancelling reset",
-				"a", m.lastState.ongoingReset.a,
-				"z", m.lastState.ongoingReset.z)
-			return
-		}
-		if m.lastState.ongoingReset.a.Number+1 == m.lastState.ongoingReset.z.Number {
-			m.log.Info("reset is prepared", "target", m.lastState.ongoingReset.a)
+		if m.ongoingReset.a.Number+1 == m.ongoingReset.z.Number {
+			m.log.Info("reset is prepared", "target", m.ongoingReset.a)
 			break
 		}
 		m.bisectRecoveryRange(internalCtx, nodeCtx)
 	}
 
 	// the bisection is now complete. a is the last consistent block, and z is the first inconsistent block
-	target := m.lastState.ongoingReset.a
+	target := m.ongoingReset.a
 	var unsafe, safe, finalized eth.BlockID
 
 	// the unsafe block is always the last block we found to be consistent
@@ -94,6 +99,7 @@ func (m *ManagedNode) prepareReset() {
 	lastSafe, err := m.backend.LocalSafe(internalCtx, m.chainID)
 	if err != nil {
 		m.log.Error("failed to get last safe block. cancelling reset", "err", err)
+		defer m.checkConsistencyWithDB()
 		return
 	}
 	if lastSafe.Derived.Number < target.Number {
@@ -106,6 +112,7 @@ func (m *ManagedNode) prepareReset() {
 	lastFinalized, err := m.backend.Finalized(internalCtx, m.chainID)
 	if err != nil {
 		m.log.Error("failed to get last finalized block. cancelling reset", "err", err)
+		defer m.checkConsistencyWithDB()
 		return
 	}
 	if lastFinalized.Number < target.Number {
@@ -116,21 +123,21 @@ func (m *ManagedNode) prepareReset() {
 
 	// trigger the reset
 	m.log.Info("triggering reset on node", "unsafe", unsafe, "safe", safe, "finalized", finalized)
-	m.Node.Reset(nodeCtx, unsafe, safe, finalized)
+	m.OnResetReady(unsafe, safe, finalized)
 }
 
-// bisectRecoveryRange halves the search range for the recovery point,
+// bisectRecoveryRange halves the search range for the reset point,
 // where the reset will target. It bisects the range and constrains either
 // the start or the end of the range, based on the consistency of the midpoint
 // with the logs db.
 func (m *ManagedNode) bisectRecoveryRange(internalCtx, nodeCtx context.Context) error {
-	if m.lastState.ongoingReset == nil {
+	if m.ongoingReset == nil {
 		m.log.Error("can't progress bisection if there is no ongoing reset")
 	}
 
 	// get or initialize the range
-	a := m.lastState.ongoingReset.a
-	z := m.lastState.ongoingReset.z
+	a := m.ongoingReset.a
+	z := m.ongoingReset.z
 	if a == (eth.BlockID{}) {
 		m.log.Debug("start of range is empty, finding the first block")
 		var err error
@@ -162,9 +169,12 @@ func (m *ManagedNode) bisectRecoveryRange(internalCtx, nodeCtx context.Context) 
 	// and update the search range accordingly
 	err = m.backend.IsLocalUnsafe(internalCtx, m.chainID, nodeI)
 	if errors.Is(err, types.ErrConflict) {
-		m.lastState.ongoingReset.z = nodeI
+		m.ongoingReset.z = nodeI
+	} else if err != nil {
+		m.log.Warn("failed to check consistency with logs db", "block", nodeI, "err", err)
+		return err
 	} else {
-		m.lastState.ongoingReset.a = nodeI
+		m.ongoingReset.a = nodeI
 	}
 
 	return nil
