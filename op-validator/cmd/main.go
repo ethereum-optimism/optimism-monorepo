@@ -2,8 +2,9 @@ package main
 
 import (
 	"fmt"
-	"github.com/ethereum-optimism/optimism/op-validator/pkg/validations"
 	"os"
+
+	"github.com/ethereum-optimism/optimism/op-validator/pkg/validations"
 
 	oplog "github.com/ethereum-optimism/optimism/op-service/log"
 	"github.com/ethereum-optimism/optimism/op-validator/pkg/service"
