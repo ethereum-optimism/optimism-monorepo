@@ -11,7 +11,7 @@ import (
 
 // Don't queue up an endless number of events.
 // At some point it's better to drop events and warn something is exploding the number of events.
-const sanityEventLimit = 1000
+const sanityEventLimit = 10_000
 
 type GlobalSyncExec struct {
 	eventsLock sync.Mutex
