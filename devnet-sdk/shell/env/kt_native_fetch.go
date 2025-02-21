@@ -4,12 +4,24 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/url"
 	"os"
 	"strings"
 
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis"
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/sources/spec"
+)
+
+var (
+	// Default implementation of any required OS functionality
+	osImpl osInterface = &defaultOSImpl{}
+
+	// Default implementation of any required spec functionality
+	specImpl specInterface = &defaultSpecImpl{}
+
+	// Default implementation of any required kurtosis functionality
+	kurtosisImpl kurtosisInterface = &defaultKurtosisImpl{}
 )
 
 // parseKurtosisURL parses a Kurtosis URL of the form kt://enclave/artifact/file
@@ -28,7 +40,7 @@ func fetchKurtosisNativeData(u *url.URL) (string, []byte, error) {
 	enclave, argsFileName := parseKurtosisNativeURL(u)
 
 	// Open the arguments file
-	argsFile, err := os.Open(argsFileName)
+	argsFile, err := osImpl.Open(argsFileName)
 	if err != nil {
 		return "", nil, fmt.Errorf("error reading arguments file: %w", err)
 	}
@@ -37,13 +49,13 @@ func fetchKurtosisNativeData(u *url.URL) (string, []byte, error) {
 	defer argsFile.Close()
 
 	// Once we have the arguments file, we can extract the enclave spec
-	enclaveSpec, err := spec.NewSpec().ExtractData(argsFile)
+	enclaveSpec, err := specImpl.ExtractData(argsFile)
 	if err != nil {
 		return enclave, nil, fmt.Errorf("error extracting enclave spec: %w", err)
 	}
 
 	// We'll use the deployer to extract the system spec
-	deployer, err := kurtosis.NewKurtosisDeployer(kurtosis.WithKurtosisEnclave(enclave))
+	deployer, err := kurtosisImpl.NewKurtosisDeployer(kurtosis.WithKurtosisEnclave(enclave))
 	if err != nil {
 		return enclave, nil, fmt.Errorf("error creating deployer: %w", err)
 	}
@@ -62,4 +74,58 @@ func fetchKurtosisNativeData(u *url.URL) (string, []byte, error) {
 	}
 
 	return enclave, envBytes, nil
+}
+
+// osInterface describes a struct that can open filesystem files for reading
+//
+// osInterface is used when loading kurtosis args files from local filesystem
+type osInterface interface {
+	Open(name string) (fileInterface, error)
+}
+
+// fileInterface describes a subset of os.File struct for ease of testing
+type fileInterface interface {
+	io.Reader
+	Close() error
+}
+
+// defaultOSImpl implements osInterface
+type defaultOSImpl struct{}
+
+func (d *defaultOSImpl) Open(name string) (fileInterface, error) {
+	return os.Open(name)
+}
+
+// specInterface describes a subset of functionality required from the spec package
+//
+// The spec package is responsible for turning a kurtosis args file into an EnclaveSpec
+type specInterface interface {
+	ExtractData(r io.Reader) (*spec.EnclaveSpec, error)
+}
+
+// defaultSpecImpl implements specInterface
+type defaultSpecImpl struct{}
+
+func (d *defaultSpecImpl) ExtractData(r io.Reader) (*spec.EnclaveSpec, error) {
+	return spec.NewSpec().ExtractData(r)
+}
+
+// kurtosisInterface describes a subset of functionality required from the kurtosis package
+//
+// kurtosisInterface provides access to a KurtosisDeployer object, an intermediate object that provides
+// access to the KurtosisEnvironment object
+type kurtosisInterface interface {
+	NewKurtosisDeployer(opts ...kurtosis.KurtosisDeployerOptions) (kurtosisDeployerInterface, error)
+}
+
+// kurtosisDeployerInterface describes a subset of functionality required from KurtosisDeployer struct
+type kurtosisDeployerInterface interface {
+	GetEnvironmentInfo(ctx context.Context, spec *spec.EnclaveSpec) (*kurtosis.KurtosisEnvironment, error)
+}
+
+// defaultKurtosisImpl implements kurtosisInterface
+type defaultKurtosisImpl struct{}
+
+func (d *defaultKurtosisImpl) NewKurtosisDeployer(opts ...kurtosis.KurtosisDeployerOptions) (kurtosisDeployerInterface, error) {
+	return kurtosis.NewKurtosisDeployer(opts...)
 }
