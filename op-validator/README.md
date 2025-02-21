@@ -1,6 +1,8 @@
 # op-validator
 
-The op-validator is a tool for validating Optimism chain configurations and deployments. It works by calling into the StandardValidator smart contracts (StandardValidatorV180 and StandardValidatorV200). These then perform a set of checks, and return error codes for any issues found. These checks include:
+The op-validator is a tool for validating Optimism chain configurations and deployments. It works by calling into the
+StandardValidator smart contracts (StandardValidatorV180 and StandardValidatorV200). These then perform a set of checks,
+and return error codes for any issues found. These checks include:
 
 - Contract implementations and versions
 - Proxy configurations
@@ -25,7 +27,8 @@ Where version is one of:
 
 - `--l1-rpc-url`: L1 RPC URL (can also be set via L1_RPC_URL environment variable)
 - `--absolute-prestate`: Absolute prestate as hex string
-- `--proxy-admin`: Proxy admin address as hex string. This should be the proxy admin contract on L1, not the owner 
+- `--proxy-admin`: Proxy admin address as hex string. This should be a specific chain's proxy admin contract on L1. 
+  It is  not the proxy admin owner or the superchain proxy admin.
 - `--system-config`: System config proxy address as hex string
 - `--l2-chain-id`: L2 chain ID
 
