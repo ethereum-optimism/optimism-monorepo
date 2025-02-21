@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/ethereum-optimism/optimism/op-validator/pkg/validations"
 	"os"
 
 	oplog "github.com/ethereum-optimism/optimism/op-service/log"
@@ -29,22 +30,8 @@ func main() {
 			Name:  "validate",
 			Usage: "Run validation for a specific version",
 			Subcommands: []*cli.Command{
-				{
-					Name:  "v1.8.0",
-					Usage: "Run validation for v1.8.0",
-					Flags: append(service.ValidateFlags, oplog.CLIFlags(EnvVarPrefix)...),
-					Action: func(cliCtx *cli.Context) error {
-						return service.ValidateCmd(cliCtx, "v1.8.0")
-					},
-				},
-				{
-					Name:  "v2.0.0",
-					Usage: "Run validation for v2.0.0",
-					Flags: append(service.ValidateFlags, oplog.CLIFlags(EnvVarPrefix)...),
-					Action: func(cliCtx *cli.Context) error {
-						return service.ValidateCmd(cliCtx, "v2.0.0")
-					},
-				},
+				versionCmd(validations.VersionV180),
+				versionCmd(validations.VersionV200),
 			},
 		},
 	}
@@ -55,5 +42,16 @@ func main() {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Application failed: %v\n", err)
 		os.Exit(1)
+	}
+}
+
+func versionCmd(version string) *cli.Command {
+	return &cli.Command{
+		Name:  version,
+		Usage: fmt.Sprintf("Run validation for %s", version),
+		Flags: append(service.ValidateFlags, oplog.CLIFlags(EnvVarPrefix)...),
+		Action: func(cliCtx *cli.Context) error {
+			return service.ValidateCmd(cliCtx, version)
+		},
 	}
 }

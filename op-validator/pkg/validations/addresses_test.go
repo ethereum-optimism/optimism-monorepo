@@ -19,14 +19,14 @@ func TestValidatorAddress(t *testing.T) {
 			name:        "Valid Sepolia v1.8.0",
 			chainID:     11155111,
 			version:     VersionV180,
-			want:        common.HexToAddress("0xe6c2eb5eef0c51fbdb27bbc27f24a0ad70fe6f38"),
+			want:        common.HexToAddress("0x2A788Bb1D32AD0dcEC1A51B7156015Aa90548d8C"),
 			expectError: false,
 		},
 		{
 			name:        "Valid Sepolia v2.0.0",
 			chainID:     11155111,
 			version:     VersionV200,
-			want:        common.HexToAddress("0xb142194236930c0a3e83b2635778434Eb146a1FE"),
+			want:        common.HexToAddress("0x34FFEEF9D42E0EF0d999fBF01E006f745083Fd9b"),
 			expectError: false,
 		},
 		{

@@ -82,9 +82,9 @@ func (v *BaseValidator) Validate(ctx context.Context, input BaseValidatorInput) 
 }
 
 func NewV180Validator(client *rpc.Client) *BaseValidator {
-	return newBaseValidator(client, "v1.8.0")
+	return newBaseValidator(client, VersionV180)
 }
 
 func NewV200Validator(client *rpc.Client) *BaseValidator {
-	return newBaseValidator(client, "v2.0.0")
+	return newBaseValidator(client, VersionV200)
 }
