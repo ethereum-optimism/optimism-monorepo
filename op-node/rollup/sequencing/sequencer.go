@@ -548,10 +548,10 @@ func (d *Sequencer) startBuildingBlock() {
 		d.log.Info("Sequencing Granite upgrade block")
 	}
 
-	// For the Isthmus activation block we shouldn't include any sequencer transactions.
-	if d.rollupCfg.IsIsthmusActivationBlock(uint64(attrs.Timestamp)) {
+	// For the Jovian activation block we shouldn't include any sequencer transactions.
+	if d.rollupCfg.IsJovianActivationBlock(uint64(attrs.Timestamp)) {
 		attrs.NoTxPool = true
-		d.log.Info("Sequencing Isthmus upgrade block")
+		d.log.Info("Sequencing Jovian upgrade block")
 	}
 
 	d.log.Debug("prepared attributes for new block",
