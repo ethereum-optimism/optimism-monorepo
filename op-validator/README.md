@@ -25,8 +25,8 @@ Where version is one of:
 
 - `--l1-rpc-url`: L1 RPC URL (can also be set via L1_RPC_URL environment variable)
 - `--absolute-prestate`: Absolute prestate as hex string
-- `--proxy-admin`: Proxy admin address as hex string
-- `--system-config`: System config address as hex string
+- `--proxy-admin`: Proxy admin address as hex string. This should be the proxy admin contract on L1, not the owner 
+- `--system-config`: System config proxy address as hex string
 - `--l2-chain-id`: L2 chain ID
 
 ### Optional Flags
