@@ -133,7 +133,7 @@ func NewConfig(ctx *cli.Context) *CLIConfig {
 	return &CLIConfig{
 		L1EthRpc:                     ctx.String(flags.L1EthRpcFlag.Name),
 		RollupRpc:                    ctx.String(flags.RollupRpcFlag.Name),
-		SupervisorRpcs:               ctx.StringSlice(flags.SupervisorRpcFlag.Name),
+		SupervisorRpcs:               ctx.StringSlice(flags.SupervisorRpcsFlag.Name),
 		L2OOAddress:                  ctx.String(flags.L2OOAddressFlag.Name),
 		PollInterval:                 ctx.Duration(flags.PollIntervalFlag.Name),
 		TxMgrConfig:                  txmgr.ReadCLIConfig(ctx),
