@@ -39,6 +39,9 @@ type TransactionArgs struct {
 	// Custom extension for EIP-4844 support
 	BlobVersionedHashes []common.Hash `json:"blobVersionedHashes,omitempty"`
 	BlobFeeCap          *hexutil.Big  `json:"maxFeePerBlobGas,omitempty"`
+
+	// Custom extension for EIP-7702 support
+	AuthList []types.SetCodeAuthorization `json:"authList,omitempty"`
 }
 
 // NewTransactionArgsFromTransaction creates a TransactionArgs struct from an EIP-1559 or EIP-4844 transaction
@@ -60,7 +63,9 @@ func NewTransactionArgsFromTransaction(chainId *big.Int, from *common.Address, t
 		AccessList:           &accesses,
 		BlobVersionedHashes:  tx.BlobHashes(),
 		BlobFeeCap:           (*hexutil.Big)(tx.BlobGasFeeCap()),
+		AuthList:             tx.SetCodeAuthorizations(),
 	}
+
 	return args
 }
 
@@ -119,6 +124,11 @@ func (args *TransactionArgs) Check() error {
 			return errors.New("unexpected blob-fee-cap, transaction does not include blobs")
 		}
 	}
+	if args.AuthList != nil {
+		if len(args.AuthList) == 0 {
+			return errors.New("non-null auth list should not be empty")
+		}
+	}
 	return nil
 }
 
@@ -129,38 +139,40 @@ func (args *TransactionArgs) ToTransactionData() (types.TxData, error) {
 	if args.AccessList != nil {
 		al = *args.AccessList
 	}
-	if len(args.BlobVersionedHashes) > 0 {
-		chainID, overflow := uint256.FromBig((*big.Int)(args.ChainID))
-		if overflow {
-			return nil, fmt.Errorf("chainID %s too large for blob tx", args.ChainID)
+
+	if args.AuthList != nil {
+		fields, err := args.convertToUint256()
+		if err != nil {
+			return nil, err
 		}
-		maxFeePerGas, overflow := uint256.FromBig((*big.Int)(args.MaxFeePerGas))
-		if overflow {
-			return nil, fmt.Errorf("maxFeePerGas %s too large for blob tx", args.MaxFeePerGas)
-		}
-		maxPriorityFeePerGas, overflow := uint256.FromBig((*big.Int)(args.MaxPriorityFeePerGas))
-		if overflow {
-			return nil, fmt.Errorf("maxPriorityFeePerGas %s too large for blob tx", args.MaxPriorityFeePerGas)
-		}
-		value, overflow := uint256.FromBig((*big.Int)(args.Value))
-		if overflow {
-			return nil, fmt.Errorf("value %s too large for blob tx", args.Value)
-		}
-		blobFeeCap, overflow := uint256.FromBig((*big.Int)(args.BlobFeeCap))
-		if overflow {
-			return nil, fmt.Errorf("blobFeeCap %s too large for blob tx", args.BlobFeeCap)
-		}
-		data = &types.BlobTx{
-			ChainID:    chainID,
+		data = &types.SetCodeTx{
+			ChainID:    fields.chainID,
 			Nonce:      uint64(*args.Nonce),
-			GasTipCap:  maxPriorityFeePerGas,
-			GasFeeCap:  maxFeePerGas,
+			GasTipCap:  fields.maxPriorityFeePerGas,
+			GasFeeCap:  fields.maxFeePerGas,
 			Gas:        uint64(*args.Gas),
 			To:         *args.To,
-			Value:      value,
+			Value:      fields.value,
 			Data:       args.data(),
 			AccessList: al,
-			BlobFeeCap: blobFeeCap,
+			AuthList:   args.AuthList,
+		}
+	} else if len(args.BlobVersionedHashes) > 0 {
+		fields, err := args.convertToUint256()
+		if err != nil {
+			return nil, err
+		}
+		data = &types.BlobTx{
+			ChainID:    fields.chainID,
+			Nonce:      uint64(*args.Nonce),
+			GasTipCap:  fields.maxPriorityFeePerGas,
+			GasFeeCap:  fields.maxFeePerGas,
+			Gas:        uint64(*args.Gas),
+			To:         *args.To,
+			Value:      fields.value,
+			Data:       args.data(),
+			AccessList: al,
+			BlobFeeCap: fields.blobFeeCap,
 			BlobHashes: args.BlobVersionedHashes,
 		}
 	} else {
@@ -177,4 +189,42 @@ func (args *TransactionArgs) ToTransactionData() (types.TxData, error) {
 		}
 	}
 	return data, nil
+}
+
+type uint256Fields struct {
+	chainID              *uint256.Int
+	maxFeePerGas         *uint256.Int
+	maxPriorityFeePerGas *uint256.Int
+	value                *uint256.Int
+	blobFeeCap           *uint256.Int
+}
+
+func (args *TransactionArgs) convertToUint256() (*uint256Fields, error) {
+	chainID, overflow := uint256.FromBig((*big.Int)(args.ChainID))
+	if overflow {
+		return nil, fmt.Errorf("chainID %s too large for tx", args.ChainID)
+	}
+	maxFeePerGas, overflow := uint256.FromBig((*big.Int)(args.MaxFeePerGas))
+	if overflow {
+		return nil, fmt.Errorf("maxFeePerGas %s too large for tx", args.MaxFeePerGas)
+	}
+	maxPriorityFeePerGas, overflow := uint256.FromBig((*big.Int)(args.MaxPriorityFeePerGas))
+	if overflow {
+		return nil, fmt.Errorf("maxPriorityFeePerGas %s too large for tx", args.MaxPriorityFeePerGas)
+	}
+	value, overflow := uint256.FromBig((*big.Int)(args.Value))
+	if overflow {
+		return nil, fmt.Errorf("value %s too large for tx", args.Value)
+	}
+	blobFeeCap, overflow := uint256.FromBig((*big.Int)(args.BlobFeeCap))
+	if overflow {
+		return nil, fmt.Errorf("blobFeeCap %s too large for blob tx", args.BlobFeeCap)
+	}
+	return &uint256Fields{
+		chainID:              chainID,
+		maxFeePerGas:         maxFeePerGas,
+		maxPriorityFeePerGas: maxPriorityFeePerGas,
+		value:                value,
+		blobFeeCap:           blobFeeCap,
+	}, nil
 }
