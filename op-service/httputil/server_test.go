@@ -98,7 +98,7 @@ func TestStartHTTPServer(t *testing.T) {
 		require.True(t, srv.Closed())
 	})
 
-	t.Run("graceful", func(t *testing.T) {
+	t.Run("restart", func(t *testing.T) {
 		srv, reqRespBlock := testSetup(t)
 
 		request := func() {
