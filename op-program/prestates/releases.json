@@ -55,6 +55,17 @@
     "governanceApproved": true
   },
   {
+    "version": "1.4.0-unichain-mainnet",
+    "hash": "0x03d5baff435a6828cfa13679e7ef34ac73d4d674550426c7d9a8005deb6a6db3",
+    "type": "cannon64",
+    "governanceApproved": true
+  },
+  {
+    "version": "1.4.0-unichain-mainnet",
+    "hash": "0x0336751a224445089ba5456c8028376a0faf2bafa81d35f43fab8730258cdf37",
+    "governanceApproved": true
+  },
+  {
     "version": "1.4.0-rc.3",
     "hash": "0x03b7eaa4e3cbce90381921a4b48008f4769871d64f93d113fcadca08ecee503b",
     "type": "cannon64"
