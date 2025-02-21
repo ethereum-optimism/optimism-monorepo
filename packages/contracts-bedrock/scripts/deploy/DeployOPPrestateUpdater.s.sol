@@ -23,19 +23,16 @@ import { OPPrestateUpdater } from "src/L1/OPPrestateUpdater.sol";
 contract DeployOPPrestateUpdater is Script {
     bytes32 internal _salt = DeployUtils.DEFAULT_SALT;
 
-    function deployOPPrestateUpdater(string memory _baseChain) public returns (OPPrestateUpdater) {
-        string memory superchainBasePath = "./lib/superchain-registry/superchain/configs/";
-        string memory superchainToml = vm.readFile(string.concat(superchainBasePath, _baseChain, "/superchain.toml"));
+    function run() public returns (OPPrestateUpdater) {
+        // string memory superchainBasePath = "./lib/superchain-registry/superchain/configs/";
+        // string memory superchainToml = vm.readFile(string.concat(superchainBasePath, _baseChain, "/superchain.toml"));
 
         // Superchain shared contracts
-        ISuperchainConfig superchainConfig =
-            ISuperchainConfig(vm.parseTomlAddress(superchainToml, ".superchain_config_addr"));
-        IProtocolVersions protocolVersions =
-            IProtocolVersions(vm.parseTomlAddress(superchainToml, ".protocol_versions_addr"));
+        ISuperchainConfig superchainConfig = ISuperchainConfig(0x885C53fa5f5d03eFC781a7FeB8AaBAB67BA4E3BC);
+        IProtocolVersions protocolVersions = IProtocolVersions(0xB0E961d5C73546D4EF3B574681538Af7E50Da2d8);
 
         // The existing v1.8.0 OPCM
-        IOPContractsManager180 opContractsManager180 =
-            IOPContractsManager180(vm.parseTomlAddress(superchainToml, ".op_contracts_manager_proxy_addr"));
+        IOPContractsManager180 opContractsManager180 = IOPContractsManager180(0x37bA413962bbA088b0CafC6a26Bb45F75387418f);
 
         // Declare a new set of blueprints to store in the OPPrestateUpdater
         IOPContractsManager.Blueprints memory blueprints;
