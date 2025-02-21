@@ -124,6 +124,9 @@ contract SuperFaultDisputeGame is Clone, ISemver {
     //                         State Vars                         //
     ////////////////////////////////////////////////////////////////
 
+    /// @notice The constant for invalid root claims.
+    bytes32 internal constant INVALID_ROOT_CLAIM = keccak256("invalid");
+
     /// @notice The absolute prestate of the instruction trace. This is a constant that is defined
     ///         by the program that is being used to execute the trace.
     Claim internal immutable ABSOLUTE_PRESTATE;
@@ -292,7 +295,7 @@ contract SuperFaultDisputeGame is Clone, ISemver {
         if (root.raw() == bytes32(0)) revert AnchorRootNotFound();
 
         // Prevent initializing right away with an invalid claim state that is used as convention
-        if (rootClaim().raw() == keccak256("invalid")) revert SuperFaultDisputeGameInvalidRootClaim();
+        if (rootClaim().raw() == INVALID_ROOT_CLAIM) revert SuperFaultDisputeGameInvalidRootClaim();
 
         // Set the starting output root.
         startingOutputRoot = OutputRoot({ l2BlockNumber: rootBlockNumber, root: root });

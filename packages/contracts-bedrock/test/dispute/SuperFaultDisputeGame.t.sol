@@ -479,6 +479,13 @@ contract SuperFaultDisputeGame_Test is SuperFaultDisputeGame_Init {
         assertEq(delayedWeth.balanceOf(address(gameProxy)), _value);
     }
 
+    /// @dev Tests that the game cannot be initialized with the reserved `keccak256("invalid") reserved root
+    function test_initialize_invalidRoot_reverts() public {
+        Claim claim = Claim.wrap(keccak256("invalid"));
+        vm.expectRevert(bytes4(keccak256("SuperFaultDisputeGameInvalidRootClaim()")));
+        gameProxy = IFaultDisputeGame(payable(address(disputeGameFactory.create(GAME_TYPE, claim, extraData))));
+    }
+
     /// @dev Tests that the game cannot be initialized with extra data of the incorrect length (must be 32 bytes)
     function testFuzz_initialize_badExtraData_reverts(uint256 _extraDataLen) public {
         // The `DisputeGameFactory` will pack the root claim and the extra data into a single array, which is enforced
