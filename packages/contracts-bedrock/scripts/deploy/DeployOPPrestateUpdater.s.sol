@@ -8,7 +8,6 @@ import { Script } from "forge-std/Script.sol";
 import { LibString } from "@solady/utils/LibString.sol";
 
 // Scripts
-import { BaseDeployIO } from "scripts/deploy/BaseDeployIO.sol";
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 
 // Interfaces
@@ -16,8 +15,7 @@ import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 import { IProtocolVersions } from "interfaces/L1/IProtocolVersions.sol";
 import { IOPContractsManager } from "interfaces/L1/IOPContractsManager.sol";
 import { IOPPrestateUpdater } from "interfaces/L1/IOPPrestateUpdater.sol";
-import { IProxyAdmin } from "interfaces/universal/IProxyAdmin.sol";
-import { IDelayedWETH } from "interfaces/dispute/IDelayedWETH.sol";
+
 // Contracts
 import { OPPrestateUpdater } from "src/L1/OPPrestateUpdater.sol";
 
