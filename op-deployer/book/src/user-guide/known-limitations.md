@@ -34,10 +34,10 @@ like this:
 There's a flaw in this strategy, however. The release only includes the contracts that explicitly changed during
 that release. **This means that any contract not referenced as "updated" in the release notes is "in-development," and
 has not been audited or approved by governance.** Deploying all contracts from the release tag will therefore deploy a
-combination of prod-ready and in-development code.To get the version of the contract that will _actually_ run in prod,
+combination of prod-ready and in-development code. To get the version of the contract that will _actually_ run in prod,
 OP Deployer would have to reference all previous releases to get the correct combination of contracts.
 
-For example, to deploy on Holesky you will need to deploy contracts from versions `v1.8.0`, `v1.6.0`, and `v1.4.0`. On
+For example, to deploy on Holesky you will need to deploy contracts from versions `op-contracts/v1.8.0`, `op-contracts/v1.6.0`, and `op-contracts/v1.3.0`. On
 Sepolia and mainnet, we've been incrementally deploying implementation contracts so we just use the existing
 ¬implementations to work around this issue.
 
