@@ -109,7 +109,7 @@ for i in "${!IMPL_NAMES[@]}"; do
 
     if [ -z "$creation_tx" ]; then
         echo "Failed to get creation transaction for $impl_name"
-        continue
+        exit 1
     fi
 
     # Get the contract creation input
@@ -140,6 +140,7 @@ for i in "${!IMPL_NAMES[@]}"; do
         code=$(cast code $precomputed_address --rpc-url $TARGET_RPC)
         if [ "$code" != "0x" ]; then
             echo "The new address already has code, skipping..."
+            NEW_IMPL_ADDRESSES+=("$precomputed_address")
             continue
         fi
 
@@ -278,7 +279,7 @@ for i in "${!BLUEPRINT_NAMES[@]}"; do
     code=$(cast code $precomputed_address --rpc-url $TARGET_RPC)
     if [ "$code" == "0x" ]; then
         echo "❌ No code was deployed for $blueprint_name"
-        continue
+        exit 1
     fi
 
     echo "✅ Successfully deployed $blueprint_name blueprint to $precomputed_address"
@@ -291,8 +292,8 @@ CONSTRUCTOR_ARGS=$(cast abi-encode "constructor(address,address,string,(address,
     "$SUPERCHAIN_CONFIG" \
     "$PROTOCOL_VERSIONS" \
     "v1.8.0-rc.4" \
-    "($ADDRESS_MANAGER_BLUEPRINT,$PROXY_BLUEPRINT,$PROXY_ADMIN_BLUEPRINT,$L1_CHUG_SPLASH_PROXY_BLUEPRINT,$RESOLVED_DELEGATE_PROXY_BLUEPRINT,$ANCHOR_STATE_REGISTRY_BLUEPRINT,$PERMISSIONED_DISPUTE_GAME_1_BLUEPRINT,$PERMISSIONED_DISPUTE_GAME_2_BLUEPRINT)" \
-    "($L1_ERC721_BRIDGE_IMPL,$OPTIMISM_PORTAL_IMPL,$SYSTEM_CONFIG_IMPL,$OPTIMISM_MINTABLE_ERC20_FACTORY_IMPL,$L1_CROSS_DOMAIN_MESSENGER_IMPL,$L1_STANDARD_BRIDGE_IMPL,$DISPUTE_GAME_FACTORY_IMPL,$DELAYED_WETH_IMPL,$MIPS_IMPL)")
+    "(${NEW_BLUEPRINT_ADDRESSES[0]},${NEW_BLUEPRINT_ADDRESSES[1]},${NEW_BLUEPRINT_ADDRESSES[2]},${NEW_BLUEPRINT_ADDRESSES[3]},${NEW_BLUEPRINT_ADDRESSES[4]},${NEW_BLUEPRINT_ADDRESSES[5]},${NEW_BLUEPRINT_ADDRESSES[6]},${NEW_BLUEPRINT_ADDRESSES[7]})" \
+    "(${NEW_IMPL_ADDRESSES[0]},${NEW_IMPL_ADDRESSES[1]},${NEW_IMPL_ADDRESSES[2]},${NEW_IMPL_ADDRESSES[3]},${NEW_IMPL_ADDRESSES[4]},${NEW_IMPL_ADDRESSES[5]},${NEW_IMPL_ADDRESSES[6]},${NEW_IMPL_ADDRESSES[7]},${NEW_IMPL_ADDRESSES[8]})")
 
 # strip 0x
 CONSTRUCTOR_ARGS=${CONSTRUCTOR_ARGS:2}
