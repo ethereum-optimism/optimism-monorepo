@@ -85,7 +85,12 @@ func (m *ManagedNode) prepareReset() {
 		if m.ongoingReset.a.Number+1 == m.ongoingReset.z.Number {
 			break
 		}
-		m.bisectRecoveryRange(internalCtx, nodeCtx)
+		err := m.bisectRecoveryRange(internalCtx, nodeCtx)
+		if err != nil {
+			m.log.Error("failed to bisect recovery range", "err", err)
+			defer m.checkConsistencyWithDB()
+			return
+		}
 	}
 
 	// the bisection is now complete. a is the last consistent block, and z is the first inconsistent block
