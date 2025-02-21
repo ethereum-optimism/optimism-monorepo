@@ -40,6 +40,7 @@ type Metricer interface {
 	metrics.VmMetricer
 
 	RecordFailure(vmType string)
+	RecordPanic(vmType string)
 	RecordInvalid(vmType string)
 	RecordSuccess(vmType string)
 }
@@ -123,9 +124,9 @@ func (r *Runner) runAndRecordOnce(ctx context.Context, runConfig RunConfig, clie
 		if errors.Is(err, ErrUnexpectedStatusCode) {
 			log.Error("Incorrect status code", "type", runConfig.Name, "err", err)
 			m.RecordInvalid(traceType)
-		} else if errors.Is(err, trace.ErrVMNonZeroExitCode) {
-			log.Error("VM returned non-zero exit code")
-			// TODO: record new metric
+		} else if errors.Is(err, trace.ErrVMPanic) {
+			log.Error("VM panicked", "type", runConfig.Name)
+			m.RecordPanic(traceType)
 		} else if err != nil {
 			log.Error("Failed to run", "type", runConfig.Name, "err", err)
 			m.RecordFailure(traceType)

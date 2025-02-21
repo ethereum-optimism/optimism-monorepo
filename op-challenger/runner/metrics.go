@@ -24,6 +24,7 @@ type Metrics struct {
 	vmLastMemoryUsed    *prometheus.GaugeVec
 	successTotal        *prometheus.CounterVec
 	failuresTotal       *prometheus.CounterVec
+	panicsTotal         *prometheus.CounterVec
 	invalidTotal        *prometheus.CounterVec
 }
 
@@ -69,6 +70,11 @@ func NewMetrics(runConfigs []RunConfig) *Metrics {
 			Name:      "failures_total",
 			Help:      "Number of failures to execute a VM",
 		}, []string{"type"}),
+		panicsTotal: factory.NewCounterVec(prometheus.CounterOpts{
+			Namespace: Namespace,
+			Name:      "panics_total",
+			Help:      "Number of times the VM panicked",
+		}, []string{"type"}),
 		invalidTotal: factory.NewCounterVec(prometheus.CounterOpts{
 			Namespace: Namespace,
 			Name:      "invalid_total",
@@ -79,6 +85,7 @@ func NewMetrics(runConfigs []RunConfig) *Metrics {
 	for _, runConfig := range runConfigs {
 		metrics.successTotal.WithLabelValues(runConfig.Name).Add(0)
 		metrics.failuresTotal.WithLabelValues(runConfig.Name).Add(0)
+		metrics.panicsTotal.WithLabelValues(runConfig.Name).Add(0)
 		metrics.invalidTotal.WithLabelValues(runConfig.Name).Add(0)
 		metrics.RecordUp()
 	}
@@ -111,6 +118,10 @@ func (m *Metrics) RecordSuccess(vmType string) {
 
 func (m *Metrics) RecordFailure(vmType string) {
 	m.failuresTotal.WithLabelValues(vmType).Inc()
+}
+
+func (m *Metrics) RecordPanic(vmType string) {
+	m.panicsTotal.WithLabelValues(vmType).Inc()
 }
 
 func (m *Metrics) RecordInvalid(vmType string) {
