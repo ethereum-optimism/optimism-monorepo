@@ -283,7 +283,7 @@ func ManagerImplementationAddrFor(chainID uint64, tag string) (common.Address, e
 	case 17000:
 		switch tag {
 		case "op-contracts/v1.8.0-rc.4":
-			return common.HexToAddress("0x9ef315df7ed064c87c182c64fc6db1c080941118"), nil
+			return common.HexToAddress("0xa8335a270a601902423832eca0ecaa612924306c"), nil
 		default:
 			return common.Address{}, fmt.Errorf("unsupported holesky tag: %s", tag)
 		}
