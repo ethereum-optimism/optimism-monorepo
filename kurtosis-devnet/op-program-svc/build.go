@@ -6,8 +6,6 @@ import (
 	"io"
 	"log"
 	"mime/multipart"
-	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -16,11 +14,30 @@ import (
 	"bufio"
 )
 
+// MultipartUploadedFile adapts multipart.FileHeader to UploadedFile
+type MultipartUploadedFile struct {
+	header *multipart.FileHeader
+}
+
+func NewMultipartUploadedFile(header *multipart.FileHeader) *MultipartUploadedFile {
+	return &MultipartUploadedFile{header: header}
+}
+
+func (f *MultipartUploadedFile) Open() (io.ReadCloser, error) {
+	return f.header.Open()
+}
+
+func (f *MultipartUploadedFile) GetFilename() string {
+	return f.header.Filename
+}
+
 type Builder struct {
 	appRoot    string
 	configsDir string
 	buildDir   string
 	buildCmd   string
+	fs         FS
+	cmdFactory CommandFactory
 }
 
 func NewBuilder(appRoot, configsDir, buildDir, buildCmd string) *Builder {
@@ -29,32 +46,34 @@ func NewBuilder(appRoot, configsDir, buildDir, buildCmd string) *Builder {
 		configsDir: configsDir,
 		buildDir:   buildDir,
 		buildCmd:   buildCmd,
+		fs:         &DefaultFileSystem{},
+		cmdFactory: &DefaultCommandFactory{},
 	}
 }
 
-func (b *Builder) SaveUploadedFiles(files []*multipart.FileHeader) error {
+func (b *Builder) SaveUploadedFiles(files []UploadedFile) error {
 	// Create configs directory if it doesn't exist
-	fullConfigsDir := filepath.Join(b.appRoot, b.buildDir, b.configsDir)
-	if err := os.MkdirAll(fullConfigsDir, 0755); err != nil {
+	fullConfigsDir := b.fs.Join(b.appRoot, b.buildDir, b.configsDir)
+	if err := b.fs.MkdirAll(fullConfigsDir, 0755); err != nil {
 		return fmt.Errorf("failed to create config directory: %w", err)
 	}
 
 	// Save the files
-	for _, fileHeader := range files {
-		file, err := fileHeader.Open()
+	for _, file := range files {
+		reader, err := file.Open()
 		if err != nil {
 			return fmt.Errorf("failed to open file: %w", err)
 		}
-		defer file.Close()
+		defer reader.Close()
 
-		destPath := filepath.Join(fullConfigsDir, b.normalizeFilename(fileHeader.Filename))
-		dst, err := os.Create(destPath)
+		destPath := b.fs.Join(fullConfigsDir, b.normalizeFilename(file.GetFilename()))
+		dst, err := b.fs.Create(destPath)
 		if err != nil {
 			return fmt.Errorf("failed to create destination file: %w", err)
 		}
 		defer dst.Close()
 
-		if _, err := io.Copy(dst, file); err != nil {
+		if _, err := io.Copy(dst, reader); err != nil {
 			return fmt.Errorf("failed to save file: %w", err)
 		}
 		log.Printf("Saved file: %s", destPath)
@@ -66,8 +85,10 @@ func (b *Builder) SaveUploadedFiles(files []*multipart.FileHeader) error {
 func (b *Builder) ExecuteBuild() ([]byte, error) {
 	log.Printf("Starting build...")
 	cmdParts := strings.Fields(b.buildCmd)
-	cmd := exec.Command(cmdParts[0], cmdParts[1:]...)
-	cmd.Dir = filepath.Join(b.appRoot, b.buildDir)
+	cmd := b.cmdFactory.CreateCommand(cmdParts[0], cmdParts[1:]...)
+
+	// Set working directory
+	cmd.SetDir(b.fs.Join(b.appRoot, b.buildDir))
 
 	// Create pipes for stdout and stderr
 	stdout, err := cmd.StdoutPipe()

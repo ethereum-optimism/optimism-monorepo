@@ -19,18 +19,35 @@ import (
 // proofFileSystem implements http.FileSystem, mapping hash-based virtual paths to actual files
 type proofFileSystem struct {
 	root       string
+	fs         FS                // Use our consolidated FS interface
 	proofFiles map[string]string // hash -> variable part mapping
 	proofMutex sync.RWMutex
 }
 
 // proofFile implements http.File, representing a virtual file in our proof filesystem
 type proofFile struct {
-	*os.File
+	file File
+}
+
+func (f *proofFile) Close() error {
+	return f.file.Close()
+}
+
+func (f *proofFile) Read(p []byte) (n int, err error) {
+	return f.file.Read(p)
+}
+
+func (f *proofFile) Seek(offset int64, whence int) (int64, error) {
+	return f.file.(io.Seeker).Seek(offset, whence)
 }
 
 func (f *proofFile) Readdir(count int) ([]fs.FileInfo, error) {
 	// For actual files, we don't support directory listing
 	return nil, fmt.Errorf("not a directory")
+}
+
+func (f *proofFile) Stat() (fs.FileInfo, error) {
+	return f.file.(fs.File).Stat()
 }
 
 // proofDir implements http.File for the root directory
@@ -130,8 +147,16 @@ func (v virtualFileInfo) Sys() interface{}   { return nil }
 func newProofFileSystem(root string) *proofFileSystem {
 	return &proofFileSystem{
 		root:       root,
+		fs:         &DefaultFileSystem{},
 		proofFiles: make(map[string]string),
 	}
+}
+
+// SetFS allows replacing the filesystem implementation, primarily for testing
+func (fs *proofFileSystem) SetFS(newFS FS) {
+	fs.proofMutex.Lock()
+	defer fs.proofMutex.Unlock()
+	fs.fs = newFS
 }
 
 func (fs *proofFileSystem) Open(name string) (http.File, error) {
@@ -162,12 +187,12 @@ func (fs *proofFileSystem) Open(name string) (http.File, error) {
 		return nil, fs.Error("file not found")
 	}
 
-	file, err := os.Open(filepath.Join(fs.root, targetFile))
+	file, err := fs.fs.Open(fs.fs.Join(fs.root, targetFile))
 	if err != nil {
 		return nil, err
 	}
 
-	return &proofFile{File: file}, nil
+	return &proofFile{file: file}, nil
 }
 
 func (fs *proofFileSystem) scanProofFiles() error {
@@ -178,9 +203,9 @@ func (fs *proofFileSystem) scanProofFiles() error {
 	fs.proofFiles = make(map[string]string)
 
 	// Read directory entries
-	entries, err := os.ReadDir(fs.root)
+	entries, err := fs.fs.ReadDir(fs.root)
 	if err != nil {
-		return fmt.Errorf("failed to read proofs directory: %v", err)
+		return fmt.Errorf("failed to read proofs directory: %w", err)
 	}
 
 	// Regexp for matching prestate-proof files and extracting the variable part
@@ -200,7 +225,7 @@ func (fs *proofFileSystem) scanProofFiles() error {
 		variablePart := matches[1]
 
 		// Read and parse the JSON file
-		data, err := os.ReadFile(filepath.Join(fs.root, entry.Name()))
+		data, err := fs.fs.ReadFile(fs.fs.Join(fs.root, entry.Name()))
 		if err != nil {
 			log.Printf("Warning: failed to read proof file %s: %v", entry.Name(), err)
 			continue

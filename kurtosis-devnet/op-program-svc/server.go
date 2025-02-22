@@ -12,6 +12,18 @@ import (
 	"sync"
 )
 
+// ProofFS represents the interface for the proof filesystem
+type ProofFS interface {
+	http.FileSystem
+	scanProofFiles() error
+}
+
+// BuildSystem represents the interface for the build system
+type BuildSystem interface {
+	SaveUploadedFiles(files []UploadedFile) error
+	ExecuteBuild() ([]byte, error)
+}
+
 type server struct {
 	appRoot       string
 	configsDir    string
@@ -20,8 +32,8 @@ type server struct {
 	port          int
 	lastBuildHash string
 	buildMutex    sync.Mutex
-	proofFS       *proofFileSystem
-	builder       *Builder
+	proofFS       ProofFS
+	builder       BuildSystem
 }
 
 func createServer() *server {
@@ -35,10 +47,12 @@ func createServer() *server {
 
 	// Initialize the proof filesystem
 	proofsDir := filepath.Join(srv.appRoot, srv.buildDir, "bin")
-	srv.proofFS = newProofFileSystem(proofsDir)
+	proofFS := newProofFileSystem(proofsDir)
+	srv.proofFS = proofFS
 
 	// Initialize the builder
-	srv.builder = NewBuilder(srv.appRoot, srv.configsDir, srv.buildDir, srv.buildCmd)
+	builder := NewBuilder(srv.appRoot, srv.configsDir, srv.buildDir, srv.buildCmd)
+	srv.builder = builder
 
 	return srv
 }
@@ -51,7 +65,7 @@ func (s *server) handleUpload(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("Received upload request from %s", r.RemoteAddr)
 
-	files, currentHash, err := s.processMultipartForm(r)
+	multipartFiles, currentHash, err := s.processMultipartForm(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -69,6 +83,12 @@ func (s *server) handleUpload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Printf("Hash differs from last build (%s), proceeding with build", s.lastBuildHash)
+
+	// Convert multipart files to UploadedFile interface
+	files := make([]UploadedFile, len(multipartFiles))
+	for i, f := range multipartFiles {
+		files[i] = NewMultipartUploadedFile(f)
+	}
 
 	// Save the files using the builder
 	if err := s.builder.SaveUploadedFiles(files); err != nil {

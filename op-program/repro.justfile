@@ -10,6 +10,8 @@ GOARCH := ""
 # Build the cannon binary
 cannon:
     #!/bin/bash
+    # in devnet scenario, the cannon binary is already built.
+    [ -x /app/cannon/bin/cannon ] && exit 0
     cd ../cannon
     make cannon \
         GOOS={{GOOS}} \
@@ -51,8 +53,8 @@ prestate TYPE CLIENT_SUFFIX PRESTATE_SUFFIX: (client TYPE CLIENT_SUFFIX PRESTATE
         --output ""
     mv /app/op-program/bin/0{{PRESTATE_SUFFIX}}.json /app/op-program/bin/prestate-proof{{PRESTATE_SUFFIX}}.json
 
-_default: (prestate "singlethreaded-2" "" "")
-_mt64: (prestate "multithreaded64-3" "64" "-mt64")
-_interop: (prestate "multithreaded64-3" "-interop" "-interop")
+build-default: (prestate "singlethreaded-2" "" "")
+build-mt64: (prestate "multithreaded64-3" "64" "-mt64")
+build-interop: (prestate "multithreaded64-3" "-interop" "-interop")
 
-build: _default _mt64 _interop
+build-all: build-default build-mt64 build-interop

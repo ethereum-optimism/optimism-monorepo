@@ -13,7 +13,6 @@ RUN echo "go build cache: $(go env GOCACHE)"
 RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build go mod download
 
 COPY . /app
-COPY ./op-program/repro.justfile /app/op-program/justfile
 
 # we need a separate stage for src so we can build a service provides prestates for unnanounced chains
 FROM src AS builder
@@ -31,13 +30,15 @@ ARG TARGETOS TARGETARCH
 
 WORKDIR /app
 RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build just \
+        -d /app/op-program \
+        -f /app/op-program/repro.justfile \
         GOOS="$TARGETOS" \
         GOARCH="$TARGETARCH" \
         GIT_COMMIT="$GIT_COMMIT" \
         GIT_DATE="$GIT_DATE" \
         CANNON_VERSION="$CANNON_VERSION" \
         OP_PROGRAM_VERSION="$OP_PROGRAM_VERSION" \
-        op-program/build
+        build-all
 
 # Exports files to the specified output location.
 # Writing files to host requires buildkit to be enabled.
