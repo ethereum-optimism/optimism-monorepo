@@ -116,6 +116,7 @@ func NewConfig(ctx *cli.Context) *CLIConfig {
 		ProposalInterval:             ctx.Duration(flags.ProposalIntervalFlag.Name),
 		DisputeGameType:              uint32(ctx.Uint(flags.DisputeGameTypeFlag.Name)),
 		ActiveSequencerCheckDuration: ctx.Duration(flags.ActiveSequencerCheckDurationFlag.Name),
+		Stopped:                      ctx.Bool(flags.StoppedFlag.Name),
 		WaitNodeSync:                 ctx.Bool(flags.WaitNodeSyncFlag.Name),
 	}
 }

@@ -82,6 +82,7 @@ var (
 	StoppedFlag = &cli.BoolFlag{
 		Name:    "stopped",
 		Usage:   "Initialize the proposer in a stopped state. The proposer can be started using the admin_startProposer RPC",
+		Value:   false,
 		EnvVars: prefixEnvVars("STOPPED"),
 	}
 
