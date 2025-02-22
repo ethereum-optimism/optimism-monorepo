@@ -103,7 +103,7 @@ interop-devnet: (devnet "interop.yaml")
 ## devnet output
 
 One important aspect of the devnet workflow is that the output should be
-*consumable*. Going forward we want to integrate them into larger worfklows
+*consumable*. Going forward we want to integrate them into larger workflows
 (serving as targets for tests for example, or any other form of automation).
 
 To address this, the deployment tool outputs a document with (hopefully!) useful
