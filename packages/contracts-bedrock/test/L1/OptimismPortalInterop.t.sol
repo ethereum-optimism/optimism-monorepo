@@ -22,8 +22,6 @@ contract OptimismPortalInterop_Test is CommonTest {
         optimismPortal2.version();
     }
 
-    }
-
     /// @notice Tests that the version function returns a valid string. We avoid testing the
     ///         specific value of the string as it changes frequently.
     function test_version_succeeds() external view {

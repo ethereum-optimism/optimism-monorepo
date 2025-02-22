@@ -837,61 +837,32 @@ contract DeployImplementationsJovian is DeployImplementations {
         public
         override
     {
-        string memory release = _dii.l1ContractsRelease();
-        string memory stdVerToml = _dii.standardVersionsToml();
-        string memory contractName = "optimism_portal";
-        IOptimismPortalJovian impl;
-
-        address existingImplementation = getReleaseAddress(release, contractName, stdVerToml);
-        if (existingImplementation != address(0)) {
-            impl = IOptimismPortalJovian(payable(existingImplementation));
-        } else {
-            uint256 proofMaturityDelaySeconds = _dii.proofMaturityDelaySeconds();
-            uint256 disputeGameFinalityDelaySeconds = _dii.disputeGameFinalityDelaySeconds();
-            vm.broadcast(msg.sender);
-            impl = IOptimismPortalJovian(
-                DeployUtils.create1({
-                    _name: "OptimismPortalJovian",
-                    _args: DeployUtils.encodeConstructor(
-                        abi.encodeCall(
-                            IOptimismPortalJovian.__constructor__,
-                            (proofMaturityDelaySeconds, disputeGameFinalityDelaySeconds)
-                        )
+        uint256 proofMaturityDelaySeconds = _dii.proofMaturityDelaySeconds();
+        uint256 disputeGameFinalityDelaySeconds = _dii.disputeGameFinalityDelaySeconds();
+        IOptimismPortalJovian impl = IOptimismPortalJovian(
+            DeployUtils.createDeterministic({
+                _name: "OptimismPortalJovian",
+                _args: DeployUtils.encodeConstructor(
+                    abi.encodeCall(
+                        IOptimismPortalJovian.__constructor__, (proofMaturityDelaySeconds, disputeGameFinalityDelaySeconds)
                     )
-                })
-            );
-        }
+                ),
+                _salt: _salt
+            })
+        );
 
         vm.label(address(impl), "OptimismPortalImpl");
         _dio.set(_dio.optimismPortalImpl.selector, address(impl));
     }
 
-    function deploySystemConfigImpl(
-        DeployImplementationsInput _dii,
-        DeployImplementationsOutput _dio
-    )
-        public
-        override
-    {
-        string memory release = _dii.l1ContractsRelease();
-        string memory stdVerToml = _dii.standardVersionsToml();
-
-        string memory contractName = "system_config";
-        ISystemConfigJovian impl;
-
-        address existingImplementation = getReleaseAddress(release, contractName, stdVerToml);
-        if (existingImplementation != address(0)) {
-            impl = ISystemConfigJovian(existingImplementation);
-        } else {
-            vm.broadcast(msg.sender);
-            impl = ISystemConfigJovian(
-                DeployUtils.create1({
-                    _name: "SystemConfigJovian",
-                    _args: DeployUtils.encodeConstructor(abi.encodeCall(ISystemConfigJovian.__constructor__, ()))
-                })
-            );
-        }
-
+    function deploySystemConfigImpl(DeployImplementationsOutput _dio) public override {
+        ISystemConfigJovian impl = ISystemConfigJovian(
+            DeployUtils.createDeterministic({
+                _name: "SystemConfigJovian",
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(ISystemConfigJovian.__constructor__, ())),
+                _salt: _salt
+            })
+        );
         vm.label(address(impl), "SystemConfigImpl");
         _dio.set(_dio.systemConfigImpl.selector, address(impl));
     }

@@ -9,7 +9,6 @@ import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 
 interface IOptimismPortalJovian {
-    error CustomGasTokenNotSupported();
     error AlreadyFinalized();
     error BadTarget();
     error Blacklisted();
@@ -24,17 +23,15 @@ interface IOptimismPortalJovian {
     error InvalidMerkleProof();
     error InvalidProof();
     error LargeCalldata();
-    error NoValue();
     error NonReentrant();
-    error OnlyCustomGasToken();
     error OutOfGas();
     error ProposalNotValidated();
     error SmallGasLimit();
-    error TransferFailed();
     error Unauthorized();
     error UnexpectedList();
     error UnexpectedString();
     error Unproven();
+    error LegacyGame();
 
     event DisputeGameBlacklisted(IDisputeGame indexed disputeGame);
     event Initialized(uint8 version);
@@ -47,18 +44,8 @@ interface IOptimismPortalJovian {
     receive() external payable;
 
     function DEPOSIT_NONCE_SLOT() external view returns (bytes32);
-    function balance() external view returns (uint256);
     function blacklistDisputeGame(IDisputeGame _disputeGame) external;
     function checkWithdrawal(bytes32 _withdrawalHash, address _proofSubmitter) external view;
-    function depositERC20Transaction(
-        address _to,
-        uint256 _mint,
-        uint256 _value,
-        uint64 _gasLimit,
-        bool _isCreation,
-        bytes memory _data
-    )
-        external;
     function depositTransaction(
         address _to,
         uint256 _value,
@@ -111,7 +98,6 @@ interface IOptimismPortalJovian {
         returns (IDisputeGame disputeGameProxy, uint64 timestamp); // nosemgrep
     function respectedGameType() external view returns (GameType);
     function respectedGameTypeUpdatedAt() external view returns (uint64);
-    function setGasPayingToken(address _token, uint8 _decimals, bytes32 _name, bytes32 _symbol) external;
     function setRespectedGameType(GameType _gameType) external;
     function superchainConfig() external view returns (ISuperchainConfig);
     function systemConfig() external view returns (ISystemConfig);

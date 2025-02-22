@@ -179,9 +179,9 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
     }
 
     /// @notice Semantic version.
-    /// @custom:semver 3.12.1
+    /// @custom:semver 3.12.2
     function version() public pure virtual returns (string memory) {
-        return "3.12.1";
+        return "3.12.2";
     }
 
     /// @notice Constructs the OptimismPortal contract.
@@ -482,7 +482,15 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
 
         // Emit a TransactionDeposited event so that the rollup node can derive a deposit
         // transaction for this deposit.
-        emit TransactionDeposited(from, _to, DEPOSIT_VERSION, opaqueData);
+        _emitTransactionDeposited(from, _to, opaqueData);
+    }
+
+    function _emitTransactionDeposited(address _from, address _to, bytes memory _opaqueData) internal {
+        emit TransactionDeposited(_from, _to, _transactionDepositedNonceAndVersion(), _opaqueData);
+    }
+
+    function _transactionDepositedNonceAndVersion() internal virtual returns (uint256) {
+        return DEPOSIT_VERSION;
     }
 
     /// @notice Blacklists a dispute game. Should only be used in the event that a dispute game resolves incorrectly.

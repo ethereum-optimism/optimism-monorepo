@@ -274,56 +274,44 @@
   },
   {
     "inputs": [],
-    "name": "gasPayingToken",
+    "name": "getAddresses",
     "outputs": [
       {
-        "internalType": "address",
-        "name": "addr_",
-        "type": "address"
-      },
-      {
-        "internalType": "uint8",
-        "name": "decimals_",
-        "type": "uint8"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "gasPayingTokenAddress",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "addr_",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "gasPayingTokenName",
-    "outputs": [
-      {
-        "internalType": "string",
-        "name": "name_",
-        "type": "string"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "gasPayingTokenSymbol",
-    "outputs": [
-      {
-        "internalType": "string",
-        "name": "symbol_",
-        "type": "string"
+        "components": [
+          {
+            "internalType": "address",
+            "name": "l1CrossDomainMessenger",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "l1ERC721Bridge",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "l1StandardBridge",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "disputeGameFactory",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "optimismPortal",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "optimismMintableERC20Factory",
+            "type": "address"
+          }
+        ],
+        "internalType": "struct SystemConfig.Addresses",
+        "name": "",
+        "type": "tuple"
       }
     ],
     "stateMutability": "view",
@@ -434,11 +422,6 @@
             "internalType": "address",
             "name": "optimismMintableERC20Factory",
             "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "gasPayingToken",
-            "type": "address"
           }
         ],
         "internalType": "struct SystemConfig.Addresses",
@@ -449,19 +432,6 @@
     "name": "initialize",
     "outputs": [],
     "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "isCustomGasToken",
-    "outputs": [
-      {
-        "internalType": "bool",
-        "name": "",
-        "type": "bool"
-      }
-    ],
-    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -847,10 +817,5 @@
     ],
     "name": "OwnershipTransferred",
     "type": "event"
-  },
-  {
-    "inputs": [],
-    "name": "CustomGasTokenNotSupported",
-    "type": "error"
   }
 ]

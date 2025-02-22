@@ -121,6 +121,14 @@ func (ba *FetchingAttributesBuilder) PreparePayloadAttributes(ctx context.Contex
 		upgradeTxs = append(upgradeTxs, fjord...)
 	}
 
+	if ba.rollupCfg.IsIsthmusActivationBlock(nextL2Time) {
+		isthmus, err := IsthmusNetworkUpgradeTransactions()
+		if err != nil {
+			return nil, NewCriticalError(fmt.Errorf("failed to build isthmus network upgrade txs: %w", err))
+		}
+		upgradeTxs = append(upgradeTxs, isthmus...)
+	}
+
 	if ba.rollupCfg.IsJovianActivationBlock(nextL2Time) {
 		jovian, err := JovianNetworkUpgradeTransactions()
 		if err != nil {

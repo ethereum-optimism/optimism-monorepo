@@ -322,12 +322,6 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "OptimismPortalJovian", _sel: _getSel("proofSubmitters(bytes32,uint256)") });
         _addSpec({ _name: "OptimismPortalJovian", _sel: _getSel("numProofSubmitters(bytes32)") });
         _addSpec({ _name: "OptimismPortalJovian", _sel: _getSel("depositNonce()") });
-        _addSpec({ _name: "OptimismPortalJovian", _sel: _getSel("balance()") });
-        _addSpec({
-            _name: "OptimismPortalJovian",
-            _sel: _getSel("depositERC20Transaction(address,uint256,uint256,uint64,bool,bytes)")
-        });
-        _addSpec({ _name: "OptimismPortalJovian", _sel: _getSel("setGasPayingToken(address,uint8,bytes32,bytes32)") });
 
         // OptimismPortal2
         _addSpec({ _name: "OptimismPortal2", _sel: _getSel("depositTransaction(address,uint256,uint64,bool,bytes)") });
@@ -517,11 +511,6 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "SystemConfigJovian", _sel: _getSel("OPTIMISM_PORTAL_SLOT()") });
         _addSpec({ _name: "SystemConfigJovian", _sel: _getSel("OPTIMISM_MINTABLE_ERC20_FACTORY_SLOT()") });
         _addSpec({ _name: "SystemConfigJovian", _sel: _getSel("BATCH_INBOX_SLOT()") });
-        _addSpec({ _name: "SystemConfigJovian", _sel: _getSel("gasPayingToken()") });
-        _addSpec({ _name: "SystemConfigJovian", _sel: _getSel("gasPayingTokenAddress()") });
-        _addSpec({ _name: "SystemConfigJovian", _sel: _getSel("gasPayingTokenName()") });
-        _addSpec({ _name: "SystemConfigJovian", _sel: _getSel("gasPayingTokenSymbol()") });
-        _addSpec({ _name: "SystemConfigJovian", _sel: _getSel("isCustomGasToken()") });
         _addSpec({ _name: "SystemConfigJovian", _sel: _getSel("DISPUTE_GAME_FACTORY_SLOT()") });
         _addSpec({ _name: "SystemConfigJovian", _sel: _getSel("disputeGameFactory()") });
         _addSpec({
@@ -535,6 +524,7 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "SystemConfigJovian", _sel: _getSel("CONFIG_UPDATE_NONCE_SLOT()") });
         _addSpec({ _name: "SystemConfigJovian", _sel: _getSel("VERSION_1()") });
         _addSpec({ _name: "SystemConfigJovian", _sel: _getSel("configUpdateNonce()") });
+        _addSpec({ _name: "SystemConfigJovian", _sel: _getSel("getAddresses()") });
 
         // SystemConfigInterop
         _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("UNSAFE_BLOCK_SIGNER_SLOT()") });

@@ -29,6 +29,7 @@ interface ISystemConfigInterop {
     function gasLimit() external view returns (uint64);
     function eip1559Denominator() external view returns (uint32);
     function eip1559Elasticity() external view returns (uint32);
+    function getAddresses() external view returns (ISystemConfig.Addresses memory);
     function configUpdateNonce() external view returns (uint64 nonce_);
     function l1CrossDomainMessenger() external view returns (address addr_);
     function l1ERC721Bridge() external view returns (address addr_);
