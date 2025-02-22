@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
-
+import { console2 as console } from "forge-std/console2.sol";
 // Scripting
 import { Script } from "forge-std/Script.sol";
 
@@ -53,11 +53,14 @@ contract DeployOPPrestateUpdater is Script {
         vm.stopBroadcast();
         // forgefmt: disable-end
 
+        bytes memory initData = abi.encodeCall(IOPPrestateUpdater.__constructor__, (superchainConfig, protocolVersions, blueprints));
+        console.log("encoded constructor args (with extra 4 byte prefix).");
+        console.logBytes(initData);
         OPPrestateUpdater oppu = OPPrestateUpdater(
             DeployUtils.createDeterministic({
                 _name: "OPPrestateUpdater",
                 _args: DeployUtils.encodeConstructor(
-                    abi.encodeCall(IOPPrestateUpdater.__constructor__, (superchainConfig, protocolVersions, blueprints))
+                    initData
                 ),
                 _salt: bytes32(_salt)
             })
