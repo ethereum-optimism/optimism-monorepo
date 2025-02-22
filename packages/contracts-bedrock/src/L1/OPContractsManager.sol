@@ -32,6 +32,9 @@ import { IL1ERC721Bridge } from "interfaces/L1/IL1ERC721Bridge.sol";
 import { IL1StandardBridge } from "interfaces/L1/IL1StandardBridge.sol";
 import { IOptimismMintableERC20Factory } from "interfaces/universal/IOptimismMintableERC20Factory.sol";
 import { IHasSuperchainConfig } from "interfaces/L1/IHasSuperchainConfig.sol";
+import { StorageSetter } from "src/universal/StorageSetter.sol";
+
+import { EIP1967Helper } from "test/mocks/EIP1967Helper.sol";
 
 import { FaultDisputeGame } from "src/dispute/FaultDisputeGame.sol";
 
@@ -1212,7 +1215,21 @@ contract AddFdg is Script {
         IDisputeGameFactory(0xF1408Ef0c263F8c42CefCc59146f90890615A191);
     IOptimismPortal2 optimismPortalProxyAddress = IOptimismPortal2(payable(0x8A2e914dfA08d36761fFE0E9cCBBce4f095DFbd2));
 
+    ISuperchainConfig superchainConfigProxyAddress = ISuperchainConfig(0x885C53fa5f5d03eFC781a7FeB8AaBAB67BA4E3BC);
+    IProxyAdmin proxyAdminAddress = IProxyAdmin(0xbD71120fC716a431AEaB81078ce85ccc74496552);
+    IProxyAdmin superChainProxyAdminAddress = IProxyAdmin(0xFeE222a4FA606A9dD0B05CD0a8E1E40e60FD809a);
+    StorageSetter storageSetterAddress = StorageSetter(0x553Eb72A9F1Fc85dCFfeB2EbCE652726D06E0bBF);
+
     function run() external {
+        address superchainConfigImpl = EIP1967Helper.getImplementation(address(superchainConfigProxyAddress));
+
+        // Upgrade superchain config to take over guardian role
+        vm.startBroadcast(msg.sender);
+        // reset the init slot of the superchain config
+        superChainProxyAdminAddress.upgradeAndCall(payable(address(superchainConfigProxyAddress)), address(storageSetterAddress), abi.encodeCall(StorageSetter.setUint, (bytes32(0), 0)));
+        superChainProxyAdminAddress.upgradeAndCall(payable(address(superchainConfigProxyAddress)), superchainConfigImpl, abi.encodeCall(ISuperchainConfig.initialize, (msg.sender, false)));
+        vm.stopBroadcast();
+
         // Get params from existing permissioned dispute game
         FaultDisputeGame.GameConstructorParams memory params =
             getGameConstructorParams(IFaultDisputeGame(address(permissionedDisputeGameAddress)));
@@ -1225,7 +1242,9 @@ contract AddFdg is Script {
         disputeGameFactoryProxyAddress.setImplementation(GameTypes.CANNON, IDisputeGame(address(newFDG)));
 
         // Set initial bond amount
-        disputeGameFactoryProxyAddress.setInitBond(GameTypes.CANNON, 0.1 ether);
+        disputeGameFactoryProxyAddress.setInitBond(GameTypes.CANNON, 0.08 ether);
+
+        optimismPortalProxyAddress.setRespectedGameType(GameTypes.CANNON);
 
         vm.stopBroadcast();
     }
