@@ -1209,42 +1209,66 @@ contract OPContractsManager is ISemver {
 }
 
 contract AddFdg is Script {
-    IPermissionedDisputeGame permissionedDisputeGameAddress =
+    IPermissionedDisputeGame permissionedDisputeGame =
         IPermissionedDisputeGame(0xc0B6c36E14755296476d5D8343654706FE0978a8);
-    IDisputeGameFactory disputeGameFactoryProxyAddress =
-        IDisputeGameFactory(0xF1408Ef0c263F8c42CefCc59146f90890615A191);
-    IOptimismPortal2 optimismPortalProxyAddress = IOptimismPortal2(payable(0x8A2e914dfA08d36761fFE0E9cCBBce4f095DFbd2));
+    IDisputeGameFactory disputeGameFactoryProxy = IDisputeGameFactory(0xF1408Ef0c263F8c42CefCc59146f90890615A191);
+    IOptimismPortal2 optimismPortalProxy = IOptimismPortal2(payable(0x8A2e914dfA08d36761fFE0E9cCBBce4f095DFbd2));
 
-    ISuperchainConfig superchainConfigProxyAddress = ISuperchainConfig(0x885C53fa5f5d03eFC781a7FeB8AaBAB67BA4E3BC);
+    ISuperchainConfig superchainConfigProxy = ISuperchainConfig(0x885C53fa5f5d03eFC781a7FeB8AaBAB67BA4E3BC);
     IProxyAdmin proxyAdminAddress = IProxyAdmin(0xbD71120fC716a431AEaB81078ce85ccc74496552);
-    IProxyAdmin superChainProxyAdminAddress = IProxyAdmin(0xFeE222a4FA606A9dD0B05CD0a8E1E40e60FD809a);
-    StorageSetter storageSetterAddress = StorageSetter(0x553Eb72A9F1Fc85dCFfeB2EbCE652726D06E0bBF);
+    IProxyAdmin superchainProxyAdmin = IProxyAdmin(0xFeE222a4FA606A9dD0B05CD0a8E1E40e60FD809a);
+    StorageSetter storageSetter = StorageSetter(0x553Eb72A9F1Fc85dCFfeB2EbCE652726D06E0bBF);
 
     function run() external {
-        address superchainConfigImpl = EIP1967Helper.getImplementation(address(superchainConfigProxyAddress));
+        address superchainConfigImpl = EIP1967Helper.getImplementation(address(superchainConfigProxy));
 
         // Upgrade superchain config to take over guardian role
         vm.startBroadcast(msg.sender);
         // reset the init slot of the superchain config
-        superChainProxyAdminAddress.upgradeAndCall(payable(address(superchainConfigProxyAddress)), address(storageSetterAddress), abi.encodeCall(StorageSetter.setUint, (bytes32(0), 0)));
-        superChainProxyAdminAddress.upgradeAndCall(payable(address(superchainConfigProxyAddress)), superchainConfigImpl, abi.encodeCall(ISuperchainConfig.initialize, (msg.sender, false)));
+        superchainProxyAdmin.upgradeAndCall(
+            payable(address(superchainConfigProxy)),
+            address(storageSetter),
+            abi.encodeCall(StorageSetter.setUint, (bytes32(0), 0))
+        );
+        superchainProxyAdmin.upgradeAndCall(
+            payable(address(superchainConfigProxy)),
+            superchainConfigImpl,
+            abi.encodeCall(ISuperchainConfig.initialize, (msg.sender, false))
+        );
         vm.stopBroadcast();
 
         // Get params from existing permissioned dispute game
         FaultDisputeGame.GameConstructorParams memory params =
-            getGameConstructorParams(IFaultDisputeGame(address(permissionedDisputeGameAddress)));
+            getGameConstructorParams(IFaultDisputeGame(address(permissionedDisputeGame)));
+        // Update the game type
+        params.gameType = GameTypes.CANNON;
 
         vm.startBroadcast(msg.sender);
         // Deploy new fault dispute game with same params
         FaultDisputeGame newFDG = new FaultDisputeGame(params);
+        require(GameType.unwrap(newFDG.gameType()) == GameType.unwrap(GameTypes.CANNON));
 
         // Set implementation in dispute game factory
-        disputeGameFactoryProxyAddress.setImplementation(GameTypes.CANNON, IDisputeGame(address(newFDG)));
+        disputeGameFactoryProxy.setImplementation(GameTypes.CANNON, IDisputeGame(address(newFDG)));
 
         // Set initial bond amount
-        disputeGameFactoryProxyAddress.setInitBond(GameTypes.CANNON, 0.08 ether);
+        disputeGameFactoryProxy.setInitBond(GameTypes.CANNON, 0.08 ether);
 
-        optimismPortalProxyAddress.setRespectedGameType(GameTypes.CANNON);
+        optimismPortalProxy.setRespectedGameType(GameTypes.CANNON);
+
+        // Transfer ProxyAdmin ownership to the same owner as the superchain proxy admin
+        // but do some sanity checks first.
+        address newOwner = 0xd7994a2FD54e2faC53B5cdE0dE10f30F853517a7; // Holesky PAO
+        require(
+            address(superchainConfigProxy) == address(optimismPortalProxy.superchainConfig()),
+            "superchainConfig mismatch"
+        );
+        require(
+            superchainProxyAdmin.getProxyAdmin(payable(address(superchainConfigProxy))) == address(superchainProxyAdmin)
+        );
+        superchainProxyAdmin.transferOwnership(newOwner);
+        proxyAdminAddress.transferOwnership(newOwner);
+        disputeGameFactoryProxy.transferOwnership(newOwner);
 
         vm.stopBroadcast();
     }
@@ -1270,4 +1294,3 @@ contract AddFdg is Script {
         return params;
     }
 }
-
