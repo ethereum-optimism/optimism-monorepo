@@ -94,7 +94,8 @@ func (w *WithdrawalMonitor) validateGameWithdrawals(game *types.EnrichedGameData
 				total := honestWithdrawableAmounts[recipient]
 				total = new(big.Int).Add(total, game.Credits[recipient])
 				honestWithdrawableAmounts[recipient] = total
-			} else if bigs.IsPositive(withdrawalAmount.Amount) && time.Unix(withdrawalAmount.Timestamp.Int64(), 0).Add(game.WETHDelay).Before(now) {
+			}
+			if bigs.IsPositive(withdrawalAmount.Amount) && time.Unix(withdrawalAmount.Timestamp.Int64(), 0).Add(game.WETHDelay).Before(now) {
 				// Credits are fully withdrawable
 				total := honestWithdrawableAmounts[recipient]
 				total = new(big.Int).Add(total, withdrawalAmount.Amount)
