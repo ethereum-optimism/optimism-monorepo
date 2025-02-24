@@ -47,7 +47,7 @@ func CrossSafeUpdate(logger log.Logger, chainID eth.ChainID, d CrossSafeDeps) er
 		logger.Info("Awaiting replacement block", "err", err)
 		return err
 	}
-	if errors.Is(err, types.ErrConflict) || errors.Is(err, types.ErrExpired) {
+	if errors.Is(err, types.ErrConflict) {
 		logger.Warn("Found a conflicting local-safe block that cannot be promoted to cross-safe",
 			"scope", candidate.Source, "invalidated", candidate, "err", err)
 		return d.InvalidateLocalSafe(chainID, candidate)

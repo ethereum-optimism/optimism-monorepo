@@ -81,7 +81,7 @@ func CrossSafeHazards(d SafeStartDeps, chainID eth.ChainID, inL1Source eth.Block
 			}
 			// Run expiry window invariant check *after* verifying that the message is non-conflicting.
 			if msg.Timestamp+d.MessageExpiryWindow() < candidate.Timestamp {
-				return nil, fmt.Errorf("timestamp of message %s (chain %s) has expired: %d < %d: %w", msg, chainID, msg.Timestamp+d.MessageExpiryWindow(), candidate.Timestamp, types.ErrExpired)
+				return nil, fmt.Errorf("timestamp of message %s (chain %s) has expired: %d < %d: %w", msg, chainID, msg.Timestamp+d.MessageExpiryWindow(), candidate.Timestamp, types.ErrConflict)
 			}
 		} else if msg.Timestamp == candidate.Timestamp {
 			// If timestamp is equal: we have to inspect ordering of individual

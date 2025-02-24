@@ -326,7 +326,8 @@ func TestCrossSafeHazards(t *testing.T) {
 		// and DerivedToSource returns a BlockSeal with a equal to the Number of inL1Source,
 		// no error is returned
 		hazards, err := CrossSafeHazards(ssd, chainID, inL1Source, candidate, execMsgs)
-		require.ErrorIs(t, err, types.ErrExpired)
+		require.ErrorIs(t, err, types.ErrConflict)
+		require.ErrorContains(t, err, "has expired")
 		require.Empty(t, hazards)
 	})
 	t.Run("message close to expiry", func(t *testing.T) {

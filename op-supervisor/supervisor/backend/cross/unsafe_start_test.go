@@ -267,7 +267,8 @@ func TestCrossUnsafeHazards(t *testing.T) {
 		// when there is one execMsg that has just expired,
 		// ErrExpired is returned
 		hazards, err := CrossUnsafeHazards(usd, chainID, candidate, execMsgs)
-		require.ErrorIs(t, err, types.ErrExpired)
+		require.ErrorIs(t, err, types.ErrConflict)
+		require.ErrorContains(t, err, "has expired")
 		require.Empty(t, hazards)
 	})
 	t.Run("message near expiry", func(t *testing.T) {

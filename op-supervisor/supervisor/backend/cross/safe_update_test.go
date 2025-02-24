@@ -463,7 +463,8 @@ func TestScopedCrossSafeUpdate(t *testing.T) {
 		// when OpenBlock and CandidateCrossSafe return different blocks,
 		// an ErrConflict is returned
 		pair, err := scopedCrossSafeUpdate(logger, chainID, csd)
-		require.ErrorIs(t, err, types.ErrExpired)
+		require.ErrorIs(t, err, types.ErrConflict)
+		require.ErrorContains(t, err, "has expired")
 		require.Equal(t, eth.BlockRef{}, pair.Source)
 	})
 	t.Run("successful update", func(t *testing.T) {

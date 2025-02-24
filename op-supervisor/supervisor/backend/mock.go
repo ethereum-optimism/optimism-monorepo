@@ -47,11 +47,11 @@ func (m *MockBackend) AddL2RPC(ctx context.Context, rpc string, jwtSecret eth.By
 	return nil
 }
 
-func (m *MockBackend) CheckMessage(identifier types.Identifier, payloadHash common.Hash) (types.SafetyLevel, error) {
+func (m *MockBackend) CheckMessage(identifier types.Identifier, payloadHash common.Hash, executingTimestamp uint64) (types.SafetyLevel, error) {
 	return types.CrossUnsafe, nil
 }
 
-func (m *MockBackend) CheckMessages(messages []types.Message, minSafety types.SafetyLevel) error {
+func (m *MockBackend) CheckMessages(messages []types.Message, minSafety types.SafetyLevel, executingTimestamp uint64) error {
 	return nil
 }
 

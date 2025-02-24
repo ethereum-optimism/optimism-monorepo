@@ -148,8 +148,7 @@ func isInvalidMessageError(err error) bool {
 	return errors.Is(err, supervisortypes.ErrConflict) ||
 		errors.Is(err, cross.ErrExecMsgHasInvalidIndex) ||
 		errors.Is(err, cross.ErrExecMsgUnknownChain) ||
-		errors.Is(err, cross.ErrCycle) || errors.Is(err, supervisortypes.ErrUnknownChain) ||
-		errors.Is(err, supervisortypes.ErrExpired)
+		errors.Is(err, cross.ErrCycle) || errors.Is(err, supervisortypes.ErrUnknownChain)
 }
 
 type ConsolidateCheckDeps interface {
