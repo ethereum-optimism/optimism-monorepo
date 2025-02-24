@@ -2,6 +2,7 @@ package contracts
 
 import (
 	"context"
+	_ "embed"
 	"errors"
 	"fmt"
 	"math"
@@ -27,6 +28,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+//go:embed abis/FaultDisputeGame-1.2.0.json
+var faultDisputeGameAbi120 []byte
+
 var (
 	fdgAddr    = common.HexToAddress("0x24112842371dFC380576ebb09Ae16Cb6B6caD7CB")
 	vmAddr     = common.HexToAddress("0x33332842371dFC380576ebb09Ae16Cb6B6c3333")
@@ -46,7 +50,9 @@ const (
 	vers080    = "0.8.0"
 	vers0180   = "0.18.0"
 	vers111    = "1.1.1"
-	versLatest = "1.2.0"
+	vers120    = "1.2.0"
+	vers131    = "1.3.1"
+	versLatest = "1.4.0"
 )
 
 var versions = []contractVersion{
@@ -66,6 +72,18 @@ var versions = []contractVersion{
 		version: vers111,
 		loadAbi: func() *abi.ABI {
 			return mustParseAbi(faultDisputeGameAbi111)
+		},
+	},
+	{
+		version: vers120,
+		loadAbi: func() *abi.ABI {
+			return mustParseAbi(faultDisputeGameAbi120)
+		},
+	},
+	{
+		version: vers131,
+		loadAbi: func() *abi.ABI {
+			return mustParseAbi(faultDisputeGameAbi131)
 		},
 	},
 	{
@@ -187,6 +205,27 @@ func TestSimpleGetters(t *testing.T) {
 					}
 					require.Equal(t, expected, status)
 				})
+			}
+		})
+	}
+}
+
+func TestBondDistributionMode(t *testing.T) {
+	unsupportedVersions := []string{vers080, vers0180, vers111, vers120, vers131}
+	for _, version := range versions {
+		version := version
+		t.Run(version.version, func(t *testing.T) {
+			supported := !slices.Contains(unsupportedVersions, version.version)
+			stubRpc, game := setupFaultDisputeGameTest(t, version)
+			if supported {
+				stubRpc.SetResponse(fdgAddr, methodBondDistributionMode, rpcblock.Latest, nil, []interface{}{faultTypes.RefundDistributionMode})
+			}
+			status, err := game.GetBondDistributionMode(context.Background(), rpcblock.Latest)
+			require.NoError(t, err)
+			if supported {
+				require.Equal(t, faultTypes.RefundDistributionMode, status)
+			} else {
+				require.Equal(t, faultTypes.LegacyDistributionMode, status)
 			}
 		})
 	}

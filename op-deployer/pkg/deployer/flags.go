@@ -12,14 +12,14 @@ import (
 )
 
 const (
-	EnvVarPrefix             = "DEPLOYER"
-	L1RPCURLFlagName         = "l1-rpc-url"
-	L1ChainIDFlagName        = "l1-chain-id"
-	L2ChainIDsFlagName       = "l2-chain-ids"
-	WorkdirFlagName          = "workdir"
-	OutdirFlagName           = "outdir"
-	PrivateKeyFlagName       = "private-key"
-	IntentConfigTypeFlagName = "intent-config-type"
+	EnvVarPrefix       = "DEPLOYER"
+	L1RPCURLFlagName   = "l1-rpc-url"
+	L1ChainIDFlagName  = "l1-chain-id"
+	L2ChainIDsFlagName = "l2-chain-ids"
+	WorkdirFlagName    = "workdir"
+	OutdirFlagName     = "outdir"
+	PrivateKeyFlagName = "private-key"
+	IntentTypeFlagName = "intent-type"
 )
 
 type DeploymentTarget string
@@ -86,16 +86,17 @@ var (
 		EnvVars: PrefixEnvVar("DEPLOYMENT_TARGET"),
 		Value:   string(DeploymentTargetLive),
 	}
-	IntentConfigTypeFlag = &cli.StringFlag{
-		Name: IntentConfigTypeFlagName,
-		Usage: fmt.Sprintf("Intent config type to use. Options: %s (default), %s, %s, %s, %s",
-			state.IntentConfigTypeStandard,
-			state.IntentConfigTypeCustom,
-			state.IntentConfigTypeStrict,
-			state.IntentConfigTypeStandardOverrides,
-			state.IntentConfigTypeStrictOverrides),
-		EnvVars: PrefixEnvVar("INTENT_CONFIG_TYPE"),
-		Value:   string(state.IntentConfigTypeStandard),
+	IntentTypeFlag = &cli.StringFlag{
+		Name: IntentTypeFlagName,
+		Usage: fmt.Sprintf("Intent config type to use. Options: %s (default), %s, %s",
+			state.IntentTypeStandard,
+			state.IntentTypeCustom,
+			state.IntentTypeStandardOverrides),
+		EnvVars: PrefixEnvVar("INTENT_TYPE"),
+		Value:   string(state.IntentTypeStandard),
+		Aliases: []string{
+			"intent-config-type",
+		},
 	}
 )
 
@@ -105,7 +106,7 @@ var InitFlags = []cli.Flag{
 	L1ChainIDFlag,
 	L2ChainIDsFlag,
 	WorkdirFlag,
-	IntentConfigTypeFlag,
+	IntentTypeFlag,
 }
 
 var ApplyFlags = []cli.Flag{

@@ -1,13 +1,11 @@
 package system
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
 	"slices"
-	"strings"
 
 	"github.com/ethereum-optimism/optimism/devnet-sdk/descriptors"
+	"github.com/ethereum-optimism/optimism/devnet-sdk/shell/env"
 )
 
 type system struct {
@@ -19,28 +17,15 @@ type system struct {
 // system implements System
 var _ System = (*system)(nil)
 
-func NewSystemFromEnv(envVar string) (System, error) {
-	devnetFile := os.Getenv(envVar)
-	if devnetFile == "" {
-		return nil, fmt.Errorf("env var '%s' is unset", envVar)
-	}
-	devnet, err := devnetFromFile(devnetFile)
+func NewSystemFromURL(url string) (System, error) {
+	devnetEnv, err := env.LoadDevnetFromURL(url)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse devnet file: %w", err)
+		return nil, fmt.Errorf("failed to load devnet from URL: %w", err)
 	}
 
-	// Extract basename without extension from devnetFile path
-	basename := devnetFile
-	if lastSlash := strings.LastIndex(basename, "/"); lastSlash >= 0 {
-		basename = basename[lastSlash+1:]
-	}
-	if lastDot := strings.LastIndex(basename, "."); lastDot >= 0 {
-		basename = basename[:lastDot]
-	}
-
-	sys, err := systemFromDevnet(*devnet, basename)
+	sys, err := systemFromDevnet(devnetEnv.Config, devnetEnv.Name)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create system from devnet file: %w", err)
+		return nil, fmt.Errorf("failed to create system from devnet: %w", err)
 	}
 	return sys, nil
 }
@@ -49,8 +34,8 @@ func (s *system) L1() Chain {
 	return s.l1
 }
 
-func (s *system) L2(chainID uint64) Chain {
-	return s.l2s[chainID]
+func (s *system) L2s() []Chain {
+	return s.l2s
 }
 
 func (s *system) Identifier() string {
@@ -60,26 +45,20 @@ func (s *system) Identifier() string {
 func (s *system) addChains(chains ...*descriptors.Chain) error {
 	for _, chainDesc := range chains {
 		if chainDesc.ID == "" {
-			s.l1 = chainFromDescriptor(chainDesc)
+			l1, err := chainFromDescriptor(chainDesc)
+			if err != nil {
+				return fmt.Errorf("failed to add L1 chain: %w", err)
+			}
+			s.l1 = l1
 		} else {
-			s.l2s = append(s.l2s, chainFromDescriptor(chainDesc))
+			l2, err := chainFromDescriptor(chainDesc)
+			if err != nil {
+				return fmt.Errorf("failed to add L2 chain: %w", err)
+			}
+			s.l2s = append(s.l2s, l2)
 		}
 	}
 	return nil
-}
-
-// devnetFromFile reads a DevnetEnvironment from a JSON file.
-func devnetFromFile(devnetFile string) (*descriptors.DevnetEnvironment, error) {
-	data, err := os.ReadFile(devnetFile)
-	if err != nil {
-		return nil, fmt.Errorf("error reading devnet file: %w", err)
-	}
-
-	var config descriptors.DevnetEnvironment
-	if err := json.Unmarshal(data, &config); err != nil {
-		return nil, fmt.Errorf("error parsing JSON: %w", err)
-	}
-	return &config, nil
 }
 
 func systemFromDevnet(dn descriptors.DevnetEnvironment, identifier string) (System, error) {

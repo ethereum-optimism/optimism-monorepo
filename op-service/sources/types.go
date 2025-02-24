@@ -15,6 +15,7 @@ import (
 	"github.com/ethereum/go-ethereum/trie"
 
 	"github.com/ethereum-optimism/optimism/op-service/eth"
+	"github.com/ethereum-optimism/optimism/op-service/predeploys"
 )
 
 // Note: these types are used, instead of the geth types, to enable:
@@ -164,9 +165,11 @@ func (block *RPCBlock) Verify() error {
 		return fmt.Errorf("failed to verify transactions list: computed %s but RPC said %s", computed, block.TxHash)
 	}
 
-	// Withdrawals validation is different between L1 and L2. It is possible to determine that it is an L2 block
-	// if the first transaction is a deposit.
-	isL2 := len(block.Transactions) > 0 && block.Transactions[0].IsDepositTx()
+	// Withdrawals validation is different between L1 and L2.
+	// It is possible to determine that it is an L2 block if the first transaction is a deposit.
+	// The genesis block does not have transactions, but does have a known fee-recipient predeploy address.
+	isL2 := (len(block.Transactions) > 0 && block.Transactions[0].IsDepositTx()) ||
+		(block.Number == 0 && block.Coinbase == predeploys.SequencerFeeVaultAddr)
 	if isL2 {
 		if err := block.validateL2Withdrawals(block.Withdrawals, block.WithdrawalsRoot); err != nil {
 			return err
@@ -277,6 +280,7 @@ func (block *RPCBlock) ExecutionPayloadEnvelope(trustCache bool) (*eth.Execution
 	return &eth.ExecutionPayloadEnvelope{
 		ParentBeaconBlockRoot: block.ParentBeaconRoot,
 		ExecutionPayload:      payload,
+		RequestsHash:          block.RequestsHash,
 	}, nil
 }
 

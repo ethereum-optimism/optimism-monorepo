@@ -31,10 +31,8 @@ func TestTxmgrRPC(t *testing.T) {
 		"127.0.0.1",
 		0,
 		appVersion,
-		oprpc.WithAPIs([]rpc.API{
-			h.mgr.API(),
-		}),
 	)
+	server.AddAPI(h.mgr.API())
 	require.NoError(t, server.Start())
 	defer func() {
 		_ = server.Stop()

@@ -23,6 +23,7 @@ import (
 
 	"github.com/urfave/cli/v2"
 
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/p2p/enode"
 	"github.com/ethereum/go-ethereum/p2p/netutil"
 )
@@ -178,8 +179,9 @@ func loadDiscoveryOpts(conf *p2p.Config, ctx *cli.Context) error {
 		return fmt.Errorf("failed to open discovery db: %w", err)
 	}
 
-	records := strings.Split(ctx.String(flags.BootnodesName), ",")
+	records := ctx.StringSlice(flags.BootnodesName)
 	if len(records) == 0 {
+		log.Info("Using default bootnodes, none provided.")
 		records = p2p.DefaultBootnodes
 	}
 

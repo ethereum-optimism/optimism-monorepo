@@ -2,6 +2,7 @@ package proposer
 
 import (
 	"errors"
+	"slices"
 	"time"
 
 	"github.com/urfave/cli/v2"
@@ -12,6 +13,22 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/oppprof"
 	oprpc "github.com/ethereum-optimism/optimism/op-service/rpc"
 	"github.com/ethereum-optimism/optimism/op-service/txmgr"
+)
+
+var (
+	ErrMissingRollupRpc     = errors.New("missing rollup rpc")
+	ErrMissingSupervisorRpc = errors.New("missing supervisor rpc")
+	ErrConflictingSource    = errors.New("must not specify both a rollup rpc and supervisor rpc")
+
+	// preInteropGameTypes are  game types that enforce having a rollup rpc.
+	// It is ok if this list isn't complete, unknown game types will allow either rollup or supervisor
+	// We just want to reduce foot-guns during the migration period
+	preInteropGameTypes = []uint32{0, 1, 2, 3, 6, 254, 255, 1337}
+
+	// postInteropGameTypes are game types that enforce having a supervisor rpc.
+	// It is ok if this list isn't complete, unknown game types will allow either rollup or supervisor
+	// We just want to reduce foot-guns during the migration period
+	postInteropGameTypes = []uint32{4, 5}
 )
 
 // CLIConfig is a well typed config that is parsed from the CLI params.
@@ -25,6 +42,9 @@ type CLIConfig struct {
 
 	// RollupRpc is the HTTP provider URL for the rollup node. A comma-separated list enables the active rollup provider.
 	RollupRpc string
+
+	// SupervisorRpcs is the list of HTTP provider URLs for supervisor nodes.
+	SupervisorRpcs []string
 
 	// L2OOAddress is the L2OutputOracle contract address.
 	L2OOAddress string
@@ -89,6 +109,21 @@ func (c *CLIConfig) Check() error {
 	if c.ProposalInterval != 0 && c.DGFAddress == "" {
 		return errors.New("the `ProposalInterval` was provided but the `DisputeGameFactory` address was not set")
 	}
+	if c.RollupRpc != "" && len(c.SupervisorRpcs) != 0 {
+		return ErrConflictingSource
+	}
+	// Require rollup RPC for L2OO
+	if c.L2OOAddress != "" && c.RollupRpc == "" {
+		return ErrMissingRollupRpc
+	}
+	// Require rollup RPC for pre interop game types
+	if c.DGFAddress != "" && slices.Contains(preInteropGameTypes, c.DisputeGameType) && c.RollupRpc == "" {
+		return ErrMissingRollupRpc
+	}
+	// Require supervisor RPC for post interop game types
+	if c.DGFAddress != "" && slices.Contains(postInteropGameTypes, c.DisputeGameType) && len(c.SupervisorRpcs) == 0 {
+		return ErrMissingSupervisorRpc
+	}
 
 	return nil
 }
@@ -96,13 +131,12 @@ func (c *CLIConfig) Check() error {
 // NewConfig parses the Config from the provided flags or environment variables.
 func NewConfig(ctx *cli.Context) *CLIConfig {
 	return &CLIConfig{
-		// Required Flags
-		L1EthRpc:     ctx.String(flags.L1EthRpcFlag.Name),
-		RollupRpc:    ctx.String(flags.RollupRpcFlag.Name),
-		L2OOAddress:  ctx.String(flags.L2OOAddressFlag.Name),
-		PollInterval: ctx.Duration(flags.PollIntervalFlag.Name),
-		TxMgrConfig:  txmgr.ReadCLIConfig(ctx),
-		// Optional Flags
+		L1EthRpc:                     ctx.String(flags.L1EthRpcFlag.Name),
+		RollupRpc:                    ctx.String(flags.RollupRpcFlag.Name),
+		SupervisorRpcs:               ctx.StringSlice(flags.SupervisorRpcsFlag.Name),
+		L2OOAddress:                  ctx.String(flags.L2OOAddressFlag.Name),
+		PollInterval:                 ctx.Duration(flags.PollIntervalFlag.Name),
+		TxMgrConfig:                  txmgr.ReadCLIConfig(ctx),
 		AllowNonFinalized:            ctx.Bool(flags.AllowNonFinalizedFlag.Name),
 		RPCConfig:                    oprpc.ReadCLIConfig(ctx),
 		LogConfig:                    oplog.ReadCLIConfig(ctx),

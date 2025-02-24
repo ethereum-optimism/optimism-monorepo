@@ -320,12 +320,17 @@ func CompleteL2(l2Host *script.Host, cfg *L2Config, l1Block *types.Block, deploy
 		allocs.Accounts[addr] = acc
 	}
 
-	l2Genesis.Alloc = allocs.Accounts
+	for addr, account := range allocs.Accounts {
+		l2Genesis.Alloc[addr] = account
+	}
 	l2GenesisBlock := l2Genesis.ToBlock()
 
 	rollupCfg, err := deployCfg.RollupConfig(l1Block.Header(), l2GenesisBlock.Hash(), l2GenesisBlock.NumberU64())
 	if err != nil {
 		return nil, fmt.Errorf("failed to build L2 rollup config: %w", err)
+	}
+	if cfg.OverrideMessageExpiryTime != 0 {
+		rollupCfg.OverrideMessageExpiryTimeInterop = cfg.OverrideMessageExpiryTime
 	}
 	return &L2Output{
 		Genesis:   l2Genesis,

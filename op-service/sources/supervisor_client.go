@@ -3,10 +3,12 @@ package sources
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/ethereum-optimism/optimism/op-service/client"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 )
@@ -105,6 +107,26 @@ func (cl *SupervisorClient) SafeView(ctx context.Context, chainID eth.ChainID, s
 	return result, nil
 }
 
+func (cl *SupervisorClient) LocalUnsafe(ctx context.Context, chainID eth.ChainID) (eth.BlockID, error) {
+	var result eth.BlockID
+	err := cl.client.CallContext(
+		ctx,
+		&result,
+		"supervisor_localUnsafe",
+		chainID)
+	return result, err
+}
+
+func (cl *SupervisorClient) CrossSafe(ctx context.Context, chainID eth.ChainID) (types.DerivedIDPair, error) {
+	var result types.DerivedIDPair
+	err := cl.client.CallContext(
+		ctx,
+		&result,
+		"supervisor_crossSafe",
+		chainID)
+	return result, err
+}
+
 func (cl *SupervisorClient) Finalized(ctx context.Context, chainID eth.ChainID) (eth.BlockID, error) {
 	var result eth.BlockID
 	err := cl.client.CallContext(
@@ -154,6 +176,8 @@ func (cl *SupervisorClient) UpdateLocalSafe(ctx context.Context, chainID eth.Cha
 		lastDerived)
 }
 
+// SuperRootAtTimestamp returns the super root at the specified timestamp.
+// Returns ethereum.NotFound if one of the chain's has not yet reached the block required for the requested super root.
 func (cl *SupervisorClient) SuperRootAtTimestamp(ctx context.Context, timestamp hexutil.Uint64) (eth.SuperRootResponse, error) {
 	var result eth.SuperRootResponse
 	err := cl.client.CallContext(
@@ -161,6 +185,10 @@ func (cl *SupervisorClient) SuperRootAtTimestamp(ctx context.Context, timestamp 
 		&result,
 		"supervisor_superRootAtTimestamp",
 		timestamp)
+	if isNotFound(err) {
+		// Downstream users expect to get a properly typed error message for not found.
+		return result, fmt.Errorf("%w: %v", ethereum.NotFound, err.Error())
+	}
 	return result, err
 }
 
@@ -185,4 +213,9 @@ func (cl *SupervisorClient) SyncStatus(ctx context.Context) (eth.SupervisorSyncS
 
 func (cl *SupervisorClient) Close() {
 	cl.client.Close()
+}
+
+func isNotFound(err error) bool {
+	// The RPC server wil convert the returned error to a string so we can't match on an error type here
+	return err != nil && strings.Contains(err.Error(), ethereum.NotFound.Error())
 }

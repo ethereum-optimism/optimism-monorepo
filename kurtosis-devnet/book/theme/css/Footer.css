@@ -1,0 +1,71 @@
+.mdbook-footer {
+  width: 100%;
+  padding: 4rem 2.5rem;  /* Increased padding */
+  background-color: var(--bg);
+  border-top: 1px solid var(--sidebar-bg);
+  margin-top: 5rem;  /* Increased margin */
+}
+
+.mdbook-footer .footer-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;  /* Increased gap */
+  align-items: center;
+}
+
+.mdbook-footer .policy-links {
+  display: flex;
+  gap: 4rem;  /* Increased gap between links */
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.mdbook-footer .policy-links a {
+  color: var(--fg);
+  text-decoration: none;
+  transition: opacity 0.2s;
+  font-size: 1.35rem;  /* Increased font size */
+  opacity: 0.85;
+  font-weight: 400;
+  line-height: 1.6;  /* Increased line height */
+}
+
+.mdbook-footer .policy-links a:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+.mdbook-footer .copyright {
+  color: var(--fg);
+  font-size: 1.35rem;  /* Increased font size */
+  opacity: 0.85;
+  text-align: center;
+  font-weight: 400;
+  line-height: 1.6;  /* Increased line height */
+}
+
+.mdbook-footer .copyright a {
+  color: var(--fg);
+  text-decoration: none;
+}
+
+.mdbook-footer .copyright a:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 640px) {
+  .mdbook-footer .policy-links {
+      gap: 2.5rem;  /* Increased gap for mobile */
+  }
+
+  .mdbook-footer {
+      padding: 3rem 2rem;  /* Increased padding for mobile */
+  }
+
+  .mdbook-footer .policy-links a,
+  .mdbook-footer .copyright {
+      font-size: 1.25rem;  /* Increased font size for mobile */
+  }
+}

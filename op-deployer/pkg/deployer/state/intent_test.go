@@ -121,13 +121,18 @@ func setEip1559Params(intent *Intent) {
 }
 
 func setChainRoles(intent *Intent) {
-	intent.Chains[0].Roles.L1ProxyAdminOwner = common.HexToAddress("0x01")
+	if intent.Chains[0].Roles.L1ProxyAdminOwner == (common.Address{}) {
+		intent.Chains[0].Roles.L1ProxyAdminOwner = common.HexToAddress("0x01")
+	}
+	if intent.Chains[0].Roles.Challenger == (common.Address{}) {
+		intent.Chains[0].Roles.Challenger = common.HexToAddress("0x07")
+	}
+
 	intent.Chains[0].Roles.L2ProxyAdminOwner = common.HexToAddress("0x02")
 	intent.Chains[0].Roles.SystemConfigOwner = common.HexToAddress("0x03")
 	intent.Chains[0].Roles.UnsafeBlockSigner = common.HexToAddress("0x04")
 	intent.Chains[0].Roles.Batcher = common.HexToAddress("0x05")
 	intent.Chains[0].Roles.Proposer = common.HexToAddress("0x06")
-	intent.Chains[0].Roles.Challenger = common.HexToAddress("0x07")
 }
 
 func setFeeAddresses(intent *Intent) {

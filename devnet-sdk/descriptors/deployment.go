@@ -50,8 +50,9 @@ type WalletMap map[string]Wallet
 
 // DevnetEnvironment exposes the relevant information to interact with a devnet.
 type DevnetEnvironment struct {
-	L1 *Chain   `json:"l1"`
-	L2 []*Chain `json:"l2"`
+	Name string   `json:"name"`
+	L1   *Chain   `json:"l1"`
+	L2   []*Chain `json:"l2"`
 
 	Features []string `json:"features,omitempty"`
 }

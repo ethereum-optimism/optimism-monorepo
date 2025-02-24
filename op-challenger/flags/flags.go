@@ -93,6 +93,11 @@ var (
 		Usage:   "URLs of L2 JSON-RPC endpoints to use (eth and debug namespace required)",
 		EnvVars: prefixEnvVars("L2_ETH_RPC"),
 	}
+	L2ExperimentalEthRpcFlag = &cli.StringFlag{
+		Name:    "l2-experimental-eth-rpc",
+		Usage:   "L2 Address of L2 JSON-RPC endpoint to use (eth and debug namespace required with execution witness support)  (cannon/asterisc trace type only)",
+		EnvVars: prefixEnvVars("L2_EXPERIMENTAL_ETH_RPC"),
+	}
 	MaxPendingTransactionsFlag = &cli.Uint64Flag{
 		Name:    "max-pending-tx",
 		Usage:   "The maximum number of pending transactions. 0 for no limit.",
@@ -241,6 +246,7 @@ var optionalFlags = []cli.Flag{
 	MaxConcurrencyFlag,
 	SupervisorRpcFlag,
 	L2EthRpcFlag,
+	L2ExperimentalEthRpcFlag,
 	MaxPendingTransactionsFlag,
 	HTTPPollInterval,
 	AdditionalBondClaimants,
@@ -401,7 +407,7 @@ func CheckRequired(ctx *cli.Context, traceTypes []types.TraceType) error {
 			if err := CheckAsteriscKonaFlags(ctx); err != nil {
 				return err
 			}
-		case types.TraceTypeSuperCannon:
+		case types.TraceTypeSuperCannon, types.TraceTypeSuperPermissioned:
 			if err := CheckSuperCannonFlags(ctx); err != nil {
 				return err
 			}
@@ -533,6 +539,7 @@ func NewConfigFromCLI(ctx *cli.Context, logger log.Logger) (*config.Config, erro
 	l1EthRpc := ctx.String(L1EthRpcFlag.Name)
 	l1Beacon := ctx.String(L1BeaconFlag.Name)
 	l2Rpcs := ctx.StringSlice(L2EthRpcFlag.Name)
+	l2Experimental := ctx.String(L2ExperimentalEthRpcFlag.Name)
 	return &config.Config{
 		// Required Flags
 		L1EthRpc:                l1EthRpc,
@@ -553,6 +560,7 @@ func NewConfigFromCLI(ctx *cli.Context, logger log.Logger) (*config.Config, erro
 			L1:                l1EthRpc,
 			L1Beacon:          l1Beacon,
 			L2s:               l2Rpcs,
+			L2Experimental:    l2Experimental,
 			VmBin:             ctx.String(CannonBinFlag.Name),
 			Server:            ctx.String(CannonServerFlag.Name),
 			Networks:          networks,
@@ -572,6 +580,7 @@ func NewConfigFromCLI(ctx *cli.Context, logger log.Logger) (*config.Config, erro
 			L1:                l1EthRpc,
 			L1Beacon:          l1Beacon,
 			L2s:               l2Rpcs,
+			L2Experimental:    l2Experimental,
 			VmBin:             ctx.String(AsteriscBinFlag.Name),
 			Server:            ctx.String(AsteriscServerFlag.Name),
 			Networks:          networks,
@@ -588,6 +597,7 @@ func NewConfigFromCLI(ctx *cli.Context, logger log.Logger) (*config.Config, erro
 			L1:                l1EthRpc,
 			L1Beacon:          l1Beacon,
 			L2s:               l2Rpcs,
+			L2Experimental:    l2Experimental,
 			VmBin:             ctx.String(AsteriscBinFlag.Name),
 			Server:            ctx.String(AsteriscKonaServerFlag.Name),
 			Networks:          networks,

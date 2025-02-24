@@ -48,18 +48,18 @@ func (EntryBinary) EntrySize() int {
 	return EntrySize
 }
 
-// LinkEntry is a DerivedFromV0 or a InvalidatedFromV0 kind
+// LinkEntry is a SourceV0 or a InvalidatedFromV0 kind
 type LinkEntry struct {
 	source  types.BlockSeal
 	derived types.BlockSeal
 	// when it exists as local-safe, but cannot be cross-safe.
-	// If false: this link is a DerivedFromV0
+	// If false: this link is a SourceV0
 	// If true: this link is a InvalidatedFromV0
 	invalidated bool
 }
 
 func (d LinkEntry) String() string {
-	return fmt.Sprintf("LinkEntry(derivedFrom: %s, derived: %s, invalidated: %v)", d.source, d.derived, d.invalidated)
+	return fmt.Sprintf("LinkEntry(source: %s, derived: %s, invalidated: %v)", d.source, d.derived, d.invalidated)
 }
 
 func (d *LinkEntry) decode(e Entry) error {

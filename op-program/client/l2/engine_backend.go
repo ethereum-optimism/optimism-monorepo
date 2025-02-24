@@ -5,6 +5,7 @@ import (
 	"math/big"
 
 	"github.com/ethereum-optimism/optimism/op-program/client/l2/engineapi"
+	l2Types "github.com/ethereum-optimism/optimism/op-program/client/l2/types"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/consensus"
@@ -30,7 +31,7 @@ type OracleBackedL2Chain struct {
 	finalized  *types.Header
 	vmCfg      vm.Config
 
-	canon *CanonicalBlockHeaderOracle
+	canon *FastCanonicalBlockHeaderOracle
 
 	// Inserted blocks
 	blocks map[common.Hash]*types.Block
@@ -92,7 +93,8 @@ func NewOracleBackedL2ChainFromHead(
 	blockByHash := func(hash common.Hash) *types.Block {
 		return chain.GetBlockByHash(hash)
 	}
-	chain.canon = NewCanonicalBlockHeaderOracle(head.Header(), blockByHash)
+	fallback := NewCanonicalBlockHeaderOracle(head.Header(), blockByHash)
+	chain.canon = NewFastCanonicalBlockHeaderOracle(head.Header(), blockByHash, chainCfg, oracle, db, fallback)
 	return chain
 }
 
@@ -102,6 +104,10 @@ func (o *OracleBackedL2Chain) CurrentHeader() *types.Header {
 
 func (o *OracleBackedL2Chain) GetHeaderByNumber(n uint64) *types.Header {
 	return o.canon.GetHeaderByNumber(n)
+}
+
+func (o *OracleBackedL2Chain) Hinter() l2Types.OracleHinter {
+	return o.oracle.Hinter()
 }
 
 func (o *OracleBackedL2Chain) GetTd(hash common.Hash, number uint64) *big.Int {
@@ -203,7 +209,7 @@ func (o *OracleBackedL2Chain) InsertBlockWithoutSetHead(block *types.Block, make
 		return nil, err
 	}
 	for i, tx := range block.Transactions() {
-		err = processor.AddTx(tx)
+		_, err = processor.AddTx(tx)
 		if err != nil {
 			return nil, fmt.Errorf("invalid transaction (%d): %w", i, err)
 		}

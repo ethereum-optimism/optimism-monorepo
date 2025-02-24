@@ -15,9 +15,10 @@ import (
 )
 
 type InteropDevRecipe struct {
-	L1ChainID        uint64
-	L2ChainIDs       []uint64
-	GenesisTimestamp uint64
+	L1ChainID         uint64
+	L2ChainIDs        []uint64
+	GenesisTimestamp  uint64
+	MessageExpiryTime uint64
 }
 
 func (r *InteropDevRecipe) Build(addrs devkeys.Addresses) (*WorldConfig, error) {
@@ -93,7 +94,7 @@ func (r *InteropDevRecipe) Build(addrs devkeys.Addresses) (*WorldConfig, error) 
 		L2s:        make(map[string]*L2Config),
 	}
 	for _, l2ChainID := range r.L2ChainIDs {
-		l2Cfg, err := InteropL2DevConfig(r.L1ChainID, l2ChainID, addrs)
+		l2Cfg, err := InteropL2DevConfig(r.L1ChainID, l2ChainID, addrs, r.MessageExpiryTime)
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate L2 config for chain %d: %w", l2ChainID, err)
 		}
@@ -129,7 +130,7 @@ func prefundL2Accounts(l1Cfg *L1Config, l2Cfg *L2Config, addrs devkeys.Addresses
 	return nil
 }
 
-func InteropL2DevConfig(l1ChainID, l2ChainID uint64, addrs devkeys.Addresses) (*L2Config, error) {
+func InteropL2DevConfig(l1ChainID, l2ChainID uint64, addrs devkeys.Addresses, messageExpiryTime uint64) (*L2Config, error) {
 	// Padded chain ID, hex encoded, prefixed with 0xff like inboxes, then 0x02 to signify devnet.
 	batchInboxAddress := common.HexToAddress(fmt.Sprintf("0xff02%016x", l2ChainID))
 	chainOps := devkeys.ChainOperatorKeys(new(big.Int).SetUint64(l2ChainID))
@@ -186,7 +187,8 @@ func InteropL2DevConfig(l1ChainID, l2ChainID uint64, addrs devkeys.Addresses) (*
 		SystemConfigOwner: systemConfigOwner,
 		L2InitializationConfig: genesis.L2InitializationConfig{
 			DevDeployConfig: genesis.DevDeployConfig{
-				FundDevAccounts: true,
+				FundDevAccounts:           true,
+				OverrideMessageExpiryTime: messageExpiryTime,
 			},
 			L2GenesisBlockDeployConfig: genesis.L2GenesisBlockDeployConfig{
 				L2GenesisBlockGasLimit:      60_000_000,

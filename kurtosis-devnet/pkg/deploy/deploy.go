@@ -3,11 +3,14 @@ package deploy
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"os"
 
+	ktfs "github.com/ethereum-optimism/optimism/devnet-sdk/kt/fs"
+	"github.com/ethereum-optimism/optimism/devnet-sdk/shell/env"
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis"
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/api/engine"
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/sources/spec"
@@ -137,7 +140,29 @@ func (d *Deployer) deployEnvironment(ctx context.Context, r io.Reader) (*kurtosi
 		return nil, fmt.Errorf("error deploying kurtosis package: %w", err)
 	}
 
-	return ktd.GetEnvironmentInfo(ctx, spec)
+	info, err := ktd.GetEnvironmentInfo(ctx, spec)
+	if err != nil {
+		return nil, fmt.Errorf("error getting environment info: %w", err)
+	}
+
+	// Upload the environment info to the enclave.
+	fs, err := ktfs.NewEnclaveFS(ctx, d.enclave)
+	if err != nil {
+		return nil, fmt.Errorf("error getting enclave fs: %w", err)
+	}
+
+	envBuf := bytes.NewBuffer(nil)
+	enc := json.NewEncoder(envBuf)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(info); err != nil {
+		return nil, fmt.Errorf("error encoding environment: %w", err)
+	}
+
+	if err := fs.PutArtifact(ctx, env.KurtosisDevnetEnvArtifactName, ktfs.NewArtifactFileReader(env.KurtosisDevnetEnvArtifactPath, envBuf)); err != nil {
+		return nil, fmt.Errorf("error putting environment artifact: %w", err)
+	}
+
+	return info, nil
 }
 
 func (d *Deployer) renderTemplate(buildDir string, urlBuilder func(path ...string) string) (*bytes.Buffer, error) {

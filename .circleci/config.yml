@@ -54,7 +54,7 @@ orbs:
   slack: circleci/slack@4.10.1
   shellcheck: circleci/shellcheck@3.2.0
   codecov: codecov/codecov@5.0.3
-  utils: ethereum-optimism/circleci-utils@1.0.8
+  utils: ethereum-optimism/circleci-utils@1.0.13
 
 commands:
   gcp-oidc-authenticate:
@@ -156,8 +156,9 @@ commands:
           name: <<parameters.command>>
           command: |
             git reset --hard
+            git clean -df
             just <<parameters.command>>
-            git diff --exit-code
+            [ -z "$(git status --porcelain)" ] || exit 1
           working_directory: packages/contracts-bedrock
           when: always
           environment:
@@ -636,8 +637,8 @@ jobs:
             # Use GitHub API to get labels
             LABELS=$(curl -s "https://api.github.com/repos/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}/pulls/${PR_NUMBER}" | jq -r .labels)
 
-            # If the PR has the "S-exempt-frozen-files" label, do not run this check
-            if echo $LABELS | jq -e 'any(.[]; .name == "S-exempt-frozen-files")' > /dev/null; then
+            # If the PR has the "M-exempt-frozen-files" label, do not run this check
+            if echo $LABELS | jq -e 'any(.[]; .name == "M-exempt-frozen-files")' > /dev/null; then
               echo "Skipping frozen files check, PR has exempt label"
               circleci-agent step halt
             fi
@@ -1388,16 +1389,19 @@ jobs:
             goreleaser release --clean -f ./<<parameters.module>>/<<parameters.filename>>
 
   stale-check:
-    docker:
-      - image: cimg/python:3.11
-    steps:
-      - run:
-          name: Run Stale Check Script
-          command: |
-            git clone --branch main --depth 1 https://github.com/ethereum-optimism/circleci-utils.git /tmp/circleci-utils
-            cd /tmp/circleci-utils/stale-check
-            pip3 install -r requirements.txt
-            python3 stale-check.py --repo "ethereum-optimism/${CIRCLE_PROJECT_REPONAME}" --github-token "${STALE_GITHUB_TOKEN}"
+      machine:
+        image: ubuntu-2204:2024.08.1
+      steps:
+        - utils/github-stale:
+            stale-issue-message: 'This issue has been automatically marked as stale and will be closed in 5 days if no updates'
+            stale-pr-message: 'This pr has been automatically marked as stale and will be closed in 5 days if no updates'
+            close-issue-message: 'This issue was closed as stale.  Please reopen if this is a mistake'
+            close-pr-message: 'This PR was closed as stale.  Please reopen if this is a mistake'
+            days-before-issue-stale: 999
+            days-before-pr-stale: 14
+            days-before-issue-close: 5
+            days-before-pr-close: 5
+
 
 workflows:
   main:
@@ -1494,6 +1498,7 @@ workflows:
             op-service
             op-supervisor
             op-deployer
+            op-validator
             op-e2e/system
             op-e2e/e2eutils
             op-e2e/opgeth
@@ -1863,4 +1868,4 @@ workflows:
         - equal: [true, << pipeline.parameters.stale_check_dispatch >>]
     jobs:
       - stale-check:
-          context: github-token-stale-check
+          context: circleci-repo-optimism

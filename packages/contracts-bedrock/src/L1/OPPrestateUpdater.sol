@@ -27,9 +27,9 @@ contract OPPrestateUpdater is OPContractsManager {
     error PrestateRequired();
 
     // @return Version string
-    /// @custom:semver 1.3.0
+    /// @custom:semver 1.7.0
     function version() public pure override returns (string memory) {
-        return "1.3.0";
+        return "1.7.0";
     }
 
     // @notice Constructs the OPPrestateUpdater contract
@@ -48,18 +48,18 @@ contract OPPrestateUpdater is OPContractsManager {
             "",
             _blueprints,
             Implementations(
-                address(0), // l1CrossDomainMessenger
-                address(0), // l1StandardBridge
-                address(0), // l2OutputOracle
-                address(0), // optimismPortal
-                address(0), // optimismMintableERC20Factory
-                address(0), // protocolVersions
-                address(0), // superchainConfig
-                address(0), // systemConfig
-                address(0), // l1ERC721Bridge
-                address(0), // disputeGameFactory
-                address(0), // permissionedDisputeGame
-                address(0) // faultDisputeGame
+                address(0), //superchainConfigImpl
+                address(0), //protocolVersionsImpl
+                address(0), //l1ERC721BridgeImpl
+                address(0), //optimismPortalImpl
+                address(0), //systemConfigImpl
+                address(0), //optimismMintableERC20FactoryImpl
+                address(0), //l1CrossDomainMessengerImpl
+                address(0), //l1StandardBridgeImpl
+                address(0), //disputeGameFactoryImpl
+                address(0), //anchorStateRegistryImpl
+                address(0), //delayedWETHImpl
+                address(0) // mipsImpl
             ),
             address(0)
         )
@@ -115,8 +115,7 @@ contract OPPrestateUpdater is OPContractsManager {
                 getGameConstructorParams(IFaultDisputeGame(address(pdg)));
             uint256 initBond = dgf.initBonds(GameTypes.PERMISSIONED_CANNON);
 
-            string memory saltMixer =
-                string.concat("prestate_update", string(abi.encode(_prestateUpdateInputs[i].systemConfigProxy)));
+            string memory saltMixer = reusableSaltMixer(_prestateUpdateInputs[i]);
             // Create game input with updated prestate but same other params
             pdgInput = AddGameInput({
                 disputeAbsolutePrestate: _prestateUpdateInputs[i].absolutePrestate,

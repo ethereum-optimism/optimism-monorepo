@@ -2,6 +2,7 @@ package types
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -9,7 +10,7 @@ import (
 
 type Address = common.Address
 
-type ChainID *big.Int
+type ChainID = *big.Int
 
 type ReadInvocation[T any] interface {
 	Call(ctx context.Context) (T, error)
@@ -25,11 +26,4 @@ type InvocationResult interface {
 	Wait() error
 }
 
-type Wallet interface {
-	PrivateKey() Key
-	Address() Address
-	SendETH(to Address, amount Balance) WriteInvocation[any]
-	Balance() Balance
-}
-
-type Key = string
+type Key = *ecdsa.PrivateKey

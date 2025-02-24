@@ -8,6 +8,7 @@
 - [Usage](user-guide/usage.md)
   - [init](user-guide/init.md)
   - [apply](user-guide/apply.md)
+- [Known Limitations](user-guide/known-limitations.md)
 
 # Reference Guide
 

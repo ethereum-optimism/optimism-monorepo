@@ -142,6 +142,7 @@ func TestInvalidatedBlockTx(t *testing.T) {
 		require.NoError(t, err, "must encode")
 		_, err = DecodeInvalidatedBlockTxFromReplacement([]eth.Data{encoded})
 		require.Error(t, err, "expected deposit")
+		require.ErrorIs(t, err, ErrNotReplacementBlock)
 	})
 	t.Run("bad tx sender", func(t *testing.T) {
 		rng := rand.New(rand.NewSource(1234))
@@ -159,6 +160,7 @@ func TestInvalidatedBlockTx(t *testing.T) {
 		require.NoError(t, err, "must encode")
 		_, err = DecodeInvalidatedBlockTxFromReplacement([]eth.Data{encoded})
 		require.Error(t, err, "expected system tx sender")
+		require.ErrorIs(t, err, ErrNotReplacementBlock)
 	})
 	t.Run("bad preimage", func(t *testing.T) {
 		tx := InvalidatedBlockSourceDepositTx([]byte("invalid output root preimage"))
@@ -166,5 +168,6 @@ func TestInvalidatedBlockTx(t *testing.T) {
 		require.NoError(t, err, "must encode")
 		_, err = DecodeInvalidatedBlockTxFromReplacement([]eth.Data{encoded})
 		require.Error(t, err, "failed to unmarshal")
+		require.NotErrorIs(t, err, ErrNotReplacementBlock)
 	})
 }

@@ -5,8 +5,6 @@ import (
 	"github.com/ethereum-optimism/optimism/op-node/rollup/derive"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/event"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -116,10 +114,12 @@ func (d *InteropDSL) CreateUser() *DSLUser {
 	}
 }
 
-type TransactionCreator func(chain *Chain) (*types.Transaction, common.Address)
+type TransactionCreator func(chain *Chain) *GeneratedTransaction
+
 type AddL2BlockOpts struct {
 	BlockIsNotCrossUnsafe bool
 	TransactionCreators   []TransactionCreator
+	UntilTimestamp        uint64
 }
 
 func WithL2BlockTransactions(mkTxs ...TransactionCreator) func(*AddL2BlockOpts) {
@@ -134,31 +134,40 @@ func WithL1BlockCrossUnsafe() func(*AddL2BlockOpts) {
 	}
 }
 
+func WithL2BlocksUntilTimestamp(timestamp uint64) func(*AddL2BlockOpts) {
+	return func(o *AddL2BlockOpts) {
+		o.UntilTimestamp = timestamp
+	}
+}
+
 // AddL2Block adds a new unsafe block to the specified chain and fully processes it in the supervisor
 func (d *InteropDSL) AddL2Block(chain *Chain, optionalArgs ...func(*AddL2BlockOpts)) {
 	opts := AddL2BlockOpts{}
 	for _, arg := range optionalArgs {
 		arg(&opts)
 	}
-	priorSyncStatus := chain.Sequencer.SyncStatus()
-	chain.Sequencer.ActL2StartBlock(d.t)
-	for _, creator := range opts.TransactionCreators {
-		tx, from := creator(chain)
-		err := chain.SequencerEngine.EngineApi.IncludeTx(tx, from)
-		require.NoError(d.t, err)
-	}
-	chain.Sequencer.ActL2EndBlock(d.t)
-	chain.Sequencer.SyncSupervisor(d.t)
-	d.Actors.Supervisor.ProcessFull(d.t)
-	chain.Sequencer.ActL2PipelineFull(d.t)
+	for opts.UntilTimestamp == 0 || chain.Sequencer.L2Unsafe().Time <= opts.UntilTimestamp {
+		priorSyncStatus := chain.Sequencer.SyncStatus()
+		chain.Sequencer.ActL2StartBlock(d.t)
+		for _, creator := range opts.TransactionCreators {
+			creator(chain).Include()
+		}
+		chain.Sequencer.ActL2EndBlock(d.t)
+		chain.Sequencer.SyncSupervisor(d.t)
+		d.Actors.Supervisor.ProcessFull(d.t)
+		chain.Sequencer.ActL2PipelineFull(d.t)
 
-	status := chain.Sequencer.SyncStatus()
-	expectedBlockNum := priorSyncStatus.UnsafeL2.Number + 1
-	require.Equal(d.t, expectedBlockNum, status.UnsafeL2.Number, "Unsafe head did not advance")
-	if opts.BlockIsNotCrossUnsafe {
-		require.Equal(d.t, priorSyncStatus.CrossUnsafeL2.Number, status.CrossUnsafeL2.Number, "CrossUnsafe head advanced unexpectedly")
-	} else {
-		require.Equal(d.t, expectedBlockNum, status.CrossUnsafeL2.Number, "CrossUnsafe head did not advance")
+		status := chain.Sequencer.SyncStatus()
+		expectedBlockNum := priorSyncStatus.UnsafeL2.Number + 1
+		require.Equal(d.t, expectedBlockNum, status.UnsafeL2.Number, "Unsafe head did not advance")
+		if opts.BlockIsNotCrossUnsafe {
+			require.Equal(d.t, priorSyncStatus.CrossUnsafeL2.Number, status.CrossUnsafeL2.Number, "CrossUnsafe head advanced unexpectedly")
+		} else {
+			require.Equal(d.t, expectedBlockNum, status.CrossUnsafeL2.Number, "CrossUnsafe head did not advance")
+		}
+		if opts.UntilTimestamp == 0 {
+			break
+		}
 	}
 }
 

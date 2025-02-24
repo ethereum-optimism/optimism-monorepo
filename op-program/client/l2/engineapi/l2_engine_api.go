@@ -129,28 +129,28 @@ func (ea *L2EngineAPI) PendingIndices(from common.Address) uint64 {
 
 var ErrNotBuildingBlock = errors.New("not currently building a block, cannot include tx from queue")
 
-func (ea *L2EngineAPI) IncludeTx(tx *types.Transaction, from common.Address) error {
+func (ea *L2EngineAPI) IncludeTx(tx *types.Transaction, from common.Address) (*types.Receipt, error) {
 	if ea.blockProcessor == nil {
-		return ErrNotBuildingBlock
+		return nil, ErrNotBuildingBlock
 	}
 
 	if ea.l2ForceEmpty {
 		ea.log.Info("Skipping including a transaction because e.L2ForceEmpty is true")
-		return nil
+		return nil, nil
 	}
 
 	err := ea.blockProcessor.CheckTxWithinGasLimit(tx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	ea.pendingIndices[from] = ea.pendingIndices[from] + 1 // won't retry the tx
-	err = ea.blockProcessor.AddTx(tx)
+	rcpt, err := ea.blockProcessor.AddTx(tx)
 	if err != nil {
 		ea.l2TxFailed = append(ea.l2TxFailed, tx)
-		return fmt.Errorf("invalid L2 block (tx %d): %w", len(ea.blockProcessor.transactions), err)
+		return nil, fmt.Errorf("invalid L2 block (tx %d): %w", len(ea.blockProcessor.transactions), err)
 	}
-	return nil
+	return rcpt, nil
 }
 
 func (ea *L2EngineAPI) startBlock(parent common.Hash, attrs *eth.PayloadAttributes) error {
@@ -174,7 +174,7 @@ func (ea *L2EngineAPI) startBlock(parent common.Hash, attrs *eth.PayloadAttribut
 		if err := tx.UnmarshalBinary(otx); err != nil {
 			return fmt.Errorf("transaction %d is not valid: %w", i, err)
 		}
-		err := ea.blockProcessor.AddTx(&tx)
+		_, err := ea.blockProcessor.AddTx(&tx)
 		if err != nil {
 			ea.l2TxFailed = append(ea.l2TxFailed, &tx)
 			return fmt.Errorf("failed to apply deposit transaction to L2 block (tx %d): %w", i, err)

@@ -25,16 +25,17 @@ var (
 type GameType uint32
 
 const (
-	CannonGameType       GameType = 0
-	PermissionedGameType GameType = 1
-	AsteriscGameType     GameType = 2
-	AsteriscKonaGameType GameType = 3
-	SuperCannonGameType  GameType = 4
-	OPSuccinctGameType   GameType = 6
-	FastGameType         GameType = 254
-	AlphabetGameType     GameType = 255
-	KailuaGameType       GameType = 1337
-	UnknownGameType      GameType = math.MaxUint32
+	CannonGameType            GameType = 0
+	PermissionedGameType      GameType = 1
+	AsteriscGameType          GameType = 2
+	AsteriscKonaGameType      GameType = 3
+	SuperCannonGameType       GameType = 4
+	SuperPermissionedGameType GameType = 5
+	OPSuccinctGameType        GameType = 6
+	FastGameType              GameType = 254
+	AlphabetGameType          GameType = 255
+	KailuaGameType            GameType = 1337
+	UnknownGameType           GameType = math.MaxUint32
 )
 
 func (t GameType) MarshalText() ([]byte, error) {
@@ -53,6 +54,8 @@ func (t GameType) String() string {
 		return "asterisc-kona"
 	case SuperCannonGameType:
 		return "super-cannon"
+	case SuperPermissionedGameType:
+		return "super-permissioned"
 	case OPSuccinctGameType:
 		return "op-succinct"
 	case FastGameType:
@@ -69,16 +72,17 @@ func (t GameType) String() string {
 type TraceType string
 
 const (
-	TraceTypeAlphabet     TraceType = "alphabet"
-	TraceTypeFast         TraceType = "fast"
-	TraceTypeCannon       TraceType = "cannon"
-	TraceTypeAsterisc     TraceType = "asterisc"
-	TraceTypeAsteriscKona TraceType = "asterisc-kona"
-	TraceTypePermissioned TraceType = "permissioned"
-	TraceTypeSuperCannon  TraceType = "super-cannon"
+	TraceTypeAlphabet          TraceType = "alphabet"
+	TraceTypeFast              TraceType = "fast"
+	TraceTypeCannon            TraceType = "cannon"
+	TraceTypeAsterisc          TraceType = "asterisc"
+	TraceTypeAsteriscKona      TraceType = "asterisc-kona"
+	TraceTypePermissioned      TraceType = "permissioned"
+	TraceTypeSuperCannon       TraceType = "super-cannon"
+	TraceTypeSuperPermissioned TraceType = "super-permissioned"
 )
 
-var TraceTypes = []TraceType{TraceTypeAlphabet, TraceTypeCannon, TraceTypePermissioned, TraceTypeAsterisc, TraceTypeAsteriscKona, TraceTypeFast, TraceTypeSuperCannon}
+var TraceTypes = []TraceType{TraceTypeAlphabet, TraceTypeCannon, TraceTypePermissioned, TraceTypeAsterisc, TraceTypeAsteriscKona, TraceTypeFast, TraceTypeSuperCannon, TraceTypeSuperPermissioned}
 
 func (t TraceType) String() string {
 	return string(t)
@@ -123,6 +127,8 @@ func (t TraceType) GameType() GameType {
 		return AlphabetGameType
 	case TraceTypeSuperCannon:
 		return SuperCannonGameType
+	case TraceTypeSuperPermissioned:
+		return SuperPermissionedGameType
 	default:
 		return UnknownGameType
 	}
@@ -320,3 +326,14 @@ func NewInvalidL2BlockNumberProof(output *eth.OutputResponse, header *ethTypes.H
 		Header: header,
 	}
 }
+
+type BondDistributionMode uint8
+
+const (
+	UndecidedDistributionMode BondDistributionMode = iota
+	NormalDistributionMode
+	RefundDistributionMode
+
+	// LegacyDistributionMode is used for contract versions that do not implement bond distribution modes.
+	LegacyDistributionMode BondDistributionMode = 255
+)

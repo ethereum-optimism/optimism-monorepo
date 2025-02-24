@@ -7,7 +7,15 @@ import { Test } from "forge-std/Test.sol";
 // Target contract
 import { Bytes } from "src/libraries/Bytes.sol";
 
+contract Bytes_Harness {
+    function exposed_slice(bytes memory _input, uint256 _start, uint256 _length) public pure returns (bytes memory) {
+        return Bytes.slice(_input, _start, _length);
+    }
+}
+
 contract Bytes_slice_Test is Test {
+    Bytes_Harness harness;
+
     /// @notice Tests that the `slice` function works as expected when starting from index 0.
     function test_slice_fromZeroIdx_works() public pure {
         bytes memory input = hex"11223344556677889900";
@@ -124,6 +132,12 @@ contract Bytes_slice_Test is Test {
 }
 
 contract Bytes_slice_TestFail is Test {
+    Bytes_Harness harness;
+
+    function setUp() public {
+        harness = new Bytes_Harness();
+    }
+
     /// @notice Tests that, when given an input bytes array of length `n`, the `slice` function will
     ///         always revert if `_start + _length > n`.
     function testFuzz_slice_outOfBounds_reverts(bytes memory _input, uint256 _start, uint256 _length) public {
@@ -142,7 +156,7 @@ contract Bytes_slice_TestFail is Test {
         }
 
         vm.expectRevert("slice_outOfBounds");
-        Bytes.slice(_input, _start, _length);
+        harness.exposed_slice(_input, _start, _length);
     }
 
     /// @notice Tests that, when given a length `n` that is greater than `type(uint256).max - 31`,
@@ -152,7 +166,7 @@ contract Bytes_slice_TestFail is Test {
         _length = uint256(bound(_length, type(uint256).max - 30, type(uint256).max));
 
         vm.expectRevert("slice_overflow");
-        Bytes.slice(_input, _start, _length);
+        harness.exposed_slice(_input, _start, _length);
     }
 
     /// @notice Tests that, when given a start index `n` that is greater than
@@ -169,7 +183,7 @@ contract Bytes_slice_TestFail is Test {
         vm.assume(_start > type(uint256).max - _length);
 
         vm.expectRevert("slice_overflow");
-        Bytes.slice(_input, _start, _length);
+        harness.exposed_slice(_input, _start, _length);
     }
 }
 

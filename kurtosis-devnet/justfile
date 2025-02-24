@@ -6,16 +6,43 @@ test:
 _kurtosis-run PACKAGE_NAME ARG_FILE ENCLAVE:
 	kurtosis run {{PACKAGE_NAME}} --args-file {{ARG_FILE}} --enclave {{ENCLAVE}} --show-enclave-inspect=false --image-download=missing
 
-# Internal recipes for kurtosis-devnet
+# Internal recipes for kurtosis-devnet.
+# This builds the forge contracts and bundles them into a tarball,
+# which is uploaded to the kurtosis enclave as a file artifact.
+# We need to ensure that the tarball is reproducible (always has the same content)
+# because kurtosis uses the md5 hash of the tarball to determine if it needs to be re-uploaded:
+# https://github.com/kurtosis-tech/kurtosis/blob/bf315c6993d5e70a47265f1f41f0f7273fdd904b/core/server/api_container/server/startosis_engine/kurtosis_instruction/upload_files/upload_files.go#L206
+# BSD tar on macOS doesn't support the --mtime flag, so we need to use GNU tar if we're on macOS.
+# See https://unix.stackexchange.com/questions/438329/tar-produces-different-files-each-time
+# Couldn't find gnu tar on mise so we're recommending it to be installed via brew.
 _contracts-build BUNDLE='contracts-bundle.tar.gz':
+    #!/usr/bin/env bash
     just ../packages/contracts-bedrock/forge-build
-    tar -czf {{BUNDLE}} -C ../packages/contracts-bedrock artifacts forge-artifacts cache
+    if tar --version | grep -q GNU; then
+      # Linux
+      GZIP=-n tar --mtime='1970-01-01 00:00:00' \
+        -czf {{BUNDLE}} -C ../packages/contracts-bedrock artifacts forge-artifacts cache
+    else
+      # macOS
+      if ! command -v gtar &> /dev/null; then
+        echo "GNU tar not found. Please install with: brew install gnu-tar"
+        exit 1
+      fi
+      GZIP=-n gtar --mtime='1970-01-01 00:00:00' \
+        -czf {{BUNDLE}} -C ../packages/contracts-bedrock artifacts forge-artifacts cache
+    fi
 
 _prestate-build PATH='.':
     docker buildx build --output {{PATH}} --progress plain -f ../op-program/Dockerfile.repro ../
 
 _docker_build TAG TARGET CONTEXT DOCKERFILE *ARGS:
-    docker buildx build -t {{TAG}} \
+    #!/usr/bin/env bash
+    # --load is needed to ensure the image ends up in the local registry
+    # --provenance=false is needed to make the build idempotent
+    docker buildx build \
+        --load \
+        --provenance=false \
+        -t {{TAG}} \
         -f {{CONTEXT}}/{{DOCKERFILE}} \
         {{ if TARGET != '' {  "--target " + TARGET } else { "" } }} \
         --build-arg GIT_COMMIT={git_commit} \
@@ -87,6 +114,9 @@ user-devnet DATA_FILE:
 # Pectra devnet
 pectra-devnet: (devnet "pectra.yaml")
 
+# Isthmus devnet
+isthmus-devnet: (devnet "isthmus.yaml")
+
 # subshells
 enter-devnet DEVNET CHAIN='Ethereum':
-    exec go run ../devnet-sdk/shell/cmd/enter/main.go --devnet tests/{{DEVNET}}.json --chain {{CHAIN}}
+    exec go run ../devnet-sdk/shell/cmd/enter/main.go --devnet kt://{{DEVNET}} --chain {{CHAIN}}

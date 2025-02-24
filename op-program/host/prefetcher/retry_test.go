@@ -387,6 +387,15 @@ func (m *MockL2Source) RollupConfig() *rollup.Config {
 	return out[0].(*rollup.Config)
 }
 
+func (m *MockL2Source) PayloadExecutionWitness(ctx context.Context, parentHash common.Hash, payloadAttributes eth.PayloadAttributes) (*eth.ExecutionWitness, error) {
+	out := m.Mock.MethodCalled("PayloadExecutionWitness", parentHash, payloadAttributes)
+	return out[0].(*eth.ExecutionWitness), *out[1].(*error)
+}
+func (m *MockL2Source) GetProof(ctx context.Context, address common.Address, storage []common.Hash, blockTag string) (*eth.AccountResult, error) {
+	out := m.Mock.MethodCalled("GetProof", address, storage, blockTag)
+	return out[0].(*eth.AccountResult), *out[1].(*error)
+}
+
 func (m *MockL2Source) InfoAndTxsByHash(ctx context.Context, blockHash common.Hash) (eth.BlockInfo, types.Transactions, error) {
 	out := m.Mock.MethodCalled("InfoAndTxsByHash", blockHash)
 	return out[0].(eth.BlockInfo), out[1].(types.Transactions), *out[2].(*error)
