@@ -33,7 +33,8 @@ func walletFundsValidator(chainIdx uint64, minFunds types.Balance, userMarker in
 }
 
 func AcquireL2WalletWithFunds(chainIdx uint64, minFunds types.Balance) (WalletGetter, systest.PreconditionValidator) {
-	userMarker := &struct{}{}
+	userMarker := newSentinelMarker()
+	fmt.Printf("wallet: %p\n", userMarker)
 	validator := walletFundsValidator(chainIdx, minFunds, userMarker)
 	return func(ctx context.Context) system.Wallet {
 		return ctx.Value(userMarker).(system.Wallet)

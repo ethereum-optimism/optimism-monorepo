@@ -54,7 +54,8 @@ func lowLevelSystemValidator(sysMarker interface{}) systest.PreconditionValidato
 }
 
 func AcquireLowLevelSystem() (LowLevelSystemGetter, systest.PreconditionValidator) {
-	sysMarker := &struct{}{}
+	sysMarker := newSentinelMarker()
+	fmt.Printf("low level system: %p\n", sysMarker)
 	validator := lowLevelSystemValidator(sysMarker)
 	return func(ctx context.Context) system.LowLevelSystem {
 		return ctx.Value(sysMarker).(system.LowLevelSystem)
