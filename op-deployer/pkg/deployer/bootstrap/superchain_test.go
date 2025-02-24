@@ -54,6 +54,11 @@ func testSuperchain(t *testing.T, forkRPCURL string, version string) {
 	})
 	l1RPC := forkedL1.RPCUrl()
 
+	testCacheDir := t.TempDir()
+	t.Cleanup(func() {
+		require.NoError(t, os.RemoveAll(testCacheDir))
+	})
+
 	out, err := Superchain(ctx, SuperchainConfig{
 		L1RPCUrl:         l1RPC,
 		PrivateKey:       "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
@@ -66,6 +71,7 @@ func testSuperchain(t *testing.T, forkRPCURL string, version string) {
 		Paused:                     false,
 		RequiredProtocolVersion:    params.ProtocolVersionV0{Major: 1}.Encode(),
 		RecommendedProtocolVersion: params.ProtocolVersionV0{Major: 2}.Encode(),
+		CacheDir:                   testCacheDir,
 	})
 	require.NoError(t, err)
 

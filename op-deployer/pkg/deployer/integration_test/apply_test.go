@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math/big"
+	"os"
 	"strings"
 	"testing"
 
@@ -81,6 +82,11 @@ func TestEndToEndApply(t *testing.T) {
 
 	loc, _ := testutil.LocalArtifacts(t)
 
+	testCacheDir := t.TempDir()
+	t.Cleanup(func() {
+		require.NoError(t, os.RemoveAll(testCacheDir))
+	})
+
 	t.Run("two chains one after another", func(t *testing.T) {
 		intent, st := newIntent(t, l1ChainID, dk, l2ChainID1, loc, loc)
 		cg := ethClientCodeGetter(ctx, l1Client)
@@ -95,6 +101,7 @@ func TestEndToEndApply(t *testing.T) {
 				State:              st,
 				Logger:             lgr,
 				StateWriter:        pipeline.NoopStateWriter(),
+				CacheDir:           testCacheDir,
 			},
 		))
 
@@ -112,6 +119,7 @@ func TestEndToEndApply(t *testing.T) {
 				State:              st,
 				Logger:             lgr,
 				StateWriter:        pipeline.NoopStateWriter(),
+				CacheDir:           testCacheDir,
 			},
 		))
 
@@ -134,6 +142,7 @@ func TestEndToEndApply(t *testing.T) {
 				State:              st,
 				Logger:             lgr,
 				StateWriter:        pipeline.NoopStateWriter(),
+				CacheDir:           testCacheDir,
 			},
 		), pipeline.ErrRefusingToDeployTaggedReleaseWithoutOPCM)
 	})
@@ -151,6 +160,7 @@ func TestEndToEndApply(t *testing.T) {
 				State:              st,
 				Logger:             lgr,
 				StateWriter:        pipeline.NoopStateWriter(),
+				CacheDir:           testCacheDir,
 			},
 		))
 
@@ -550,6 +560,11 @@ func setupGenesisChain(t *testing.T, l1ChainID uint64) (deployer.ApplyPipelineOp
 
 	intent, st := newIntent(t, l1ChainIDBig, dk, l2ChainID1, loc, loc)
 
+	testCacheDir := t.TempDir()
+	t.Cleanup(func() {
+		require.NoError(t, os.RemoveAll(testCacheDir))
+	})
+
 	opts := deployer.ApplyPipelineOpts{
 		DeploymentTarget:   deployer.DeploymentTargetGenesis,
 		DeployerPrivateKey: priv,
@@ -557,6 +572,7 @@ func setupGenesisChain(t *testing.T, l1ChainID uint64) (deployer.ApplyPipelineOp
 		State:              st,
 		Logger:             lgr,
 		StateWriter:        pipeline.NoopStateWriter(),
+		CacheDir:           testCacheDir,
 	}
 
 	return opts, intent, st

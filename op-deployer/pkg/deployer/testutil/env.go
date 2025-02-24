@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"os"
 	"path"
 	"runtime"
 	"testing"
@@ -27,7 +28,12 @@ func LocalArtifacts(t *testing.T) (*artifacts.Locator, foundry.StatDirFs) {
 		URL: artifactsURL,
 	}
 
-	artifactsFS, err := artifacts.Download(context.Background(), loc, artifacts.NoopProgressor())
+	testCacheDir := t.TempDir()
+	t.Cleanup(func() {
+		require.NoError(t, os.RemoveAll(testCacheDir))
+	})
+
+	artifactsFS, err := artifacts.Download(context.Background(), loc, artifacts.NoopProgressor(), testCacheDir)
 	require.NoError(t, err)
 
 	return loc, artifactsFS

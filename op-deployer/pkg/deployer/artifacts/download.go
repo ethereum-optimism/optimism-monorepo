@@ -25,14 +25,14 @@ import (
 var ErrUnsupportedArtifactsScheme = errors.New("unsupported artifacts URL scheme")
 
 type Downloader interface {
-	Download(ctx context.Context, url string, progress DownloadProgressor) (string, error)
+	Download(ctx context.Context, url string, progress DownloadProgressor, targetDir string) (string, error)
 }
 
 type Extractor interface {
 	Extract(src string, dest string) (string, error)
 }
 
-func Download(ctx context.Context, loc *Locator, progressor DownloadProgressor) (foundry.StatDirFs, error) {
+func Download(ctx context.Context, loc *Locator, progressor DownloadProgressor, targetDir string) (foundry.StatDirFs, error) {
 	if progressor == nil {
 		progressor = NoopProgressor()
 	}
@@ -60,7 +60,7 @@ func Download(ctx context.Context, loc *Locator, progressor DownloadProgressor) 
 	var artifactsFS fs.FS
 	switch u.Scheme {
 	case "http", "https":
-		artifactsFS, err = downloadHTTP(ctx, u, progressor, checker)
+		artifactsFS, err = downloadHTTP(ctx, u, progressor, checker, targetDir)
 		if err != nil {
 			return nil, fmt.Errorf("failed to download artifacts: %w", err)
 		}
@@ -72,16 +72,16 @@ func Download(ctx context.Context, loc *Locator, progressor DownloadProgressor) 
 	return artifactsFS.(foundry.StatDirFs), nil
 }
 
-func downloadHTTP(ctx context.Context, u *url.URL, progressor DownloadProgressor, checker integrityChecker) (fs.FS, error) {
+func downloadHTTP(ctx context.Context, u *url.URL, progressor DownloadProgressor, checker integrityChecker, targetDir string) (fs.FS, error) {
 	cacher := &CachingDownloader{
 		d: new(HTTPDownloader),
 	}
 
-	tarballPath, err := cacher.Download(ctx, u.String(), progressor)
+	tarballPath, err := cacher.Download(ctx, u.String(), progressor, targetDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to download artifacts: %w", err)
 	}
-	tmpDir, err := os.MkdirTemp("", "op-deployer-artifacts-*")
+	tmpDir, err := os.MkdirTemp(targetDir, "op-deployer-artifacts-*")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create temp dir: %w", err)
 	}
@@ -96,7 +96,7 @@ func downloadHTTP(ctx context.Context, u *url.URL, progressor DownloadProgressor
 
 type HTTPDownloader struct{}
 
-func (d *HTTPDownloader) Download(ctx context.Context, url string, progress DownloadProgressor) (string, error) {
+func (d *HTTPDownloader) Download(ctx context.Context, url string, progress DownloadProgressor, targetDir string) (string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return "", fmt.Errorf("failed to create request: %w", err)
@@ -111,7 +111,7 @@ func (d *HTTPDownloader) Download(ctx context.Context, url string, progress Down
 	}
 	defer res.Body.Close()
 
-	tmpFile, err := os.CreateTemp("", "op-deployer-artifacts-*")
+	tmpFile, err := os.CreateTemp(targetDir, "op-deployer-artifacts-*")
 	if err != nil {
 		return "", fmt.Errorf("failed to create temporary file: %w", err)
 	}
@@ -129,23 +129,23 @@ func (d *HTTPDownloader) Download(ctx context.Context, url string, progress Down
 }
 
 type CachingDownloader struct {
-	d   Downloader
-	mtx sync.Mutex
+	d        Downloader
+	mtx      sync.Mutex
 }
 
-func (d *CachingDownloader) Download(ctx context.Context, url string, progress DownloadProgressor) (string, error) {
+func (d *CachingDownloader) Download(ctx context.Context, url string, progress DownloadProgressor, targetDir string) (string, error) {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
 
-	cachePath := fmt.Sprintf("/tmp/op-deployer-cache/%x.tgz", sha256.Sum256([]byte(url)))
+	cachePath := path.Join(targetDir, fmt.Sprintf("%x.tgz", sha256.Sum256([]byte(url))))
 	if _, err := os.Stat(cachePath); err == nil {
 		return cachePath, nil
 	}
-	tmpPath, err := d.d.Download(ctx, url, progress)
+	tmpPath, err := d.d.Download(ctx, url, progress, targetDir)
 	if err != nil {
 		return "", fmt.Errorf("failed to download: %w", err)
 	}
-	if err := os.MkdirAll("/tmp/op-deployer-cache", 0755); err != nil {
+	if err := os.MkdirAll(targetDir, 0755); err != nil {
 		return "", fmt.Errorf("failed to create cache directory: %w", err)
 	}
 	if err := os.Rename(tmpPath, cachePath); err != nil {
