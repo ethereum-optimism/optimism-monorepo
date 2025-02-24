@@ -44,11 +44,13 @@ type TransactionArgs struct {
 	AuthList []types.SetCodeAuthorization `json:"authList,omitempty"`
 }
 
-// NewTransactionArgsFromTransaction creates a TransactionArgs struct from an EIP-1559 or EIP-4844 transaction
+// NewTransactionArgsFromTransaction creates a TransactionArgs struct from an EIP-1559, EIP-4844, or EIP-7702 transaction
 func NewTransactionArgsFromTransaction(chainId *big.Int, from *common.Address, tx *types.Transaction) *TransactionArgs {
 	data := hexutil.Bytes(tx.Data())
 	nonce := hexutil.Uint64(tx.Nonce())
 	gas := hexutil.Uint64(tx.Gas())
+
+	// Ignore overflow errors. We are assuming core.Transaction does not have out-of-range values
 	value, _ := uint256.FromBig(tx.Value())
 	chainIdU256, _ := uint256.FromBig(chainId)
 	gasFeeCap, _ := uint256.FromBig(tx.GasFeeCap())
