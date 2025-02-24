@@ -34,7 +34,7 @@ var (
 	ErrMissingL2Genesis    = errors.New("missing network or l2 genesis path")
 	ErrNetworkUnknown      = errors.New("unknown network")
 
-	ErrVMPanic = errors.New("vm exited with non-zero exit code")
+	ErrVMPanic = errors.New("vm exited with exit code 2 (panic)")
 )
 
 type Metricer = metrics.TypedVmMetricer
