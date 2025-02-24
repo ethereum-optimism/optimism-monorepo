@@ -24,7 +24,6 @@ contract DeployStandardValidatorInput is BaseDeployIO {
 
     // Required inputs
     ISuperchainConfig internal _superchainConfig;
-    IProtocolVersions internal _protocolVersions;
     address internal _l1PAOMultisig;
     address internal _mips;
     address internal _challenger;
@@ -47,9 +46,6 @@ contract DeployStandardValidatorInput is BaseDeployIO {
         if (_sel == this.superchainConfig.selector) {
             require(_value != address(0), "DeployStandardValidator: superchainConfig cannot be empty");
             _superchainConfig = ISuperchainConfig(_value);
-        } else if (_sel == this.protocolVersions.selector) {
-            require(_value != address(0), "DeployStandardValidator: protocolVersions cannot be empty");
-            _protocolVersions = IProtocolVersions(_value);
         } else if (_sel == this.l1PAOMultisig.selector) {
             require(_value != address(0), "DeployStandardValidator: l1PAOMultisig cannot be empty");
             _l1PAOMultisig = _value;
@@ -116,11 +112,6 @@ contract DeployStandardValidatorInput is BaseDeployIO {
     function superchainConfig() public view returns (ISuperchainConfig) {
         require(address(_superchainConfig) != address(0), "DeployStandardValidator: superchainConfig not set");
         return _superchainConfig;
-    }
-
-    function protocolVersions() public view returns (IProtocolVersions) {
-        require(address(_protocolVersions) != address(0), "DeployStandardValidator: protocolVersions not set");
-        return _protocolVersions;
     }
 
     function l1PAOMultisig() public view returns (address) {
@@ -236,8 +227,6 @@ contract DeployStandardValidator is Script {
         returns (IStandardValidatorBase.ImplementationsBase memory)
     {
         return IStandardValidatorBase.ImplementationsBase({
-            superchainConfigImpl: _si.superchainConfigImpl(),
-            protocolVersionsImpl: _si.protocolVersionsImpl(),
             l1ERC721BridgeImpl: _si.l1ERC721BridgeImpl(),
             optimismPortalImpl: _si.optimismPortalImpl(),
             systemConfigImpl: _si.systemConfigImpl(),
@@ -270,14 +259,7 @@ contract DeployStandardValidator is Script {
             _args: DeployUtils.encodeConstructor(
                 abi.encodeCall(
                     IStandardValidatorV180.__constructor__,
-                    (
-                        getImplementations(_si),
-                        _si.superchainConfig(),
-                        _si.protocolVersions(),
-                        _si.l1PAOMultisig(),
-                        _si.mips(),
-                        _si.challenger()
-                    )
+                    (getImplementations(_si), _si.superchainConfig(), _si.l1PAOMultisig(), _si.mips(), _si.challenger())
                 )
             ),
             _salt: DeployUtils.DEFAULT_SALT
@@ -293,14 +275,7 @@ contract DeployStandardValidator is Script {
             _args: DeployUtils.encodeConstructor(
                 abi.encodeCall(
                     IStandardValidatorV200.__constructor__,
-                    (
-                        getImplementations(_si),
-                        _si.superchainConfig(),
-                        _si.protocolVersions(),
-                        _si.l1PAOMultisig(),
-                        _si.mips(),
-                        _si.challenger()
-                    )
+                    (getImplementations(_si), _si.superchainConfig(), _si.l1PAOMultisig(), _si.mips(), _si.challenger())
                 )
             ),
             _salt: DeployUtils.DEFAULT_SALT
@@ -328,18 +303,16 @@ contract DeployStandardValidator is Script {
     function assertValidValidatorV180(DeployStandardValidatorInput _si, address _validator) internal view {
         IStandardValidatorV180 v180 = IStandardValidatorV180(_validator);
         require(address(v180.superchainConfig()) == address(_si.superchainConfig()), "SV180-10");
-        require(address(v180.protocolVersions()) == address(_si.protocolVersions()), "SV180-20");
-        require(v180.l1PAOMultisig() == _si.l1PAOMultisig(), "SV180-30");
-        require(v180.mips() == _si.mips(), "SV180-40");
-        require(v180.challenger() == _si.challenger(), "SV180-50");
+        require(v180.l1PAOMultisig() == _si.l1PAOMultisig(), "SV180-20");
+        require(v180.mips() == _si.mips(), "SV180-30");
+        require(v180.challenger() == _si.challenger(), "SV180-40");
     }
 
     function assertValidValidatorV200(DeployStandardValidatorInput _si, address _validator) internal view {
         IStandardValidatorV200 v200 = IStandardValidatorV200(_validator);
         require(address(v200.superchainConfig()) == address(_si.superchainConfig()), "SV200-10");
-        require(address(v200.protocolVersions()) == address(_si.protocolVersions()), "SV200-20");
-        require(v200.l1PAOMultisig() == _si.l1PAOMultisig(), "SV200-30");
-        require(v200.mips() == _si.mips(), "SV200-40");
-        require(v200.challenger() == _si.challenger(), "SV200-50");
+        require(v200.l1PAOMultisig() == _si.l1PAOMultisig(), "SV200-20");
+        require(v200.mips() == _si.mips(), "SV200-30");
+        require(v200.challenger() == _si.challenger(), "SV200-40");
     }
 }

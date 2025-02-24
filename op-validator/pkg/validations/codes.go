@@ -2,13 +2,7 @@ package validations
 
 var descriptions = map[string]string{
 	// SuperchainConfig validations
-	"SPRCFG-10": "SuperchainConfig version mismatch",
-	"SPRCFG-20": "SuperchainConfig implementation address mismatch",
-	"SPRCFG-30": "SuperchainConfig is paused",
-
-	// Protocol Versions validations
-	"PVER-10": "ProtocolVersions version mismatch",
-	"PVER-20": "ProtocolVersions implementation address mismatch",
+	"SPRCFG-10": "SuperchainConfig is paused",
 
 	// ProxyAdmin validations
 	"PROXYA-10": "ProxyAdmin owner is not set to L1 PAO multisig",

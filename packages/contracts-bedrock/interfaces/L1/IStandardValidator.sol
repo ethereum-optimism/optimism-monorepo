@@ -7,8 +7,6 @@ import { IProtocolVersions } from "interfaces/L1/IProtocolVersions.sol";
 
 interface IStandardValidatorBase {
     struct ImplementationsBase {
-        address superchainConfigImpl;
-        address protocolVersionsImpl;
         address l1ERC721BridgeImpl;
         address optimismPortalImpl;
         address systemConfigImpl;
@@ -67,7 +65,6 @@ interface IStandardValidatorV180 is IStandardValidatorBase {
     function __constructor__(
         IStandardValidatorBase.ImplementationsBase memory _implementations,
         ISuperchainConfig _superchainConfig,
-        IProtocolVersions _protocolVersions,
         address _l1PAOMultisig,
         address _mips,
         address _challenger
@@ -87,7 +84,6 @@ interface IStandardValidatorV200 is IStandardValidatorBase {
     function __constructor__(
         IStandardValidatorBase.ImplementationsBase memory _implementations,
         ISuperchainConfig _superchainConfig,
-        IProtocolVersions _protocolVersions,
         address _l1PAOMultisig,
         address _mips,
         address _challenger

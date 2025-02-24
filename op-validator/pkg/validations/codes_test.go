@@ -15,7 +15,7 @@ func TestErrorDescription(t *testing.T) {
 		{
 			name:     "known error code",
 			code:     "SPRCFG-10",
-			expected: "SuperchainConfig version mismatch",
+			expected: "SuperchainConfig is paused",
 		},
 		{
 			name:     "another known error code",
