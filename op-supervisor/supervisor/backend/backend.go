@@ -423,7 +423,7 @@ func (su *SupervisorBackend) DependencySet() depset.DependencySet {
 // Query methods
 // ----------------------------
 
-func (su *SupervisorBackend) CheckMessage(identifier types.Identifier, payloadHash common.Hash, executingTimestamp uint64) (types.SafetyLevel, error) {
+func (su *SupervisorBackend) CheckMessage(identifier types.Identifier, payloadHash common.Hash, executingDescriptor types.ExecutingDescriptor) (types.SafetyLevel, error) {
 	logHash := types.PayloadHashToLogHash(payloadHash, identifier.Origin)
 	chainID := identifier.ChainID
 	blockNum := identifier.BlockNumber
@@ -446,8 +446,8 @@ func (su *SupervisorBackend) CheckMessage(identifier types.Identifier, payloadHa
 	if err != nil {
 		return types.Invalid, fmt.Errorf("failed to check log: %w", err)
 	}
-	if identifier.Timestamp+su.chainDBs.MessageExpiryWindow() < executingTimestamp {
-		su.logger.Debug("Message expired", "identifier", identifier, "payloadHash", payloadHash, "executingTimestamp", executingTimestamp)
+	if identifier.Timestamp+su.chainDBs.MessageExpiryWindow() < executingDescriptor.Timestamp {
+		su.logger.Debug("Message expired", "identifier", identifier, "payloadHash", payloadHash, "executingTimestamp", executingDescriptor.Timestamp)
 		return types.Invalid, nil
 	}
 	return su.chainDBs.Safest(chainID, blockNum, logIdx)
@@ -456,22 +456,22 @@ func (su *SupervisorBackend) CheckMessage(identifier types.Identifier, payloadHa
 func (su *SupervisorBackend) CheckMessages(
 	messages []types.Message,
 	minSafety types.SafetyLevel,
-	executingTimestamp uint64) error {
-	su.logger.Debug("Checking messages", "count", len(messages), "minSafety", minSafety, "executingTimestamp", executingTimestamp)
+	executingDescriptor types.ExecutingDescriptor) error {
+	su.logger.Debug("Checking messages", "count", len(messages), "minSafety", minSafety, "executingTimestamp", executingDescriptor.Timestamp)
 
 	for _, msg := range messages {
 		su.logger.Debug("Checking message",
-			"identifier", msg.Identifier, "payloadHash", msg.PayloadHash.String(), "executingTimestamp", executingTimestamp)
-		safety, err := su.CheckMessage(msg.Identifier, msg.PayloadHash, executingTimestamp)
+			"identifier", msg.Identifier, "payloadHash", msg.PayloadHash.String(), "executingTimestamp", executingDescriptor.Timestamp)
+		safety, err := su.CheckMessage(msg.Identifier, msg.PayloadHash, executingDescriptor)
 		if err != nil {
 			su.logger.Error("Check message failed", "err", err,
-				"identifier", msg.Identifier, "payloadHash", msg.PayloadHash.String(), "executingTimestamp", executingTimestamp)
+				"identifier", msg.Identifier, "payloadHash", msg.PayloadHash.String(), "executingTimestamp", executingDescriptor.Timestamp)
 			return fmt.Errorf("failed to check message: %w", err)
 		}
 		if !safety.AtLeastAsSafe(minSafety) {
 			su.logger.Error("Message is not sufficiently safe",
 				"safety", safety, "minSafety", minSafety,
-				"identifier", msg.Identifier, "payloadHash", msg.PayloadHash.String(), "executingTimestamp", executingTimestamp)
+				"identifier", msg.Identifier, "payloadHash", msg.PayloadHash.String(), "executingTimestamp", executingDescriptor.Timestamp)
 			return fmt.Errorf("message %v (safety level: %v) does not meet the minimum safety %v",
 				msg.Identifier,
 				safety,

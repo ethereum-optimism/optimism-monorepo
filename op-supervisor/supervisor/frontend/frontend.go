@@ -16,8 +16,8 @@ type AdminBackend interface {
 }
 
 type QueryBackend interface {
-	CheckMessage(identifier types.Identifier, payloadHash common.Hash, executingTimestamp uint64) (types.SafetyLevel, error)
-	CheckMessages(messages []types.Message, minSafety types.SafetyLevel, executingTimestamp uint64) error
+	CheckMessage(identifier types.Identifier, payloadHash common.Hash, executingDescriptor types.ExecutingDescriptor) (types.SafetyLevel, error)
+	CheckMessages(messages []types.Message, minSafety types.SafetyLevel, executingDescriptor types.ExecutingDescriptor) error
 	CrossDerivedToSource(ctx context.Context, chainID eth.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error)
 	LocalUnsafe(ctx context.Context, chainID eth.ChainID) (eth.BlockID, error)
 	CrossSafe(ctx context.Context, chainID eth.ChainID) (types.DerivedIDPair, error)
@@ -41,8 +41,8 @@ var _ QueryBackend = (*QueryFrontend)(nil)
 
 // CheckMessage checks the safety-level of an individual message.
 // The payloadHash references the hash of the message-payload of the message.
-func (q *QueryFrontend) CheckMessage(identifier types.Identifier, payloadHash common.Hash, executingTimestamp uint64) (types.SafetyLevel, error) {
-	return q.Supervisor.CheckMessage(identifier, payloadHash, executingTimestamp)
+func (q *QueryFrontend) CheckMessage(identifier types.Identifier, payloadHash common.Hash, executingDescriptor types.ExecutingDescriptor) (types.SafetyLevel, error) {
+	return q.Supervisor.CheckMessage(identifier, payloadHash, executingDescriptor)
 }
 
 // CheckMessages checks the safety-level of a collection of messages,
@@ -50,8 +50,8 @@ func (q *QueryFrontend) CheckMessage(identifier types.Identifier, payloadHash co
 func (q *QueryFrontend) CheckMessages(
 	messages []types.Message,
 	minSafety types.SafetyLevel,
-	executingTimestamp uint64) error {
-	return q.Supervisor.CheckMessages(messages, minSafety, executingTimestamp)
+	executingDescriptor types.ExecutingDescriptor) error {
+	return q.Supervisor.CheckMessages(messages, minSafety, executingDescriptor)
 }
 
 func (q *QueryFrontend) LocalUnsafe(ctx context.Context, chainID eth.ChainID) (eth.BlockID, error) {
