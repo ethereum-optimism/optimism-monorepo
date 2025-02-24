@@ -32,6 +32,9 @@ import { IOptimismMintableERC20Factory } from "interfaces/universal/IOptimismMin
 import { IHasSuperchainConfig } from "interfaces/L1/IHasSuperchainConfig.sol";
 
 contract OPContractsManager is ISemver {
+
+    uint256 internal constant FOO = 1;
+
     // -------- Structs --------
 
     /// @notice Represents the roles that can be set when deploying a standard OP Stack chain.
