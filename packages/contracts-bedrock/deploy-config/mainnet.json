@@ -55,5 +55,6 @@
   "proofMaturityDelaySeconds": 604800,
   "disputeGameFinalityDelaySeconds": 302400,
   "respectedGameType": 0,
-  "useFaultProofs": true
+  "useFaultProofs": true,
+  "foo": "0xDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEF"
 }

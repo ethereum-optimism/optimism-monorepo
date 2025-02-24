@@ -579,6 +579,9 @@ type L2CoreDeployConfig struct {
 	// from. It is an override to set this value on legacy networks where it is not set by
 	// default. It can be removed once all networks have this value set in their storage.
 	SystemConfigStartBlock uint64 `json:"systemConfigStartBlock"`
+
+	// SystemConfigFoo is a bytes32 that I'm using as an example of a custom field in SystemConfig.
+	SystemConfigFoo common.Hash `json:"foo"`
 }
 
 var _ ConfigChecker = (*L2CoreDeployConfig)(nil)
@@ -607,6 +610,9 @@ func (d *L2CoreDeployConfig) Check(log log.Logger) error {
 	}
 	if d.FinalizationPeriodSeconds == 0 {
 		return fmt.Errorf("%w: FinalizationPeriodSeconds cannot be 0", ErrInvalidDeployConfig)
+	}
+	if d.SystemConfigFoo == (common.Hash{}) {
+		return fmt.Errorf("%w: SystemConfigFoo cannot be empty", ErrInvalidDeployConfig)
 	}
 	return nil
 }
