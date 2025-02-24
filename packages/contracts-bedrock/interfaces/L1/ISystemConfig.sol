@@ -35,6 +35,7 @@ interface ISystemConfig {
     function START_BLOCK_SLOT() external view returns (bytes32);
     function UNSAFE_BLOCK_SIGNER_SLOT() external view returns (bytes32);
     function VERSION() external view returns (uint256);
+    function FOO_SLOT() external view returns (bytes32);
     function basefeeScalar() external view returns (uint32);
     function batchInbox() external view returns (address addr_);
     function batcherHash() external view returns (bytes32);
@@ -43,7 +44,7 @@ interface ISystemConfig {
     function gasLimit() external view returns (uint64);
     function eip1559Denominator() external view returns (uint32);
     function eip1559Elasticity() external view returns (uint32);
-    function foo() external view returns (bytes32);
+    function foo() external view returns (bytes32 foo_);
     function getAddresses() external view returns (Addresses memory);
     function initialize(
         address _owner,
