@@ -129,8 +129,8 @@ func (d *HTTPDownloader) Download(ctx context.Context, url string, progress Down
 }
 
 type CachingDownloader struct {
-	d        Downloader
-	mtx      sync.Mutex
+	d   Downloader
+	mtx sync.Mutex
 }
 
 func (d *CachingDownloader) Download(ctx context.Context, url string, progress DownloadProgressor, targetDir string) (string, error) {
