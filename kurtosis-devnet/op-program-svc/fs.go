@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -27,6 +28,53 @@ type proofFileSystem struct {
 // proofFile implements http.File, representing a virtual file in our proof filesystem
 type proofFile struct {
 	file File
+}
+
+// infoFile implements http.File for the virtual info.json file
+type infoFile struct {
+	*bytes.Reader
+	content []byte
+}
+
+func newInfoFile(proofFiles map[string]string) *infoFile {
+	// Create inverted map
+	invertedMap := make(map[string]string)
+	for hash, variablePart := range proofFiles {
+		// Replace dashes with underscores in the key
+		key := fmt.Sprintf("prestate%s", variablePart)
+		key = strings.ReplaceAll(key, "-", "_")
+		invertedMap[key] = hash
+	}
+
+	// Convert to JSON
+	content, err := json.MarshalIndent(invertedMap, "", "  ")
+	if err != nil {
+		// Fallback to empty JSON object if marshaling fails
+		content = []byte("{}")
+	}
+
+	return &infoFile{
+		Reader:  bytes.NewReader(content),
+		content: content,
+	}
+}
+
+func (f *infoFile) Close() error {
+	return nil
+}
+
+func (f *infoFile) Readdir(count int) ([]fs.FileInfo, error) {
+	return nil, fmt.Errorf("not a directory")
+}
+
+func (f *infoFile) Stat() (fs.FileInfo, error) {
+	return virtualFileInfo{
+		name:    "info.json",
+		size:    int64(len(f.content)),
+		mode:    0644,
+		modTime: time.Now(),
+		isDir:   false,
+	}, nil
 }
 
 func (f *proofFile) Close() error {
@@ -73,7 +121,7 @@ func (d *proofDir) Readdir(count int) ([]fs.FileInfo, error) {
 	defer d.proofMutex.RUnlock()
 
 	// If we've already read all entries
-	if d.pos >= len(d.proofFiles)*2 {
+	if d.pos >= len(d.proofFiles)*2+1 {
 		if count <= 0 {
 			return nil, nil
 		}
@@ -89,11 +137,23 @@ func (d *proofDir) Readdir(count int) ([]fs.FileInfo, error) {
 
 	start := d.pos
 	end := start + count
-	if count <= 0 || end > len(d.proofFiles)*2 {
-		end = len(d.proofFiles) * 2
+	if count <= 0 || end > len(d.proofFiles)*2+1 {
+		end = len(d.proofFiles)*2 + 1
 	}
 
 	for i := start; i < end; i++ {
+		// Special case for info.json (last entry)
+		if i == len(d.proofFiles)*2 {
+			entries = append(entries, virtualFileInfo{
+				name:    "info.json",
+				size:    0, // Size will be determined when actually opening the file
+				mode:    0644,
+				modTime: time.Now(),
+				isDir:   false,
+			})
+			continue
+		}
+
 		hash := hashes[i/2]
 		isJSON := i%2 == 0
 
@@ -166,6 +226,13 @@ func (fs *proofFileSystem) Open(name string) (http.File, error) {
 
 	// Clean the path and remove leading slash
 	name = strings.TrimPrefix(filepath.Clean(name), "/")
+
+	// Special case for info.json
+	if name == "info.json" {
+		fs.proofMutex.RLock()
+		defer fs.proofMutex.RUnlock()
+		return newInfoFile(fs.proofFiles), nil
+	}
 
 	fs.proofMutex.RLock()
 	defer fs.proofMutex.RUnlock()

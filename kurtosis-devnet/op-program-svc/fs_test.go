@@ -78,6 +78,33 @@ func TestProofFileSystem(t *testing.T) {
 		}
 	})
 
+	t.Run("OpenInfoJSONFile", func(t *testing.T) {
+		file, err := pfs.Open("/info.json")
+		if err != nil {
+			t.Errorf("Failed to open info.json file: %v", err)
+		}
+		defer file.Close()
+
+		// Read contents
+		contents, err := io.ReadAll(file)
+		if err != nil {
+			t.Errorf("Failed to read file contents: %v", err)
+		}
+
+		// Verify the contents contain the inverted map
+		var infoData map[string]string
+		err = json.Unmarshal(contents, &infoData)
+		if err != nil {
+			t.Errorf("Failed to parse info.json contents: %v", err)
+		}
+
+		// Check that the key has dashes replaced with underscores
+		expectedKey := "prestate_test"
+		if hash, ok := infoData[expectedKey]; !ok || hash != "hash123" {
+			t.Errorf("Expected info.json to contain mapping from %s to hash123, got %v", expectedKey, hash)
+		}
+	})
+
 	t.Run("OpenNonExistentFile", func(t *testing.T) {
 		_, err := pfs.Open("/nonexistent.json")
 		if err == nil {
@@ -97,8 +124,21 @@ func TestProofFileSystem(t *testing.T) {
 			t.Errorf("Failed to read directory: %v", err)
 		}
 
-		if len(files) != 2 { // We expect both .json and .bin.gz files
-			t.Errorf("Expected 2 files, got %d", len(files))
+		// We expect both .json and .bin.gz files for hash123, plus info.json
+		if len(files) != 3 {
+			t.Errorf("Expected 3 files, got %d", len(files))
+		}
+
+		// Verify info.json is included in the directory listing
+		foundInfoJson := false
+		for _, file := range files {
+			if file.Name() == "info.json" {
+				foundInfoJson = true
+				break
+			}
+		}
+		if !foundInfoJson {
+			t.Error("info.json not found in directory listing")
 		}
 	})
 }
