@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log/slog"
 	"math/big"
-	"os"
 	"strings"
 	"testing"
 
@@ -82,10 +81,7 @@ func TestEndToEndApply(t *testing.T) {
 
 	loc, _ := testutil.LocalArtifacts(t)
 
-	testCacheDir := t.TempDir()
-	t.Cleanup(func() {
-		require.NoError(t, os.RemoveAll(testCacheDir))
-	})
+	testCacheDir := testutil.IsolatedTestDirWithAutoCleanup(t)
 
 	t.Run("two chains one after another", func(t *testing.T) {
 		intent, st := newIntent(t, l1ChainID, dk, l2ChainID1, loc, loc)
@@ -560,10 +556,7 @@ func setupGenesisChain(t *testing.T, l1ChainID uint64) (deployer.ApplyPipelineOp
 
 	intent, st := newIntent(t, l1ChainIDBig, dk, l2ChainID1, loc, loc)
 
-	testCacheDir := t.TempDir()
-	t.Cleanup(func() {
-		require.NoError(t, os.RemoveAll(testCacheDir))
-	})
+	testCacheDir := testutil.IsolatedTestDirWithAutoCleanup(t)
 
 	opts := deployer.ApplyPipelineOpts{
 		DeploymentTarget:   deployer.DeploymentTargetGenesis,

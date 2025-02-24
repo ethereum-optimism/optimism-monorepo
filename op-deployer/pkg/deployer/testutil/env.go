@@ -16,6 +16,19 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func IsolatedTestDirWithAutoCleanup(t *testing.T) string {
+	basePath := os.Getenv("OP_DEPLOYER_TEST_DIR")
+	if basePath == "" {
+		basePath = "./.tests"
+	}
+	dir := path.Join(basePath, t.Name())
+	require.NoError(t, os.MkdirAll(dir, 0755))
+	t.Cleanup(func() {
+		require.NoError(t, os.RemoveAll(dir))
+	})
+	return dir
+}
+
 func LocalArtifacts(t *testing.T) (*artifacts.Locator, foundry.StatDirFs) {
 	_, testFilename, _, ok := runtime.Caller(0)
 	require.Truef(t, ok, "failed to get test filename")
@@ -28,10 +41,7 @@ func LocalArtifacts(t *testing.T) (*artifacts.Locator, foundry.StatDirFs) {
 		URL: artifactsURL,
 	}
 
-	testCacheDir := t.TempDir()
-	t.Cleanup(func() {
-		require.NoError(t, os.RemoveAll(testCacheDir))
-	})
+	testCacheDir := IsolatedTestDirWithAutoCleanup(t)
 
 	artifactsFS, err := artifacts.Download(context.Background(), loc, artifacts.NoopProgressor(), testCacheDir)
 	require.NoError(t, err)

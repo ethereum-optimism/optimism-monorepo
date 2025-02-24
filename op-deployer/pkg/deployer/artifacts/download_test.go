@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"path"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -44,10 +45,7 @@ func TestDownloadArtifacts_MockArtifacts(t *testing.T) {
 		URL: artifactsURL,
 	}
 
-	testCacheDir := t.TempDir()
-	t.Cleanup(func() {
-		require.NoError(t, os.RemoveAll(testCacheDir))
-	})
+	testCacheDir := IsolatedTestDirWithAutoCleanup(t)
 
 	t.Run("success", func(t *testing.T) {
 		fs, err := Download(ctx, loc, nil, testCacheDir)
@@ -115,15 +113,27 @@ func TestDownloadArtifacts_MockArtifacts(t *testing.T) {
 	})
 }
 
+// duplicate of testutil.IsolatedTestDirWithAutoCleanup to break the import cycle
+// TODO: shift them to a shared package
+func IsolatedTestDirWithAutoCleanup(t *testing.T) string {
+	basePath := os.Getenv("OP_DEPLOYER_TEST_DIR")
+	if basePath == "" {
+		basePath = "./.tests"
+	}
+	dir := path.Join(basePath, t.Name())
+	require.NoError(t, os.MkdirAll(dir, 0755))
+	t.Cleanup(func() {
+		require.NoError(t, os.RemoveAll(dir))
+	})
+	return dir
+}
+
 func TestDownloadArtifacts_TaggedVersions(t *testing.T) {
 	tags := []string{
 		"op-contracts/v1.6.0",
 		"op-contracts/v1.7.0-beta.1+l2-contracts",
 	}
-	testCacheDir := t.TempDir()
-	t.Cleanup(func() {
-		require.NoError(t, os.RemoveAll(testCacheDir))
-	})
+	testCacheDir := IsolatedTestDirWithAutoCleanup(t)
 	for _, tag := range tags {
 		t.Run(tag, func(t *testing.T) {
 			t.Parallel()

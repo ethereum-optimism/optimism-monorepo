@@ -19,10 +19,7 @@ import (
 )
 
 func TestImplementations(t *testing.T) {
-	testCacheDir := t.TempDir()
-	t.Cleanup(func() {
-		require.NoError(t, os.RemoveAll(testCacheDir))
-	})
+	testCacheDir := testutil.IsolatedTestDirWithAutoCleanup(t)
 
 	for _, network := range networks {
 		t.Run(network, func(t *testing.T) {
