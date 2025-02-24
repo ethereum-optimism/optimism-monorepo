@@ -1,0 +1,64 @@
+endpoints:
+  - &l1-rpc http://l1-rpc-here:8545/
+  - &opnode-a http://opnode-a-here:8545/
+  - &opnode-b http://opnode-b-here:8545/
+  - &eng-a http://engine-a:8545/
+  - &eng-b http://engine-b:8545/
+  - &signer-b http://my-signer:8545
+  - &conductor-a http://my-conductor:8545
+
+builders:
+  l2-eng-a:
+    l2Eng:
+      l1EL: *l1-rpc
+      l2CL: *opnode-a
+      l2EL: *eng-a
+  l2-eng-b:
+    l2Eng:
+      l1EL: *l1-rpc
+      l2CL: *opnode-b
+      l2EL: *eng-b
+
+signers:
+  local-key-a:
+    local-key:
+      path: "./my-key.txt"
+  remote-signer-b:
+    remote-signer:
+      rpc: *signer-b
+
+committers:
+  local-a:
+    local:
+      l2CL: *opnode-a
+  conductor-a:
+    conductor:
+      rpc: *conductor-a
+  commit-a:
+    all:  # TODO: combine committers
+      - local-a
+      - conductor-a
+  local-b:
+    local:
+      l2CL: *opnode-a
+
+publishers:
+  pub-a:
+    rpc: *opnode-a
+  pub-b:
+    rpc: *opnode-b
+
+# each sequencer gets an RPC endpoint
+sequencers:
+  sequencer-a:
+    full:
+      builder: l2-eng-a
+      signer: local-key-a
+      committer: commit-a
+      publisher: pub-a
+  sequencer-b:
+    full:
+      builder: l2-eng-b
+      signer: remote-signer-b
+      committer: conductor-b
+      publisher: pub-b
