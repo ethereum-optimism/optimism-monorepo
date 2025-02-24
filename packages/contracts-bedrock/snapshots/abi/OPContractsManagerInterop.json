@@ -426,6 +426,11 @@
             "internalType": "Duration",
             "name": "disputeMaxClockDuration",
             "type": "uint64"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "foo",
+            "type": "bytes32"
           }
         ],
         "internalType": "struct OPContractsManager.DeployInput",

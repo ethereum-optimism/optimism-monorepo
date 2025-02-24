@@ -32,6 +32,19 @@
   },
   {
     "inputs": [],
+    "name": "FOO_SLOT",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "L1_CROSS_DOMAIN_MESSENGER_SLOT",
     "outputs": [
       {
@@ -227,6 +240,19 @@
   },
   {
     "inputs": [],
+    "name": "foo",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "foo_",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "gasLimit",
     "outputs": [
       {
@@ -358,11 +384,6 @@
         "type": "address"
       },
       {
-        "internalType": "bytes32",
-        "name": "_foo",
-        "type": "bytes32"
-      },
-      {
         "components": [
           {
             "internalType": "address",
@@ -398,6 +419,11 @@
         "internalType": "struct SystemConfig.Addresses",
         "name": "_addresses",
         "type": "tuple"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "_foo",
+        "type": "bytes32"
       }
     ],
     "name": "initialize",
