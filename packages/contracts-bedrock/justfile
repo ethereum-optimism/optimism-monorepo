@@ -89,7 +89,7 @@ test-upgrade *ARGS:
   just prepare-upgrade-env "forge test {{ARGS}}"
 
 test-upgrade-rerun *ARGS: build-go-ffi
-  just test-upgrade {{ARGS}} --rerun -vvv
+  just test-upgrade {{ARGS}} --rerun -vvvv
 
 # Starts a local anvil node with a mainnet fork and sends it to the background
 # Requires ETH_RPC_URL to be set to a production (Sepolia or Mainnet) RPC URL.
