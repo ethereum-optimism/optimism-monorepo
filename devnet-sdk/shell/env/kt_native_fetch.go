@@ -25,11 +25,11 @@ func parseKurtosisNativeURL(u *url.URL) (enclave, argsFileName string) {
 
 // fetchKurtosisNativeData reads data directly from kurtosis API using default dependency implementations
 func fetchKurtosisNativeData(u *url.URL) (string, []byte, error) {
-	return fetchKurtosisNativeDataInternal(u, &defaultOSImpl{}, &defaultSpecImpl{}, &defaultKurtosisImpl{})
+	return fetchKurtosisNativeDataInternal(u, &defaultOSOpenImpl{}, &defaultSpecImpl{}, &defaultKurtosisImpl{})
 }
 
 // fetchKurtosisNativeDataInternal reads data directly from kurtosis API using provided dependency implementations
-func fetchKurtosisNativeDataInternal(u *url.URL, osImpl osInterface, specImpl specInterface, kurtosisImpl kurtosisInterface) (string, []byte, error) {
+func fetchKurtosisNativeDataInternal(u *url.URL, osImpl osOpenInterface, specImpl specInterface, kurtosisImpl kurtosisInterface) (string, []byte, error) {
 	// First let's parse the kurtosis URL
 	enclave, argsFileName := parseKurtosisNativeURL(u)
 
@@ -70,10 +70,10 @@ func fetchKurtosisNativeDataInternal(u *url.URL, osImpl osInterface, specImpl sp
 	return enclave, envBytes, nil
 }
 
-// osInterface describes a struct that can open filesystem files for reading
+// osOpenInterface describes a struct that can open filesystem files for reading
 //
-// osInterface is used when loading kurtosis args files from local filesystem
-type osInterface interface {
+// osOpenInterface is used when loading kurtosis args files from local filesystem
+type osOpenInterface interface {
 	Open(name string) (fileInterface, error)
 }
 
@@ -83,10 +83,10 @@ type fileInterface interface {
 	Close() error
 }
 
-// defaultOSImpl implements osInterface
-type defaultOSImpl struct{}
+// defaultOSOpenImpl implements osOpenInterface
+type defaultOSOpenImpl struct{}
 
-func (d *defaultOSImpl) Open(name string) (fileInterface, error) {
+func (d *defaultOSOpenImpl) Open(name string) (fileInterface, error) {
 	return os.Open(name)
 }
 

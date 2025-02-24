@@ -182,7 +182,7 @@ func TestFetchKurtosisNativeDataSuccess(t *testing.T) {
 }
 
 var (
-	_ osInterface = (*mockOSImpl)(nil)
+	_ osOpenInterface = (*mockOSImpl)(nil)
 
 	_ specInterface = (*mockSpecImpl)(nil)
 
