@@ -263,7 +263,8 @@ func TestBatcherAutoDA(t *testing.T) {
 	// but then manipulate the fee markets over the coming L1 blocks such that blobs become cheaper again.
 	cfg.DeployConfig.L1GenesisBlockBaseFeePerGas = (*hexutil.Big)(big.NewInt(3100))
 	// 100 blob targets leads to 130_393 starting blob base fee, which is ~ 42 * 2_000 (equilibrium is ~16x or ~40x under Pectra)
-	cfg.DeployConfig.L1GenesisBlockExcessBlobGas = (*hexutil.Uint64)(u64Ptr(100 * params.BlobTxTargetBlobGasPerBlock))
+	cfg.DeployConfig.L1GenesisBlockExcessBlobGas = (*hexutil.Uint64)(u64Ptr(
+		100 * params.BlobTxBlobGasPerBlob * uint64(params.DefaultCancunBlobConfig.Target)))
 	cfg.DeployConfig.L1GenesisBlockBlobGasUsed = (*hexutil.Uint64)(u64Ptr(0))
 	cfg.DeployConfig.L1GenesisBlockGasLimit = 2_500_000
 	cfg.BatcherTargetNumFrames = eth.MaxBlobsPerBlobTx

@@ -156,6 +156,10 @@ func (c *chainContext) Engine() consensus.Engine {
 	return c.engine
 }
 
+func (c *chainContext) Config() *params.ChainConfig {
+	panic("unexpected call to Config")
+}
+
 func (c *chainContext) GetHeader(hash common.Hash, number uint64) *types.Header {
 	// The EVM should never call this method during eip-2935 historical block retrieval
 	panic("unexpected call to GetHeader")

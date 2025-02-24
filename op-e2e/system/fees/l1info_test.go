@@ -16,7 +16,6 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/consensus/misc/eip4844"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/stretchr/testify/require"
@@ -172,7 +171,7 @@ func TestL1InfoContract(t *testing.T) {
 			l1blocks[h].BlobBaseFeeScalar = scalars.BlobBaseFeeScalar
 			l1blocks[h].BaseFeeScalar = scalars.BaseFeeScalar
 			if excess := b.ExcessBlobGas(); excess != nil {
-				l1blocks[h].BlobBaseFee = eip4844.CalcBlobFee(*excess)
+				l1blocks[h].BlobBaseFee = eth.CalcBlobFeeDefault(b.Header())
 			} else {
 				l1blocks[h].BlobBaseFee = big.NewInt(1)
 			}

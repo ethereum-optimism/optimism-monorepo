@@ -135,7 +135,7 @@ func TestUpdateState(t *testing.T) {
 	statedb.MakeSinglethreaded()
 	statedb.SetBalance(userAccount, uint256.NewInt(50), tracing.BalanceChangeUnspecified)
 	require.Equal(t, uint256.NewInt(50), statedb.GetBalance(userAccount))
-	statedb.SetNonce(userAccount, uint64(5))
+	statedb.SetNonce(userAccount, uint64(5), tracing.NonceChangeUnspecified)
 	require.Equal(t, uint64(5), statedb.GetNonce(userAccount))
 
 	statedb.SetBalance(unknownAccount, uint256.NewInt(60), tracing.BalanceChangeUnspecified)

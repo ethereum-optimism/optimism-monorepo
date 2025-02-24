@@ -40,19 +40,19 @@ func TestForgeAllocs_FromState(t *testing.T) {
 	alice := common.HexToAddress("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266")
 	st.CreateAccount(alice)
 	st.SetBalance(alice, uint256.NewInt(123), tracing.BalanceChangeUnspecified)
-	st.SetNonce(alice, 42)
+	st.SetNonce(alice, 42, tracing.NonceChangeUnspecified)
 
 	bob := common.HexToAddress("0x70997970C51812dc3A010C7d01b50e0d17dc79C8")
 	st.CreateAccount(bob)
 	st.CreateContract(bob)
 	st.SetBalance(bob, uint256.NewInt(100), tracing.BalanceChangeUnspecified)
-	st.SetNonce(bob, 1)
+	st.SetNonce(bob, 1, tracing.NonceChangeUnspecified)
 	st.SetState(bob, common.Hash{0: 0x42}, common.Hash{0: 7})
 
 	contract := common.HexToAddress("0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC")
 	st.CreateAccount(contract)
 	st.CreateContract(contract)
-	st.SetNonce(contract, 30)
+	st.SetNonce(contract, 30, tracing.NonceChangeUnspecified)
 	st.SetBalance(contract, uint256.NewInt(0), tracing.BalanceChangeUnspecified)
 	st.SetCode(contract, []byte{10, 11, 12, 13, 14})
 

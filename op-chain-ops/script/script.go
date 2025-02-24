@@ -214,6 +214,8 @@ func NewHost(
 		CancunTime:              new(uint64),
 		PragueTime:              nil,
 		VerkleTime:              nil,
+		// Select default Ethereum prod blob schedules
+		BlobScheduleConfig: params.DefaultBlobSchedule,
 		// OP-Stack forks are disabled, since we use this for L1.
 		BedrockBlock: nil,
 		RegolithTime: nil,
@@ -402,13 +404,13 @@ func (h *Host) Wipe(addr common.Address) {
 	if h.state.GetCodeSize(addr) > 0 {
 		h.state.SetCode(addr, nil)
 	}
-	h.state.SetNonce(addr, 0)
+	h.state.SetNonce(addr, 0, tracing.NonceChangeUnspecified)
 	h.state.SetBalance(addr, uint256.NewInt(0), tracing.BalanceChangeUnspecified)
 }
 
 // SetNonce sets an account's nonce in state.
 func (h *Host) SetNonce(addr common.Address, nonce uint64) {
-	h.state.SetNonce(addr, nonce)
+	h.state.SetNonce(addr, nonce, tracing.NonceChangeUnspecified)
 }
 
 // GetNonce returs an account's nonce from state.
@@ -433,7 +435,7 @@ func (h *Host) ImportAccount(addr common.Address, account types.Account) {
 		balance = uint256.MustFromBig(account.Balance)
 	}
 	h.state.SetBalance(addr, balance, tracing.BalanceChangeUnspecified)
-	h.state.SetNonce(addr, account.Nonce)
+	h.state.SetNonce(addr, account.Nonce, tracing.NonceChangeUnspecified)
 	h.state.SetCode(addr, account.Code)
 	for key, value := range account.Storage {
 		h.state.SetState(addr, key, value)
@@ -505,7 +507,7 @@ func (h *Host) onEnter(depth int, typ byte, from common.Address, to common.Addre
 		if parentCallFrame.Prank.Sender != nil {
 			sender = *parentCallFrame.Prank.Sender
 		}
-		h.state.SetNonce(sender, h.state.GetNonce(sender)+1)
+		h.state.SetNonce(sender, h.state.GetNonce(sender)+1, tracing.NonceChangeUnspecified)
 	}
 
 	if h.isolateBroadcasts {
@@ -829,7 +831,7 @@ func (h *Host) NewScriptAddress() common.Address {
 	deployNonce := h.state.GetNonce(deployer)
 	// compute address of script contract to be deployed
 	addr := crypto.CreateAddress(deployer, deployNonce)
-	h.state.SetNonce(deployer, deployNonce+1)
+	h.state.SetNonce(deployer, deployNonce+1, tracing.NonceChangeUnspecified)
 	return addr
 }
 

@@ -216,7 +216,7 @@ func TestDencunBlobTxInTxPool(gt *testing.T) {
 	log := testlog.Logger(t, log.LevelDebug)
 	engine := newEngine(t, sd, log)
 	tx := aliceSimpleBlobTx(t, dp)
-	errs := engine.Eth.TxPool().Add([]*types.Transaction{tx}, true, true)
+	errs := engine.Eth.TxPool().Add([]*types.Transaction{tx}, true)
 	require.ErrorContains(t, errs[0], "transaction type not supported")
 }
 
