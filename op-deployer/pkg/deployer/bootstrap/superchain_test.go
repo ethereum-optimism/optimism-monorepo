@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum-optimism/optimism/op-service/testutils"
 	"github.com/ethereum-optimism/optimism/op-service/testutils/devnet"
 
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/artifacts"
-	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/testutil"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -55,7 +55,7 @@ func testSuperchain(t *testing.T, forkRPCURL string, version string) {
 	})
 	l1RPC := forkedL1.RPCUrl()
 
-	testCacheDir := testutil.IsolatedTestDirWithAutoCleanup(t)
+	testCacheDir := testutils.IsolatedTestDirWithAutoCleanup(t)
 
 	out, err := Superchain(ctx, SuperchainConfig{
 		L1RPCUrl:         l1RPC,

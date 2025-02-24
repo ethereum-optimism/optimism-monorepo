@@ -4,30 +4,16 @@ import (
 	"context"
 	"fmt"
 	"net/url"
-	"os"
 	"path"
 	"runtime"
 	"testing"
 
-	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/artifacts"
-
 	"github.com/ethereum-optimism/optimism/op-chain-ops/foundry"
+	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/artifacts"
 	op_service "github.com/ethereum-optimism/optimism/op-service"
+	"github.com/ethereum-optimism/optimism/op-service/testutils"
 	"github.com/stretchr/testify/require"
 )
-
-func IsolatedTestDirWithAutoCleanup(t *testing.T) string {
-	basePath := os.Getenv("OP_DEPLOYER_TEST_DIR")
-	if basePath == "" {
-		basePath = "./.tests"
-	}
-	dir := path.Join(basePath, t.Name())
-	require.NoError(t, os.MkdirAll(dir, 0755))
-	t.Cleanup(func() {
-		require.NoError(t, os.RemoveAll(dir))
-	})
-	return dir
-}
 
 func LocalArtifacts(t *testing.T) (*artifacts.Locator, foundry.StatDirFs) {
 	_, testFilename, _, ok := runtime.Caller(0)
@@ -41,7 +27,7 @@ func LocalArtifacts(t *testing.T) (*artifacts.Locator, foundry.StatDirFs) {
 		URL: artifactsURL,
 	}
 
-	testCacheDir := IsolatedTestDirWithAutoCleanup(t)
+	testCacheDir := testutils.IsolatedTestDirWithAutoCleanup(t)
 
 	artifactsFS, err := artifacts.Download(context.Background(), loc, artifacts.NoopProgressor(), testCacheDir)
 	require.NoError(t, err)

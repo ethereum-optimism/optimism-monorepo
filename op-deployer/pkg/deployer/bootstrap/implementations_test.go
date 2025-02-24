@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum-optimism/optimism/op-service/testutils"
 	"github.com/ethereum-optimism/optimism/op-service/testutils/devnet"
 
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/opcm"
@@ -19,7 +20,7 @@ import (
 )
 
 func TestImplementations(t *testing.T) {
-	testCacheDir := testutil.IsolatedTestDirWithAutoCleanup(t)
+	testCacheDir := testutils.IsolatedTestDirWithAutoCleanup(t)
 
 	for _, network := range networks {
 		t.Run(network, func(t *testing.T) {

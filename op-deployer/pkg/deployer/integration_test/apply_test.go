@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ethereum-optimism/optimism/op-service/testutils"
 	"github.com/ethereum-optimism/optimism/op-service/testutils/devnet"
 
 	altda "github.com/ethereum-optimism/optimism/op-alt-da"
@@ -81,7 +82,7 @@ func TestEndToEndApply(t *testing.T) {
 
 	loc, _ := testutil.LocalArtifacts(t)
 
-	testCacheDir := testutil.IsolatedTestDirWithAutoCleanup(t)
+	testCacheDir := testutils.IsolatedTestDirWithAutoCleanup(t)
 
 	t.Run("two chains one after another", func(t *testing.T) {
 		intent, st := newIntent(t, l1ChainID, dk, l2ChainID1, loc, loc)
@@ -556,7 +557,7 @@ func setupGenesisChain(t *testing.T, l1ChainID uint64) (deployer.ApplyPipelineOp
 
 	intent, st := newIntent(t, l1ChainIDBig, dk, l2ChainID1, loc, loc)
 
-	testCacheDir := testutil.IsolatedTestDirWithAutoCleanup(t)
+	testCacheDir := testutils.IsolatedTestDirWithAutoCleanup(t)
 
 	opts := deployer.ApplyPipelineOpts{
 		DeploymentTarget:   deployer.DeploymentTargetGenesis,
