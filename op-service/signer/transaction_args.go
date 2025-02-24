@@ -49,32 +49,23 @@ func NewTransactionArgsFromTransaction(chainId *big.Int, from *common.Address, t
 	data := hexutil.Bytes(tx.Data())
 	nonce := hexutil.Uint64(tx.Nonce())
 	gas := hexutil.Uint64(tx.Gas())
-
-	// Ignore overflow errors. We are assuming core.Transaction does not have out-of-range values
-	value, _ := uint256.FromBig(tx.Value())
-	chainIdU256, _ := uint256.FromBig(chainId)
-	gasFeeCap, _ := uint256.FromBig(tx.GasFeeCap())
-	gasTipCap, _ := uint256.FromBig(tx.GasTipCap())
-	blobGasFeeCap, _ := uint256.FromBig(tx.BlobGasFeeCap())
-
 	accesses := tx.AccessList()
-	args := &TransactionArgs{
+
+	return &TransactionArgs{
 		From:                 from,
 		Input:                &data,
 		Nonce:                &nonce,
-		Value:                (*hexutil.U256)(value),
+		Value:                (*hexutil.U256)(mustUint256FromBig(tx.Value())),
 		Gas:                  &gas,
 		To:                   tx.To(),
-		ChainID:              (*hexutil.U256)(chainIdU256),
-		MaxFeePerGas:         (*hexutil.U256)(gasFeeCap),
-		MaxPriorityFeePerGas: (*hexutil.U256)(gasTipCap),
+		ChainID:              (*hexutil.U256)(mustUint256FromBig(chainId)),
+		MaxFeePerGas:         (*hexutil.U256)(mustUint256FromBig(tx.GasFeeCap())),
+		MaxPriorityFeePerGas: (*hexutil.U256)(mustUint256FromBig(tx.GasTipCap())),
 		AccessList:           &accesses,
 		BlobVersionedHashes:  tx.BlobHashes(),
-		BlobFeeCap:           (*hexutil.U256)(blobGasFeeCap),
+		BlobFeeCap:           (*hexutil.U256)(mustUint256FromBig(tx.BlobGasFeeCap())),
 		AuthList:             tx.SetCodeAuthorizations(),
 	}
-
-	return args
 }
 
 // data retrieves the transaction calldata. Input field is preferred.
@@ -189,4 +180,16 @@ func (args *TransactionArgs) ToTransactionData() (types.TxData, error) {
 		}
 	}
 	return data, nil
+}
+
+// mustUint256FromBig converts a *big.Int to a *uint256.Int, panicking on overflow
+func mustUint256FromBig(b *big.Int) *uint256.Int {
+	if b == nil {
+		return nil
+	}
+	result, overflow := uint256.FromBig(b)
+	if overflow {
+		panic(fmt.Sprintf("uint256 overflow from big.Int value: %s", b.String()))
+	}
+	return result
 }
