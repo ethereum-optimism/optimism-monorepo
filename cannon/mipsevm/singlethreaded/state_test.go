@@ -73,7 +73,7 @@ func TestStateJSONCodec(t *testing.T) {
 	stateJSON, err := state.MarshalJSON()
 	require.NoError(t, err)
 
-	newState := new(State)
+	newState := CreateEmptyState()
 	require.NoError(t, newState.UnmarshalJSON(stateJSON))
 
 	require.Equal(t, state.PreimageKey, newState.PreimageKey)

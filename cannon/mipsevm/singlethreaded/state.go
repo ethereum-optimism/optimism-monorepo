@@ -111,6 +111,7 @@ func (s *State) MarshalJSON() ([]byte, error) { // nosemgrep
 
 func (s *State) UnmarshalJSON(data []byte) error {
 	sm := new(stateMarshaling)
+	sm.Memory = memory.NewMemory()
 	if err := json.Unmarshal(data, sm); err != nil {
 		return err
 	}
