@@ -3,7 +3,6 @@ pragma solidity ^0.8.0;
 
 // Interfaces
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
-import { IProtocolVersions } from "interfaces/L1/IProtocolVersions.sol";
 
 interface IStandardValidatorBase {
     struct ImplementationsBase {

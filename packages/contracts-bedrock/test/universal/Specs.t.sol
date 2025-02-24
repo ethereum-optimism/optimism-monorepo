@@ -1023,12 +1023,9 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "LivenessModule", _sel: _getSel("version()") });
 
         _addSpec({ _name: "StandardValidator", _sel: _getSel("superchainConfig()") });
-        _addSpec({ _name: "StandardValidator", _sel: _getSel("protocolVersions()") });
         _addSpec({ _name: "StandardValidator", _sel: _getSel("l1PAOMultisig()") });
         _addSpec({ _name: "StandardValidator", _sel: _getSel("mips()") });
         _addSpec({ _name: "StandardValidator", _sel: _getSel("challenger()") });
-        _addSpec({ _name: "StandardValidator", _sel: _getSel("superchainConfigImpl()") });
-        _addSpec({ _name: "StandardValidator", _sel: _getSel("protocolVersionsImpl()") });
         _addSpec({ _name: "StandardValidator", _sel: _getSel("l1ERC721BridgeImpl()") });
         _addSpec({ _name: "StandardValidator", _sel: _getSel("optimismPortalImpl()") });
         _addSpec({ _name: "StandardValidator", _sel: _getSel("systemConfigImpl()") });
@@ -1039,8 +1036,6 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "StandardValidator", _sel: _getSel("anchorStateRegistryImpl()") });
         _addSpec({ _name: "StandardValidator", _sel: _getSel("delayedWETHImpl()") });
         _addSpec({ _name: "StandardValidator", _sel: _getSel("mipsImpl()") });
-        _addSpec({ _name: "StandardValidator", _sel: _getSel("superchainConfigVersion()") });
-        _addSpec({ _name: "StandardValidator", _sel: _getSel("protocolVersionsVersion()") });
         _addSpec({ _name: "StandardValidator", _sel: _getSel("systemConfigVersion()") });
         _addSpec({ _name: "StandardValidator", _sel: _getSel("permissionedDisputeGameVersion()") });
         _addSpec({ _name: "StandardValidator", _sel: _getSel("mipsVersion()") });
