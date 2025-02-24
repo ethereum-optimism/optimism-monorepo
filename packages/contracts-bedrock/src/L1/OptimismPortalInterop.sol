@@ -25,9 +25,9 @@ contract OptimismPortalInterop is OptimismPortal2 {
         OptimismPortal2(_proofMaturityDelaySeconds, _disputeGameFinalityDelaySeconds)
     { }
 
-    /// @custom:semver +interop-beta.1
+    /// @custom:semver +interop.2
     function version() public pure override returns (string memory) {
-        return string.concat(super.version(), "+interop-beta.1");
+        return string.concat(super.version(), "+interop.2");
     }
 
     /// @notice Sets static configuration options for the L2 system.
