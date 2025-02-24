@@ -52,7 +52,7 @@ func TestGet(t *testing.T) {
 	t.Run("ProofAfterEndOfTrace", func(t *testing.T) {
 		provider, generator := setupWithTestData(t, dataDir, prestate)
 		generator.finalState = &singlethreaded.State{
-			Memory: &memory.Memory{},
+			Memory: memory.NewMemory(),
 			Step:   10,
 			Exited: true,
 		}
@@ -108,7 +108,7 @@ func TestGetStepData(t *testing.T) {
 		dataDir, prestate := setupTestData(t)
 		provider, generator := setupWithTestData(t, dataDir, prestate)
 		generator.finalState = &singlethreaded.State{
-			Memory: &memory.Memory{},
+			Memory: memory.NewMemory(),
 			Step:   10,
 			Exited: true,
 		}
@@ -134,7 +134,7 @@ func TestGetStepData(t *testing.T) {
 		dataDir, prestate := setupTestData(t)
 		provider, generator := setupWithTestData(t, dataDir, prestate)
 		generator.finalState = &singlethreaded.State{
-			Memory: &memory.Memory{},
+			Memory: memory.NewMemory(),
 			Step:   10,
 			Exited: true,
 		}
@@ -160,7 +160,7 @@ func TestGetStepData(t *testing.T) {
 		dataDir, prestate := setupTestData(t)
 		provider, initGenerator := setupWithTestData(t, dataDir, prestate)
 		initGenerator.finalState = &singlethreaded.State{
-			Memory: &memory.Memory{},
+			Memory: memory.NewMemory(),
 			Step:   10,
 			Exited: true,
 		}
@@ -178,7 +178,7 @@ func TestGetStepData(t *testing.T) {
 
 		provider, generator := setupWithTestData(t, dataDir, prestate)
 		generator.finalState = &singlethreaded.State{
-			Memory: &memory.Memory{},
+			Memory: memory.NewMemory(),
 			Step:   10,
 			Exited: true,
 		}
