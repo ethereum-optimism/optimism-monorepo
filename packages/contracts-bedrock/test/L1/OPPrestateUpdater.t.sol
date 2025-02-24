@@ -174,7 +174,8 @@ contract OPPrestateUpdater_Test is Test {
                 disputeMaxGameDepth: 73,
                 disputeSplitDepth: 30,
                 disputeClockExtension: Duration.wrap(10800),
-                disputeMaxClockDuration: Duration.wrap(302400)
+                disputeMaxClockDuration: Duration.wrap(302400),
+                foo: bytes32(hex"DEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEF")
             })
         );
 
@@ -300,7 +301,8 @@ contract OPPrestateUpdater_Test is Test {
             disputeMaxGameDepth: 0,
             disputeSplitDepth: 0,
             disputeClockExtension: Duration.wrap(0),
-            disputeMaxClockDuration: Duration.wrap(0)
+            disputeMaxClockDuration: Duration.wrap(0),
+            foo: bytes32(0)
         });
 
         vm.expectRevert(OPPrestateUpdater.NotImplemented.selector);

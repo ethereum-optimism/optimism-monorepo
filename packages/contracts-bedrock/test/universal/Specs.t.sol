@@ -381,6 +381,7 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "SystemConfig", _sel: _getSel("OPTIMISM_MINTABLE_ERC20_FACTORY_SLOT()") });
         _addSpec({ _name: "SystemConfig", _sel: _getSel("BATCH_INBOX_SLOT()") });
         _addSpec({ _name: "SystemConfig", _sel: _getSel("DISPUTE_GAME_FACTORY_SLOT()") });
+        _addSpec({ _name: "SystemConfig", _sel: _getSel("FOO_SLOT()") });
         _addSpec({ _name: "SystemConfig", _sel: _getSel("disputeGameFactory()") });
         _addSpec({
             _name: "SystemConfig",
@@ -391,6 +392,7 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "SystemConfig", _sel: _getSel("blobbasefeeScalar()") });
         _addSpec({ _name: "SystemConfig", _sel: _getSel("maximumGasLimit()") });
         _addSpec({ _name: "SystemConfig", _sel: _getSel("getAddresses()") });
+        _addSpec({ _name: "SystemConfig", _sel: _getSel("foo()") });
 
         // SystemConfigInterop
         _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("UNSAFE_BLOCK_SIGNER_SLOT()") });
@@ -454,6 +456,7 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("OPTIMISM_MINTABLE_ERC20_FACTORY_SLOT()") });
         _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("BATCH_INBOX_SLOT()") });
         _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("DISPUTE_GAME_FACTORY_SLOT()") });
+        _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("FOO_SLOT()") });
         _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("disputeGameFactory()") });
         _addSpec({
             _name: "SystemConfigInterop",
@@ -471,6 +474,7 @@ contract Specification_Test is CommonTest {
         });
         _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("dependencyManager()") });
         _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("getAddresses()") });
+        _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("foo()") });
 
         // ProxyAdmin
         _addSpec({ _name: "ProxyAdmin", _sel: _getSel("addressManager()") });

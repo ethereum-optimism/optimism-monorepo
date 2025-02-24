@@ -59,6 +59,8 @@ contract DeployOPChainInput is BaseDeployIO {
     Duration internal _disputeMaxClockDuration;
     bool internal _allowCustomDisputeParameters;
 
+    bytes32 internal _foo;
+
     function set(bytes4 _sel, address _addr) public {
         require(_addr != address(0), "DeployOPChainInput: cannot set zero address");
         if (_sel == this.opChainProxyAdminOwner.selector) _opChainProxyAdminOwner = _addr;
@@ -214,6 +216,10 @@ contract DeployOPChainInput is BaseDeployIO {
     function allowCustomDisputeParameters() public view returns (bool) {
         return _allowCustomDisputeParameters;
     }
+
+    function foo() public view returns (bytes32) {
+        return _foo;
+    }
 }
 
 contract DeployOPChainOutput is BaseDeployIO {
@@ -361,7 +367,8 @@ contract DeployOPChain is Script {
             disputeMaxGameDepth: _doi.disputeMaxGameDepth(),
             disputeSplitDepth: _doi.disputeSplitDepth(),
             disputeClockExtension: _doi.disputeClockExtension(),
-            disputeMaxClockDuration: _doi.disputeMaxClockDuration()
+            disputeMaxClockDuration: _doi.disputeMaxClockDuration(),
+            foo: _doi.foo()
         });
 
         vm.broadcast(msg.sender);

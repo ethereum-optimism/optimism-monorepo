@@ -43,6 +43,7 @@ interface ISystemConfig {
     function gasLimit() external view returns (uint64);
     function eip1559Denominator() external view returns (uint32);
     function eip1559Elasticity() external view returns (uint32);
+    function foo() external view returns (bytes32);
     function getAddresses() external view returns (Addresses memory);
     function initialize(
         address _owner,
@@ -53,7 +54,8 @@ interface ISystemConfig {
         address _unsafeBlockSigner,
         IResourceMetering.ResourceConfig memory _config,
         address _batchInbox,
-        Addresses memory _addresses
+        Addresses memory _addresses,
+        bytes32 _foo
     )
         external;
     function l1CrossDomainMessenger() external view returns (address addr_);

@@ -84,6 +84,7 @@ contract DeployConfig is Script {
     uint256 public daResolveWindow;
     uint256 public daBondSize;
     uint256 public daResolverRefundPercentage;
+    bytes32 public foo;
 
     bool public useInterop;
     bool public useUpgradedFork;
@@ -167,7 +168,7 @@ contract DeployConfig is Script {
         daResolveWindow = _readOr(_json, "$.daResolveWindow", 1000);
         daBondSize = _readOr(_json, "$.daBondSize", 1000000000);
         daResolverRefundPercentage = _readOr(_json, "$.daResolverRefundPercentage", 0);
-
+        foo = stdJson.readBytes32(_json, "$.foo");
         useInterop = _readOr(_json, "$.useInterop", false);
         useUpgradedFork;
     }

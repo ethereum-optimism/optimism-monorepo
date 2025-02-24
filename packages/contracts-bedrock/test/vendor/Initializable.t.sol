@@ -180,7 +180,8 @@ contract Initializer_Test is CommonTest {
                             disputeGameFactory: address(0),
                             optimismPortal: address(0),
                             optimismMintableERC20Factory: address(0)
-                        })
+                        }),
+                        bytes32(0)
                     )
                 )
             })
@@ -215,7 +216,8 @@ contract Initializer_Test is CommonTest {
                             disputeGameFactory: address(0),
                             optimismPortal: address(0),
                             optimismMintableERC20Factory: address(0)
-                        })
+                        }),
+                        bytes32(0)
                     )
                 )
             })
