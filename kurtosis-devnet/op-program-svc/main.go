@@ -21,9 +21,18 @@ func main() {
 
 	srv := createServer()
 
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			http.FileServer(srv.proofFS).ServeHTTP(w, r)
+		case http.MethodPost:
+			srv.handleUpload(w, r)
+		default:
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
 	// Set up routes
-	http.HandleFunc("/", srv.handleUpload)
-	http.Handle("/proofs/", http.StripPrefix("/proofs/", http.FileServer(srv.proofFS)))
+	http.HandleFunc("/", handler)
 
 	log.Printf("Starting server on :%d with:", srv.port)
 	log.Printf("  app-root: %s", srv.appRoot)
