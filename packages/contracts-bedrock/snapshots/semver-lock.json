@@ -24,8 +24,8 @@
     "sourceCodeHash": "0xef0e96bef1141d9cb312ff0d600487e9f41e996b2f3e0c5fd11b26235e0f60aa"
   },
   "src/L1/OPPrestateUpdater.sol": {
-    "initCodeHash": "0xa113aafa4fa6c3f9e79549bf4bdc429bac5242f35f571df421d6e5075905fa93",
-    "sourceCodeHash": "0xa08ed72cf670c88540a90f8645e4ded5ad5dda2ed002041bc7f68558f006b40a"
+    "initCodeHash": "0x8cdd00bd2cca104655ea06fa0d35fd11b8a8baacd268236a698eff8cd17f3517",
+    "sourceCodeHash": "0x2354cf342ee18bd677fe57cc2d199cd5691cb7d8b4d1d7c5be342d009ac866b4"
   },
   "src/L1/OptimismPortal2.sol": {
     "initCodeHash": "0x332494d4362ac28b0b99182ad4077400aa2f49c72caa16ed370e62890e52a2f3",
@@ -48,8 +48,8 @@
     "sourceCodeHash": "0xfa0d7f2adb4d3dd2d39de672b0a1866d22d12f496ca70d0cde1ae7d5ee864fb1"
   },
   "src/L1/SystemConfigInterop.sol": {
-    "initCodeHash": "0xe2510d8c357472ab88a4057402c49ea939905b4a310ee328cc7948d14768f2ef",
-    "sourceCodeHash": "0xa88b39532621f11cab68fa4137c2e7130628a9dee1183afb4b8a9acce69a2c96"
+    "initCodeHash": "0xc50ebcebb4a937ef8ab05bfaf3855e7c99d582b5e2f075f00f4947b0f34b336b",
+    "sourceCodeHash": "0xa7683ce6c3f7b9bc1d7fe3a502d4b01b19a64105907073501564416645bfbbfc"
   },
   "src/L2/BaseFeeVault.sol": {
     "initCodeHash": "0xc403d4c555d8e69a2699e01d192ae7327136701fa02da10a6d75a584b3c364c9",
