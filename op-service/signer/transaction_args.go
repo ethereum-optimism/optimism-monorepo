@@ -41,7 +41,7 @@ type TransactionArgs struct {
 	BlobFeeCap          *hexutil.U256 `json:"maxFeePerBlobGas,omitempty"`
 
 	// Custom extension for EIP-7702 support
-	AuthList []types.SetCodeAuthorization `json:"authList,omitempty"`
+	AuthList []types.SetCodeAuthorization `json:"authorizationList,omitempty"`
 }
 
 // NewTransactionArgsFromTransaction creates a TransactionArgs struct from an EIP-1559, EIP-4844, or EIP-7702 transaction
