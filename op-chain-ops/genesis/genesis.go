@@ -146,6 +146,7 @@ func NewL1Genesis(config *DeployConfig) (*core.Genesis, error) {
 		GrayGlacierBlock:    big.NewInt(0),
 		ShanghaiTime:        u64ptr(0),
 		CancunTime:          u64ptr(0),
+		PragueTime:          u64ptr(0),
 		// To enable post-Merge consensus at genesis
 		MergeNetsplitBlock:      big.NewInt(0),
 		TerminalTotalDifficulty: big.NewInt(0),
@@ -167,14 +168,14 @@ func NewL1Genesis(config *DeployConfig) (*core.Genesis, error) {
 	if timestamp == 0 {
 		timestamp = hexutil.Uint64(time.Now().Unix())
 	}
-	if config.L1CancunTimeOffset != nil {
-		cancunTime := uint64(timestamp) + uint64(*config.L1CancunTimeOffset)
-		chainConfig.CancunTime = &cancunTime
-	}
-	if config.L1PragueTimeOffset != nil {
-		pragueTime := uint64(timestamp) + uint64(*config.L1PragueTimeOffset)
-		chainConfig.PragueTime = &pragueTime
-	}
+	//if config.L1CancunTimeOffset != nil {
+	//	cancunTime := uint64(timestamp) + uint64(*config.L1CancunTimeOffset)
+	//	chainConfig.CancunTime = &cancunTime
+	//}
+	//if config.L1PragueTimeOffset != nil {
+	//	pragueTime := uint64(timestamp) + uint64(*config.L1PragueTimeOffset)
+	//	chainConfig.PragueTime = &pragueTime
+	//}
 
 	return &core.Genesis{
 		Config:        &chainConfig,

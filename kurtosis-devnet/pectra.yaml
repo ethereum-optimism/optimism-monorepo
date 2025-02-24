@@ -71,7 +71,7 @@ optimism_package:
         image: {{ localDockerImage "op-challenger" }}
         cannon_prestate_path: ""
         cannon_prestates_url: "http://fileserver/proofs/op-program/cannon"
-        extra_params: []
+        extra_params: ["--unsafe-allow-invalid-prestate", "--cannon-l2-custom"]
       proposer_params:
         image: {{ localDockerImage "op-proposer" }}
         extra_params: []
@@ -115,4 +115,3 @@ ethereum_package:
           "nonce": "1"
         }
       }
-

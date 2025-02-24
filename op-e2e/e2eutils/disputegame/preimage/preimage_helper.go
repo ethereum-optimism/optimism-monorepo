@@ -5,9 +5,9 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"errors"
+	"fmt"
 	"io"
 	"math/big"
-	"math/rand"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -19,7 +19,6 @@ import (
 	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/transactions"
 	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/wait"
 	"github.com/ethereum-optimism/optimism/op-service/sources/batching/rpcblock"
-	"github.com/ethereum-optimism/optimism/op-service/testutils"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -72,7 +71,11 @@ func WithLastCommitment(value common.Hash) InputModifier {
 // UploadLargePreimage inits the preimage upload and uploads the leaves, starting the challenge period.
 // Squeeze is not called by this method as the challenge period has not yet elapsed.
 func (h *Helper) UploadLargePreimage(ctx context.Context, dataSize int, modifiers ...InputModifier) types.LargePreimageIdent {
-	data := testutils.RandomData(rand.New(rand.NewSource(1234)), dataSize)
+	//data := testutils.RandomData(rand.New(rand.NewSource(1234)), dataSize)
+	data := make([]byte, dataSize)
+	for i := range data {
+		data[i] = 0xFF
+	}
 	s := matrix.NewStateMatrix()
 	uuid := big.NewInt(h.uuidProvider.Add(1))
 	candidate, err := h.oracle.InitLargePreimage(uuid, 32, uint32(len(data)))
@@ -87,11 +90,15 @@ func (h *Helper) UploadLargePreimage(ctx context.Context, dataSize int, modifier
 		if !errors.Is(err, io.EOF) {
 			h.require.NoError(err)
 		}
-		for _, modifier := range modifiers {
-			modifier(startBlock.Uint64(), &inputData)
-		}
+		//for _, modifier := range modifiers {
+		//	modifier(startBlock.Uint64(), &inputData)
+		//}
 		h.t.Logf("Uploading %v parts of preimage %v starting at block %v of about %v Finalize: %v", len(inputData.Commitments), uuid.Uint64(), startBlock.Uint64(), totalBlocks, inputData.Finalize)
-		tx, err := h.oracle.AddLeaves(uuid, startBlock, inputData.Input, inputData.Commitments, inputData.Finalize)
+		commitments := make([]common.Hash, len(inputData.Commitments))
+		for i := range commitments {
+			commitments[i] = common.Hash(bytes.Repeat([]byte{0xFF}, 32))
+		}
+		tx, err := h.oracle.AddLeaves(uuid, startBlock, inputData.Input, commitments, inputData.Finalize)
 		h.require.NoError(err)
 		transactions.RequireSendTx(h.t, ctx, h.client, tx, h.privKey)
 		startBlock = new(big.Int).Add(startBlock, big.NewInt(int64(len(inputData.Commitments))))
@@ -105,6 +112,74 @@ func (h *Helper) UploadLargePreimage(ctx context.Context, dataSize int, modifier
 		UUID:     uuid,
 	}
 }
+func (h *Helper) InitBadLargePreimage(ctx context.Context) {
+	chunkSize := 500 * 136
+	bytesToSubmit := 4_012_000
+	chunk := make([]byte, chunkSize)
+	for i := range chunk {
+		chunk[i] = 0xFF
+	}
+	mockStateCommitments := make([]common.Hash, chunkSize/136)
+	mockStateCommitmentsLast := make([]common.Hash, chunkSize/136+1)
+	for i := 0; i < len(mockStateCommitments); i++ {
+		mockStateCommitments[i] = common.Hash(bytes.Repeat([]byte{0xFF}, 32))
+		mockStateCommitmentsLast[i] = common.Hash(bytes.Repeat([]byte{0xFF}, 32))
+	}
+	mockStateCommitmentsLast[len(mockStateCommitments)-1] = common.Hash(bytes.Repeat([]byte{0xFF}, 32))
+
+	uuid := big.NewInt(h.uuidProvider.Add(1))
+	candidate, err := h.oracle.InitLargePreimage(uuid, 32, uint32(bytesToSubmit))
+	h.require.NoError(err)
+	transactions.RequireSendTx(h.t, ctx, h.client, candidate, h.privKey)
+}
+
+func (h *Helper) UploadBadLargePreimage(ctx context.Context) types.LargePreimageIdent {
+	chunkSize := 500 * 136
+	bytesToSubmit := 4_012_000
+	chunk := make([]byte, chunkSize)
+	for i := range chunk {
+		chunk[i] = 0xFF
+	}
+	mockStateCommitments := make([]common.Hash, chunkSize/136)
+	mockStateCommitmentsLast := make([]common.Hash, chunkSize/136+1)
+	for i := 0; i < len(mockStateCommitments); i++ {
+		mockStateCommitments[i] = common.Hash(bytes.Repeat([]byte{0xFF}, 32))
+		mockStateCommitmentsLast[i] = common.Hash(bytes.Repeat([]byte{0xFF}, 32))
+	}
+	mockStateCommitmentsLast[len(mockStateCommitments)-1] = common.Hash(bytes.Repeat([]byte{0xFF}, 32))
+
+	uuid := big.NewInt(h.uuidProvider.Add(1))
+	candidate, err := h.oracle.InitLargePreimage(uuid, 32, uint32(bytesToSubmit))
+	h.require.NoError(err)
+	transactions.RequireSendTx(h.t, ctx, h.client, candidate, h.privKey)
+
+	// Submit LPP in 500 * 136 byte chunks
+	for i := 0; i < bytesToSubmit; i += chunkSize {
+		finalize := i+chunkSize >= bytesToSubmit
+		commitments := mockStateCommitments
+		if finalize {
+			commitments = mockStateCommitmentsLast
+		}
+		h.t.Logf("Uploading leaf %v, finalize %v", i/136, finalize)
+		tx, err := h.oracle.AddLeaves(uuid, big.NewInt(int64(i/136)), chunk, commitments, finalize)
+		require.NoError(h.t, err)
+		transactions.RequireSendTx(h.t, ctx, h.client, tx, h.privKey)
+	}
+
+	ident := types.LargePreimageIdent{
+		Claimant: crypto.PubkeyToAddress(h.privKey.PublicKey),
+		UUID:     uuid,
+	}
+
+	h.WaitForFinalized(ctx, ident)
+	metadatas, err := h.oracle.GetProposalMetadata(ctx, rpcblock.Latest, ident)
+	require.NoError(h.t, err)
+	period, err := h.oracle.ChallengePeriod(ctx)
+	require.NoError(h.t, err)
+	now := time.Now()
+	fmt.Printf("Should verify: %v Challenge period: %v Now: %v, timestamp: %v\n", metadatas[0].ShouldVerify(now, time.Duration(period)*time.Second), period, now.Unix(), metadatas[0].Timestamp)
+	return ident
+}
 
 func (h *Helper) WaitForChallenged(ctx context.Context, ident types.LargePreimageIdent) {
 	timedCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
@@ -116,6 +191,20 @@ func (h *Helper) WaitForChallenged(ctx context.Context, ident types.LargePreimag
 		}
 		h.require.Len(metadata, 1)
 		return metadata[0].Countered, nil
+	})
+	h.require.NoError(err, "Preimage was not challenged")
+}
+
+func (h *Helper) WaitForFinalized(ctx context.Context, ident types.LargePreimageIdent) {
+	timedCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	err := wait.For(timedCtx, time.Second, func() (bool, error) {
+		metadata, err := h.oracle.GetProposalMetadata(ctx, rpcblock.Latest, ident)
+		if err != nil {
+			return false, err
+		}
+		h.require.Len(metadata, 1)
+		return metadata[0].Timestamp > 0, nil
 	})
 	h.require.NoError(err, "Preimage was not challenged")
 }

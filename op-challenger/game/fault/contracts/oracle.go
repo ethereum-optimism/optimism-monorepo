@@ -340,6 +340,8 @@ func (c *PreimageOracleContractLatest) GlobalDataExists(ctx context.Context, dat
 func (c *PreimageOracleContractLatest) ChallengeTx(ident keccakTypes.LargePreimageIdent, challenge keccakTypes.Challenge) (txmgr.TxCandidate, error) {
 	var call *batching.ContractCall
 	if challenge.Prestate == (keccakTypes.Leaf{}) {
+		fmt.Printf("Challenging first leaf claimant %v uuid %v input %x index %v commitment %v proof %v",
+			ident.Claimant, ident.UUID, challenge.Poststate.Input, challenge.Poststate.Index, challenge.Poststate.StateCommitment, challenge.PoststateProof)
 		call = c.contract.Call(
 			methodChallengeFirstLPP,
 			ident.Claimant,

@@ -26,7 +26,7 @@ var _ PreimageUploader = (*LargePreimageUploader)(nil)
 var ErrChallengePeriodNotOver = errors.New("challenge period not over")
 
 // MaxBlocksPerChunk is the maximum number of keccak blocks per chunk.
-const MaxBlocksPerChunk = 300
+const MaxBlocksPerChunk = 500
 
 // MaxChunkSize is the maximum size of a preimage chunk in bytes.
 // Notice, the max chunk size must be a multiple of the leaf size.
