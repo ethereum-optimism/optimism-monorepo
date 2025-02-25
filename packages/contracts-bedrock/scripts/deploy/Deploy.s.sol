@@ -673,6 +673,21 @@ contract Deploy is Deployer {
         }
     }
 
+    function loadInteropDevnetAbsolutePrestate() internal returns (Claim interopDevnetAbsolutePrestate_) {
+        string memory filePath = string.concat(vm.projectRoot(), "/../../op-program/bin/prestate-proof-interop.json");
+        if (bytes(Process.bash(string.concat("[[ -f ", filePath, " ]] && echo \"present\""))).length == 0) {
+            revert(
+                "Deploy: cannon prestate dump not found, generate it with `make cannon-prestate` in the monorepo root"
+            );
+        }
+        interopDevnetAbsolutePrestate_ =
+            Claim.wrap(abi.decode(bytes(Process.bash(string.concat("cat ", filePath, " | jq -r .pre"))), (bytes32)));
+        console.log(
+            "[Cannon Dispute Game] Using devnet Interop Devnet Absolute Prestate: %s",
+            vm.toString(Claim.unwrap(interopDevnetAbsolutePrestate_))
+        );
+    }
+
     /// @notice Loads the singlethreaded mips absolute prestate from the prestate-proof for devnets otherwise
     ///         from the config.
     function _loadDevnetStMipsAbsolutePrestate() internal returns (Claim mipsAbsolutePrestate_) {
@@ -768,7 +783,7 @@ contract Deploy is Deployer {
             _factory: factory,
             _params: IFaultDisputeGame.GameConstructorParams({
                 gameType: GameTypes.SUPER_CANNON,
-                absolutePrestate: loadMipsAbsolutePrestate(),
+                absolutePrestate: loadInteropDevnetAbsolutePrestate(),
                 maxGameDepth: cfg.faultGameMaxDepth(),
                 splitDepth: cfg.faultGameSplitDepth(),
                 clockExtension: Duration.wrap(uint64(cfg.faultGameClockExtension())),
@@ -791,7 +806,7 @@ contract Deploy is Deployer {
             _factory: factory,
             _params: IFaultDisputeGame.GameConstructorParams({
                 gameType: GameTypes.SUPER_CANNON,
-                absolutePrestate: loadMipsAbsolutePrestate(),
+                absolutePrestate: loadInteropDevnetAbsolutePrestate(),
                 maxGameDepth: cfg.faultGameMaxDepth(),
                 splitDepth: cfg.faultGameSplitDepth(),
                 clockExtension: Duration.wrap(uint64(cfg.faultGameClockExtension())),
