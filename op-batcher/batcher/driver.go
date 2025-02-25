@@ -855,10 +855,13 @@ func (l *BatchSubmitter) sendTransaction(txdata txData, queue *txmgr.Queue[txRef
 	l.sendTx(txdata, false, candidate, queue, receiptsCh)
 	return nil
 }
+type TxSender[T any] interface {
+	Send(id T, candidate txmgr.TxCandidate, receiptCh chan txmgr.TxReceipt[T])
+}
 
 // sendTx uses the txmgr queue to send the given transaction candidate after setting its
 // gaslimit. It will block if the txmgr queue has reached its MaxPendingTransactions limit.
-func (l *BatchSubmitter) sendTx(txdata txData, isCancel bool, candidate *txmgr.TxCandidate, queue *txmgr.Queue[txRef], receiptsCh chan txmgr.TxReceipt[txRef]) {
+func (l *BatchSubmitter) sendTx(txdata txData, isCancel bool, candidate *txmgr.TxCandidate, queue TxSender[txRef], receiptsCh chan txmgr.TxReceipt[txRef]) {
 	intrinsicGas, err := core.IntrinsicGas(candidate.TxData, nil, nil, false, true, true, false)
 	if err != nil {
 		// we log instead of return an error here because txmgr can do its own gas estimation

@@ -3,6 +3,7 @@ package batcher
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
 
 	"github.com/ethereum-optimism/optimism/op-batcher/metrics"
@@ -10,6 +11,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
 	"github.com/ethereum-optimism/optimism/op-service/testutils"
+	"github.com/ethereum-optimism/optimism/op-service/txmgr"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/stretchr/testify/require"
 )
@@ -115,4 +117,46 @@ func TestBatchSubmitter_SafeL1Origin_FailsToResolveRollupClient(t *testing.T) {
 
 	_, err := bs.safeL1Origin(context.Background())
 	require.Error(t, err)
+}
+
+type MockTxQueue struct {
+	m sync.Map
+}
+
+func (q *MockTxQueue) Send(ref txRef, candidate txmgr.TxCandidate, receiptCh chan txmgr.TxReceipt[txRef]) {
+	q.m.Store(ref.id.String(), candidate)
+}
+
+func (q *MockTxQueue) Load(id string) txmgr.TxCandidate {
+	c, _ := q.m.Load(id)
+	return c.(txmgr.TxCandidate)
+}
+
+func TestBatchSubmitter_sendTx_FloorDataGas(t *testing.T) {
+	bs, _ := setup(t)
+
+	q := new(MockTxQueue)
+
+	txData := txData{
+		frames: []frameData{
+			{
+				data: []byte{0x01, 0x02, 0x03}, // 3 nonzero bytes = 12 tokens https://github.com/ethereum/EIPs/blob/master/EIPS/eip-7623.md
+			},
+		},
+	}
+	candidate := txmgr.TxCandidate{
+		To:     &bs.RollupConfig.BatchInboxAddress,
+		TxData: txData.CallData(),
+	}
+
+	bs.sendTx(txData,
+		false,
+		&candidate,
+		q,
+		make(chan txmgr.TxReceipt[txRef]))
+
+	candidateOut := q.Load(txData.ID().String())
+
+	expectedFloorDataGas := uint64(21_000 + 12*10)
+	require.GreaterOrEqual(t, candidateOut.GasLimit, expectedFloorDataGas)
 }
