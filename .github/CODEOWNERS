@@ -34,3 +34,6 @@
 
 # Contracts
 /packages/contracts-bedrock     @ethereum-optimism/contract-reviewers
+
+# Security docs
+/docs @ethereum-optimism/evm-safety
