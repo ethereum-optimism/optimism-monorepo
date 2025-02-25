@@ -342,8 +342,8 @@ func (s *L2Batcher) ActL2BatchSubmitRaw(t Testing, payload []byte, txOpts ...fun
 			opt(rawTx)
 		}
 
-		gas, err := core.IntrinsicGas(rawTx.Data, nil, nil, false, true, true, false)
-		require.NoError(t, err, "need to compute intrinsic gas")
+		gas, err := core.FloorDataGas(rawTx.Data)
+		require.NoError(t, err, "need to compute floor data gas")
 		rawTx.Gas = gas
 		txData = rawTx
 	} else if s.l2BatcherCfg.DataAvailabilityType == batcherFlags.BlobsType {
