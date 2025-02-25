@@ -16,12 +16,11 @@ import (
 )
 
 const (
-	BlobSize          = 4096 * 32
-	MaxBlobDataSize   = (4*31+3)*1024 - 4
-	EncodingVersion   = 0
-	VersionOffset     = 1    // offset of the version byte in the blob encoding
-	Rounds            = 1024 // number of encode/decode rounds
-	MaxBlobsPerBlobTx = 6    // TODO: read from chainConfig blob schedule - params.DefaultCancunBlobConfig.Max
+	BlobSize        = 4096 * 32
+	MaxBlobDataSize = (4*31+3)*1024 - 4
+	EncodingVersion = 0
+	VersionOffset   = 1    // offset of the version byte in the blob encoding
+	Rounds          = 1024 // number of encode/decode rounds
 )
 
 var (

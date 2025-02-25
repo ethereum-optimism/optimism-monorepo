@@ -383,11 +383,13 @@ func (s *L2Batcher) ActL2BatchSubmitRaw(t Testing, payload []byte, txOpts ...fun
 }
 
 func (s *L2Batcher) ActL2BatchSubmitMultiBlob(t Testing, numBlobs int) {
+	// Update to Prague if L1 changes to Prague and we need more blobs in multi-blob tests.
+	maxBlobsPerBlock := params.DefaultCancunBlobConfig.Max
 	if s.l2BatcherCfg.DataAvailabilityType != batcherFlags.BlobsType {
 		t.InvalidAction("ActL2BatchSubmitMultiBlob only available for Blobs DA type")
 		return
-	} else if numBlobs > eth.MaxBlobsPerBlobTx || numBlobs < 1 {
-		t.InvalidAction("invalid number of blobs %d, must be within [1,%d]", numBlobs, eth.MaxBlobsPerBlobTx)
+	} else if numBlobs > maxBlobsPerBlock || numBlobs < 1 {
+		t.InvalidAction("invalid number of blobs %d, must be within [1,%d]", numBlobs, maxBlobsPerBlock)
 	}
 
 	// Don't run this action if there's no data to submit
