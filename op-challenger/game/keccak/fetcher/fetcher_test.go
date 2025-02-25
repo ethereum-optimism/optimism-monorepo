@@ -115,8 +115,7 @@ func TestFetchLeaves_SingleTxSingleLog(t *testing.T) {
 func TestFetchLeaves_SingleTxMultipleLogs(t *testing.T) {
 	fetcher, oracle, l1Source := setupFetcherTest(t)
 	blockNum := uint64(7)
-	// Contract records the current block number for each addLeaves call, so it duplicates if called twice in one block
-	oracle.leafBlocks = []uint64{blockNum, blockNum}
+	oracle.leafBlocks = []uint64{blockNum}
 
 	proposal1 := oracle.createProposal(input1)
 	proposal2 := oracle.createProposal(input2)
@@ -133,8 +132,7 @@ func TestFetchLeaves_MultipleBlocksAndLeaves(t *testing.T) {
 	fetcher, oracle, l1Source := setupFetcherTest(t)
 	block1 := uint64(7)
 	block2 := uint64(15)
-	// Contract records the current block number for each addLeaves call, so it duplicates if called twice in one block
-	oracle.leafBlocks = []uint64{block1, block2, block2, block2}
+	oracle.leafBlocks = []uint64{block1, block2}
 
 	proposal1 := oracle.createProposal(input1)
 	proposal2 := oracle.createProposal(input2)
