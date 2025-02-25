@@ -559,9 +559,11 @@ func TestGetInputDataBlocks(t *testing.T) {
 				methodProposalBlocksLen,
 				block,
 				[]interface{}{preimage.Claimant, preimage.UUID},
-				[]interface{}{big.NewInt(3)})
+				[]interface{}{big.NewInt(6)})
 
-			blockNums := []uint64{10, 35, 67}
+			blockNums := []uint64{10, 35, 35, 35, 67, 67}
+			// Returned block numbers should be deduplicated.
+			expectedBlockNums := []uint64{10, 35, 67}
 
 			for i, blockNum := range blockNums {
 				stubRpc.SetResponse(
@@ -575,7 +577,7 @@ func TestGetInputDataBlocks(t *testing.T) {
 			actual, err := oracle.GetInputDataBlocks(context.Background(), block, preimage)
 			require.NoError(t, err)
 			require.Len(t, actual, 3)
-			require.Equal(t, blockNums, actual)
+			require.Equal(t, expectedBlockNums, actual)
 		})
 	}
 }

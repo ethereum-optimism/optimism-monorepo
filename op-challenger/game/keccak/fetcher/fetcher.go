@@ -41,16 +41,7 @@ func (f *InputFetcher) FetchInputs(ctx context.Context, blockHash common.Hash, o
 		return nil, fmt.Errorf("failed to retrieve leaf block nums: %w", err)
 	}
 	var inputs []keccakTypes.InputData
-	// The contract records the current block number when each call to addLeavesLPP is called.
-	// This guarantees blocks are in incrementing order, but may have duplicates if addLeavesLPP is called multiple
-	// times in the same block. Since all log events are processed from a block, we must skip those duplicate entries
-	// to avoid including the leaves twice
-	lastBlock := uint64(0) // Note: can't add leaves in the genesis block as there are no transactions
 	for _, blockNum := range blockNums {
-		if blockNum == lastBlock {
-			continue
-		}
-		lastBlock = blockNum
 		foundRelevantTx := false
 		block, err := f.source.BlockByNumber(ctx, new(big.Int).SetUint64(blockNum))
 		if err != nil {
