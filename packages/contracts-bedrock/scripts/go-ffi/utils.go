@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"math/big"
@@ -12,6 +13,18 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 )
+
+type OutputRootWithChainId struct {
+	ChainId *big.Int
+	Root    common.Hash
+}
+
+// Define a proper type for SuperRootProof
+type SuperRootProof struct {
+	Version     uint8
+	Timestamp   uint64
+	OutputRoots []OutputRootWithChainId
+}
 
 var UnknownNonceVersion = errors.New("Unknown nonce version")
 
@@ -48,6 +61,78 @@ func encodeCrossDomainMessage(nonce *big.Int, sender common.Address, target comm
 	}
 
 	return encoded, err
+}
+
+// parseSuperRootProof parses an abi encoded super root proof into a SuperRootProof struct.
+func parseSuperRootProof(abiEncodedProof []byte) (*SuperRootProof, error) {
+	// Parse the input as hex data
+	unpacked, err := superRootProofArgs.Unpack(abiEncodedProof)
+	if err != nil {
+		return nil, err
+	}
+
+	// The Unpack method returns a slice of interface{}, so we need to get the first element
+	if len(unpacked) != 1 {
+		return nil, errors.New("unexpected number of values after unpacking super root proof")
+	}
+
+	// Use an anonymous struct matching the tuple’s layout.
+	tmp := unpacked[0].(struct {
+		Version     [1]uint8 `json:"version"`
+		Timestamp   uint64   `json:"timestamp"`
+		OutputRoots []struct {
+			ChainId *big.Int `json:"chainId"`
+			Root    [32]byte `json:"root"`
+		} `json:"outputRoots"`
+	})
+
+	// Convert into our desired SuperRootProof type.
+	proof := SuperRootProof{
+		Version:   tmp.Version[0],
+		Timestamp: tmp.Timestamp,
+	}
+	for _, o := range tmp.OutputRoots {
+		proof.OutputRoots = append(proof.OutputRoots, OutputRootWithChainId{
+			ChainId: o.ChainId,
+			Root:    common.BytesToHash(o.Root[:]),
+		})
+	}
+
+	return &proof, nil
+}
+
+// encodeSuperRootProof encodes a super root proof into a byte array.
+func encodeSuperRootProof(superRootProof *SuperRootProof) ([]byte, error) {
+	// Version must match the expected version (0x01)
+	if superRootProof.Version != 0x01 {
+		return nil, errors.New("invalid super root version")
+	}
+
+	// Output roots must not be empty
+	if len(superRootProof.OutputRoots) == 0 {
+		return nil, errors.New("empty super root")
+	}
+
+	// Start with version byte and timestamp
+	encoded := []byte{superRootProof.Version}
+
+	// Add timestamp as bytes8 (uint64)
+	timestampBytes := make([]byte, 8)
+	binary.BigEndian.PutUint64(timestampBytes, superRootProof.Timestamp)
+	encoded = append(encoded, timestampBytes...)
+
+	// Add each output root (chainId + root)
+	for _, outputRoot := range superRootProof.OutputRoots {
+		// Append chainId bytes (padded to 32 bytes)
+		chainIdBytes := make([]byte, 32)
+		outputRoot.ChainId.FillBytes(chainIdBytes)
+		encoded = append(encoded, chainIdBytes...)
+
+		// Append root hash (already 32 bytes)
+		encoded = append(encoded, outputRoot.Root.Bytes()...)
+	}
+
+	return encoded, nil
 }
 
 // hashWithdrawal hashes a withdrawal transaction.

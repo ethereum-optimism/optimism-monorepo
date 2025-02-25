@@ -51,6 +51,7 @@ contract DeployOPChainInput is BaseDeployIO {
     uint64 internal _gasLimit;
 
     // Configurable dispute game inputs
+    bool internal _disputeGameUsesSuperRoots;
     GameType internal _disputeGameType;
     Claim internal _disputeAbsolutePrestate;
     uint256 internal _disputeMaxGameDepth;
@@ -91,6 +92,9 @@ contract DeployOPChainInput is BaseDeployIO {
             _disputeClockExtension = Duration.wrap(SafeCast.toUint64(_value));
         } else if (_sel == this.disputeMaxClockDuration.selector) {
             _disputeMaxClockDuration = Duration.wrap(SafeCast.toUint64(_value));
+        } else if (_sel == this.disputeGameUsesSuperRoots.selector) {
+            require(_value == 0 || _value == 1, "DeployOPChainInput: invalid disputeGameUsesSuperRoots");
+            _disputeGameUsesSuperRoots = _value == 1;
         } else {
             revert("DeployOPChainInput: unknown selector");
         }
@@ -185,6 +189,10 @@ contract DeployOPChainInput is BaseDeployIO {
 
     function gasLimit() public view returns (uint64) {
         return _gasLimit;
+    }
+
+    function disputeGameUsesSuperRoots() public view returns (bool) {
+        return _disputeGameUsesSuperRoots;
     }
 
     function disputeGameType() public view returns (GameType) {
@@ -356,6 +364,7 @@ contract DeployOPChain is Script {
             startingAnchorRoot: _doi.startingAnchorRoot(),
             saltMixer: _doi.saltMixer(),
             gasLimit: _doi.gasLimit(),
+            disputeGameUsesSuperRoots: _doi.disputeGameUsesSuperRoots(),
             disputeGameType: _doi.disputeGameType(),
             disputeAbsolutePrestate: _doi.disputeAbsolutePrestate(),
             disputeMaxGameDepth: _doi.disputeMaxGameDepth(),

@@ -9,6 +9,12 @@ import { RLPWriter } from "src/libraries/rlp/RLPWriter.sol";
 /// @title Encoding
 /// @notice Encoding handles Optimism's various different encoding schemes.
 library Encoding {
+    /// @notice Thrown when a provided Super Root proof has an invalid version.
+    error Encoding_InvalidSuperRootVersion();
+
+    /// @notice Thrown when a provided Super Root proof has no Output Roots.
+    error Encoding_EmptySuperRoot();
+
     /// @notice RLP encodes the L2 transaction that would be generated when a given deposit is sent
     ///         to the L2 system. Useful for searching for a deposit in the L2 system. The
     ///         transaction is prefixed with 0x7e to identify its EIP-2718 type.
@@ -215,5 +221,31 @@ library Encoding {
             _hash,
             _batcherHash
         );
+    }
+
+    /// @notice Encodes a super root proof into the preimage of a Super Root.
+    /// @param _superRootProof Super root proof to encode.
+    /// @return Encoded super root proof.
+    function encodeSuperRootProof(Types.SuperRootProof memory _superRootProof) internal pure returns (bytes memory) {
+        // Version must match the expected version.
+        if (_superRootProof.version != 0x01) {
+            revert Encoding_InvalidSuperRootVersion();
+        }
+
+        // Output roots must not be empty.
+        if (_superRootProof.outputRoots.length == 0) {
+            revert Encoding_EmptySuperRoot();
+        }
+
+        // Start with version byte and timestamp.
+        bytes memory encoded = bytes.concat(bytes1(0x01), bytes8(_superRootProof.timestamp));
+
+        // Add each output root (chainId + root)
+        for (uint256 i = 0; i < _superRootProof.outputRoots.length; i++) {
+            Types.OutputRootWithChainId memory outputRoot = _superRootProof.outputRoots[i];
+            encoded = bytes.concat(encoded, bytes32(outputRoot.chainId), outputRoot.root);
+        }
+
+        return encoded;
     }
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"math"
 	"testing"
 
 	"github.com/ethereum-optimism/optimism/op-chain-ops/solc"
@@ -149,6 +150,38 @@ func TestGetReinitializerValue(t *testing.T) {
 					{
 						ModifierName: &solc.Expression{Name: "reinitializer"},
 						Arguments:    []solc.Expression{{Value: "invalid"}},
+					},
+				},
+			},
+			want:    0,
+			wantErr: true,
+		},
+		{
+			name: "Valid reinitializer with initVersion call",
+			node: &solc.AstNode{
+				Modifiers: []solc.AstNode{
+					{
+						ModifierName: &solc.Expression{Name: "reinitializer"},
+						Arguments: []solc.Expression{{
+							Kind:       "functionCall",
+							Expression: &solc.Expression{Name: "initVersion"},
+						}},
+					},
+				},
+			},
+			want:    math.MaxUint64,
+			wantErr: false,
+		},
+		{
+			name: "Invalid function call - not initVersion",
+			node: &solc.AstNode{
+				Modifiers: []solc.AstNode{
+					{
+						ModifierName: &solc.Expression{Name: "reinitializer"},
+						Arguments: []solc.Expression{{
+							Kind:       "functionCall",
+							Expression: &solc.Expression{Name: "someOtherFunction"},
+						}},
 					},
 				},
 			},
@@ -483,6 +516,85 @@ func TestCheckArtifact(t *testing.T) {
 				},
 			},
 			wantErr: false, // Should return nil without error
+		},
+		{
+			name: "Matching reinitializer values with initVersion",
+			artifact: &solc.ForgeArtifact{
+				Ast: solc.Ast{
+					Nodes: []solc.AstNode{
+						{
+							NodeType: "ContractDefinition",
+							Nodes: []solc.AstNode{
+								{
+									NodeType: "FunctionDefinition",
+									Name:     "initialize",
+									Modifiers: []solc.AstNode{
+										{
+											ModifierName: &solc.Expression{Name: "reinitializer"},
+											Arguments: []solc.Expression{{
+												Kind:       "functionCall",
+												Expression: &solc.Expression{Name: "initVersion"},
+											}},
+										},
+									},
+								},
+								{
+									NodeType: "FunctionDefinition",
+									Name:     "upgrade",
+									Modifiers: []solc.AstNode{
+										{
+											ModifierName: &solc.Expression{Name: "reinitializer"},
+											Arguments: []solc.Expression{{
+												Kind:       "functionCall",
+												Expression: &solc.Expression{Name: "initVersion"},
+											}},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "Mismatched reinitializer values - one with initVersion, one with constant",
+			artifact: &solc.ForgeArtifact{
+				Ast: solc.Ast{
+					Nodes: []solc.AstNode{
+						{
+							NodeType: "ContractDefinition",
+							Nodes: []solc.AstNode{
+								{
+									NodeType: "FunctionDefinition",
+									Name:     "initialize",
+									Modifiers: []solc.AstNode{
+										{
+											ModifierName: &solc.Expression{Name: "reinitializer"},
+											Arguments: []solc.Expression{{
+												Kind:       "functionCall",
+												Expression: &solc.Expression{Name: "initVersion"},
+											}},
+										},
+									},
+								},
+								{
+									NodeType: "FunctionDefinition",
+									Name:     "upgrade",
+									Modifiers: []solc.AstNode{
+										{
+											ModifierName: &solc.Expression{Name: "reinitializer"},
+											Arguments:    []solc.Expression{{Value: "2"}},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
 		},
 	}
 

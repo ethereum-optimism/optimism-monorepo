@@ -3,6 +3,7 @@ pragma solidity 0.8.15;
 
 // Contracts
 import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import { ReinitializableBase } from "src/universal/ReinitializableBase.sol";
 
 // Libraries
 import { Storage } from "src/libraries/Storage.sol";
@@ -16,7 +17,7 @@ import { IResourceMetering } from "interfaces/L1/IResourceMetering.sol";
 /// @notice The SystemConfig contract is used to manage configuration of an Optimism network.
 ///         All configuration is stored on L1 and picked up by L2 as part of the derviation of
 ///         the L2 chain.
-contract SystemConfig is OwnableUpgradeable, ISemver {
+contract SystemConfig is OwnableUpgradeable, ReinitializableBase, ISemver {
     /// @notice Enum representing different types of updates.
     /// @custom:value BATCHER              Represents an update to the batcher hash.
     /// @custom:value FEE_SCALARS          Represents an update to l1 data fee scalars.
@@ -122,6 +123,9 @@ contract SystemConfig is OwnableUpgradeable, ISemver {
     /// @notice The EIP-1559 elasticity multiplier.
     uint32 public eip1559Elasticity;
 
+    /// @notice The L2 chain ID that this SystemConfig configures.
+    uint256 public l2ChainId;
+
     /// @notice Emitted when configuration is updated.
     /// @param version    SystemConfig version.
     /// @param updateType Type of update.
@@ -129,15 +133,15 @@ contract SystemConfig is OwnableUpgradeable, ISemver {
     event ConfigUpdate(uint256 indexed version, UpdateType indexed updateType, bytes data);
 
     /// @notice Semantic version.
-    /// @custom:semver 2.4.0
+    /// @custom:semver 2.5.0
     function version() public pure virtual returns (string memory) {
-        return "2.4.0";
+        return "2.5.0";
     }
 
     /// @notice Constructs the SystemConfig contract.
     /// @dev    START_BLOCK_SLOT is set to type(uint256).max here so that it will be a dead value
     ///         in the singleton.
-    constructor() {
+    constructor() ReinitializableBase(2) {
         Storage.setUint(START_BLOCK_SLOT, type(uint256).max);
         _disableInitializers();
     }
@@ -154,6 +158,7 @@ contract SystemConfig is OwnableUpgradeable, ISemver {
     /// @param _batchInbox        Batch inbox address. An identifier for the op-node to find
     ///                           canonical data.
     /// @param _addresses         Set of L1 contract addresses. These should be the proxies.
+    /// @param _l2ChainId         The L2 chain ID that this SystemConfig configures.
     function initialize(
         address _owner,
         uint32 _basefeeScalar,
@@ -163,10 +168,11 @@ contract SystemConfig is OwnableUpgradeable, ISemver {
         address _unsafeBlockSigner,
         IResourceMetering.ResourceConfig memory _config,
         address _batchInbox,
-        SystemConfig.Addresses memory _addresses
+        SystemConfig.Addresses memory _addresses,
+        uint256 _l2ChainId
     )
         public
-        initializer
+        reinitializer(initVersion())
     {
         __Ownable_init();
         transferOwnership(_owner);
@@ -188,6 +194,14 @@ contract SystemConfig is OwnableUpgradeable, ISemver {
         _setStartBlock();
 
         _setResourceConfig(_config);
+
+        l2ChainId = _l2ChainId;
+    }
+
+    /// @notice Upgrades the SystemConfig by setting the L2 chain ID variable.
+    /// @param _l2ChainId The L2 chain ID that this SystemConfig configures.
+    function upgrade(uint256 _l2ChainId) external reinitializer(initVersion()) {
+        l2ChainId = _l2ChainId;
     }
 
     /// @notice Returns the minimum L2 gas limit that can be safely set for the system to

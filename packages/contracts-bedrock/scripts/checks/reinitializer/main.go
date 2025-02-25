@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -103,15 +104,23 @@ func getReinitializerValue(node *solc.AstNode) (uint64, error) {
 
 	for _, modifier := range node.Modifiers {
 		if modifier.ModifierName.Name == "reinitializer" {
-			valStr, ok := modifier.Arguments[0].Value.(string)
-			if !ok {
-				return 0, fmt.Errorf("reinitializer value is not a string")
+			if modifier.Arguments[0].Kind == "functionCall" {
+				if modifier.Arguments[0].Expression.Name == "initVersion" {
+					return math.MaxUint64, nil // uint64 max representing initVersion call
+				} else {
+					return 0, fmt.Errorf("reinitializer value is not a call to initVersion")
+				}
+			} else {
+				valStr, ok := modifier.Arguments[0].Value.(string)
+				if !ok {
+					return 0, fmt.Errorf("reinitializer value is not a string")
+				}
+				val, err := strconv.Atoi(valStr)
+				if err != nil {
+					return 0, fmt.Errorf("reinitializer value is not an integer")
+				}
+				return uint64(val), nil
 			}
-			val, err := strconv.Atoi(valStr)
-			if err != nil {
-				return 0, fmt.Errorf("reinitializer value is not an integer")
-			}
-			return uint64(val), nil
 		}
 	}
 

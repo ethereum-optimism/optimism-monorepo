@@ -38,13 +38,14 @@ var (
 		{Type: fixedBytes},
 	}
 
-	uint32Type, _ = abi.NewType("uint32", "", nil)
-
 	// Plain address type
 	addressType, _ = abi.NewType("address", "", nil)
 
 	// Plain uint8 type
 	uint8Type, _ = abi.NewType("uint8", "", nil)
+
+	// Plain uint32 type
+	uint32Type, _ = abi.NewType("uint32", "", nil)
 
 	// Plain uint256 type
 	uint256Type, _ = abi.NewType("uint256", "", nil)
@@ -100,6 +101,19 @@ var (
 		{Name: "decimals", Type: uint8Type},
 		{Name: "name", Type: fixedBytes},
 		{Name: "symbol", Type: fixedBytes},
+	}
+
+	// Super root proof tuple (uint8, uint64, OutputRootWithChainId[])
+	superRootProof, _ = abi.NewType("tuple", "SuperRootProof", []abi.ArgumentMarshaling{
+		{Name: "version", Type: "bytes1"},
+		{Name: "timestamp", Type: "uint64"},
+		{Name: "outputRoots", Type: "tuple[]", Components: []abi.ArgumentMarshaling{
+			{Name: "chainId", Type: "uint256"},
+			{Name: "root", Type: "bytes32"},
+		}},
+	})
+	superRootProofArgs = abi.Arguments{
+		{Type: superRootProof},
 	}
 
 	// Dependency tuple (uint256)
@@ -518,6 +532,49 @@ func DiffTestUtils() {
 
 		// Pack encoded dependency
 		packed, err := bytesArgs.Pack(&encoded)
+		checkErr(err, "Error encoding output")
+
+		fmt.Print(hexutil.Encode(packed))
+	case "encodeSuperRootProof":
+		// Parse input argument as abi encoded super root proof
+		if len(args) < 2 {
+			panic("Error: encodeSuperRoot requires at least 1 argument")
+		}
+
+		// Parse the input as hex data
+		superRootProofData := common.FromHex(args[1])
+		proof, err := parseSuperRootProof(superRootProofData)
+		checkErr(err, "Error parsing super root proof")
+
+		// Encode super root proof
+		encoded, err := encodeSuperRootProof(proof)
+		checkErr(err, "Error encoding super root")
+
+		// Pack encoded super root
+		packed, err := bytesArgs.Pack(&encoded)
+		checkErr(err, "Error encoding output")
+
+		fmt.Print(hexutil.Encode(packed))
+	case "hashSuperRootProof":
+		// Parse input argument as abi encoded super root proof
+		if len(args) < 2 {
+			panic("Error: hashSuperRootProof requires at least 1 argument")
+		}
+
+		// Parse the input as hex data
+		superRootProofData := common.FromHex(args[1])
+		proof, err := parseSuperRootProof(superRootProofData)
+		checkErr(err, "Error parsing super root proof")
+
+		// Encode super root proof
+		encoded, err := encodeSuperRootProof(proof)
+		checkErr(err, "Error encoding super root proof")
+
+		// Hash super root proof
+		hash := crypto.Keccak256Hash(encoded)
+
+		// Pack hash
+		packed, err := fixedBytesArgs.Pack(&hash)
 		checkErr(err, "Error encoding output")
 
 		fmt.Print(hexutil.Encode(packed))

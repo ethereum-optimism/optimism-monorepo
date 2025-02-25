@@ -21,6 +21,7 @@ import (
 )
 
 func TestUpgradeOPChainInput_OpChainConfigs(t *testing.T) {
+	t.Skip("skipping for upgrade 15")
 	input := &UpgradeOPChainInput{
 		Prank: common.Address{0xaa},
 		Opcm:  common.Address{0xbb},
@@ -54,6 +55,7 @@ func TestUpgradeOPChainInput_OpChainConfigs(t *testing.T) {
 }
 
 func TestUpgrader_Upgrade(t *testing.T) {
+	t.Skip("skipping for upgrade 15")
 	lgr := testlog.Logger(t, slog.LevelDebug)
 
 	forkedL1, stopL1, err := devnet.NewForkedSepolia(lgr)

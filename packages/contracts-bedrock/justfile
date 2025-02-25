@@ -292,6 +292,7 @@ check:
   semver-diff-check-no-build \
   validate-deploy-configs \
   validate-spacers-no-build \
+  reinitializer-check-no-build \
   interfaces-check-no-build \
   lint-forge-tests-check-no-build
 
