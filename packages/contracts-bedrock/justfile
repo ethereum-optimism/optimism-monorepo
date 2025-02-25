@@ -6,10 +6,16 @@
 install: clone-superchain-registry
   forge install
 
+# Clones the superchain directory of the superchain-registry repo.
+# This helps us avoid having to clone the entire repo, and avoid circular dependencies.
 clone-superchain-registry:
   #!/bin/bash
   if [ ! -d "lib/superchain-registry" ]; then
-    git clone https://github.com/ethereum-optimism/superchain-registry.git lib/superchain-registry
+    git init lib/superchain-registry
+    cd lib/superchain-registry && \
+    git remote add origin https://github.com/ethereum-optimism/superchain-registry.git && \
+    git sparse-checkout set "superchain" && \
+    git pull origin main --depth=1
   fi
 
 # Shows the status of the git submodules.
