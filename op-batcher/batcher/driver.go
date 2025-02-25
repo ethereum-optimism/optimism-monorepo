@@ -1,10 +1,12 @@
 package batcher
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"math/big"
 	_ "net/http/pprof"
 	"sync"
@@ -855,6 +857,7 @@ func (l *BatchSubmitter) sendTransaction(txdata txData, queue *txmgr.Queue[txRef
 	l.sendTx(txdata, false, candidate, queue, receiptsCh)
 	return nil
 }
+
 type TxSender[T any] interface {
 	Send(id T, candidate txmgr.TxCandidate, receiptCh chan txmgr.TxReceipt[T])
 }
@@ -870,7 +873,32 @@ func (l *BatchSubmitter) sendTx(txdata txData, isCancel bool, candidate *txmgr.T
 		candidate.GasLimit = intrinsicGas
 	}
 
+	floorDataGas, err := floorDataGas(candidate.TxData)
+	if err == nil && floorDataGas > candidate.GasLimit {
+		candidate.GasLimit = floorDataGas
+	}
+
 	queue.Send(txRef{id: txdata.ID(), isCancel: isCancel, isBlob: txdata.asBlob}, *candidate, receiptsCh)
+}
+
+// Copypaste from upstream geth
+// TODO replace with import once it's available https://github.com/ethereum-optimism/op-geth/pull/507
+func floorDataGas(data []byte) (uint64, error) {
+	TxTokenPerNonZeroByte := uint64(4)
+	TxGas := uint64(21000)
+	TxCostFloorPerToken := uint64(10)
+
+	var (
+		z      = uint64(bytes.Count(data, []byte{0}))
+		nz     = uint64(len(data)) - z
+		tokens = nz*TxTokenPerNonZeroByte + z
+	)
+	// Check for overflow
+	if (math.MaxUint64-TxGas)/TxCostFloorPerToken < tokens {
+		return 0, core.ErrGasUintOverflow
+	}
+	// Minimum gas required for a transaction based on its data tokens (EIP-7623).
+	return TxGas + tokens*TxCostFloorPerToken, nil
 }
 
 func (l *BatchSubmitter) blobTxCandidate(data txData) (*txmgr.TxCandidate, error) {
