@@ -159,7 +159,7 @@ func NewSimpleTxManager(name string, l log.Logger, m metrics.TxMetricer, cfg CLI
 	return NewSimpleTxManagerFromConfig(name, l, m, conf)
 }
 
-// NewSimpleTxManager initializes a new SimpleTxManager with the passed Config.
+// NewSimpleTxManagerFromConfig initializes a new SimpleTxManager with the passed Config.
 func NewSimpleTxManagerFromConfig(name string, l log.Logger, m metrics.TxMetricer, conf *Config) (*SimpleTxManager, error) {
 	if err := conf.Check(); err != nil {
 		return nil, fmt.Errorf("invalid config: %w", err)
