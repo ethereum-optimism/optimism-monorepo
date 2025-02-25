@@ -52,14 +52,15 @@ func NewDeploymentTarget(s string) (DeploymentTarget, error) {
 	}
 }
 
-var homeDir string
+var DefaultCacheDir string
 
 func init() {
 	var err error
-	homeDir, err = os.UserHomeDir()
+	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		panic(fmt.Sprintf("failed to get home directory: %s", err))
 	}
+	DefaultCacheDir = path.Join(homeDir, ".op-deployer/cache")
 }
 
 var (
@@ -76,7 +77,7 @@ var (
 		Usage: "Cache directory. " +
 			"If set, the deployer will attempt to cache downloaded artifacts in the specified directory.",
 		EnvVars: PrefixEnvVar("CACHE_DIR"),
-		Value:   path.Join(homeDir, ".op-deployer/cache"),
+		Value:   DefaultCacheDir,
 	}
 	L1ChainIDFlag = &cli.Uint64Flag{
 		Name:    L1ChainIDFlagName,

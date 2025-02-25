@@ -103,7 +103,7 @@ func VerifyCLI(cliCtx *cli.Context) error {
 		return fmt.Errorf("rpc l1 chain ID does not match state l1 chain ID: %d != %d", l1ChainId, st.AppliedIntent.L1ChainID)
 	}
 
-	artifactsFS, err := artifacts.Download(ctx, st.AppliedIntent.L1ContractsLocator, nil)
+	artifactsFS, err := artifacts.Download(ctx, st.AppliedIntent.L1ContractsLocator, nil, deployer.DefaultCacheDir)
 	if err != nil {
 		return fmt.Errorf("failed to get artifacts: %w", err)
 	}
