@@ -11,7 +11,6 @@ import (
 	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils"
 	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/geth"
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
-	"github.com/ethereum-optimism/optimism/op-node/rollup/derive"
 	"github.com/ethereum-optimism/optimism/op-service/client"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/predeploys"
@@ -23,6 +22,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -323,10 +323,10 @@ func TestIsthmusNetworkUpgradeTransactions(gt *testing.T) {
 
 	zero := hexutil.Uint64(0)
 
-	// Activate all forks at genesis, and schedule Ecotone the block after
+	// Activate all forks at genesis, and schedule Isthmus the block after
 	dp.DeployConfig.L2GenesisHoloceneTimeOffset = &zero
 	dp.DeployConfig.L2GenesisIsthmusTimeOffset = &isthmusOffset
-	dp.DeployConfig.L1PragueTimeOffset = nil
+	dp.DeployConfig.L1PragueTimeOffset = &zero
 	// New forks have to be added here...
 	require.NoError(t, dp.DeployConfig.Check(log), "must have valid config")
 
@@ -364,14 +364,14 @@ func TestIsthmusNetworkUpgradeTransactions(gt *testing.T) {
 	require.NotEmpty(t, txn.Data(), "upgrade tx must provide input data")
 
 	// EIP-2935 contract is deployed
-	expectedBlockHashAddress := crypto.CreateAddress(derive.BlockHashDeployerAddress, 0)
+	expectedBlockHashAddress := crypto.CreateAddress(predeploys.EIP2935ContractDeployer, 0)
 	require.Equal(t, predeploys.EIP2935ContractAddr, expectedBlockHashAddress)
 	code := verifyCodeHashMatches(t, ethCl, predeploys.EIP2935ContractAddr, predeploys.EIP2935ContractCodeHash)
 	require.Equal(t, predeploys.EIP2935ContractCode, code)
 
 	// Test that the beacon-block-root has been set
 	checkRecentBlockHash := func(blockNumber uint64, expectedHash common.Hash, msg string) {
-		historyBufferLength := uint64(8191)
+		historyBufferLength := uint64(params.HistoryServeWindow) - 1
 		bufferIdx := common.BigToHash(new(big.Int).SetUint64(blockNumber % historyBufferLength))
 
 		rootValue, err := ethCl.StorageAt(context.Background(), predeploys.EIP2935ContractAddr, bufferIdx, nil)
