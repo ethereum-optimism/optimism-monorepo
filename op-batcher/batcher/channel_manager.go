@@ -346,7 +346,7 @@ func (s *channelManager) processBlocks() error {
 		latestL2ref eth.L2BlockRef
 	)
 
-	updateCursorAndMetrics := func() {
+	defer func() {
 		s.blockCursor += blocksAdded
 
 		s.metr.RecordL2BlocksAdded(latestL2ref,
@@ -361,9 +361,7 @@ func (s *channelManager) processBlocks() error {
 			"input_bytes", s.currentChannel.InputBytes(),
 			"ready_bytes", s.currentChannel.ReadyBytes(),
 		)
-	}
-
-	defer updateCursorAndMetrics()
+	}()
 
 	for i := s.blockCursor; ; i++ {
 		block, ok := s.blocks.PeekN(i)
