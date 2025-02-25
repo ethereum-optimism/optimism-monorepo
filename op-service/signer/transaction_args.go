@@ -55,15 +55,15 @@ func NewTransactionArgsFromTransaction(chainId *big.Int, from *common.Address, t
 		From:                 from,
 		Input:                &data,
 		Nonce:                &nonce,
-		Value:                (*hexutil.U256)(mustUint256FromBig(tx.Value())),
+		Value:                (*hexutil.U256)(uint256.MustFromBig(tx.Value())),
 		Gas:                  &gas,
 		To:                   tx.To(),
-		ChainID:              (*hexutil.U256)(mustUint256FromBig(chainId)),
-		MaxFeePerGas:         (*hexutil.U256)(mustUint256FromBig(tx.GasFeeCap())),
-		MaxPriorityFeePerGas: (*hexutil.U256)(mustUint256FromBig(tx.GasTipCap())),
+		ChainID:              (*hexutil.U256)(uint256.MustFromBig(chainId)),
+		MaxFeePerGas:         (*hexutil.U256)(uint256.MustFromBig(tx.GasFeeCap())),
+		MaxPriorityFeePerGas: (*hexutil.U256)(uint256.MustFromBig(tx.GasTipCap())),
 		AccessList:           &accesses,
 		BlobVersionedHashes:  tx.BlobHashes(),
-		BlobFeeCap:           (*hexutil.U256)(mustUint256FromBig(tx.BlobGasFeeCap())),
+		BlobFeeCap:           (*hexutil.U256)(uint256.MustFromBig(tx.BlobGasFeeCap())),
 		AuthList:             tx.SetCodeAuthorizations(),
 	}
 }
@@ -180,16 +180,4 @@ func (args *TransactionArgs) ToTransactionData() (types.TxData, error) {
 		}
 	}
 	return data, nil
-}
-
-// mustUint256FromBig converts a *big.Int to a *uint256.Int, panicking on overflow
-func mustUint256FromBig(b *big.Int) *uint256.Int {
-	if b == nil {
-		return nil
-	}
-	result, overflow := uint256.FromBig(b)
-	if overflow {
-		panic(fmt.Sprintf("uint256 overflow from big.Int value: %s", b.String()))
-	}
-	return result
 }
