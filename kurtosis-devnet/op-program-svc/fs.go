@@ -17,6 +17,11 @@ import (
 	"time"
 )
 
+const (
+	depsetsFilename = "depsets.json"
+	infoFilename    = "info.json"
+)
+
 // proofFileSystem implements http.FileSystem, mapping hash-based virtual paths to actual files
 type proofFileSystem struct {
 	root       string
@@ -69,7 +74,7 @@ func (f *infoFile) Readdir(count int) ([]fs.FileInfo, error) {
 
 func (f *infoFile) Stat() (fs.FileInfo, error) {
 	return virtualFileInfo{
-		name:    "info.json",
+		name:    infoFilename,
 		size:    int64(len(f.content)),
 		mode:    0644,
 		modTime: time.Now(),
@@ -120,8 +125,11 @@ func (d *proofDir) Readdir(count int) ([]fs.FileInfo, error) {
 	d.proofMutex.RLock()
 	defer d.proofMutex.RUnlock()
 
+	// Calculate total number of entries
+	totalEntries := len(d.proofFiles)*2 + 1 // hash.json, hash.bin.gz files + info.json
+
 	// If we've already read all entries
-	if d.pos >= len(d.proofFiles)*2+1 {
+	if d.pos >= totalEntries {
 		if count <= 0 {
 			return nil, nil
 		}
@@ -137,15 +145,15 @@ func (d *proofDir) Readdir(count int) ([]fs.FileInfo, error) {
 
 	start := d.pos
 	end := start + count
-	if count <= 0 || end > len(d.proofFiles)*2+1 {
-		end = len(d.proofFiles)*2 + 1
+	if count <= 0 || end > totalEntries {
+		end = totalEntries
 	}
 
 	for i := start; i < end; i++ {
-		// Special case for info.json (last entry)
+		// Special case for info.json (second to last entry)
 		if i == len(d.proofFiles)*2 {
 			entries = append(entries, virtualFileInfo{
-				name:    "info.json",
+				name:    infoFilename,
 				size:    0, // Size will be determined when actually opening the file
 				mode:    0644,
 				modTime: time.Now(),
@@ -228,7 +236,7 @@ func (fs *proofFileSystem) Open(name string) (http.File, error) {
 	name = strings.TrimPrefix(filepath.Clean(name), "/")
 
 	// Special case for info.json
-	if name == "info.json" {
+	if name == infoFilename {
 		fs.proofMutex.RLock()
 		defer fs.proofMutex.RUnlock()
 		return newInfoFile(fs.proofFiles), nil
@@ -279,12 +287,15 @@ func (fs *proofFileSystem) scanProofFiles() error {
 	proofRegexp := regexp.MustCompile(`^prestate-proof(.*)\.json$`)
 
 	for _, entry := range entries {
+		log.Printf("entry: %s", entry.Name())
 		if entry.IsDir() {
+			log.Printf("entry is a directory: %s", entry.Name())
 			continue
 		}
 
 		matches := proofRegexp.FindStringSubmatch(entry.Name())
 		if matches == nil {
+			log.Printf("Warning: ignoring non-proof file %s", entry.Name())
 			continue
 		}
 
