@@ -2,6 +2,7 @@ package syncnode
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/superevents"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/stretchr/testify/require"
 )
@@ -108,7 +110,7 @@ func TestPrepareReset(t *testing.T) {
 
 	// mock: return a block of the same number as requested
 	syncCtrl.blockRefByNumFn = func(ctx context.Context, number uint64) (eth.BlockRef, error) {
-		return eth.BlockRef{Number: number}, nil
+		return eth.BlockRef{Number: number, Hash: common.Hash{0xaa}}, nil
 	}
 
 	// mock: control whether the blocks appear valid or not
@@ -122,19 +124,21 @@ func TestPrepareReset(t *testing.T) {
 
 	// mock: record the reset signal given to the node
 	var unsafe, safe, finalized eth.BlockID
+	var resetCalled int
 	syncCtrl.resetFn = func(ctx context.Context, u, s, f eth.BlockID) error {
 		unsafe = u
 		safe = s
 		finalized = f
+		resetCalled++
 		return nil
 	}
 
 	// test that the bisection finds the correct block,
 	// anywhere inside the min-max range
-	min, max := uint64(0), uint64(235)
+	min, max := uint64(1), uint64(235)
 	for i := min; i < max; i++ {
 		node.ongoingReset = &ongoingReset{
-			a: eth.BlockID{Number: min},
+			a: eth.BlockID{Number: min, Hash: common.Hash{0xaa}},
 			z: eth.BlockID{Number: max},
 		}
 		pivot = i
@@ -142,6 +146,18 @@ func TestPrepareReset(t *testing.T) {
 		require.Equal(t, i, unsafe.Number)
 		require.Equal(t, uint64(0), safe.Number)
 		require.Equal(t, uint64(0), finalized.Number)
+	}
+
+	// test that when the end of range (z) is known to the node,
+	// the reset request is made with the end of the range as the safe block
+	for i := min; i < max; i++ {
+		node.ongoingReset = &ongoingReset{
+			a: eth.BlockID{Number: min},
+			z: eth.BlockID{Number: max, Hash: common.Hash{0xaa}},
+		}
+		pivot = 0
+		node.prepareResetRequest()
+		require.Equal(t, max, unsafe.Number)
 	}
 
 	// mock: return local safe and finalized blocks which are *ahead* of the pivot
@@ -157,7 +173,7 @@ func TestPrepareReset(t *testing.T) {
 	// AND that the safe and finalized blocks are updated to match the unsafe block
 	for i := min; i < max; i++ {
 		node.ongoingReset = &ongoingReset{
-			a: eth.BlockID{Number: min},
+			a: eth.BlockID{Number: min, Hash: common.Hash{0xaa}},
 			z: eth.BlockID{Number: max},
 		}
 		pivot = i
@@ -166,4 +182,26 @@ func TestPrepareReset(t *testing.T) {
 		require.Equal(t, i, safe.Number)
 		require.Equal(t, i, finalized.Number)
 	}
+
+	// test that the reset function is not called if start of the range (a) is unknown
+	resetCount := resetCalled
+	node.ongoingReset = &ongoingReset{
+		a: eth.BlockID{Number: 0, Hash: common.Hash{0xbb}},
+		z: eth.BlockID{Number: max},
+	}
+	pivot = 40
+	node.prepareResetRequest()
+	require.Equal(t, resetCount, resetCalled)
+
+	// test that the reset function is not called if the bisection can't find a consistent block
+	node.ongoingReset = &ongoingReset{
+		a: eth.BlockID{Number: 0, Hash: common.Hash{0xaa}},
+		z: eth.BlockID{Number: max},
+	}
+	backend.isLocalUnsafeFn = func(ctx context.Context, chainID eth.ChainID, id eth.BlockID) error {
+		return fmt.Errorf("error")
+	}
+	node.prepareResetRequest()
+	require.Equal(t, resetCount, resetCalled)
+
 }

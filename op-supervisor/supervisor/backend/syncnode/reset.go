@@ -110,12 +110,26 @@ func (m *ManagedNode) prepareResetRequest() {
 		return
 	}
 
+	// before starting bisection, check if a is inconsistent (i.e. the node has no common reference point)
+	nodeA, err := m.Node.BlockRefByNumber(nodeCtx, m.ongoingReset.a.Number)
+	if err != nil {
+		m.log.Error("failed to get block at start of range. cannot reset node", "err", err)
+		defer m.endReset()
+		return
+	}
+	if nodeA.ID() != m.ongoingReset.a {
+		m.log.Error("start of range is inconsistent with logs db. cannot reset node",
+			"a", m.ongoingReset.a,
+			"block", nodeA.ID())
+		defer m.endReset()
+		return
+	}
+
 	// repeatedly bisect the range until the last consistent block is found
 	for {
 		if m.cancelReset.Load() {
-			m.log.Info("reset cancelled")
-			m.resetting.Store(false)
-			m.ongoingReset = nil
+			m.log.Debug("reset cancelled")
+			defer m.endReset()
 			return
 		}
 		if m.ongoingReset.a.Number >= m.ongoingReset.z.Number {
