@@ -44,7 +44,7 @@ func NewFastCanonicalBlockHeaderOracle(
 	fallback *CanonicalBlockHeaderOracle,
 ) *FastCanonicalBlockHeaderOracle {
 	chainID := eth.ChainIDFromBig(chainCfg.ChainID)
-	ctx := &chainContext{engine: beacon.New(nil)}
+	ctx := &chainContext{engine: beacon.New(nil), config: chainCfg}
 	db := NewOracleBackedDB(kvdb, stateOracle, chainID)
 	cache, _ := simplelru.NewLRU[uint64, *types.Header](historicalCacheSize, nil)
 	return &FastCanonicalBlockHeaderOracle{
@@ -150,6 +150,7 @@ func (o *FastCanonicalBlockHeaderOracle) SetCanonical(head *types.Header) common
 
 type chainContext struct {
 	engine consensus.Engine
+	config *params.ChainConfig
 }
 
 func (c *chainContext) Engine() consensus.Engine {
@@ -157,7 +158,7 @@ func (c *chainContext) Engine() consensus.Engine {
 }
 
 func (c *chainContext) Config() *params.ChainConfig {
-	panic("unexpected call to Config")
+	return c.config
 }
 
 func (c *chainContext) GetHeader(hash common.Hash, number uint64) *types.Header {
