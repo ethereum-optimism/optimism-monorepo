@@ -31,6 +31,8 @@ Version increments follow the [style guide rules](./STYLE_GUIDE.md#versioning) f
 
 ## Individual Contract Versioning
 
+Individual contract versioning allows us to uniquely identify which version of a contract from the develop branch corresponds to each deployed contract instance.
+
 Versioning for individual contracts works as follows:
 
 - A contract on develop always has a version of X.Y.Z, regardless of whether is has been governance approved and meets our security bar. This DOES NOT indicate these contracts are always safe for production use. More on this below.
