@@ -41,3 +41,6 @@ deploy-config/devnetL1.json
 
 # Getting Started guide deploy config
 deploy-config/getting-started.json
+
+# Superchain Registry
+lib/superchain-registry

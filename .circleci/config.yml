@@ -127,6 +127,7 @@ commands:
             # Manually craft the submodule update command in order to take advantage
             # of the -j parameter, which speeds it up a lot.
             git submodule update --init --recursive --force -j 8
+            just clone-superchain-registry
           working_directory: packages/contracts-bedrock
 
   notify-failures-on-develop:

@@ -3,8 +3,14 @@
 ########################################################
 
 # Installs dependencies.
-install:
+install: clone-superchain-registry
   forge install
+
+clone-superchain-registry:
+  #!/bin/bash
+  if [ ! -d "lib/superchain-registry" ]; then
+    git clone https://github.com/ethereum-optimism/superchain-registry.git lib/superchain-registry
+  fi
 
 # Shows the status of the git submodules.
 dep-status:
