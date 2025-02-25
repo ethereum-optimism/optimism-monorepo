@@ -882,7 +882,7 @@ func (l *BatchSubmitter) sendTx(txdata txData, isCancel bool, candidate *txmgr.T
 }
 
 // Copypaste from upstream geth
-// TODO replace with import once it's available https://github.com/ethereum-optimism/op-geth/pull/507
+// TODO remove in #14500
 func floorDataGas(data []byte) (uint64, error) {
 	TxTokenPerNonZeroByte := uint64(4)
 	TxGas := uint64(21000)
