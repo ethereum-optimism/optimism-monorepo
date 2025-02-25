@@ -17,6 +17,7 @@ const (
 )
 
 type ChainProofParams struct {
+	DisputeGameUsesSuperRoots               bool        `json:"disputeGameUsesSuperRoots" toml:"disputeGameUsesSuperRoots"`
 	DisputeGameType                         uint32      `json:"respectedGameType" toml:"respectedGameType"`
 	DisputeAbsolutePrestate                 common.Hash `json:"faultGameAbsolutePrestate" toml:"faultGameAbsolutePrestate"`
 	DisputeMaxGameDepth                     uint64      `json:"faultGameMaxDepth" toml:"faultGameMaxDepth"`

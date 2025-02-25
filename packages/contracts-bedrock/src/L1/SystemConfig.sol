@@ -122,6 +122,9 @@ contract SystemConfig is OwnableUpgradeable, ISemver {
     /// @notice The EIP-1559 elasticity multiplier.
     uint32 public eip1559Elasticity;
 
+    /// @notice The L2 chain ID that this SystemConfig configures.
+    uint256 public l2ChainId;
+
     /// @notice Emitted when configuration is updated.
     /// @param version    SystemConfig version.
     /// @param updateType Type of update.
@@ -129,9 +132,9 @@ contract SystemConfig is OwnableUpgradeable, ISemver {
     event ConfigUpdate(uint256 indexed version, UpdateType indexed updateType, bytes data);
 
     /// @notice Semantic version.
-    /// @custom:semver 2.4.0
+    /// @custom:semver 2.5.0
     function version() public pure virtual returns (string memory) {
-        return "2.4.0";
+        return "2.5.0";
     }
 
     /// @notice Constructs the SystemConfig contract.
@@ -154,6 +157,7 @@ contract SystemConfig is OwnableUpgradeable, ISemver {
     /// @param _batchInbox        Batch inbox address. An identifier for the op-node to find
     ///                           canonical data.
     /// @param _addresses         Set of L1 contract addresses. These should be the proxies.
+    /// @param _l2ChainId         The L2 chain ID that this SystemConfig configures.
     function initialize(
         address _owner,
         uint32 _basefeeScalar,
@@ -163,10 +167,11 @@ contract SystemConfig is OwnableUpgradeable, ISemver {
         address _unsafeBlockSigner,
         IResourceMetering.ResourceConfig memory _config,
         address _batchInbox,
-        SystemConfig.Addresses memory _addresses
+        SystemConfig.Addresses memory _addresses,
+        uint256 _l2ChainId
     )
         public
-        initializer
+        reinitializer(2)
     {
         __Ownable_init();
         transferOwnership(_owner);
@@ -188,6 +193,14 @@ contract SystemConfig is OwnableUpgradeable, ISemver {
         _setStartBlock();
 
         _setResourceConfig(_config);
+
+        l2ChainId = _l2ChainId;
+    }
+
+    /// @notice Upgrades the SystemConfig by setting the L2 chain ID variable.
+    /// @param _l2ChainId The L2 chain ID that this SystemConfig configures.
+    function upgrade(uint256 _l2ChainId) external reinitializer(2) {
+        l2ChainId = _l2ChainId;
     }
 
     /// @notice Returns the minimum L2 gas limit that can be safely set for the system to

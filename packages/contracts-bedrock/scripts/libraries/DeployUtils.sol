@@ -360,7 +360,9 @@ library DeployUtils {
         bytes32 slotVal = vm.load(_contractAddress, bytes32(_slot));
         uint8 val = uint8((uint256(slotVal) >> (_offset * 8)) & 0xFF);
         if (_isProxy) {
-            require(val == 1, "DeployUtils: storage value is not 1 at the given slot and offset");
+            require(
+                val >= 1 && val < type(uint8).max, "DeployUtils: storage value is not set at the given slot and offset"
+            );
         } else {
             require(val == type(uint8).max, "DeployUtils: storage value is not 0xff at the given slot and offset");
         }

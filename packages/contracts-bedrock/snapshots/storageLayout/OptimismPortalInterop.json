@@ -131,5 +131,12 @@
     "offset": 0,
     "slot": "62",
     "type": "contract IAnchorStateRegistry"
+  },
+  {
+    "bytes": "1",
+    "label": "superRootsActive",
+    "offset": 20,
+    "slot": "62",
+    "type": "bool"
   }
 ]

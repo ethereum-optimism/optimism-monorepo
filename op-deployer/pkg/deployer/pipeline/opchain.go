@@ -73,12 +73,13 @@ func DeployOPChain(env *Env, intent *state.Intent, st *state.State, chainID comm
 func makeDCI(intent *state.Intent, thisIntent *state.ChainIntent, chainID common.Hash, st *state.State) (opcm.DeployOPChainInput, error) {
 	proofParams, err := jsonutil.MergeJSON(
 		state.ChainProofParams{
-			DisputeGameType:         standard.DisputeGameType,
-			DisputeAbsolutePrestate: standard.DisputeAbsolutePrestate,
-			DisputeMaxGameDepth:     standard.DisputeMaxGameDepth,
-			DisputeSplitDepth:       standard.DisputeSplitDepth,
-			DisputeClockExtension:   standard.DisputeClockExtension,
-			DisputeMaxClockDuration: standard.DisputeMaxClockDuration,
+			DisputeGameUsesSuperRoots: standard.DisputeGameUsesSuperRoots,
+			DisputeGameType:           standard.DisputeGameType,
+			DisputeAbsolutePrestate:   standard.DisputeAbsolutePrestate,
+			DisputeMaxGameDepth:       standard.DisputeMaxGameDepth,
+			DisputeSplitDepth:         standard.DisputeSplitDepth,
+			DisputeClockExtension:     standard.DisputeClockExtension,
+			DisputeMaxClockDuration:   standard.DisputeMaxClockDuration,
 		},
 		intent.GlobalDeployOverrides,
 		thisIntent.DeployOverrides,
@@ -100,6 +101,7 @@ func makeDCI(intent *state.Intent, thisIntent *state.ChainIntent, chainID common
 		Opcm:                         st.ImplementationsDeployment.OpcmAddress,
 		SaltMixer:                    st.Create2Salt.String(), // passing through salt generated at state initialization
 		GasLimit:                     standard.GasLimit,
+		DisputeGameUsesSuperRoots:    proofParams.DisputeGameUsesSuperRoots,
 		DisputeGameType:              proofParams.DisputeGameType,
 		DisputeAbsolutePrestate:      proofParams.DisputeAbsolutePrestate,
 		DisputeMaxGameDepth:          proofParams.DisputeMaxGameDepth,

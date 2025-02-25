@@ -316,6 +316,11 @@
             "type": "uint64"
           },
           {
+            "internalType": "bool",
+            "name": "disputeGameUsesSuperRoots",
+            "type": "bool"
+          },
+          {
             "internalType": "GameType",
             "name": "disputeGameType",
             "type": "uint32"
@@ -605,6 +610,11 @@
             "internalType": "Claim",
             "name": "absolutePrestate",
             "type": "bytes32"
+          },
+          {
+            "internalType": "bool",
+            "name": "disputeGameUsesSuperRoots",
+            "type": "bool"
           }
         ],
         "internalType": "struct OPContractsManager.OpChainConfig[]",
@@ -635,6 +645,11 @@
             "internalType": "Claim",
             "name": "absolutePrestate",
             "type": "bytes32"
+          },
+          {
+            "internalType": "bool",
+            "name": "disputeGameUsesSuperRoots",
+            "type": "bool"
           }
         ],
         "internalType": "struct OPContractsManager.OpChainConfig[]",

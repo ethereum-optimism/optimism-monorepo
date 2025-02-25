@@ -53,12 +53,14 @@ interface ISystemConfig {
         address _unsafeBlockSigner,
         IResourceMetering.ResourceConfig memory _config,
         address _batchInbox,
-        Addresses memory _addresses
+        Addresses memory _addresses,
+        uint256 _l2ChainId
     )
         external;
     function l1CrossDomainMessenger() external view returns (address addr_);
     function l1ERC721Bridge() external view returns (address addr_);
     function l1StandardBridge() external view returns (address addr_);
+    function l2ChainId() external view returns (uint256);
     function maximumGasLimit() external pure returns (uint64);
     function minimumGasLimit() external view returns (uint64);
     function optimismMintableERC20Factory() external view returns (address addr_);
@@ -77,6 +79,7 @@ interface ISystemConfig {
     function startBlock() external view returns (uint256 startBlock_);
     function transferOwnership(address newOwner) external; // nosemgrep
     function unsafeBlockSigner() external view returns (address addr_);
+    function upgrade(uint256 _l2ChainId) external;
     function version() external pure returns (string memory);
 
     function __constructor__() external;
