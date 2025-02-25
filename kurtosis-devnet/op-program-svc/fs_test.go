@@ -134,7 +134,6 @@ func TestProofFileSystem(t *testing.T) {
 		for _, file := range files {
 			if file.Name() == "info.json" {
 				foundInfoJson = true
-				break
 			}
 		}
 		if !foundInfoJson {

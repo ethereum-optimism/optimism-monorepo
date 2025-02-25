@@ -108,12 +108,9 @@ func TestHandleUpload_Success(t *testing.T) {
 	w := httptest.NewRecorder()
 	srv.handleUpload(w, req)
 
-	if w.Code != http.StatusSeeOther {
-		t.Errorf("Expected status code %d, got %d", http.StatusSeeOther, w.Code)
-	}
-
-	if location := w.Header().Get("Location"); location != "/proofs" {
-		t.Errorf("Expected redirect to /proofs, got %s", location)
+	// We now expect 200 OK instead of a redirect
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected status code %d, got %d", http.StatusOK, w.Code)
 	}
 }
 
@@ -206,9 +203,9 @@ func TestHandleUpload_ScanError(t *testing.T) {
 	w := httptest.NewRecorder()
 	srv.handleUpload(w, req)
 
-	// Even with scan error, we should still redirect
-	if w.Code != http.StatusSeeOther {
-		t.Errorf("Expected status code %d, got %d", http.StatusSeeOther, w.Code)
+	// Even with scan error, we should still return 200 OK
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected status code %d, got %d", http.StatusOK, w.Code)
 	}
 }
 
@@ -229,8 +226,9 @@ func TestHandleUpload_UnchangedFiles(t *testing.T) {
 	w1 := httptest.NewRecorder()
 	srv.handleUpload(w1, req1)
 
-	if w1.Code != http.StatusSeeOther {
-		t.Errorf("Expected status code %d, got %d", http.StatusSeeOther, w1.Code)
+	// First request should return 200 OK
+	if w1.Code != http.StatusOK {
+		t.Errorf("Expected status code %d, got %d", http.StatusOK, w1.Code)
 	}
 
 	// Second request with same files
@@ -242,8 +240,9 @@ func TestHandleUpload_UnchangedFiles(t *testing.T) {
 	w2 := httptest.NewRecorder()
 	srv.handleUpload(w2, req2)
 
-	if w2.Code != http.StatusOK {
-		t.Errorf("Expected status code %d, got %d", http.StatusOK, w2.Code)
+	// Second request with unchanged files should return 304 Not Modified
+	if w2.Code != http.StatusNotModified {
+		t.Errorf("Expected status code %d, got %d", http.StatusNotModified, w2.Code)
 	}
 
 	if !strings.Contains(w2.Body.String(), "Files unchanged") {

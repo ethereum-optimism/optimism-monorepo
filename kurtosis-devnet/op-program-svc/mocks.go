@@ -67,21 +67,23 @@ func (m *MockFile) Readdir(count int) ([]fs.FileInfo, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 
-// MockFS implements both FS and FileSystem interfaces for testing
+// MockFS implements FS interface for testing
 type MockFS struct {
-	Files       map[string]*MockFile
-	MkdirCalls  []string
-	CreateCalls []string
-	JoinCalls   [][]string
-	ShouldFail  bool
+	Files         map[string]*MockFile
+	ShouldFail    bool
+	StatFailPaths map[string]bool // Paths that should fail for Stat
+	JoinCalls     [][]string
+	MkdirCalls    []string
+	CreateCalls   []string
 }
 
 func NewMockFS() *MockFS {
 	return &MockFS{
-		Files:       make(map[string]*MockFile),
-		MkdirCalls:  make([]string, 0),
-		CreateCalls: make([]string, 0),
-		JoinCalls:   make([][]string, 0),
+		Files:         make(map[string]*MockFile),
+		StatFailPaths: make(map[string]bool),
+		JoinCalls:     make([][]string, 0),
+		MkdirCalls:    make([]string, 0),
+		CreateCalls:   make([]string, 0),
 	}
 }
 
@@ -140,6 +142,16 @@ func (m *MockFS) Create(name string) (io.WriteCloser, error) {
 func (m *MockFS) Join(elem ...string) string {
 	m.JoinCalls = append(m.JoinCalls, elem)
 	return filepath.Join(elem...)
+}
+
+func (m *MockFS) Stat(name string) (fs.FileInfo, error) {
+	if m.ShouldFail {
+		return nil, fmt.Errorf("mock stat error")
+	}
+	if m.StatFailPaths[name] {
+		return nil, fmt.Errorf("file not found: %s", name)
+	}
+	return m.Files[name], nil
 }
 
 // MockWriteCloser implements io.WriteCloser for testing
