@@ -874,7 +874,10 @@ func (l *BatchSubmitter) sendTx(txdata txData, isCancel bool, candidate *txmgr.T
 	}
 
 	floorDataGas, err := floorDataGas(candidate.TxData)
-	if err == nil && floorDataGas > candidate.GasLimit {
+	if err != nil {
+		l.Log.Warn("Failed to compute FloorDataGas: %v, continuing with intrinsic gas.")
+	} else if floorDataGas > candidate.GasLimit {
+		l.Log.Debug("Bumping gas limit to floor data gas", "intrinsic_gas", intrinsicGas, "floor_data_gas", floorDataGas)
 		candidate.GasLimit = floorDataGas
 	}
 
