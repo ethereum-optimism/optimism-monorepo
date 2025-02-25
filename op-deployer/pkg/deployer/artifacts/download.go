@@ -111,6 +111,9 @@ func (d *HTTPDownloader) Download(ctx context.Context, url string, progress Down
 	}
 	defer res.Body.Close()
 
+	if err := os.MkdirAll(targetDir, 0755); err != nil {
+		return "", fmt.Errorf("failed to ensure cache directory: %w", err)
+	}
 	tmpFile, err := os.CreateTemp(targetDir, "op-deployer-artifacts-*")
 	if err != nil {
 		return "", fmt.Errorf("failed to create temporary file: %w", err)
@@ -144,9 +147,6 @@ func (d *CachingDownloader) Download(ctx context.Context, url string, progress D
 	tmpPath, err := d.d.Download(ctx, url, progress, targetDir)
 	if err != nil {
 		return "", fmt.Errorf("failed to download: %w", err)
-	}
-	if err := os.MkdirAll(targetDir, 0755); err != nil {
-		return "", fmt.Errorf("failed to create cache directory: %w", err)
 	}
 	if err := os.Rename(tmpPath, cachePath); err != nil {
 		return "", fmt.Errorf("failed to move downloaded file to cache: %w", err)

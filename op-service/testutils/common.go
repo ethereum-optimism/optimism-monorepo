@@ -14,7 +14,7 @@ func IsolatedTestDirWithAutoCleanup(t *testing.T) string {
 		basePath = "./.tests"
 	}
 	dir := path.Join(basePath, t.Name())
-	require.NoError(t, os.MkdirAll(dir, 0755))
+	// the dir's existence should be handled by Download as well else it should be left to break
 	t.Cleanup(func() {
 		require.NoError(t, os.RemoveAll(dir))
 	})
