@@ -1,6 +1,9 @@
 package locks
 
-import "sync"
+import (
+	"maps"
+	"sync"
+)
 
 // RWMap is a simple wrapper around a map, with global Read-Write protection.
 // For many concurrent reads/writes a sync.Map may be more performant,
@@ -12,8 +15,14 @@ type RWMap[K comparable, V any] struct {
 	mu    sync.RWMutex
 }
 
-// Default creates a value at the given key, if the key is not set yet.
-func (m *RWMap[K, V]) Default(key K, fn func() V) (changed bool) {
+// RWMapFromMap creates a RWMap from the given map.
+// This shallow-copies the map, changes to the original map will not affect the new RWMap.
+func RWMapFromMap[K comparable, V any](m map[K]V) *RWMap[K, V] {
+	return &RWMap[K, V]{inner: maps.Clone(m)}
+}
+
+// CreateIfMissing creates a value at the given key, if the key is not set yet.
+func (m *RWMap[K, V]) CreateIfMissing(key K, fn func() V) (changed bool) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.inner == nil {
@@ -24,6 +33,14 @@ func (m *RWMap[K, V]) Default(key K, fn func() V) (changed bool) {
 		m.inner[key] = fn()
 	}
 	return !ok // if it exists, nothing changed
+}
+
+// SetIfMissing is a convenience function to set a missing value if it does not already exist.
+// To lazy-init the value, see CreateIfMissing.
+func (m *RWMap[K, V]) SetIfMissing(key K, v V) (changed bool) {
+	return m.CreateIfMissing(key, func() V {
+		return v
+	})
 }
 
 func (m *RWMap[K, V]) Has(key K) (ok bool) {
@@ -73,22 +90,31 @@ func (m *RWMap[K, V]) Range(f func(key K, value V) bool) {
 	}
 }
 
+// Keys returns an unsorted list of keys of the map.
+func (m *RWMap[K, V]) Keys() (out []K) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	out = make([]K, 0, len(m.inner))
+	for k := range m.inner {
+		out = append(out, k)
+	}
+	return out
+}
+
+// Values returns an unsorted list of values of the map.
+func (m *RWMap[K, V]) Values() (out []V) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	out = make([]V, 0, len(m.inner))
+	for _, v := range m.inner {
+		out = append(out, v)
+	}
+	return out
+}
+
 // Clear removes all key-value pairs from the map.
 func (m *RWMap[K, V]) Clear() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	clear(m.inner)
-}
-
-// InitPtrMaybe sets a pointer-value in the map, if it's not set yet, to a new object.
-func InitPtrMaybe[K comparable, V any](m *RWMap[K, *V], key K) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	if m.inner == nil {
-		m.inner = make(map[K]*V)
-	}
-	_, ok := m.inner[key]
-	if !ok {
-		m.inner[key] = new(V)
-	}
 }

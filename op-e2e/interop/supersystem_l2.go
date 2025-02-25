@@ -221,7 +221,7 @@ func (s *interopE2ESystem) newProposerForL2(
 	logger := s.logger.New("role", "proposer"+id)
 	proposerCLIConfig := &l2os.CLIConfig{
 		L1EthRpc:          s.l1.UserRPC().RPC(),
-		SupervisorRpc:     s.Supervisor().RPC(),
+		SupervisorRpcs:    []string{s.Supervisor().RPC()},
 		DGFAddress:        s.worldDeployment.L2s[id].DisputeGameFactoryProxy.Hex(),
 		ProposalInterval:  6 * time.Second,
 		DisputeGameType:   1, // Permissioned game type is the only one currently deployed

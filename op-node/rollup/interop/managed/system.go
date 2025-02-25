@@ -65,14 +65,12 @@ func NewManagedMode(log log.Logger, cfg *rollup.Config, addr string, port int, j
 	out.srv = rpc.NewServer(addr, port, "v0.0.0",
 		rpc.WithWebsocketEnabled(),
 		rpc.WithLogger(log),
-		rpc.WithJWTSecret(jwtSecret[:]),
-		rpc.WithAPIs([]gethrpc.API{
-			{
-				Namespace:     "interop",
-				Service:       &InteropAPI{backend: out},
-				Authenticated: true,
-			},
-		}))
+		rpc.WithJWTSecret(jwtSecret[:]))
+	out.srv.AddAPI(gethrpc.API{
+		Namespace:     "interop",
+		Service:       &InteropAPI{backend: out},
+		Authenticated: true,
+	})
 	return out
 }
 

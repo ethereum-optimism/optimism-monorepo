@@ -71,7 +71,8 @@ make op-node
 
 ```bash
 # from op-node dir:
-make op-node
+just op-node
+
 ./bin/op-node --help
 ```
 

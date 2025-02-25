@@ -49,6 +49,7 @@ type Config struct {
 	L1                string
 	L1Beacon          string
 	L2s               []string
+	L2Experimental    string
 	Server            string // Path to the executable that provides the pre-image oracle server
 	Networks          []string
 	L2Custom          bool

@@ -1,0 +1,13 @@
+[book]
+authors = ["Optimism Contributors"]
+language = "en"
+multilingual = false
+src = "src"
+title = "Kurtosis Devnet Book"
+
+[output.html]
+site-url = "/kurtosis-devnet/"
+git-repository-url = "https://github.com/ethereum-optimism/optimism/tree/develop/kurtosis-devnet/book"
+edit-url-template = "https://github.com/ethereum-optimism/optimism/tree/develop/kurtosis-devnet/book/{path}"
+additional-css = ["custom.css", "theme/css/footer.css"]
+additional-js = ["theme/js/footer.js"]

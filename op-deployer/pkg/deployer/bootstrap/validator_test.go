@@ -55,7 +55,6 @@ func testValidator(t *testing.T, forkRPCURL string, loc *artifacts.Locator, rele
 	input := ValidatorInput{
 		Release:                          release,
 		SuperchainConfig:                 common.Address{'S'},
-		ProtocolVersions:                 common.Address{'P'},
 		L1PAOMultisig:                    common.Address{'M'},
 		MIPS:                             common.Address{'I'},
 		Challenger:                       common.Address{'C'},

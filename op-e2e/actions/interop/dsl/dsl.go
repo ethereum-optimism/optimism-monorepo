@@ -5,8 +5,6 @@ import (
 	"github.com/ethereum-optimism/optimism/op-node/rollup/derive"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/event"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -116,7 +114,8 @@ func (d *InteropDSL) CreateUser() *DSLUser {
 	}
 }
 
-type TransactionCreator func(chain *Chain) (*types.Transaction, common.Address)
+type TransactionCreator func(chain *Chain) *GeneratedTransaction
+
 type AddL2BlockOpts struct {
 	BlockIsNotCrossUnsafe bool
 	TransactionCreators   []TransactionCreator
@@ -151,9 +150,7 @@ func (d *InteropDSL) AddL2Block(chain *Chain, optionalArgs ...func(*AddL2BlockOp
 		priorSyncStatus := chain.Sequencer.SyncStatus()
 		chain.Sequencer.ActL2StartBlock(d.t)
 		for _, creator := range opts.TransactionCreators {
-			tx, from := creator(chain)
-			err := chain.SequencerEngine.EngineApi.IncludeTx(tx, from)
-			require.NoError(d.t, err)
+			creator(chain).Include()
 		}
 		chain.Sequencer.ActL2EndBlock(d.t)
 		chain.Sequencer.SyncSupervisor(d.t)

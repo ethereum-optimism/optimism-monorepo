@@ -69,7 +69,7 @@ func (snc *SyncNodesController) AttachNodeController(chainID eth.ChainID, ctrl S
 		return nil, fmt.Errorf("chain %v not in dependency set: %w", chainID, types.ErrUnknownChain)
 	}
 	// lazy init the controllers map for this chain
-	snc.controllers.Default(chainID, func() *locks.RWMap[*ManagedNode, struct{}] {
+	snc.controllers.CreateIfMissing(chainID, func() *locks.RWMap[*ManagedNode, struct{}] {
 		return &locks.RWMap[*ManagedNode, struct{}]{}
 	})
 	controllersForChain, _ := snc.controllers.Get(chainID)

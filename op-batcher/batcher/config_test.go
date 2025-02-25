@@ -41,7 +41,6 @@ func validBatcherConfig() batcher.CLIConfig {
 		RPC:               rpc.DefaultCLIConfig(),
 		CompressionAlgo:   derive.Zlib,
 		ThrottleThreshold: 0, // no DA throttling
-		ThrottleInterval:  12 * time.Second,
 		ThrottleTxSize:    0,
 	}
 }

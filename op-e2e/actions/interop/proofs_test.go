@@ -11,7 +11,6 @@ import (
 	"github.com/ethereum-optimism/optimism/op-e2e/actions/helpers"
 	"github.com/ethereum-optimism/optimism/op-e2e/actions/interop/dsl"
 	fpHelpers "github.com/ethereum-optimism/optimism/op-e2e/actions/proofs/helpers"
-	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/interop/contracts/bindings/inbox"
 	"github.com/ethereum-optimism/optimism/op-program/client/claim"
 	"github.com/ethereum-optimism/optimism/op-program/client/interop"
 	"github.com/ethereum-optimism/optimism/op-program/client/interop/types"
@@ -20,7 +19,6 @@ import (
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
 	supervisortypes "github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 	"github.com/ethereum/go-ethereum/common"
-	gethTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/require"
 )
@@ -94,7 +92,7 @@ func TestInteropFaultProofs_ConsolidateValidCrossChainMessage(gt *testing.T) {
 
 	system.AddL2Block(system.Actors.ChainA, dsl.WithL2BlockTransactions(emitter.EmitMessage(alice, "hello")))
 	initMsg := emitter.LastEmittedMessage()
-	system.AddL2Block(system.Actors.ChainB, dsl.WithL2BlockTransactions(system.InboxContract.Execute(alice, initMsg.Identifier(), initMsg.MessagePayload())))
+	system.AddL2Block(system.Actors.ChainB, dsl.WithL2BlockTransactions(system.InboxContract.Execute(alice, initMsg)))
 
 	// Submit batch data for each chain in separate L1 blocks so tests can have one chain safe and one unsafe
 	system.SubmitBatchData(func(opts *dsl.SubmitBatchDataOpts) {
@@ -382,42 +380,20 @@ func TestInteropFaultProofs_Cycle(gt *testing.T) {
 	actEmitA := emitter.EmitMessage(alice, "hello")
 	actEmitB := emitter.EmitMessage(alice, "world")
 
-	// txToID creates the would-be message identifier of the next block
-	txToID := func(chain *dsl.Chain, tx *gethTypes.Transaction) inbox.Identifier {
-		status := chain.Sequencer.SyncStatus()
-		return inbox.Identifier{
-			Origin:      *tx.To(),
-			BlockNumber: big.NewInt(int64(status.UnsafeL2.Number + 1)),
-			LogIndex:    big.NewInt(0),
-			Timestamp:   big.NewInt(int64(status.UnsafeL2.Time + 2)),
-			ChainId:     chain.ChainID.ToBig(),
-		}
-	}
-	txToPayload := func(data []byte) []byte {
-		topic := crypto.Keccak256Hash([]byte("DataEmitted(bytes)"))
-		var msg []byte
-		msg = append(msg, topic.Bytes()...)
-		dataHash := crypto.Keccak256Hash(data)
-		msg = append(msg, dataHash.Bytes()...)
-		return msg
-	}
-
 	actors.ChainA.Sequencer.ActL2StartBlock(t)
 	actors.ChainB.Sequencer.ActL2StartBlock(t)
 
 	// create init messages
-	emitTxA, from := actEmitA(actors.ChainA)
-	require.NoError(t, actors.ChainA.SequencerEngine.EngineApi.IncludeTx(emitTxA, from))
-	emitTxB, from := actEmitB(actors.ChainB)
-	require.NoError(t, actors.ChainB.SequencerEngine.EngineApi.IncludeTx(emitTxB, from))
+	emitTxA := actEmitA(actors.ChainA)
+	emitTxA.Include()
+	emitTxB := actEmitB(actors.ChainB)
+	emitTxB.Include()
 
 	// execute them within the same block
-	actExecA := system.InboxContract.Execute(alice, txToID(actors.ChainB, emitTxB), txToPayload([]byte("world")))
-	actExecB := system.InboxContract.Execute(alice, txToID(actors.ChainA, emitTxA), txToPayload([]byte("hello")))
-	tx, from := actExecA(actors.ChainA)
-	require.NoError(t, actors.ChainA.SequencerEngine.EngineApi.IncludeTx(tx, from))
-	tx, from = actExecB(actors.ChainB)
-	require.NoError(t, actors.ChainB.SequencerEngine.EngineApi.IncludeTx(tx, from))
+	actExecA := system.InboxContract.Execute(alice, emitTxB) // Exec msg on chain A referencing chain B
+	actExecB := system.InboxContract.Execute(alice, emitTxA) // Exec msg on chain B referencing chain A
+	actExecA(actors.ChainA).Include()
+	actExecB(actors.ChainB).Include()
 
 	actors.ChainA.Sequencer.ActL2EndBlock(t)
 	actors.ChainB.Sequencer.ActL2EndBlock(t)
@@ -492,7 +468,7 @@ func TestInteropFaultProofs_CascadeInvalidBlock(gt *testing.T) {
 
 	// Create a message with a conflicting payload on chain B, that also emits an initiating message
 	system.AddL2Block(actors.ChainB, dsl.WithL2BlockTransactions(
-		system.InboxContract.Execute(alice, chainAInitTx.Identifier(), []byte("this message was never emitted")),
+		system.InboxContract.Execute(alice, chainAInitTx, dsl.WithPayload([]byte("this message was never emitted"))),
 		emitterContract.EmitMessage(alice, "chainB message"),
 	), dsl.WithL1BlockCrossUnsafe())
 	chainBExecTx := system.InboxContract.LastTransaction()
@@ -502,7 +478,7 @@ func TestInteropFaultProofs_CascadeInvalidBlock(gt *testing.T) {
 	// Create a message with a valid message on chain A, pointing to the initiating message on B from the same block
 	// as an invalid message.
 	system.AddL2Block(actors.ChainA,
-		dsl.WithL2BlockTransactions(system.InboxContract.Execute(alice, chainBInitTx.Identifier(), chainBInitTx.MessagePayload())),
+		dsl.WithL2BlockTransactions(system.InboxContract.Execute(alice, chainBInitTx)),
 		// Block becomes cross-unsafe because the init msg is currently present, but it should not become cross-safe.
 	)
 	chainAExecTx := system.InboxContract.LastTransaction()
@@ -582,7 +558,7 @@ func TestInteropFaultProofs_MessageExpiry(gt *testing.T) {
 	system.SubmitBatchData()
 
 	system.AddL2Block(actors.ChainB, func(opts *dsl.AddL2BlockOpts) {
-		opts.TransactionCreators = []dsl.TransactionCreator{system.InboxContract.Execute(alice, emitTx.Identifier(), emitTx.MessagePayload())}
+		opts.TransactionCreators = []dsl.TransactionCreator{system.InboxContract.Execute(alice, emitTx)}
 		opts.BlockIsNotCrossUnsafe = true
 	})
 	system.AddL2Block(actors.ChainA)
@@ -651,7 +627,7 @@ func TestInteropFaultProofsInvalidBlock(gt *testing.T) {
 	// Create a message with a conflicting payload
 	fakeMessage := []byte("this message was never emitted")
 	system.AddL2Block(actors.ChainB, func(opts *dsl.AddL2BlockOpts) {
-		opts.TransactionCreators = []dsl.TransactionCreator{system.InboxContract.Execute(alice, emitTx.Identifier(), fakeMessage)}
+		opts.TransactionCreators = []dsl.TransactionCreator{system.InboxContract.Execute(alice, emitTx, dsl.WithPayload(fakeMessage))}
 		opts.BlockIsNotCrossUnsafe = true
 	})
 	system.AddL2Block(actors.ChainA)

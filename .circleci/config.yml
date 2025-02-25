@@ -1498,6 +1498,7 @@ workflows:
             op-service
             op-supervisor
             op-deployer
+            op-validator
             op-e2e/system
             op-e2e/e2eutils
             op-e2e/opgeth

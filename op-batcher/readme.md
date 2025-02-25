@@ -2,17 +2,20 @@
 
 The `op-batcher` is responsible for ensuring data availability. See the [specs](https://specs.optimism.io/protocol/batcher.html).
 
-
 ## Interactions & Dependencies
+
 The `op-batcher` works together with the [sequencer](../op-node/) (which it reads unsafe blocks from), the data availability layer (e.g. Layer 1 or an [Alt DA](../op-alt-da/) layer, which it posts data to), and the [derivation pipeline](../op-node/) (which reads the data from the DA layer and progresses the safe chain).
 
 It depends directly on some code shared with the derivation pipeline, namely the [`ChannelOut`](../op-node/rollup/derive/channel_out.go) implementation(s). It also depends directly on the shared [txmgr](../op-service/txmgr/) module.
 
 ## Testing
+
 The batcher has a suite of unit test which can be triggered by running
+
 ```
 go test ./...
 ```
+
 from this directory. There are also end-to-end tests in [`op-e2e`](../op-e2e/) which integrate the batcher.
 
 ## Architecture
@@ -24,38 +27,90 @@ The architecture of this batcher implementation is shown on the left side of the
 Batch submitting (writing to the DA layer, in the middle of the diagram) works together with the derivation pipeline (on the right side of the diagram, reading from the DA layer) to progress the safe chain.
 
 The philosophy behind the current architecture is:
-* Blocks, channels and frames are kept around for as long as they might be needed, and discarded as soon as they are not needed. They are not moved from one part of state to another.
-* We retain block data in a strict order for as long as necessary. We only garbage collect frames, channels and blocks when the safe head moves sufficiently and those structures have done their job.
-* When something goes wrong, we rewind the state cursors by the minimal amount we need to get going again.
 
+- Blocks, channels and frames are kept around for as long as they might be needed, and discarded as soon as they are not needed. They are not moved from one part of state to another.
+- We retain block data in a strict order for as long as necessary. We only garbage collect frames, channels and blocks when the safe head moves sufficiently and those structures have done their job.
+- When something goes wrong, we rewind the state cursors by the minimal amount we need to get going again.
 
-### Happy path
+### Routines
 
-In the happy path, the batcher periodically:
-0. Queries the sequencer's syncStatus and
-  a. (optionally) waits for it to ingest more L1 data before taking action
-  b. prunes blocks and channels from its internal state which are no longer required
-1. Enqueues unsafe blocks and dequeues safe blocks from the sequencer to its internal state.
+The batcher has up to 4 concurrent routines:
+
+The `blockLoadingLoop`, which (in the happy path)
+
+1. Queries the sequencer's syncStatus and
+   a. (optionally) waits for it to ingest more L1 data before taking action
+   b. prunes blocks and channels from its internal state which are no longer required
+2. Enqueues unsafe blocks and dequeues safe blocks from the sequencer to the batcher's internal state.
+3. Signals to the `publishingLoop` and to the `throttlingLoop` when new blocks are loaded
+
+The `publishingLoop` which
+
+1. Waits for a signal from the `blockLoadingLoop`
 2. Enqueues a new channel, if necessary.
 3. Processes some unprocessed blocks into the current channel, triggers the compression of the block data and the creation of frames.
 4. Sends frames from the channel queue to the DA layer as (e.g. to Ethereum L1 as calldata or blob transactions).
-5. If there is more transaction data to send, go to 2. Else wait for a tick and go to 0.
+5. If there is more transaction data to send, go to 2. Else go to 1.
 
+The `receiptsLoop` which
+
+1. Receives receipts from handlers spawned by the `publishingLoop`.
+2. Updates metrics
+3. (Conditionally) Modifies the batcher state to cope when a channel times out on chain (see below).
+
+The `throttlingLoop` which
+
+1. Waits for a signal either from the `blockLoadingLoop` or from the active sequencer endpoint provider (if more than one sequencer endpoint is provided)
+2. If it detects that the pending data in state is over a threshold, calls the sequencer over RPC and tells it to throttle the amount of L2 data it produces. See the (section below)[#data-availability-backlog]
+
+The relationships are shown in this diagram:
+
+```mermaid
+architecture-beta
+
+    service seq(database)[Sequencer]
+    service dalayer(cloud)[DA Layer]
+
+    group bs(server)[BatchSubmitter]
+    service blockLoadingLoop(server)[blockLoadingLoop] in bs
+    service publishingLoop(server)[publishingLoop] in bs
+    service receiptsLoop(server)[receiptsLoop] in bs
+    service throttlingLoop(server)[throttlingLoop] in bs
+
+    group h(server)[x N] in bs
+    service handler(server)[handler] in h
+
+    blockLoadingLoop:R --> L:publishingLoop
+    blockLoadingLoop:B --> T:throttlingLoop
+    publishingLoop:R -- L:handler{group}
+    handler{group}:B --> T:receiptsLoop
+
+    seq:R -->L:blockLoadingLoop
+    seq:B <--L:throttlingLoop
+
+    publishingLoop:T --> B:dalayer
+    handler:T <--R:dalayer
+```
+
+### State variables
 
 The `blockCursor` state variable tracks the next unprocessed block.
 In each channel, the `frameCursor` tracks the next unsent frame.
 
-
 ### Reorgs
+
 When an L2 unsafe reorg is detected, the batch submitter will reset its state, and wait for any in flight transactions to be ingested by the verifier nodes before starting work again.
 
 ### Tx Failed
+
 When a Tx fails, an asynchronous receipts handler is triggered. The channel from whence the Tx's frames came has its `frameCursor` rewound, so that all the frames can be resubmitted in order.
 
 ### Channel Times Out
+
 When a Tx is confirmed, an asynchronous receipts handler is triggered. We only update the batcher's state if the channel timed out on chain. In that case, the `blockCursor` is rewound to the first block added to that channel, and the channel queue is cleared out. This allows the batcher to start fresh building a new channel starting from the same block -- it does not need to refetch blocks from the sequencer.
 
 ## Design Principles and Optimization Targets
+
 At the current time, the batcher should be optimized for correctness, simplicity and robustness. It is considered preferable to prioritize these properties, even at the expense of other potentially desirable properties such as frugality. For example, it is preferable to have the batcher resubmit some data from time to time ("wasting" money on data availability costs) instead of avoiding that by e.g. adding some persistent state to the batcher.
 
 The batcher can almost always recover from unforeseen situations by being restarted.
@@ -82,6 +137,7 @@ block builder to instead impose a (tighter) block level limit of OP_BATCHER_THRO
 transaction limit of OP_BATCHER_THROTTLE_TRANSACTION_SIZE.
 
 ### Max Channel Duration
+
 The batcher tries to ensure that batches are posted at a minimum frequency specified by `MAX_CHANNEL_DURATION`. To achieve this, it caches the l1 origin of the last submitted channel, and will force close a channel if the timestamp of the l1 head moves beyond the timestamp of that l1 origin plus `MAX_CHANNEL_DURATION`. When clearing its state, e.g. following the detection of a reorg, the batcher will not clear the cached l1 origin: this way, the regular posting of batches will not be disturbed by events like reorgs.
 
 ## Known issues and future work

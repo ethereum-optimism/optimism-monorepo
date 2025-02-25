@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/sources/artifact"
+	ktfs "github.com/ethereum-optimism/optimism/devnet-sdk/kt/fs"
 	"github.com/ethereum-optimism/optimism/op-chain-ops/devkeys"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -34,7 +34,7 @@ func getMnemonics(r io.Reader) (string, error) {
 	return config[0].Mnemonic, nil
 }
 
-func (d *Deployer) getKnownWallets(ctx context.Context, fs *artifact.EnclaveFS) ([]*Wallet, error) {
+func (d *Deployer) getKnownWallets(ctx context.Context, fs *ktfs.EnclaveFS) ([]*Wallet, error) {
 	a, err := fs.GetArtifact(ctx, d.genesisArtifactName)
 	if err != nil {
 		return nil, err
@@ -42,7 +42,7 @@ func (d *Deployer) getKnownWallets(ctx context.Context, fs *artifact.EnclaveFS) 
 
 	mnemonicsBuffer := bytes.NewBuffer(nil)
 	if err := a.ExtractFiles(
-		artifact.NewArtifactFileWriter(d.mnemonicsName, mnemonicsBuffer),
+		ktfs.NewArtifactFileWriter(d.mnemonicsName, mnemonicsBuffer),
 	); err != nil {
 		return nil, err
 	}

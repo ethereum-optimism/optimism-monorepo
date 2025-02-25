@@ -34,8 +34,8 @@ func (s *system) L1() Chain {
 	return s.l1
 }
 
-func (s *system) L2(chainID uint64) Chain {
-	return s.l2s[chainID]
+func (s *system) L2s() []Chain {
+	return s.l2s
 }
 
 func (s *system) Identifier() string {

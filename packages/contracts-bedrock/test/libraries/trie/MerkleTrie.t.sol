@@ -7,12 +7,20 @@ import { RLPReader } from "src/libraries/rlp/RLPReader.sol";
 import { FFIInterface } from "test/setup/FFIInterface.sol";
 import "src/libraries/rlp/RLPErrors.sol";
 
+contract MerkleTrie_Harness {
+    function exposed_get(bytes memory _key, bytes[] memory _proof, bytes32 _root) public pure returns (bytes memory) {
+        return MerkleTrie.get(_key, _proof, _root);
+    }
+}
+
 contract MerkleTrie_get_Test is Test {
     FFIInterface constant ffi = FFIInterface(address(uint160(uint256(keccak256(abi.encode("optimism.ffi"))))));
+    MerkleTrie_Harness harness;
 
     function setUp() public {
         vm.etch(address(ffi), vm.getDeployedCode("FFIInterface.sol:FFIInterface"));
         vm.label(address(ffi), "FFIInterface");
+        harness = new MerkleTrie_Harness();
     }
 
     function test_get_validProof1_succeeds() external pure {
@@ -150,7 +158,7 @@ contract MerkleTrie_get_Test is Test {
         proof[2] = hex"ca83206262856176616c32";
 
         vm.expectRevert("MerkleTrie: path remainder must share all nibbles with key");
-        MerkleTrie.get(key, proof, root);
+        harness.exposed_get(key, proof, root);
     }
 
     function test_get_nonexistentKey2_reverts() external {
@@ -160,7 +168,7 @@ contract MerkleTrie_get_Test is Test {
         proof[0] = hex"e68416b65793a03101b4447781f1e6c51ce76c709274fc80bd064f3a58ff981b6015348a826386";
 
         vm.expectRevert("MerkleTrie: path remainder must share all nibbles with key");
-        MerkleTrie.get(key, proof, root);
+        harness.exposed_get(key, proof, root);
     }
 
     function test_get_wrongKeyProof_reverts() external {
@@ -173,7 +181,7 @@ contract MerkleTrie_get_Test is Test {
         proof[2] = hex"d687206e6f746865728d33343938683472697568677765";
 
         vm.expectRevert("MerkleTrie: invalid internal node hash");
-        MerkleTrie.get(key, proof, root);
+        harness.exposed_get(key, proof, root);
     }
 
     function test_get_corruptedProof_reverts() external {
@@ -189,7 +197,7 @@ contract MerkleTrie_get_Test is Test {
         proof[4] = hex"ca83206262856176616c32";
 
         vm.expectRevert(UnexpectedString.selector);
-        MerkleTrie.get(key, proof, root);
+        harness.exposed_get(key, proof, root);
     }
 
     function test_get_invalidDataRemainder_reverts() external {
@@ -201,7 +209,7 @@ contract MerkleTrie_get_Test is Test {
         proof[2] = hex"c32081aa000000000000000000000000000000";
 
         vm.expectRevert(InvalidDataRemainder.selector);
-        MerkleTrie.get(key, proof, root);
+        harness.exposed_get(key, proof, root);
     }
 
     function test_get_invalidInternalNodeHash_reverts() external {
@@ -214,7 +222,7 @@ contract MerkleTrie_get_Test is Test {
         proof[2] = hex"de2a9c6a46b6ea71ab9e881c8420570cf19e833c85df6026b04f085016e78f";
 
         vm.expectRevert("MerkleTrie: invalid internal node hash");
-        MerkleTrie.get(key, proof, root);
+        harness.exposed_get(key, proof, root);
     }
 
     function test_get_zeroBranchValueLength_reverts() external {
@@ -225,7 +233,7 @@ contract MerkleTrie_get_Test is Test {
         proof[1] = hex"d98080808080808080808080c43b82aabbc43c82aacc80808080";
 
         vm.expectRevert("MerkleTrie: value length must be greater than zero (branch)");
-        MerkleTrie.get(key, proof, root);
+        harness.exposed_get(key, proof, root);
     }
 
     function test_get_zeroLengthKey_reverts() external {
@@ -235,7 +243,7 @@ contract MerkleTrie_get_Test is Test {
         proof[0] = hex"c78320f00082b443";
 
         vm.expectRevert("MerkleTrie: empty key");
-        MerkleTrie.get(key, proof, root);
+        harness.exposed_get(key, proof, root);
     }
 
     function test_get_smallerPathThanKey1_reverts() external {
@@ -247,7 +255,7 @@ contract MerkleTrie_get_Test is Test {
         proof[2] = hex"c582202381aa";
 
         vm.expectRevert("MerkleTrie: path remainder must share all nibbles with key");
-        MerkleTrie.get(key, proof, root);
+        harness.exposed_get(key, proof, root);
     }
 
     function test_get_smallerPathThanKey2_reverts() external {
@@ -260,7 +268,7 @@ contract MerkleTrie_get_Test is Test {
         proof[2] = hex"e48200bba0a6911545ed01c2d3f4e15b8b27c7bfba97738bd5e6dd674dd07033428a4c53af";
 
         vm.expectRevert("MerkleTrie: path remainder must share all nibbles with key");
-        MerkleTrie.get(key, proof, root);
+        harness.exposed_get(key, proof, root);
     }
 
     function test_get_extraProofElements_reverts() external {
@@ -273,7 +281,7 @@ contract MerkleTrie_get_Test is Test {
         proof[3] = hex"c32081aa";
 
         vm.expectRevert("MerkleTrie: value node must be last node in proof (leaf)");
-        MerkleTrie.get(key, proof, root);
+        harness.exposed_get(key, proof, root);
     }
 
     /// @notice The `bytes4` parameter is to enable parallel fuzz runs; it is ignored.
@@ -292,7 +300,7 @@ contract MerkleTrie_get_Test is Test {
 
         bytes32 rootHash = keccak256(abi.encodePacked(root));
         vm.expectRevert("MerkleTrie: invalid root hash");
-        MerkleTrie.get(key, proof, rootHash);
+        harness.exposed_get(key, proof, rootHash);
     }
 
     /// @notice The `bytes4` parameter is to enable parallel fuzz runs; it is ignored.
@@ -302,7 +310,7 @@ contract MerkleTrie_get_Test is Test {
         (bytes32 root, bytes memory key,, bytes[] memory proof) = ffi.getMerkleTrieFuzzCase("extra_proof_elems");
 
         vm.expectRevert("MerkleTrie: value node must be last node in proof (leaf)");
-        MerkleTrie.get(key, proof, root);
+        harness.exposed_get(key, proof, root);
     }
 
     /// @notice The `bytes4` parameter is to enable parallel fuzz runs; it is ignored.
@@ -312,7 +320,7 @@ contract MerkleTrie_get_Test is Test {
             ffi.getMerkleTrieFuzzCase("invalid_large_internal_hash");
 
         vm.expectRevert("MerkleTrie: invalid large internal hash");
-        MerkleTrie.get(key, proof, root);
+        harness.exposed_get(key, proof, root);
     }
 
     /// @notice The `bytes4` parameter is to enable parallel fuzz runs; it is ignored.
@@ -322,7 +330,7 @@ contract MerkleTrie_get_Test is Test {
             ffi.getMerkleTrieFuzzCase("invalid_internal_node_hash");
 
         vm.expectRevert("MerkleTrie: invalid internal node hash");
-        MerkleTrie.get(key, proof, root);
+        harness.exposed_get(key, proof, root);
     }
 
     /// @notice The `bytes4` parameter is to enable parallel fuzz runs; it is ignored.
@@ -331,7 +339,7 @@ contract MerkleTrie_get_Test is Test {
         (bytes32 root, bytes memory key,, bytes[] memory proof) = ffi.getMerkleTrieFuzzCase("corrupted_proof");
 
         vm.expectRevert(UnexpectedString.selector);
-        MerkleTrie.get(key, proof, root);
+        harness.exposed_get(key, proof, root);
     }
 
     /// @notice The `bytes4` parameter is to enable parallel fuzz runs; it is ignored.
@@ -341,7 +349,7 @@ contract MerkleTrie_get_Test is Test {
         (bytes32 root, bytes memory key,, bytes[] memory proof) = ffi.getMerkleTrieFuzzCase("invalid_data_remainder");
 
         vm.expectRevert(InvalidDataRemainder.selector);
-        MerkleTrie.get(key, proof, root);
+        harness.exposed_get(key, proof, root);
     }
 
     /// @notice The `bytes4` parameter is to enable parallel fuzz runs; it is ignored.
@@ -353,7 +361,7 @@ contract MerkleTrie_get_Test is Test {
         // Ambiguous revert check- all that we care is that it *does* fail. This case may
         // fail within different branches.
         vm.expectRevert(); // nosemgrep: sol-safety-expectrevert-no-args
-        MerkleTrie.get(key, proof, root);
+        harness.exposed_get(key, proof, root);
     }
 
     /// @notice The `bytes4` parameter is to enable parallel fuzz runs; it is ignored.
@@ -362,7 +370,7 @@ contract MerkleTrie_get_Test is Test {
         (bytes32 root, bytes memory key,, bytes[] memory proof) = ffi.getMerkleTrieFuzzCase("empty_key");
 
         vm.expectRevert("MerkleTrie: empty key");
-        MerkleTrie.get(key, proof, root);
+        harness.exposed_get(key, proof, root);
     }
 
     /// @notice The `bytes4` parameter is to enable parallel fuzz runs; it is ignored.
@@ -371,7 +379,7 @@ contract MerkleTrie_get_Test is Test {
         (bytes32 root, bytes memory key,, bytes[] memory proof) = ffi.getMerkleTrieFuzzCase("partial_proof");
 
         vm.expectRevert("MerkleTrie: ran out of proof elements");
-        MerkleTrie.get(key, proof, root);
+        harness.exposed_get(key, proof, root);
     }
 
     /// @notice Tests that `get` reverts if a proof node has an unknown prefix
@@ -387,7 +395,7 @@ contract MerkleTrie_get_Test is Test {
             prefix = uint8(bound(prefix, 0x40, 0xff));
         }
 
-        MerkleTrieWrapper wrapper = new MerkleTrieWrapper();
+        MerkleTrie_Harness wrapper = new MerkleTrie_Harness();
 
         bytes memory key = abi.encodePacked(
             keccak256(abi.encodePacked(bytes32(0xa15bc60c955c405d20d9149c709e2460f1c2d9a497496a7f46004d1772c3054c)))
@@ -412,7 +420,7 @@ contract MerkleTrie_get_Test is Test {
         (proof[0], proof[1], proof[2], proof[3], root) = rehashOtherElements(proof[4]);
 
         vm.expectRevert("MerkleTrie: received a node with an unknown prefix");
-        wrapper.get(key, proof, root);
+        wrapper.exposed_get(key, proof, root);
     }
 
     /// @notice Tests that `get` reverts if a proof node is unparsable i.e list length is not 2 or 17
@@ -422,7 +430,7 @@ contract MerkleTrie_get_Test is Test {
             listLen++;
         }
 
-        MerkleTrieWrapper wrapper = new MerkleTrieWrapper();
+        MerkleTrie_Harness wrapper = new MerkleTrie_Harness();
 
         bytes memory key = abi.encodePacked(
             keccak256(abi.encodePacked(bytes32(0xa15bc60c955c405d20d9149c709e2460f1c2d9a497496a7f46004d1772c3054c)))
@@ -443,7 +451,7 @@ contract MerkleTrie_get_Test is Test {
         bytes32 root = keccak256(proof[0]);
 
         // Should not revert
-        wrapper.get(key, proof, root);
+        wrapper.exposed_get(key, proof, root);
 
         if (listLen > 3) {
             // Node with list > 3
@@ -457,7 +465,7 @@ contract MerkleTrie_get_Test is Test {
             (proof[0], proof[1], proof[2], proof[3], root) = rehashOtherElements(proof[4]);
 
             vm.expectRevert("MerkleTrie: received an unparseable node");
-            wrapper.get(key, proof, root);
+            wrapper.exposed_get(key, proof, root);
         } else if (listLen == 1) {
             // Node with list of 1
             proof[4] = hex"e09f204dcf44e265ba93879b2da89e1b16ab48fc5eb8e31bc16b0612d6da8463f1";
@@ -465,7 +473,7 @@ contract MerkleTrie_get_Test is Test {
             (proof[0], proof[1], proof[2], proof[3], root) = rehashOtherElements(proof[4]);
 
             vm.expectRevert("MerkleTrie: received an unparseable node");
-            wrapper.get(key, proof, root);
+            wrapper.exposed_get(key, proof, root);
         } else if (listLen == 3) {
             // Node with list of 3
             proof[4] =
@@ -474,7 +482,7 @@ contract MerkleTrie_get_Test is Test {
             (proof[0], proof[1], proof[2], proof[3], root) = rehashOtherElements(proof[4]);
 
             vm.expectRevert("MerkleTrie: received an unparseable node");
-            wrapper.get(key, proof, root);
+            wrapper.exposed_get(key, proof, root);
         }
     }
 
@@ -505,11 +513,5 @@ contract MerkleTrie_get_Test is Test {
             hex"a0fe3143892366faeb9fae1117b888263afe0f74e6c73555fee53a604bf7188431a0af2c79f0dddd15d6f62e3fa60d515c44d58444ad3915c7ca4bddb31c8f148d0ca08f37a2f9093a4aee39519f3a06fe4674cc670fbbbd7a5f4eb096310b7bc1fdc9a086bd12d2031d9714130c687e6822250fa24b3147824780bea96cf8a7406c8966a03e42538ba2da8adaa0eca4550ef62de4dabde8ca06b71ac1b276ff31b67a7655a04a439f7eb6a62c77ec921139925af3359f61d16e083076e0e425583289107d7da0c453a51991b5a4c6174ddff77c0b7d9cc86f05ffda6ff523e2365f19797c7a00a06f43b7b9a118264ab4b6c24d7d3de77f39071a298426bfc27180adfca57d590da0032e0db4dcf122d4bdb1d4ec3c5df5fabd3127bcefe412cb046b7f0d80d11c9fa0560c2b8c9466b8cb5ffd600f24ea0ed9838bfdab7870d505d4387c2468d3c498a0597996e939ff8c29c9e59dc47c111e760450a9c4fe2b065825762da2a1f32495a0e3411c9af104364230c49de5a4d0802c84df18beee9778673364e1747a875622a02a6928825356d8280f361a02285af30e73889f4e55ecb63ed85c8581e07061d680"
         );
         root_ = keccak256(proof0_);
-    }
-}
-
-contract MerkleTrieWrapper {
-    function get(bytes memory key, bytes[] memory proof, bytes32 root) external pure returns (bytes memory) {
-        return MerkleTrie.get(key, proof, root);
     }
 }

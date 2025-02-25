@@ -1,0 +1,2 @@
+build:
+    go build -o bin/op-validator ./cmd/main.go

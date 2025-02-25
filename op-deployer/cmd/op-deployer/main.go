@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/clean"
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/upgrade"
 
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer"
@@ -59,6 +60,11 @@ func main() {
 			Name:        "inspect",
 			Usage:       "inspects the state of a deployment",
 			Subcommands: inspect.Commands,
+		},
+		{
+			Name:        "clean",
+			Usage:       "cleans up various things",
+			Subcommands: clean.Commands,
 		},
 	}
 	app.Writer = os.Stdout
