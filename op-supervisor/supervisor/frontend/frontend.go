@@ -17,7 +17,8 @@ type AdminBackend interface {
 
 type QueryBackend interface {
 	CheckMessage(identifier types.Identifier, payloadHash common.Hash, executingDescriptor types.ExecutingDescriptor) (types.SafetyLevel, error)
-	CheckMessages(messages []types.Message, minSafety types.SafetyLevel, executingDescriptor types.ExecutingDescriptor) error
+	CheckMessages(messages []types.Message, minSafety types.SafetyLevel) error
+	CheckMessagesV2(messages []types.Message, minSafety types.SafetyLevel, executingDescriptor types.ExecutingDescriptor) error
 	CrossDerivedToSource(ctx context.Context, chainID eth.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error)
 	LocalUnsafe(ctx context.Context, chainID eth.ChainID) (eth.BlockID, error)
 	CrossSafe(ctx context.Context, chainID eth.ChainID) (types.DerivedIDPair, error)
@@ -45,13 +46,22 @@ func (q *QueryFrontend) CheckMessage(identifier types.Identifier, payloadHash co
 	return q.Supervisor.CheckMessage(identifier, payloadHash, executingDescriptor)
 }
 
-// CheckMessages checks the safety-level of a collection of messages,
+// CheckMessagesV2 checks the safety-level of a collection of messages,
 // and returns if the minimum safety-level is met for all messages.
-func (q *QueryFrontend) CheckMessages(
+func (q *QueryFrontend) CheckMessagesV2(
 	messages []types.Message,
 	minSafety types.SafetyLevel,
 	executingDescriptor types.ExecutingDescriptor) error {
-	return q.Supervisor.CheckMessages(messages, minSafety, executingDescriptor)
+	return q.Supervisor.CheckMessagesV2(messages, minSafety, executingDescriptor)
+}
+
+// CheckMessages checks the safety-level of a collection of messages,
+// and returns if the minimum safety-level is met for all messages.
+// Deprecated: This method does not check for message expiry.
+func (q *QueryFrontend) CheckMessages(
+	messages []types.Message,
+	minSafety types.SafetyLevel) error {
+	return q.Supervisor.CheckMessages(messages, minSafety)
 }
 
 func (q *QueryFrontend) LocalUnsafe(ctx context.Context, chainID eth.ChainID) (eth.BlockID, error) {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"slices"
 	"sync/atomic"
 
@@ -453,7 +454,7 @@ func (su *SupervisorBackend) CheckMessage(identifier types.Identifier, payloadHa
 	return su.chainDBs.Safest(chainID, blockNum, logIdx)
 }
 
-func (su *SupervisorBackend) CheckMessages(
+func (su *SupervisorBackend) CheckMessagesV2(
 	messages []types.Message,
 	minSafety types.SafetyLevel,
 	executingDescriptor types.ExecutingDescriptor) error {
@@ -479,6 +480,12 @@ func (su *SupervisorBackend) CheckMessages(
 		}
 	}
 	return nil
+}
+
+func (su *SupervisorBackend) CheckMessages(
+	messages []types.Message,
+	minSafety types.SafetyLevel) error {
+	return su.CheckMessagesV2(messages, minSafety, types.ExecutingDescriptor{Timestamp: math.MaxUint64})
 }
 
 func (su *SupervisorBackend) CrossSafe(ctx context.Context, chainID eth.ChainID) (types.DerivedIDPair, error) {
