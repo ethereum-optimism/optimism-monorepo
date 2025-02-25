@@ -53,6 +53,14 @@ Versioning is enforced by CI checks:
 
 Note: Previously, the versioning scheme included `-beta.n` and `-rc.n` qualifiers. These are no longer used to reduce the amount of work required to execute this versioning system.
 
+## Deprecating Individual Contract Versioning
+
+Individual contract versioning could be deprecated when the following conditions are met:
+
+1. Every OPCM instance is registered in the superchain registry
+2. All contracts are implemented as either proxies or concrete singletons, allowing verification of governance approval through the `OPCM.Implementations` struct
+3. We have validated with ecosystem partners (such as L2Beat) that removing `version()` functions would not negatively impact their workflows
+
 ## Monorepo Contracts Release Versioning
 
 Versioning for monorepo releases works as follows:
@@ -131,3 +139,4 @@ Now there are two scenarios for the PR that merges the release branch back into 
     - In practice, this one unlikely to occur when using inheritance for feature development, as specified in [Smart Contract Feature Development](https://github.com/ethereum-optimism/design-docs/blob/main/smart-contract-feature-development.md) architecture. It's more likely that (1) is the case, and we merge the version change into the base contract.
 
 This flow also provides a dedicated branch for each release, making it easy to deploy a patch or bug fix, regardless of other changes that may have occurred on develop since the release.
+
