@@ -11,6 +11,10 @@ import (
 	"path/filepath"
 )
 
+const (
+	InteropDepSetName = "depsets.json"
+)
+
 // PrestateManifest maps prestate identifiers to their hashes
 type PrestateManifest map[string]string
 
@@ -37,7 +41,9 @@ type FileInput struct {
 
 // buildContext holds all the inputs for a build operation
 type buildContext struct {
-	files []FileInput
+	chains                 []string
+	files                  []FileInput
+	generatedInteropDepSet bool
 }
 
 // PrestateBuilderOption is a functional option for configuring a build
@@ -47,16 +53,53 @@ type PrestateBuilderOption func(*buildContext)
 func WithInteropDepSet(content io.Reader) PrestateBuilderOption {
 	return func(c *buildContext) {
 		c.files = append(c.files, FileInput{
-			Name:    "depsets.json",
+			Name:    InteropDepSetName,
 			Content: content,
 			Type:    "interop",
 		})
 	}
 }
 
+type dependency struct {
+	ChainIndex     uint32 `json:"chainIndex"`
+	ActivationTime uint64 `json:"activationTime"`
+	HistoryMinTime uint64 `json:"historyMinTime"`
+}
+
+type dependencySet struct {
+	Dependencies map[string]dependency `json:"dependencies"`
+}
+
+func generateInteropDepSet(chains []string) ([]byte, error) {
+	deps := dependencySet{
+		Dependencies: make(map[string]dependency),
+	}
+
+	for i, chain := range chains {
+		deps.Dependencies[chain] = dependency{
+			ChainIndex:     uint32(i),
+			ActivationTime: 0,
+			HistoryMinTime: 0,
+		}
+	}
+
+	json, err := json.Marshal(deps)
+	if err != nil {
+		return nil, err
+	}
+	return json, nil
+}
+
+func WithGeneratedInteropDepSet() PrestateBuilderOption {
+	return func(c *buildContext) {
+		c.generatedInteropDepSet = true
+	}
+}
+
 // WithChainConfig adds a pair of rollup and genesis config files to the build
 func WithChainConfig(chainId string, rollupContent io.Reader, genesisContent io.Reader) PrestateBuilderOption {
 	return func(c *buildContext) {
+		c.chains = append(c.chains, chainId)
 		c.files = append(c.files,
 			FileInput{
 				Name:    chainId + "-rollup.json",
@@ -83,6 +126,18 @@ func (c *PrestateBuilderClient) BuildPrestate(ctx context.Context, opts ...Prest
 
 	for _, opt := range opts {
 		opt(bc)
+	}
+
+	if bc.generatedInteropDepSet {
+		depSet, err := generateInteropDepSet(bc.chains)
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate interop dependency set: %w", err)
+		}
+		bc.files = append(bc.files, FileInput{
+			Name:    InteropDepSetName,
+			Content: bytes.NewReader(depSet),
+			Type:    "interop",
+		})
 	}
 
 	fmt.Printf("Preparing to upload %d files\n", len(bc.files))

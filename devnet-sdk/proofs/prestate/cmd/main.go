@@ -32,7 +32,7 @@ func parseChainFlag(s string) (*chainConfig, error) {
 func main() {
 	var (
 		clientURL = flag.String("url", "http://localhost:8080", "URL of the prestate builder service")
-		depset    = flag.String("depset", "", "Path to interop dependency set file")
+		interop   = flag.Bool("interop", false, "Generate interop dependency set")
 		chains    = make(chainConfigList, 0)
 	)
 
@@ -45,14 +45,8 @@ func main() {
 	// Build options list
 	opts := make([]prestate.PrestateBuilderOption, 0)
 
-	// Add depset if provided
-	if *depset != "" {
-		f, err := os.Open(*depset)
-		if err != nil {
-			log.Fatalf("Failed to open depset file: %v", err)
-		}
-		defer f.Close()
-		opts = append(opts, prestate.WithInteropDepSet(f))
+	if *interop {
+		opts = append(opts, prestate.WithGeneratedInteropDepSet())
 	}
 
 	// Add chain configs
