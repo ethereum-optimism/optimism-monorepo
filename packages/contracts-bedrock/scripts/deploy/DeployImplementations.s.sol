@@ -25,6 +25,8 @@ import { IL1CrossDomainMessenger } from "interfaces/L1/IL1CrossDomainMessenger.s
 import { IL1ERC721Bridge } from "interfaces/L1/IL1ERC721Bridge.sol";
 import { IL1StandardBridge } from "interfaces/L1/IL1StandardBridge.sol";
 import { IOptimismMintableERC20Factory } from "interfaces/universal/IOptimismMintableERC20Factory.sol";
+import { IOptimismPortalJovian } from "interfaces/L1/IOptimismPortalJovian.sol";
+import { ISystemConfigJovian } from "interfaces/L1/ISystemConfigJovian.sol";
 import { IOptimismPortalInterop } from "interfaces/L1/IOptimismPortalInterop.sol";
 import { ISystemConfigInterop } from "interfaces/L1/ISystemConfigInterop.sol";
 import { IProxyAdmin } from "interfaces/universal/IProxyAdmin.sol";
@@ -809,6 +811,60 @@ contract DeployImplementations is Script {
     function getIOContracts() public view returns (DeployImplementationsInput dii_, DeployImplementationsOutput dio_) {
         dii_ = DeployImplementationsInput(DeployUtils.toIOAddress(msg.sender, "optimism.DeployImplementationsInput"));
         dio_ = DeployImplementationsOutput(DeployUtils.toIOAddress(msg.sender, "optimism.DeployImplementationsOutput"));
+    }
+}
+
+// Using the base scripts and contracts (DeploySuperchain, DeployImplementations, DeployOPChain, and
+// the corresponding OPContractsManager) deploys a standard chain. For nonstandard and in-development
+// features we need to modify some or all of those contracts, and we do that via inheritance. Using
+// Jovian as an example, we've made the following changes to L1 contracts:
+//   - `OptimismPortalJovian is OptimismPortal`: A different portal implementation is used, and
+//     it has an additional method for retrieving the TransactionDeposited nonce.
+//   - `SystemConfigJovian is SystemConfig`: A different system config implementation is used, and
+//     it has an additional method for retrieving the ConfigUpdate nonce.
+//
+// Similar to how inheritance was used to develop the new portal and system config contracts, we use
+// inheritance to modify up to all of the deployer contracts. For this Jovian example, what this
+// means is we need:
+//   - A `DeployImplementationsJovian is DeployImplementations` that:
+//     - Deploys OptimismPortalJovian instead of OptimismPortal.
+//     - Deploys SystemConfigJovian instead of SystemConfig.
+contract DeployImplementationsJovian is DeployImplementations {
+    function deployOptimismPortalImpl(
+        DeployImplementationsInput _dii,
+        DeployImplementationsOutput _dio
+    )
+        public
+        override
+    {
+        uint256 proofMaturityDelaySeconds = _dii.proofMaturityDelaySeconds();
+        uint256 disputeGameFinalityDelaySeconds = _dii.disputeGameFinalityDelaySeconds();
+        IOptimismPortalJovian impl = IOptimismPortalJovian(
+            DeployUtils.createDeterministic({
+                _name: "OptimismPortalJovian",
+                _args: DeployUtils.encodeConstructor(
+                    abi.encodeCall(
+                        IOptimismPortalJovian.__constructor__, (proofMaturityDelaySeconds, disputeGameFinalityDelaySeconds)
+                    )
+                ),
+                _salt: _salt
+            })
+        );
+
+        vm.label(address(impl), "OptimismPortalImpl");
+        _dio.set(_dio.optimismPortalImpl.selector, address(impl));
+    }
+
+    function deploySystemConfigImpl(DeployImplementationsOutput _dio) public override {
+        ISystemConfigJovian impl = ISystemConfigJovian(
+            DeployUtils.createDeterministic({
+                _name: "SystemConfigJovian",
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(ISystemConfigJovian.__constructor__, ())),
+                _salt: _salt
+            })
+        );
+        vm.label(address(impl), "SystemConfigImpl");
+        _dio.set(_dio.systemConfigImpl.selector, address(impl));
     }
 }
 

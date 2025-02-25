@@ -8,7 +8,7 @@ import { IDisputeGameFactory } from "interfaces/dispute/IDisputeGameFactory.sol"
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 
-interface IOptimismPortal2 {
+interface IOptimismPortalJovian {
     error AlreadyFinalized();
     error BadTarget();
     error Blacklisted();
@@ -43,6 +43,7 @@ interface IOptimismPortal2 {
 
     receive() external payable;
 
+    function DEPOSIT_NONCE_SLOT() external view returns (bytes32);
     function blacklistDisputeGame(IDisputeGame _disputeGame) external;
     function checkWithdrawal(bytes32 _withdrawalHash, address _proofSubmitter) external view;
     function depositTransaction(
@@ -80,6 +81,7 @@ interface IOptimismPortal2 {
     function paused() external view returns (bool);
     function proofMaturityDelaySeconds() external view returns (uint256);
     function proofSubmitters(bytes32, uint256) external view returns (address);
+    function depositNonce() external view returns (uint64 nonce_);
     function proveWithdrawalTransaction(
         Types.WithdrawalTransaction memory _tx,
         uint256 _disputeGameIndex,

@@ -144,7 +144,7 @@ func FuzzDeriveDepositsRoundTrip(f *testing.F) {
 		receipts, expectedDeposits := fuzzReceipts(typeProvider, blockHash, MockDepositContractAddr)
 
 		// Derive our user deposits from the transaction receipts
-		derivedDeposits, err := UserDeposits(receipts, MockDepositContractAddr)
+		derivedDeposits, _, err := UserDeposits(receipts, MockDepositContractAddr, 0)
 		require.NoError(t, err)
 
 		// Ensure all deposits we derived matched what we expected to receive.
@@ -188,13 +188,13 @@ func FuzzDeriveDepositsBadVersion(f *testing.F) {
 						// Generate any topic but the deposit event versions we support.
 						// TODO: As opposed to keeping this hardcoded, a method such as IsValidVersion(v) should be
 						//  used here.
-						badTopic := DepositEventVersion0
-						for badTopic == DepositEventVersion0 {
-							typeProvider.Fuzz(&badTopic)
+						badVersion := DepositEventVersion0
+						for badVersion == DepositEventVersion0 {
+							typeProvider.Fuzz(&badVersion)
 						}
 
 						// Set our bad topic and update our state
-						log.Topics[3] = badTopic
+						log.Topics[3] = PackNonceAndVersion(0, badVersion)
 						hasBadDepositVersion = true
 					}
 				}
@@ -202,7 +202,7 @@ func FuzzDeriveDepositsBadVersion(f *testing.F) {
 		}
 
 		// Derive our user deposits from the transaction receipts
-		_, err := UserDeposits(receipts, MockDepositContractAddr)
+		_, _, err := UserDeposits(receipts, MockDepositContractAddr, 0)
 
 		// If we patched a bad deposit version this iteration, we should expect an error and not be able to proceed
 		// further

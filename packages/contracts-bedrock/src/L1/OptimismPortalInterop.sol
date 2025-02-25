@@ -2,7 +2,7 @@
 pragma solidity 0.8.15;
 
 // Contracts
-import { OptimismPortal2 } from "src/L1/OptimismPortal2.sol";
+import { OptimismPortalJovian } from "src/L1/OptimismPortalJovian.sol";
 
 // Libraries
 import { Predeploys } from "src/libraries/Predeploys.sol";
@@ -17,17 +17,17 @@ import { IL1BlockInterop, ConfigType } from "interfaces/L2/IL1BlockInterop.sol";
 /// @notice The OptimismPortal is a low-level contract responsible for passing messages between L1
 ///         and L2. Messages sent directly to the OptimismPortal have no form of replayability.
 ///         Users are encouraged to use the L1CrossDomainMessenger for a higher-level interface.
-contract OptimismPortalInterop is OptimismPortal2 {
+contract OptimismPortalInterop is OptimismPortalJovian {
     constructor(
         uint256 _proofMaturityDelaySeconds,
         uint256 _disputeGameFinalityDelaySeconds
     )
-        OptimismPortal2(_proofMaturityDelaySeconds, _disputeGameFinalityDelaySeconds)
+        OptimismPortalJovian(_proofMaturityDelaySeconds, _disputeGameFinalityDelaySeconds)
     { }
 
-    /// @custom:semver +interop-beta.1
+    /// @custom:semver +interop-beta.2
     function version() public pure override returns (string memory) {
-        return string.concat(super.version(), "+interop-beta.1");
+        return string.concat(super.version(), "+interop-beta.2");
     }
 
     /// @notice Sets static configuration options for the L2 system.
@@ -41,10 +41,9 @@ contract OptimismPortalInterop is OptimismPortal2 {
         useGas(SYSTEM_DEPOSIT_GAS_LIMIT);
 
         // Emit the special deposit transaction directly that sets the config in the L1Block predeploy contract.
-        emit TransactionDeposited(
+        _emitTransactionDeposited(
             Constants.DEPOSITOR_ACCOUNT,
             Predeploys.L1_BLOCK_ATTRIBUTES,
-            DEPOSIT_VERSION,
             abi.encodePacked(
                 uint256(0), // mint
                 uint256(0), // value

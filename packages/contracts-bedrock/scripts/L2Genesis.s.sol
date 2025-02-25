@@ -182,7 +182,12 @@ contract L2Genesis is Deployer {
         if (writeForkGenesisAllocs(_fork, Fork.HOLOCENE, _mode)) {
             return;
         }
+
         if (writeForkGenesisAllocs(_fork, Fork.ISTHMUS, _mode)) {
+            return;
+        }
+
+        if (writeForkGenesisAllocs(_fork, Fork.JOVIAN, _mode)) {
             return;
         }
     }

@@ -26,6 +26,8 @@ func FuzzParseL1InfoDepositTxDataValid(f *testing.F) {
 		typeProvider.Fuzz(&seqNr)
 		var sysCfg eth.SystemConfig
 		typeProvider.Fuzz(&sysCfg)
+		sysCfg.DepositNonce = 0
+		sysCfg.ConfigUpdateNonce = 0
 		var rollupCfg rollup.Config
 
 		// Create our deposit tx from our info

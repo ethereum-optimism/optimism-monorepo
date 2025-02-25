@@ -3,6 +3,7 @@ pragma solidity 0.8.15;
 
 // Contracts
 import { SystemConfig } from "src/L1/SystemConfig.sol";
+import { SystemConfigJovian } from "src/L1/SystemConfigJovian.sol";
 
 // Libraries
 import { StaticConfig } from "src/libraries/StaticConfig.sol";
@@ -18,7 +19,7 @@ import { ConfigType } from "interfaces/L2/IL1BlockInterop.sol";
 /// @notice The SystemConfig contract is used to manage configuration of an Optimism network.
 ///         All configuration is stored on L1 and picked up by L2 as part of the derviation of
 ///         the L2 chain.
-contract SystemConfigInterop is SystemConfig {
+contract SystemConfigInterop is SystemConfigJovian {
     /// @notice Storage slot where the dependency manager address is stored
     /// @dev    Equal to bytes32(uint256(keccak256("systemconfig.dependencymanager")) - 1)
     bytes32 internal constant DEPENDENCY_MANAGER_SLOT =
@@ -65,9 +66,9 @@ contract SystemConfigInterop is SystemConfig {
         Storage.setAddress(DEPENDENCY_MANAGER_SLOT, _dependencyManager);
     }
 
-    /// @custom:semver +interop
+    /// @custom:semver +interop-beta.1
     function version() public pure override returns (string memory) {
-        return string.concat(super.version(), "+interop");
+        return string.concat(super.version(), "+interop-beta.1");
     }
 
     /// @notice Adds a chain to the interop dependency set. Can only be called by the dependency manager.

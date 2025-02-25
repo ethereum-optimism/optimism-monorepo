@@ -32,8 +32,7 @@ func main() {
 
 	for _, ethLog := range l1Receipt.Logs {
 		if ethLog.Topics[0].String() == depositLogTopic.String() {
-
-			reconstructedDep, err := derive.UnmarshalDepositLogEvent(ethLog)
+			reconstructedDep, err := derive.UnmarshalDepositLogEventIgnoreNonce(ethLog)
 			if err != nil {
 				log.Crit("Failed to parse deposit event ", "err", err)
 			}

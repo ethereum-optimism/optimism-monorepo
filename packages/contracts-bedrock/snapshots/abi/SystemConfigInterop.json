@@ -14,6 +14,19 @@
   },
   {
     "inputs": [],
+    "name": "CONFIG_UPDATE_NONCE_SLOT",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "DISPUTE_GAME_FACTORY_SLOT",
     "outputs": [
       {
@@ -130,6 +143,19 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "VERSION_1",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "uint256",
@@ -189,6 +215,19 @@
         "internalType": "uint32",
         "name": "",
         "type": "uint32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "configUpdateNonce",
+    "outputs": [
+      {
+        "internalType": "uint64",
+        "name": "nonce_",
+        "type": "uint64"
       }
     ],
     "stateMutability": "view",
@@ -889,7 +928,7 @@
       {
         "indexed": true,
         "internalType": "uint256",
-        "name": "version",
+        "name": "nonceAndVersion",
         "type": "uint256"
       },
       {

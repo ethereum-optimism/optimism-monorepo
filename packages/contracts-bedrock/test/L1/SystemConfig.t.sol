@@ -13,7 +13,7 @@ import { IResourceMetering } from "interfaces/L1/IResourceMetering.sol";
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 
 contract SystemConfig_Init is CommonTest {
-    event ConfigUpdate(uint256 indexed version, ISystemConfig.UpdateType indexed updateType, bytes data);
+    event ConfigUpdate(uint256 indexed nonceAndVersion, ISystemConfig.UpdateType indexed updateType, bytes data);
 }
 
 contract SystemConfig_Initialize_Test is SystemConfig_Init {

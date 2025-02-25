@@ -137,7 +137,7 @@ contract OptimismPortal2_Test is CommonTest {
         assertEq(optimismPortal2.paused(), true);
     }
 
-    /// @dev Tests that `receive` successdully deposits ETH.
+    /// @dev Tests that `receive` successfully deposits ETH.
     function testFuzz_receive_succeeds(uint256 _value) external {
         uint256 balanceBefore = address(optimismPortal2).balance;
         _value = bound(_value, 0, type(uint256).max - balanceBefore);

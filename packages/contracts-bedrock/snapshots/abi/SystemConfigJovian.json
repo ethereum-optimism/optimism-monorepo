@@ -1,12 +1,20 @@
 [
   {
     "inputs": [],
-    "stateMutability": "nonpayable",
-    "type": "constructor"
+    "name": "BATCH_INBOX_SLOT",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
   },
   {
     "inputs": [],
-    "name": "BATCH_INBOX_SLOT",
+    "name": "CONFIG_UPDATE_NONCE_SLOT",
     "outputs": [
       {
         "internalType": "bytes32",
@@ -136,6 +144,19 @@
   },
   {
     "inputs": [],
+    "name": "VERSION_1",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "basefeeScalar",
     "outputs": [
       {
@@ -181,6 +202,19 @@
         "internalType": "uint32",
         "name": "",
         "type": "uint32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "configUpdateNonce",
+    "outputs": [
+      {
+        "internalType": "uint64",
+        "name": "nonce_",
+        "type": "uint64"
       }
     ],
     "stateMutability": "view",

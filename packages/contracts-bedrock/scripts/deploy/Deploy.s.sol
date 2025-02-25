@@ -20,6 +20,7 @@ import { DeploySuperchainInput, DeploySuperchain, DeploySuperchainOutput } from 
 import {
     DeployImplementationsInput,
     DeployImplementations,
+    DeployImplementationsJovian,
     DeployImplementationsInterop,
     DeployImplementationsOutput
 } from "scripts/deploy/DeployImplementations.s.sol";
@@ -198,7 +199,7 @@ contract Deploy is Deployer {
             deploySuperchain();
         }
 
-        deployImplementations({ _isInterop: cfg.useInterop() });
+        deployImplementations();
 
         // Deploy Current OPChain Contracts
         deployOpChain();
@@ -267,10 +268,7 @@ contract Deploy is Deployer {
     }
 
     /// @notice Deploy all of the implementations
-    /// @param _isInterop Whether to use interop
-    function deployImplementations(bool _isInterop) public {
-        require(_isInterop == cfg.useInterop(), "Deploy: Interop setting mismatch.");
-
+    function deployImplementations() public {
         console.log("Deploying implementations");
 
         DeployImplementations di = new DeployImplementations();
@@ -295,8 +293,10 @@ contract Deploy is Deployer {
         // I think this was a bug
         dii.set(dii.upgradeController.selector, superchainProxyAdmin.owner());
 
-        if (_isInterop) {
+        if (cfg.useInterop()) {
             di = DeployImplementations(new DeployImplementationsInterop());
+        } else if (cfg.l2GenesisJovianTimeOffset() == 0) {
+            di = DeployImplementations(new DeployImplementationsJovian());
         }
         di.run(dii, dio);
 
@@ -345,7 +345,7 @@ contract Deploy is Deployer {
             _mips: IMIPS(address(dio.mipsSingleton())),
             _superchainProxyAdmin: superchainProxyAdmin
         });
-        if (_isInterop) {
+        if (cfg.useInterop()) {
             ChainAssertions.checkSystemConfigInterop({ _contracts: impls, _cfg: cfg, _isProxy: false });
         } else {
             ChainAssertions.checkSystemConfig({ _contracts: impls, _cfg: cfg, _isProxy: false });

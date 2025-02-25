@@ -113,7 +113,9 @@ contract GasBenchMark_L1BlockInterop is GasBenchMark_L1Block {
             type(uint256).max,
             type(uint256).max,
             keccak256(abi.encode(1)),
-            bytes32(type(uint256).max)
+            bytes32(type(uint256).max),
+            type(uint64).max,
+            type(uint64).max
         );
     }
 }

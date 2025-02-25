@@ -53,7 +53,7 @@ func SendDepositTx(t *testing.T, cfg e2esys.SystemConfig, l1Client *ethclient.Cl
 	t.Logf("SendDepositTx: included on L1")
 
 	// Wait for transaction to be included on L2
-	reconstructedDep, err := derive.UnmarshalDepositLogEvent(l1Receipt.Logs[0])
+	reconstructedDep, err := derive.UnmarshalDepositLogEventIgnoreNonce(l1Receipt.Logs[0])
 	require.NoError(t, err, "Could not reconstruct L2 Deposit")
 	tx = types.NewTx(reconstructedDep)
 	l2Receipt, err := wait.ForReceipt(ctx, l2Client, tx.Hash(), l2Opts.ExpectedStatus)

@@ -31,7 +31,7 @@ func TestUnmarshalLogEvent(t *testing.T) {
 			log.TxIndex = uint(rng.Intn(10000))
 			log.Index = uint(source.LogIndex)
 			log.BlockHash = source.L1BlockHash
-			depOutput, err := UnmarshalDepositLogEvent(log)
+			depOutput, _, err := UnmarshalDepositLogEvent(log, 0)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -121,7 +121,7 @@ func TestDeriveUserDeposits(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			got, err := UserDeposits(receipts, MockDepositContractAddr)
+			got, _, err := UserDeposits(receipts, MockDepositContractAddr, 0)
 			require.NoError(t, err)
 			require.Equal(t, len(got), len(expectedDeposits))
 			for d, depTx := range got {

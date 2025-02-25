@@ -14,9 +14,11 @@ import { IOPPrestateUpdater } from "interfaces/L1/IOPPrestateUpdater.sol";
 import { IOptimismPortal2 } from "interfaces/L1/IOptimismPortal2.sol";
 import { IOptimismPortalInterop } from "interfaces/L1/IOptimismPortalInterop.sol";
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
+import { ISystemConfigJovian } from "interfaces/L1/ISystemConfigJovian.sol";
 import { ISystemConfigInterop } from "interfaces/L1/ISystemConfigInterop.sol";
 import { IDataAvailabilityChallenge } from "interfaces/L1/IDataAvailabilityChallenge.sol";
 import { IProtocolVersions } from "interfaces/L1/IProtocolVersions.sol";
+import { SystemConfigJovian } from "../../src/L1/SystemConfigJovian.sol";
 
 /// @title Specification_Test
 /// @dev Specifies common security properties of entrypoints to L1 contracts, including authorization and
@@ -207,6 +209,7 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "L1StandardBridge", _sel: _getSel("version()") });
 
         // OptimismPortalInterop
+        _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("DEPOSIT_NONCE_SLOT()") });
         _addSpec({
             _name: "OptimismPortalInterop",
             _sel: _getSel("depositTransaction(address,uint256,uint64,bool,bytes)")
@@ -258,11 +261,67 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("respectedGameTypeUpdatedAt()") });
         _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("proofSubmitters(bytes32,uint256)") });
         _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("numProofSubmitters(bytes32)") });
+        _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("depositNonce()") });
         _addSpec({
             _name: "OptimismPortalInterop",
             _sel: IOptimismPortalInterop.setConfig.selector,
             _auth: Role.SYSTEMCONFIGOWNER
         });
+
+        // OptimismPortalJovian
+        _addSpec({ _name: "OptimismPortalJovian", _sel: _getSel("DEPOSIT_NONCE_SLOT()") });
+        _addSpec({
+            _name: "OptimismPortalJovian",
+            _sel: _getSel("depositTransaction(address,uint256,uint64,bool,bytes)")
+        });
+        _addSpec({ _name: "OptimismPortalJovian", _sel: _getSel("donateETH()") });
+        _addSpec({
+            _name: "OptimismPortalJovian",
+            _sel: IOptimismPortal2.finalizeWithdrawalTransaction.selector,
+            _pausable: true
+        });
+        _addSpec({
+            _name: "OptimismPortalJovian",
+            _sel: IOptimismPortal2.finalizeWithdrawalTransactionExternalProof.selector,
+            _pausable: true
+        });
+        _addSpec({ _name: "OptimismPortalJovian", _sel: _getSel("finalizedWithdrawals(bytes32)") });
+        _addSpec({ _name: "OptimismPortalJovian", _sel: _getSel("guardian()") });
+        _addSpec({ _name: "OptimismPortalJovian", _sel: _getSel("initialize(address,address,address,uint32)") });
+        _addSpec({ _name: "OptimismPortalJovian", _sel: _getSel("l2Sender()") });
+        _addSpec({ _name: "OptimismPortalJovian", _sel: _getSel("minimumGasLimit(uint64)") });
+        _addSpec({ _name: "OptimismPortalJovian", _sel: _getSel("params()") });
+        _addSpec({ _name: "OptimismPortalJovian", _sel: _getSel("paused()") });
+        _addSpec({
+            _name: "OptimismPortalJovian",
+            _sel: IOptimismPortal2.proveWithdrawalTransaction.selector,
+            _pausable: true
+        });
+        _addSpec({ _name: "OptimismPortalJovian", _sel: _getSel("provenWithdrawals(bytes32,address)") });
+        _addSpec({ _name: "OptimismPortalJovian", _sel: _getSel("superchainConfig()") });
+        _addSpec({ _name: "OptimismPortalJovian", _sel: _getSel("systemConfig()") });
+        _addSpec({ _name: "OptimismPortalJovian", _sel: _getSel("version()") });
+        _addSpec({ _name: "OptimismPortalJovian", _sel: _getSel("disputeGameFactory()") });
+        _addSpec({ _name: "OptimismPortalJovian", _sel: _getSel("disputeGameBlacklist(address)") });
+        _addSpec({ _name: "OptimismPortalJovian", _sel: _getSel("respectedGameType()") });
+        // Comment out the auth to not disturb the testDeputyGuardianAuth test. This code is not meant to run in
+        // production,
+        // and will be merged into the OptimismPortal2 contract itself in the future.
+        _addSpec({
+            _name: "OptimismPortalJovian",
+            _sel: _getSel("blacklistDisputeGame(address)") /*, _auth: Role.GUARDIAN*/
+        });
+        _addSpec({
+            _name: "OptimismPortalJovian",
+            _sel: _getSel("setRespectedGameType(uint32)") /*, _auth: Role.GUARDIAN*/
+        });
+        _addSpec({ _name: "OptimismPortalJovian", _sel: _getSel("checkWithdrawal(bytes32,address)") });
+        _addSpec({ _name: "OptimismPortalJovian", _sel: _getSel("proofMaturityDelaySeconds()") });
+        _addSpec({ _name: "OptimismPortalJovian", _sel: _getSel("disputeGameFinalityDelaySeconds()") });
+        _addSpec({ _name: "OptimismPortalJovian", _sel: _getSel("respectedGameTypeUpdatedAt()") });
+        _addSpec({ _name: "OptimismPortalJovian", _sel: _getSel("proofSubmitters(bytes32,uint256)") });
+        _addSpec({ _name: "OptimismPortalJovian", _sel: _getSel("numProofSubmitters(bytes32)") });
+        _addSpec({ _name: "OptimismPortalJovian", _sel: _getSel("depositNonce()") });
 
         // OptimismPortal2
         _addSpec({ _name: "OptimismPortal2", _sel: _getSel("depositTransaction(address,uint256,uint64,bool,bytes)") });
@@ -392,6 +451,81 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "SystemConfig", _sel: _getSel("maximumGasLimit()") });
         _addSpec({ _name: "SystemConfig", _sel: _getSel("getAddresses()") });
 
+        // SystemConfigJovian
+        _addSpec({ _name: "SystemConfigJovian", _sel: _getSel("UNSAFE_BLOCK_SIGNER_SLOT()") });
+        _addSpec({ _name: "SystemConfigJovian", _sel: _getSel("START_BLOCK_SLOT()") });
+        _addSpec({ _name: "SystemConfigJovian", _sel: _getSel("VERSION()") });
+        _addSpec({ _name: "SystemConfigJovian", _sel: _getSel("batcherHash()") });
+        _addSpec({ _name: "SystemConfigJovian", _sel: _getSel("gasLimit()") });
+        _addSpec({ _name: "SystemConfigJovian", _sel: _getSel("eip1559Denominator()") });
+        _addSpec({ _name: "SystemConfigJovian", _sel: _getSel("eip1559Elasticity()") });
+        _addSpec({ _name: "SystemConfigJovian", _sel: ISystemConfig.initialize.selector });
+        _addSpec({ _name: "SystemConfigJovian", _sel: ISystemConfigJovian.minimumGasLimit.selector });
+        _addSpec({ _name: "SystemConfigJovian", _sel: _getSel("overhead()") });
+        _addSpec({ _name: "SystemConfigJovian", _sel: _getSel("owner()") });
+        _addSpec({ _name: "SystemConfigJovian", _sel: _getSel("renounceOwnership()"), _auth: Role.SYSTEMCONFIGOWNER });
+        _addSpec({ _name: "SystemConfigJovian", _sel: ISystemConfigJovian.resourceConfig.selector });
+        _addSpec({ _name: "SystemConfigJovian", _sel: _getSel("scalar()") });
+        _addSpec({
+            _name: "SystemConfigJovian",
+            _sel: ISystemConfigJovian.setBatcherHash.selector,
+            _auth: Role.SYSTEMCONFIGOWNER
+        });
+        _addSpec({
+            _name: "SystemConfigJovian",
+            _sel: ISystemConfigJovian.setGasConfig.selector,
+            _auth: Role.SYSTEMCONFIGOWNER
+        });
+        _addSpec({
+            _name: "SystemConfigJovian",
+            _sel: ISystemConfigJovian.setGasLimit.selector,
+            _auth: Role.SYSTEMCONFIGOWNER
+        });
+        _addSpec({
+            _name: "SystemConfigJovian",
+            _sel: ISystemConfigJovian.setEIP1559Params.selector,
+            _auth: Role.SYSTEMCONFIGOWNER
+        });
+        _addSpec({
+            _name: "SystemConfigJovian",
+            _sel: ISystemConfigJovian.setUnsafeBlockSigner.selector,
+            _auth: Role.SYSTEMCONFIGOWNER
+        });
+        _addSpec({
+            _name: "SystemConfigJovian",
+            _sel: _getSel("transferOwnership(address)"),
+            _auth: Role.SYSTEMCONFIGOWNER
+        });
+        _addSpec({ _name: "SystemConfigJovian", _sel: ISystemConfigJovian.unsafeBlockSigner.selector });
+        _addSpec({ _name: "SystemConfigJovian", _sel: _getSel("version()") });
+        _addSpec({ _name: "SystemConfigJovian", _sel: _getSel("l1CrossDomainMessenger()") });
+        _addSpec({ _name: "SystemConfigJovian", _sel: _getSel("l1ERC721Bridge()") });
+        _addSpec({ _name: "SystemConfigJovian", _sel: _getSel("l1StandardBridge()") });
+        _addSpec({ _name: "SystemConfigJovian", _sel: _getSel("optimismPortal()") });
+        _addSpec({ _name: "SystemConfigJovian", _sel: _getSel("optimismMintableERC20Factory()") });
+        _addSpec({ _name: "SystemConfigJovian", _sel: _getSel("batchInbox()") });
+        _addSpec({ _name: "SystemConfigJovian", _sel: _getSel("startBlock()") });
+        _addSpec({ _name: "SystemConfigJovian", _sel: _getSel("L1_CROSS_DOMAIN_MESSENGER_SLOT()") });
+        _addSpec({ _name: "SystemConfigJovian", _sel: _getSel("L1_ERC_721_BRIDGE_SLOT()") });
+        _addSpec({ _name: "SystemConfigJovian", _sel: _getSel("L1_STANDARD_BRIDGE_SLOT()") });
+        _addSpec({ _name: "SystemConfigJovian", _sel: _getSel("OPTIMISM_PORTAL_SLOT()") });
+        _addSpec({ _name: "SystemConfigJovian", _sel: _getSel("OPTIMISM_MINTABLE_ERC20_FACTORY_SLOT()") });
+        _addSpec({ _name: "SystemConfigJovian", _sel: _getSel("BATCH_INBOX_SLOT()") });
+        _addSpec({ _name: "SystemConfigJovian", _sel: _getSel("DISPUTE_GAME_FACTORY_SLOT()") });
+        _addSpec({ _name: "SystemConfigJovian", _sel: _getSel("disputeGameFactory()") });
+        _addSpec({
+            _name: "SystemConfigJovian",
+            _sel: _getSel("setGasConfigEcotone(uint32,uint32)"),
+            _auth: Role.SYSTEMCONFIGOWNER
+        });
+        _addSpec({ _name: "SystemConfigJovian", _sel: _getSel("basefeeScalar()") });
+        _addSpec({ _name: "SystemConfigJovian", _sel: _getSel("blobbasefeeScalar()") });
+        _addSpec({ _name: "SystemConfigJovian", _sel: _getSel("maximumGasLimit()") });
+        _addSpec({ _name: "SystemConfigJovian", _sel: _getSel("CONFIG_UPDATE_NONCE_SLOT()") });
+        _addSpec({ _name: "SystemConfigJovian", _sel: _getSel("VERSION_1()") });
+        _addSpec({ _name: "SystemConfigJovian", _sel: _getSel("configUpdateNonce()") });
+        _addSpec({ _name: "SystemConfigJovian", _sel: _getSel("getAddresses()") });
+
         // SystemConfigInterop
         _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("UNSAFE_BLOCK_SIGNER_SLOT()") });
         _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("START_BLOCK_SLOT()") });
@@ -463,6 +597,9 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("basefeeScalar()") });
         _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("blobbasefeeScalar()") });
         _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("maximumGasLimit()") });
+        _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("CONFIG_UPDATE_NONCE_SLOT()") });
+        _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("VERSION_1()") });
+        _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("configUpdateNonce()") });
         _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("addDependency(uint256)"), _auth: Role.DEPENDENCYMANAGER });
         _addSpec({
             _name: "SystemConfigInterop",

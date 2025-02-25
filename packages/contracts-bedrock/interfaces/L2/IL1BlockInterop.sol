@@ -23,6 +23,8 @@ interface IL1BlockInterop {
     function batcherHash() external view returns (bytes32);
     function blobBaseFee() external view returns (uint256);
     function blobBaseFeeScalar() external view returns (uint32);
+    function depositNonce() external view returns (uint64);
+    function configUpdateNonce() external view returns (uint64);
     function dependencySetSize() external view returns (uint8);
     function depositsComplete() external;
     function gasPayingToken() external pure returns (address addr_, uint8 decimals_);
@@ -49,6 +51,7 @@ interface IL1BlockInterop {
     )
         external;
     function setL1BlockValuesEcotone() external;
+    function setL1BlockValuesJovian() external;
     function setL1BlockValuesInterop() external;
     function timestamp() external view returns (uint64);
     function version() external pure returns (string memory);

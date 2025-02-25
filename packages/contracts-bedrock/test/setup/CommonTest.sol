@@ -33,6 +33,7 @@ contract CommonTest is Test, Setup, Events {
     FFIInterface constant ffi = FFIInterface(address(uint160(uint256(keccak256(abi.encode("optimism.ffi"))))));
 
     bool useAltDAOverride;
+    bool useJovianOverride;
     bool useInteropOverride;
 
     /// @dev This value is only used in forked tests. During forked tests, the default is to perform the upgrade before
@@ -63,6 +64,9 @@ contract CommonTest is Test, Setup, Events {
         if (useAltDAOverride) {
             deploy.cfg().setUseAltDA(true);
         }
+        if (useJovianOverride) {
+            deploy.cfg().setL2GenesisJovianTimeOffset(0);
+        }
         if (useInteropOverride) {
             deploy.cfg().setUseInterop(true);
         }
@@ -72,7 +76,7 @@ contract CommonTest is Test, Setup, Events {
 
         if (isForkTest()) {
             // Skip any test suite which uses a nonstandard configuration.
-            if (useAltDAOverride || useInteropOverride) {
+            if (useAltDAOverride || useJovianOverride || useInteropOverride) {
                 vm.skip(true);
             }
         } else {
@@ -172,6 +176,25 @@ contract CommonTest is Test, Setup, Events {
         emit TransactionDeposited(_from, _to, 0, abi.encodePacked(_mint, _value, _gasLimit, _isCreation, _data));
     }
 
+    /// @dev Helper function that wraps `TransactionDeposited` event.
+    ///      The magic `nonce << 128 | 1` is the nonce | version.
+    function emitTransactionDepositedJovian(
+        address _from,
+        address _to,
+        uint256 _mint,
+        uint256 _value,
+        uint64 _gasLimit,
+        bool _isCreation,
+        bytes memory _data,
+        uint64 _nonce
+    )
+        internal
+    {
+        emit TransactionDeposited(
+            _from, _to, uint256(_nonce) << 128 | 1, abi.encodePacked(_mint, _value, _gasLimit, _isCreation, _data)
+        );
+    }
+
     /// @dev Checks if the system has already been deployed, based off of the heuristic that alice and bob have not been
     ///      set by the `setUp` function yet.
     function _checkNotDeployed(string memory _feature) internal view {
@@ -187,6 +210,12 @@ contract CommonTest is Test, Setup, Events {
     function enableAltDA() public {
         _checkNotDeployed("altda");
         useAltDAOverride = true;
+    }
+
+    /// @dev Enables Jovian fork for testing
+    function enableJovian() public {
+        _checkNotDeployed("jovian");
+        useJovianOverride = true;
     }
 
     /// @dev Enables interoperability mode for testing

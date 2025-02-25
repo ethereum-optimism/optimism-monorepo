@@ -56,9 +56,15 @@ contract L1Block is ISemver {
     /// @notice The latest L1 blob base fee.
     uint256 public blobBaseFee;
 
-    /// @custom:semver 1.5.1-beta.6
+    /// @notice Nonce incremented for each TransactionDeposited event
+    uint64 public depositNonce;
+
+    /// @notice Nonce incremented for each ConfigUpdate event
+    uint64 public configUpdateNonce;
+
+    /// @custom:semver 1.6.0
     function version() public pure virtual returns (string memory) {
-        return "1.5.1-beta.6";
+        return "1.6.0";
     }
 
     /// @notice Returns the gas paying token, its decimals, name and symbol.
@@ -133,23 +139,7 @@ contract L1Block is ISemver {
     ///   7. _blobBaseFee        L1 blob base fee.
     ///   8. _hash               L1 blockhash.
     ///   9. _batcherHash        Versioned hash to authenticate batcher by.
-    function setL1BlockValuesEcotone() public {
-        _setL1BlockValuesEcotone();
-    }
-
-    /// @notice Updates the L1 block values for an Ecotone upgraded chain.
-    /// Params are packed and passed in as raw msg.data instead of ABI to reduce calldata size.
-    /// Params are expected to be in the following order:
-    ///   1. _baseFeeScalar      L1 base fee scalar
-    ///   2. _blobBaseFeeScalar  L1 blob base fee scalar
-    ///   3. _sequenceNumber     Number of L2 blocks since epoch start.
-    ///   4. _timestamp          L1 timestamp.
-    ///   5. _number             L1 blocknumber.
-    ///   6. _basefee            L1 base fee.
-    ///   7. _blobBaseFee        L1 blob base fee.
-    ///   8. _hash               L1 blockhash.
-    ///   9. _batcherHash        Versioned hash to authenticate batcher by.
-    function _setL1BlockValuesEcotone() internal {
+    function setL1BlockValuesEcotone() external {
         address depositor = DEPOSITOR_ACCOUNT();
         assembly {
             // Revert if the caller is not the depositor account.
@@ -165,6 +155,45 @@ contract L1Block is ISemver {
             sstore(blobBaseFee.slot, calldataload(68)) // uint256
             sstore(hash.slot, calldataload(100)) // bytes32
             sstore(batcherHash.slot, calldataload(132)) // bytes32
+        }
+    }
+
+    /// @notice Updates the L1 block values for an Jovian upgraded chain.
+    /// Params are packed and passed in as raw msg.data instead of ABI to reduce calldata size.
+    /// Params are expected to be in the following order:
+    ///   1. _baseFeeScalar      L1 base fee scalar
+    ///   2. _blobBaseFeeScalar  L1 blob base fee scalar
+    ///   3. _sequenceNumber     Number of L2 blocks since epoch start.
+    ///   4. _timestamp          L1 timestamp.
+    ///   5. _number             L1 blocknumber.
+    ///   6. _basefee            L1 base fee.
+    ///   7. _blobBaseFee        L1 blob base fee.
+    ///   8. _hash               L1 blockhash.
+    ///   9. _batcherHash        Versioned hash to authenticate batcher by.
+    ///  10. _depositNonce       Nonce of the latest TransactionDeposited event processed up to this block.
+    ///  11. _configUpdateNonce  Nonce of the latest ConfigUpdate event processed up to this block.
+    function setL1BlockValuesJovian() external {
+        _setL1BlockValuesJovian();
+    }
+
+    function _setL1BlockValuesJovian() internal {
+        address depositor = DEPOSITOR_ACCOUNT();
+        assembly {
+            // Revert if the caller is not the depositor account.
+            if xor(caller(), depositor) {
+                mstore(0x00, 0x3cc50b45) // 0x3cc50b45 is the 4-byte selector of "NotDepositor()"
+                revert(0x1C, 0x04) // returns the stored 4-byte selector from above
+            }
+            // sequencenum (uint64), blobBaseFeeScalar (uint32), baseFeeScalar (uint32)
+            sstore(sequenceNumber.slot, shr(128, calldataload(4)))
+            // number (uint64) and timestamp (uint64)
+            sstore(number.slot, shr(128, calldataload(20)))
+            sstore(basefee.slot, calldataload(36)) // uint256
+            sstore(blobBaseFee.slot, calldataload(68)) // uint256
+            sstore(hash.slot, calldataload(100)) // bytes32
+            sstore(batcherHash.slot, calldataload(132)) // bytes32
+            // depositNonce (uint64) and configUpdateNonce (uint64)
+            sstore(depositNonce.slot, shr(128, calldataload(164)))
         }
     }
 }

@@ -30,6 +30,8 @@ contract DeployConfig is Script {
     uint256 public l2GenesisFjordTimeOffset;
     uint256 public l2GenesisGraniteTimeOffset;
     uint256 public l2GenesisHoloceneTimeOffset;
+    uint256 public l2GenesisIsthmusTimeOffset;
+    uint256 public l2GenesisJovianTimeOffset;
     uint256 public maxSequencerDrift;
     uint256 public sequencerWindowSize;
     uint256 public channelTimeout;
@@ -107,6 +109,8 @@ contract DeployConfig is Script {
         l2GenesisFjordTimeOffset = _readOr(_json, "$.l2GenesisFjordTimeOffset", NULL_OFFSET);
         l2GenesisGraniteTimeOffset = _readOr(_json, "$.l2GenesisGraniteTimeOffset", NULL_OFFSET);
         l2GenesisHoloceneTimeOffset = _readOr(_json, "$.l2GenesisHoloceneTimeOffset", NULL_OFFSET);
+        l2GenesisIsthmusTimeOffset = _readOr(_json, "$.l2GenesisIsthmusTimeOffset", NULL_OFFSET);
+        l2GenesisJovianTimeOffset = _readOr(_json, "$.l2GenesisJovianTimeOffset", NULL_OFFSET);
 
         maxSequencerDrift = stdJson.readUint(_json, "$.maxSequencerDrift");
         sequencerWindowSize = stdJson.readUint(_json, "$.sequencerWindowSize");
@@ -219,6 +223,11 @@ contract DeployConfig is Script {
     /// @notice Allow the `useInterop` config to be overridden in testing environments
     function setUseInterop(bool _useInterop) public {
         useInterop = _useInterop;
+    }
+
+    /// @notice Allow the `l2GenesisJovianTimeOffset` to be overridden in testing environments
+    function setL2GenesisJovianTimeOffset(uint256 _l2GenesisJovianTimeOffset) public {
+        l2GenesisJovianTimeOffset = _l2GenesisJovianTimeOffset;
     }
 
     /// @notice Allow the `fundDevAccounts` config to be overridden.
