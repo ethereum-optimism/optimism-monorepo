@@ -66,10 +66,12 @@ test-dev *ARGS: build-go-ffi
 export sepoliaBlockNumber := "7701807"
 export mainnetBlockNumber := "21387830"
 
-export pinnedBlockNumber := env_var_or_default("FORK_BASE_CHAIN", "mainnet") match {
-    "mainnet" = $mainnetBlockNumber,
-    "sepolia" = $sepoliaBlockNumber,
-    _ = $mainnetBlockNumber  # Default to mainnet block number
+export pinnedBlockNumber := if env_var_or_default("FORK_BASE_CHAIN", "") == "mainnet" {
+    mainnetBlockNumber
+} else if env_var_or_default("FORK_BASE_CHAIN", "") == "sepolia" {
+    sepoliaBlockNumber
+} else {
+    mainnetBlockNumber
 }
 
 print-pinned-block-number:
