@@ -231,7 +231,7 @@ func TestMemoryJSON(t *testing.T) {
 	m.SetWord(8, 0xAABBCCDD)
 	dat, err := json.Marshal(m)
 	require.NoError(t, err)
-	var res Memory
+	res := NewMemory()
 	require.NoError(t, json.Unmarshal(dat, &res))
 	require.Equal(t, uint32(0xAABBCCDD), res.GetWord(8))
 }

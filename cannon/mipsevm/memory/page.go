@@ -124,3 +124,35 @@ func (p *CachedPage) MerkleizeSubtree(gindex uint64) [32]byte {
 	}
 	return p.Cache[gindex]
 }
+
+func (p *CachedPage) MerkleizeNode(addr Word, gindex uint64) [32]byte {
+	_ = p.MerkleRoot() // fill cache
+	if gindex >= PageSize/32 {
+		if gindex >= PageSize/32*2 {
+			panic("gindex too deep")
+		}
+
+		// it's pointing to a bottom node
+		nodeIndex := gindex & (PageAddrMask >> 5)
+		return *(*[32]byte)(p.Data[nodeIndex*32 : nodeIndex*32+32])
+	}
+	return p.Cache[gindex]
+}
+
+func (p *CachedPage) GenerateProof(addr Word) [][32]byte {
+	// Page-level proof
+	pageGindex := PageSize>>5 + (addr&PageAddrMask)>>5
+
+	proofs := make([][32]byte, 8)
+	proofIndex := 0
+
+	proofs[proofIndex] = p.MerkleizeSubtree(uint64(pageGindex))
+
+	for idx := pageGindex; idx > 1; idx >>= 1 {
+		sibling := idx ^ 1
+		proofIndex++
+		proofs[proofIndex] = p.MerkleizeSubtree(uint64(sibling))
+	}
+
+	return proofs
+}

@@ -118,7 +118,7 @@ func TestState_JSONCodec(t *testing.T) {
 	stateJSON, err := json.Marshal(state)
 	require.NoError(t, err)
 
-	var newState *State
+	newState := CreateEmptyState()
 	err = json.Unmarshal(stateJSON, &newState)
 	require.NoError(t, err)
 
