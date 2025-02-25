@@ -138,7 +138,7 @@ func TestPrepareReset(t *testing.T) {
 			z: eth.BlockID{Number: max},
 		}
 		pivot = i
-		node.prepareReset()
+		node.prepareResetRequest()
 		require.Equal(t, i, unsafe.Number)
 		require.Equal(t, uint64(0), safe.Number)
 		require.Equal(t, uint64(0), finalized.Number)
@@ -161,7 +161,7 @@ func TestPrepareReset(t *testing.T) {
 			z: eth.BlockID{Number: max},
 		}
 		pivot = i
-		node.prepareReset()
+		node.prepareResetRequest()
 		require.Equal(t, i, unsafe.Number)
 		require.Equal(t, i, safe.Number)
 		require.Equal(t, i, finalized.Number)

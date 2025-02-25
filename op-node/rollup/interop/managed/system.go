@@ -255,10 +255,19 @@ const (
 	ConflictingBlockRPCErrCode = -39002
 )
 
-func (m *ManagedMode) Reset(ctx context.Context, unsafe, safe, finalized eth.BlockID) error {
-	logger := m.log.New("unsafe", unsafe, "safe", safe, "finalized", finalized)
-	logger.Info("Received reset request", "unsafe", unsafe, "safe", safe, "finalized", finalized)
-
+func (m *ManagedMode) Reset(ctx context.Context, lUnsafe, xUnsafe, lSafe, xSafe, finalized eth.BlockID) error {
+	logger := m.log.New(
+		"localUnsafe", lUnsafe,
+		"crossUnsafe", xUnsafe,
+		"localSafe", lSafe,
+		"crossSafe", xSafe,
+		"finalized", finalized)
+	logger.Info("Received reset request",
+		"localUnsafe", lUnsafe,
+		"crossUnsafe", xUnsafe,
+		"localSafe", lSafe,
+		"crossSafe", xSafe,
+		"finalized", finalized)
 	verify := func(ref eth.BlockID, name string) (eth.L2BlockRef, error) {
 		result, err := m.l2.L2BlockRefByNumber(ctx, ref.Number)
 		if err != nil {
@@ -287,14 +296,20 @@ func (m *ManagedMode) Reset(ctx context.Context, unsafe, safe, finalized eth.Blo
 		return result, nil
 	}
 
-	// unsafeRef is always unused, as it is either
-	// - invalid (does not match, and therefore cannot be used for reset)
-	// - valid, in which case we will use the full unsafe chain for reset
-	_, err := verify(unsafe, "unsafe")
+	// verify all provided references
+	_, err := verify(lUnsafe, "unsafe")
 	if err != nil {
 		return err
 	}
-	safeRef, err := verify(safe, "safe")
+	xUnsafeRef, err := verify(xUnsafe, "cross-unsafe")
+	if err != nil {
+		return err
+	}
+	lSafeRef, err := verify(lSafe, "safe")
+	if err != nil {
+		return err
+	}
+	xSafeRef, err := verify(xSafe, "cross-safe")
 	if err != nil {
 		return err
 	}
@@ -304,9 +319,14 @@ func (m *ManagedMode) Reset(ctx context.Context, unsafe, safe, finalized eth.Blo
 	}
 
 	m.emitter.Emit(rollup.ForceResetEvent{
-		Unsafe:    eth.L2BlockRef{},
-		Safe:      safeRef,
-		Finalized: finalizedRef,
+		// Unsafe is not provided, because it is never considered for reset.
+		// it is either invalid, in which case we cannot reset to it,
+		// or valid, in which case we reset to the full chain.
+		// LocalUnsafe:      eth.L2BlockRef{},
+		CrossUnsafe: xUnsafeRef,
+		LocalSafe:   lSafeRef,
+		CrossSafe:   xSafeRef,
+		Finalized:   finalizedRef,
 	})
 	return nil
 }

@@ -42,7 +42,7 @@ func (ev ResetEvent) String() string {
 
 // ForceResetEvent forces a reset to a specific unsafe/safe/finalized starting point.
 type ForceResetEvent struct {
-	Unsafe, Safe, Finalized eth.L2BlockRef
+	LocalUnsafe, CrossUnsafe, LocalSafe, CrossSafe, Finalized eth.L2BlockRef
 }
 
 func (ev ForceResetEvent) String() string {

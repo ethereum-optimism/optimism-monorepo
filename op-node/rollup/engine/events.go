@@ -431,9 +431,13 @@ func (d *EngDeriver) OnEvent(ev event.Event) bool {
 		d.emitter.Emit(TryUpdateEngineEvent{})
 
 		log.Debug("Reset of Engine is completed",
-			"safeHead", x.Safe, "unsafe", x.Unsafe, "safe_timestamp", x.Safe.Time,
-			"unsafe_timestamp", x.Unsafe.Time)
-		d.emitter.Emit(EngineResetConfirmedEvent(x))
+			"safeHead", x.CrossSafe, "unsafe", x.CrossUnsafe, "safe_timestamp", x.CrossSafe.Time,
+			"unsafe_timestamp", x.CrossUnsafe.Time)
+		d.emitter.Emit(EngineResetConfirmedEvent{
+			Unsafe:    x.CrossUnsafe,
+			Safe:      x.CrossSafe,
+			Finalized: x.Finalized,
+		})
 	case PromoteUnsafeEvent:
 		// Backup unsafeHead when new block is not built on original unsafe head.
 		if d.ec.unsafeHead.Number >= x.Ref.Number {
@@ -578,16 +582,37 @@ type ResetEngineControl interface {
 	SetPendingSafeL2Head(eth.L2BlockRef)
 }
 
-// ForceEngineReset is not to be used. The op-program needs it for now, until event processing is adopted there.
 func ForceEngineReset(ec ResetEngineControl, x rollup.ForceResetEvent) {
+	// unsafe heads
 	// if the unsafe head is not provided, do not override the existing unsafe head
-	if x.Unsafe != (eth.L2BlockRef{}) {
-		ec.SetUnsafeHead(x.Unsafe)
+	if x.CrossUnsafe != (eth.L2BlockRef{}) {
+		ec.SetUnsafeHead(x.CrossUnsafe)
 	}
-	ec.SetLocalSafeHead(x.Safe)
-	ec.SetPendingSafeL2Head(x.Safe)
+	if x.LocalUnsafe != (eth.L2BlockRef{}) {
+		ec.SetLocalSafeHead(x.LocalUnsafe)
+	} else {
+		// If local unsafe is not provided, use the cross-unsafe or cross-safe
+		if x.CrossUnsafe != (eth.L2BlockRef{}) {
+			ec.SetLocalSafeHead(x.CrossUnsafe)
+		} else {
+			ec.SetCrossUnsafeHead(x.CrossSafe)
+		}
+	}
+
+	// safe heads
+	if x.LocalSafe != (eth.L2BlockRef{}) {
+		ec.SetLocalSafeHead(x.LocalSafe)
+	} else {
+		// If local safe is not provided, use the cross-safe
+		// which is more conservative than the cross-unsafe, but still safe.
+		ec.SetLocalSafeHead(x.CrossSafe)
+	}
+	// SafeHead is always CrossSafe
+	ec.SetPendingSafeL2Head(x.CrossSafe)
+	ec.SetSafeHead(x.CrossSafe)
+
+	// finalized head
 	ec.SetFinalizedHead(x.Finalized)
-	ec.SetSafeHead(x.Safe)
-	ec.SetCrossUnsafeHead(x.Safe)
+
 	ec.SetBackupUnsafeL2Head(eth.L2BlockRef{}, false)
 }

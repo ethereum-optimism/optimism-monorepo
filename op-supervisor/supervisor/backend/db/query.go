@@ -76,6 +76,14 @@ func (db *ChainsDB) IsLocalUnsafe(chainID eth.ChainID, block eth.BlockID) error 
 	return nil
 }
 
+func (db *ChainsDB) IsCrossSafe(chainID eth.ChainID, block eth.BlockID) error {
+	xdb, ok := db.crossDBs.Get(chainID)
+	if !ok {
+		return types.ErrUnknownChain
+	}
+	return xdb.ContainsDerived(block)
+}
+
 func (db *ChainsDB) IsLocalSafe(chainID eth.ChainID, block eth.BlockID) error {
 	ldb, ok := db.localDBs.Get(chainID)
 	if !ok {

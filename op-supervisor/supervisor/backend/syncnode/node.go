@@ -23,14 +23,17 @@ import (
 )
 
 type backend interface {
-	LocalSafe(ctx context.Context, chainID eth.ChainID) (pair types.DerivedIDPair, err error)
 	LocalUnsafe(ctx context.Context, chainID eth.ChainID) (eth.BlockID, error)
+	CrossUnsafe(ctx context.Context, chainID eth.ChainID) (eth.BlockID, error)
+	LocalSafe(ctx context.Context, chainID eth.ChainID) (pair types.DerivedIDPair, err error)
+	CrossSafe(ctx context.Context, chainID eth.ChainID) (pair types.DerivedIDPair, err error)
+	Finalized(ctx context.Context, chainID eth.ChainID) (eth.BlockID, error)
+
 	FindSealedBlock(ctx context.Context, chainID eth.ChainID, number uint64) (eth.BlockID, error)
 	IsLocalSafe(ctx context.Context, chainID eth.ChainID, block eth.BlockID) error
+	IsCrossSafe(ctx context.Context, chainID eth.ChainID, block eth.BlockID) error
 	IsLocalUnsafe(ctx context.Context, chainID eth.ChainID, block eth.BlockID) error
-	CrossSafe(ctx context.Context, chainID eth.ChainID) (pair types.DerivedIDPair, err error)
 	SafeDerivedAt(ctx context.Context, chainID eth.ChainID, source eth.BlockID) (derived eth.BlockID, err error)
-	Finalized(ctx context.Context, chainID eth.ChainID) (eth.BlockID, error)
 	L1BlockRefByNumber(ctx context.Context, number uint64) (eth.L1BlockRef, error)
 }
 
@@ -67,6 +70,7 @@ type ManagedNode struct {
 	ongoingReset *ongoingReset
 	resetting    atomic.Bool
 	cancelReset  atomic.Bool
+	syncReset    bool
 }
 
 var _ event.AttachEmitter = (*ManagedNode)(nil)
@@ -75,12 +79,13 @@ var _ event.Deriver = (*ManagedNode)(nil)
 func NewManagedNode(log log.Logger, id eth.ChainID, node SyncControl, backend backend, noSubscribe bool) *ManagedNode {
 	ctx, cancel := context.WithCancel(context.Background())
 	m := &ManagedNode{
-		log:     log.New("chain", id),
-		backend: backend,
-		Node:    node,
-		chainID: id,
-		ctx:     ctx,
-		cancel:  cancel,
+		log:       log.New("chain", id),
+		backend:   backend,
+		Node:      node,
+		chainID:   id,
+		ctx:       ctx,
+		cancel:    cancel,
+		syncReset: noSubscribe,
 	}
 	if !noSubscribe {
 		m.SubscribeToNodeEvents()
@@ -104,6 +109,11 @@ func (m *ManagedNode) OnEvent(ev event.Event) bool {
 		return false
 	}
 	switch x := ev.(type) {
+	case superevents.UpdateLocalSafeFailedEvent:
+		if x.ChainID != m.chainID {
+			return false
+		}
+		m.onUpdateLocalSafeFailed(x)
 	case superevents.InvalidateLocalSafeEvent:
 		if x.ChainID != m.chainID {
 			return false
@@ -259,19 +269,37 @@ func (m *ManagedNode) onResetEvent(errStr string) {
 	}
 }
 
+func (m *ManagedNode) onUpdateLocalSafeFailed(ev superevents.UpdateLocalSafeFailedEvent) {
+	switch {
+	case errors.Is(ev.Err, types.ErrConflict):
+		m.log.Warn("DB indicated a conflict, checking consistency")
+		m.resetIfInconsistent()
+	case errors.Is(ev.Err, types.ErrFuture):
+		m.log.Warn("DB indicated an update is in the future, checking if node is ahead")
+		m.resetIfAhead()
+	}
+}
+
 // OnResetReady handles a reset-ready event from the supervisor
-func (m *ManagedNode) OnResetReady(unsafe, safe, finalized eth.BlockID) {
-	m.log.Info("Reset ready event received", "unsafe", unsafe, "safe", safe, "finalized", finalized)
+// once the supervisor has determined the reset target by bisecting the search range
+func (m *ManagedNode) OnResetReady(lUnsafe, xUnsafe, lSafe, xSafe, finalized eth.BlockID) {
+	m.log.Info("Reset ready event received",
+		"localUnsafe", lUnsafe,
+		"crossUnsafe", xUnsafe,
+		"localSafe", lSafe,
+		"crossSafe", xSafe,
+		"finalized", finalized)
 	ctx, cancel := context.WithTimeout(m.ctx, nodeTimeout)
 	defer cancel()
-	if err := m.Node.Reset(ctx, unsafe, safe, finalized); err != nil {
-		m.log.Error("Failed to reset node", "err", err)
+	if err := m.Node.Reset(ctx,
+		lUnsafe, xUnsafe,
+		lSafe, xSafe,
+		finalized); err != nil {
+		m.log.Error("Failed to reset node. Checking consistency again", "err", err)
 		// if we failed to reset, immediately check consistency again
-		m.checkConsistencyWithDB()
+		m.resetIfInconsistent()
 	}
-	// reset was successful, clear the ongoing reset
-	m.resetting.Store(false)
-	m.ongoingReset = nil
+	m.endReset()
 }
 
 func (m *ManagedNode) onCrossUnsafeUpdate(seal types.BlockSeal) {
@@ -316,11 +344,8 @@ func (m *ManagedNode) onUnsafeBlock(unsafeRef eth.BlockRef) {
 		ChainID:        m.chainID,
 		NewLocalUnsafe: unsafeRef,
 	})
-	// update the last unsafe block we saw
-	// and check if it's consistent with the logs db
-	// (reset will be initiated if it's not)
 	m.lastNodeLocalUnsafe = unsafeRef.ID()
-	m.checkConsistencyWithDB()
+	m.resetIfInconsistent()
 }
 
 func (m *ManagedNode) onDerivationUpdate(pair types.DerivedBlockRefPair) {
@@ -330,11 +355,8 @@ func (m *ManagedNode) onDerivationUpdate(pair types.DerivedBlockRefPair) {
 		ChainID: m.chainID,
 		Derived: pair,
 	})
-	// update the last derived block we saw
-	// and check if it's consistent with the logs db
-	// (reset will be initiated if it's not)
 	m.lastNodeLocalSafe = pair.Derived.ID()
-	m.checkConsistencyWithDB()
+	m.resetIfInconsistent()
 }
 
 func (m *ManagedNode) onDerivationOriginUpdate(origin eth.BlockRef) {

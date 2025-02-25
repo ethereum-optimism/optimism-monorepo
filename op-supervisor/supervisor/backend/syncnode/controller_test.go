@@ -48,9 +48,9 @@ func (m *mockSyncControl) ProvideL1(ctx context.Context, ref eth.BlockRef) error
 	return nil
 }
 
-func (m *mockSyncControl) Reset(ctx context.Context, unsafe, safe, finalized eth.BlockID) error {
+func (m *mockSyncControl) Reset(ctx context.Context, lUnsafe, xUnsafe, lSafe, xSafe, finalized eth.BlockID) error {
 	if m.resetFn != nil {
-		return m.resetFn(ctx, unsafe, safe, finalized)
+		return m.resetFn(ctx, lUnsafe, lSafe, finalized)
 	}
 	return nil
 }
@@ -106,6 +106,7 @@ type mockBackend struct {
 	safeDerivedAtFn   func(ctx context.Context, chainID eth.ChainID, source eth.BlockID) (eth.BlockID, error)
 	findSealedBlockFn func(ctx context.Context, chainID eth.ChainID, num uint64) (eth.BlockID, error)
 	isLocalSafeFn     func(ctx context.Context, chainID eth.ChainID, blockID eth.BlockID) error
+	isCrossSafeFn     func(ctx context.Context, chainID eth.ChainID, blockID eth.BlockID) error
 	isLocalUnsafeFn   func(ctx context.Context, chainID eth.ChainID, blockID eth.BlockID) error
 }
 
@@ -138,6 +139,13 @@ func (m *mockBackend) IsLocalSafe(ctx context.Context, chainID eth.ChainID, bloc
 	return nil
 }
 
+func (m *mockBackend) IsCrossSafe(ctx context.Context, chainID eth.ChainID, blockID eth.BlockID) error {
+	if m.isCrossSafeFn != nil {
+		return m.isCrossSafeFn(ctx, chainID, blockID)
+	}
+	return nil
+}
+
 func (m *mockBackend) IsLocalUnsafe(ctx context.Context, chainID eth.ChainID, blockID eth.BlockID) error {
 	if m.isLocalUnsafeFn != nil {
 		return m.isLocalUnsafeFn(ctx, chainID, blockID)
@@ -161,6 +169,10 @@ func (m *mockBackend) Finalized(ctx context.Context, chainID eth.ChainID) (eth.B
 
 func (m *mockBackend) L1BlockRefByNumber(ctx context.Context, number uint64) (eth.L1BlockRef, error) {
 	return eth.L1BlockRef{}, nil
+}
+
+func (m *mockBackend) CrossUnsafe(ctx context.Context, chainID eth.ChainID) (eth.BlockID, error) {
+	return eth.BlockID{}, nil
 }
 
 var _ backend = (*mockBackend)(nil)

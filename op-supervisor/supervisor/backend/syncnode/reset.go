@@ -19,7 +19,28 @@ type ongoingReset struct {
 	z eth.BlockID
 }
 
-func (m *ManagedNode) checkConsistencyWithDB() {
+func (m *ManagedNode) resetIfAhead() {
+	ctx, cancel := context.WithTimeout(m.ctx, internalTimeout)
+	defer cancel()
+
+	// get the last local safe block
+	lastDBLocalSafe, err := m.backend.LocalSafe(ctx, m.chainID)
+	if err != nil {
+		m.log.Error("failed to get last local safe block", "err", err)
+		return
+	}
+	// if the node is ahead of the logs db, initiate a reset
+	// with the end of the range being the last safe block in the db
+	if m.lastNodeLocalSafe.Number > lastDBLocalSafe.Derived.Number {
+		m.log.Warn("local safe block on node is ahead of logs db. Initiating reset",
+			"lastNodeLocalSafe", m.lastNodeLocalSafe,
+			"lastDBLocalSafe", lastDBLocalSafe.Derived)
+		m.ongoingReset = &ongoingReset{z: lastDBLocalSafe.Derived}
+		m.beginReset()
+	}
+}
+
+func (m *ManagedNode) resetIfInconsistent() {
 	ctx, cancel := context.WithTimeout(m.ctx, internalTimeout)
 	defer cancel()
 
@@ -43,28 +64,52 @@ func (m *ManagedNode) checkConsistencyWithDB() {
 		z = m.lastNodeLocalSafe
 	}
 
-	// there is inconsistency. initiate reset
+	// there is inconsistency. begin the reset process
 	if z != (eth.BlockID{}) {
-		m.resetting.Store(true)
-		m.cancelReset.Store(false)
-		m.ongoingReset = &ongoingReset{a: eth.BlockID{}, z: z}
-		// trigger the reset asynchronously
-		go m.prepareReset()
+		m.ongoingReset = &ongoingReset{z: z}
+		m.beginReset()
 	} else {
 		m.log.Debug("no inconsistency found")
-		m.resetting.Store(false)
-		m.ongoingReset = nil
 	}
 }
 
-// prepareReset prepares the reset by bisecting the the search range
+func (m *ManagedNode) beginReset() {
+	m.resetting.Store(true)
+	m.cancelReset.Store(false)
+	// action tests may prefer to run the managed node totally synchronously
+	if m.syncReset {
+		m.prepareResetRequest()
+	} else {
+		go m.prepareResetRequest()
+	}
+}
+
+func (m *ManagedNode) endReset() {
+	m.resetting.Store(false)
+	m.cancelReset.Store(false)
+	m.ongoingReset = nil
+}
+
+// prepareResetRequest prepares the reset by bisecting the the search range
 // until the last consistent block is found. It then identifies the correct
 // unsafe, safe, and finalized blocks to target for the reset.
-func (m *ManagedNode) prepareReset() {
-	internalCtx, iCancel := context.WithTimeout(m.ctx, internalTimeout)
-	defer iCancel()
+func (m *ManagedNode) prepareResetRequest() {
 	nodeCtx, nCancel := context.WithTimeout(m.ctx, nodeTimeout)
 	defer nCancel()
+
+	// before starting bisection, check if z is already consistent (i.e. the node is ahead but otherwise consistent)
+	nodeZ, err := m.Node.BlockRefByNumber(nodeCtx, m.ongoingReset.z.Number)
+	if err != nil {
+		m.log.Error("failed to get block at end of range. cannot reset node", "err", err)
+		defer m.endReset()
+		return
+	}
+	// if z is already consistent, we can skip the bisection
+	if nodeZ.ID() == m.ongoingReset.z {
+		m.resetHeadsFromTarget(m.ongoingReset.z)
+		return
+	}
+
 	// repeatedly bisect the range until the last consistent block is found
 	for {
 		if m.cancelReset.Load() {
@@ -74,51 +119,91 @@ func (m *ManagedNode) prepareReset() {
 			return
 		}
 		if m.ongoingReset.a.Number >= m.ongoingReset.z.Number {
-			m.log.Error("no reset target found. restarting reset",
+			m.log.Error("no reset target found. cannot reset node",
 				"a", m.ongoingReset.a,
 				"z", m.ongoingReset.z)
-			// check consistency again once this function returns
-			// the reset failed, and may need to be retried
-			defer m.checkConsistencyWithDB()
+			defer m.endReset()
 			return
 		}
 		if m.ongoingReset.a.Number+1 == m.ongoingReset.z.Number {
 			break
 		}
-		err := m.bisectRecoveryRange(internalCtx, nodeCtx)
+		err := m.bisectReset()
 		if err != nil {
-			m.log.Error("failed to bisect recovery range", "err", err)
-			defer m.checkConsistencyWithDB()
+			m.log.Error("failed to bisect recovery range. cannot reset node", "err", err)
+			defer m.endReset()
 			return
 		}
 	}
-
 	// the bisection is now complete. a is the last consistent block, and z is the first inconsistent block
-	target := m.ongoingReset.a
-	m.log.Info("reset point has been found", "target", target)
-	var unsafe, safe, finalized eth.BlockID
+	m.resetHeadsFromTarget(m.ongoingReset.a)
+}
 
-	// the unsafe block is always the last block we found to be consistent
-	unsafe = target
+// resetHeadsFromTarget takes a target block and identifies the correct
+// unsafe, safe, and finalized blocks to target for the reset.
+// It then triggers the reset on the node.
+func (m *ManagedNode) resetHeadsFromTarget(target eth.BlockID) {
+	internalCtx, iCancel := context.WithTimeout(m.ctx, internalTimeout)
+	defer iCancel()
 
-	// the safe block is either the last consistent block, or the last safe block, whichever is earlier
-	lastSafe, err := m.backend.LocalSafe(internalCtx, m.chainID)
-	if err != nil {
-		m.log.Error("failed to get last safe block. cancelling reset", "err", err)
-		defer m.checkConsistencyWithDB()
+	// if the target is empty, no reset can be done
+	if target == (eth.BlockID{}) {
+		m.log.Error("no reset target found. cannot reset node")
+		defer m.endReset()
 		return
 	}
-	if lastSafe.Derived.Number < target.Number {
-		safe = lastSafe.Derived
-	} else {
-		safe = target
-	}
 
-	// the finalized block is also either the last consistent block, or the last finalized block, whichever is earlier
-	lastFinalized, err := m.backend.Finalized(internalCtx, m.chainID)
+	m.log.Info("reset target identified", "target", target)
+	var lUnsafe, xUnsafe, lSafe, xSafe, finalized eth.BlockID
+
+	// the unsafe block is always the last block we found to be consistent
+	lUnsafe = target
+
+	// all other blocks are either the last consistent block, or the last block in the db, whichever is earlier
+	// cross unsafe
+	lastXUnsafe, err := m.backend.CrossUnsafe(internalCtx, m.chainID)
 	if err != nil {
+		m.log.Error("failed to get last cross unsafe block. cancelling reset", "err", err)
+		defer m.endReset()
+		return
+	}
+	if lastXUnsafe.Number < target.Number {
+		xUnsafe = lastXUnsafe
+	} else {
+		xUnsafe = target
+	}
+	// local safe
+	lastLSafe, err := m.backend.LocalSafe(internalCtx, m.chainID)
+	if err != nil {
+		m.log.Error("failed to get last safe block. cancelling reset", "err", err)
+		defer m.endReset()
+		return
+	}
+	if lastLSafe.Derived.Number < target.Number {
+		lSafe = lastLSafe.Derived
+	} else {
+		lSafe = target
+	}
+	// cross safe
+	lastXSafe, err := m.backend.CrossSafe(internalCtx, m.chainID)
+	if err != nil {
+		m.log.Error("failed to get last cross safe block. cancelling reset", "err", err)
+		defer m.endReset()
+		return
+	}
+	if lastXSafe.Derived.Number < target.Number {
+		xSafe = lastXSafe.Derived
+	} else {
+		xSafe = target
+	}
+	// finalized
+	lastFinalized, err := m.backend.Finalized(internalCtx, m.chainID)
+	if errors.Is(err, types.ErrFuture) {
+		m.log.Warn("finalized block is not yet known", "err", err)
+		lastFinalized = eth.BlockID{}
+	} else if err != nil {
 		m.log.Error("failed to get last finalized block. cancelling reset", "err", err)
-		defer m.checkConsistencyWithDB()
+		defer m.endReset()
 		return
 	}
 	if lastFinalized.Number < target.Number {
@@ -128,15 +213,24 @@ func (m *ManagedNode) prepareReset() {
 	}
 
 	// trigger the reset
-	m.log.Info("triggering reset on node", "unsafe", unsafe, "safe", safe, "finalized", finalized)
-	m.OnResetReady(unsafe, safe, finalized)
+	m.log.Info("triggering reset on node",
+		"localUnsafe", lUnsafe,
+		"crossUnsafe", xUnsafe,
+		"localSafe", lSafe,
+		"crossSafe", xSafe,
+		"finalized", finalized)
+	m.OnResetReady(lUnsafe, xUnsafe, lSafe, xSafe, finalized)
 }
 
-// bisectRecoveryRange halves the search range for the reset point,
+// bisectReset halves the search range of the ongoing reset to narrow down
 // where the reset will target. It bisects the range and constrains either
 // the start or the end of the range, based on the consistency of the midpoint
 // with the logs db.
-func (m *ManagedNode) bisectRecoveryRange(internalCtx, nodeCtx context.Context) error {
+func (m *ManagedNode) bisectReset() error {
+	internalCtx, iCancel := context.WithTimeout(m.ctx, internalTimeout)
+	defer iCancel()
+	nodeCtx, nCancel := context.WithTimeout(m.ctx, nodeTimeout)
+	defer nCancel()
 	if m.ongoingReset == nil {
 		m.log.Error("can't progress bisection if there is no ongoing reset")
 	}

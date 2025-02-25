@@ -560,6 +560,10 @@ func (su *SupervisorBackend) IsLocalUnsafe(ctx context.Context, chainID eth.Chai
 	return su.chainDBs.IsLocalUnsafe(chainID, block)
 }
 
+func (su *SupervisorBackend) IsCrossSafe(ctx context.Context, chainID eth.ChainID, block eth.BlockID) error {
+	return su.chainDBs.IsCrossSafe(chainID, block)
+}
+
 func (su *SupervisorBackend) IsLocalSafe(ctx context.Context, chainID eth.ChainID, block eth.BlockID) error {
 	return su.chainDBs.IsLocalSafe(chainID, block)
 }

@@ -29,9 +29,9 @@ func (eq *EngDeriver) onPayloadSuccess(ev PayloadSuccessEvent) {
 		// Change the engine state to make the replacement block the cross-safe head of the chain,
 		// And continue syncing from there.
 		eq.emitter.Emit(rollup.ForceResetEvent{
-			Unsafe:    ev.Ref,
-			Safe:      ev.Ref,
-			Finalized: eq.ec.Finalized(),
+			CrossUnsafe: ev.Ref,
+			CrossSafe:   ev.Ref,
+			Finalized:   eq.ec.Finalized(),
 		})
 		eq.emitter.Emit(InteropReplacedBlockEvent{
 			Envelope: ev.Envelope,

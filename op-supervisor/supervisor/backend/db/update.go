@@ -105,6 +105,10 @@ func (db *ChainsDB) initializedUpdateLocalSafe(chain eth.ChainID, source eth.Blo
 			return
 		}
 		logger.Warn("Failed to update local safe", "err", err)
+		db.emitter.Emit(superevents.UpdateLocalSafeFailedEvent{
+			ChainID: chain,
+			Err:     err,
+		})
 		return
 	}
 	logger.Info("Updated local safe DB")

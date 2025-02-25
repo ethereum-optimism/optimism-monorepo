@@ -56,9 +56,9 @@ func (d *EngineResetDeriver) OnEvent(ev event.Event) bool {
 			return true
 		}
 		d.emitter.Emit(rollup.ForceResetEvent{
-			Unsafe:    result.Unsafe,
-			Safe:      result.Safe,
-			Finalized: result.Finalized,
+			CrossUnsafe: result.Unsafe,
+			CrossSafe:   result.Safe,
+			Finalized:   result.Finalized,
 		})
 	default:
 		return false

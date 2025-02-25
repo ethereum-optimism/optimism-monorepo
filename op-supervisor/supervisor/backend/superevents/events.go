@@ -160,3 +160,12 @@ type ChainRewoundEvent struct {
 func (ev ChainRewoundEvent) String() string {
 	return "chain-rewound"
 }
+
+type UpdateLocalSafeFailedEvent struct {
+	ChainID eth.ChainID
+	Err     error
+}
+
+func (ev UpdateLocalSafeFailedEvent) String() string {
+	return "update-local-safe-failed"
+}
