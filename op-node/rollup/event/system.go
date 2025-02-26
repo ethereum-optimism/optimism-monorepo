@@ -206,7 +206,7 @@ func (s *Sys) RemoveTracer(t Tracer) {
 	})
 }
 
-// recordDeriv records that the deriver by name [deriv] is processing event [ev].
+// recordDerivStart records that the deriver by name [deriv] is processing event [ev].
 // This returns a unique integer (during lifetime of Sys), usable as ID to reference processing.
 func (s *Sys) recordDerivStart(name string, ev AnnotatedEvent, startTime time.Time) uint64 {
 	derivContext := s.derivContext.Add(1)

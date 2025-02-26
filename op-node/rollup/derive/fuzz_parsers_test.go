@@ -107,7 +107,7 @@ func FuzzL1InfoEcotoneRoundTrip(f *testing.F) {
 	})
 }
 
-// FuzzL1InfoAgainstContract checks the custom Bedrock L1 Info marshalling functions against the
+// FuzzL1InfoBedrockAgainstContract checks the custom Bedrock L1 Info marshalling functions against the
 // setL1BlockValues contract bindings to ensure that our functions are up to date and match the
 // bindings. Note that we don't test setL1BlockValuesEcotone since it accepts only custom packed
 // calldata and cannot be invoked using the generated bindings.
