@@ -38,10 +38,10 @@ Versioning for individual contracts works as follows:
 - A contract on develop always has a version of X.Y.Z, regardless of whether is has been governance approved and meets our security bar. This DOES NOT indicate these contracts are always safe for production use. More on this below.
 - For contracts with feature-specific changes, a `+feature-name` identifier must be appended to the version number. See the [Smart Contract Feature Development](https://github.com/ethereum-optimism/design-docs/blob/main/smart-contract-feature-development.md) design document to learn more.
 - When making changes to a contract, always bump to the lowest possible version based on the specific change you are making. We do not want to e.g. optimistically bump to a major version, because protocol development sequencing may change unexpectedly. Use these examples to know how to bump the version:
-  - Example 1: A contract is currently on `1.2.3`.
+  - Example 1: A contract is currently on `1.2.3` on `develop` and you are working on a new feature on your `feature` branch off `develop`.
     - We don't yet know when the next release of this contract will be. However, you are simply fixing typos in comments so you bump the version to `1.2.4`.
-    - The next PR made to that same contract clarifies some comments, but we haven't merged to `develop` yet. The version is still `1.2.4`.
-    - The next PR introduces a breaking change, which bumps the version from `1.2.4` to `2.0.0`.
+    - The next commit to the `feature` branch clarifies some comments. We only consider the aggregated `feature` changes with regards to `develop` when determining the version, so we stay at `1.2.4`.
+    - The next commit to the `feature` branch introduces a breaking change, which bumps the version from `1.2.4` to `2.0.0`.
   - Example 2: A contract is currently on `2.4.7`.
     - We know the next release of this contract will be a breaking change. Regardless, as you start development by fixing typos in comments, bump the version to `2.4.8`. This is because we may end up putting out a release before the breaking change is added.
     - Once you start working on the breaking change, bump the version to `3.0.0`.
