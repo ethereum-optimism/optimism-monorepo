@@ -22,7 +22,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/params"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -371,7 +370,7 @@ func TestIsthmusNetworkUpgradeTransactions(gt *testing.T) {
 
 	// Test that the beacon-block-root has been set
 	checkRecentBlockHash := func(blockNumber uint64, expectedHash common.Hash, msg string) {
-		historyBufferLength := uint64(params.HistoryServeWindow) - 1
+		historyBufferLength := uint64(8191)
 		bufferIdx := common.BigToHash(new(big.Int).SetUint64(blockNumber % historyBufferLength))
 
 		rootValue, err := ethCl.StorageAt(context.Background(), predeploys.EIP2935ContractAddr, bufferIdx, nil)
