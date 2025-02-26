@@ -10,11 +10,11 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/log"
+	"github.com/ethereum/go-ethereum/params"
 
 	batcherFlags "github.com/ethereum-optimism/optimism/op-batcher/flags"
 	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/sync"
-	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
 )
 
@@ -85,9 +85,14 @@ func TestEIP4844DataAvailability(gt *testing.T) {
 
 func TestEIP4844MultiBlobs(gt *testing.T) {
 	t := helpers.NewDefaultTesting(gt)
+	// Feel free to bump to Prague when updating this test's L1 config to activate Prague
 
 	log := testlog.Logger(t, log.LevelDebug)
 	sd, dp, miner, sequencer, seqEngine, verifier, _ := setupEIP4844Test(t, log)
+	// We could use eip4844.MaxBlobsPerBlock(sd.L1Cfg.Config, sd.L1Cfg.Timestamp) here, but
+	// we don't have the L1 chain config available in the action test batcher. So we just
+	// stick to Cancun max blobs for now, which is sufficient for this test.
+	maxBlobsPerBlock := params.DefaultCancunBlobConfig.Max
 
 	batcher := setupBatcher(t, log, sd, dp, miner, sequencer, seqEngine, batcherFlags.BlobsType)
 
@@ -105,10 +110,10 @@ func TestEIP4844MultiBlobs(gt *testing.T) {
 	sequencer.ActBuildToL1Head(t)
 
 	// submit all new L2 blocks
-	batcher.ActSubmitAllMultiBlobs(t, eth.MaxBlobsPerBlobTx)
+	batcher.ActSubmitAllMultiBlobs(t, maxBlobsPerBlock)
 	batchTx := batcher.LastSubmitted
 	require.Equal(t, uint8(types.BlobTxType), batchTx.Type(), "batch tx must be blob-tx")
-	require.Len(t, batchTx.BlobTxSidecar().Blobs, eth.MaxBlobsPerBlobTx)
+	require.Len(t, batchTx.BlobTxSidecar().Blobs, maxBlobsPerBlock)
 
 	// new L1 block with L2 batch
 	miner.ActL1StartBlock(12)(t)

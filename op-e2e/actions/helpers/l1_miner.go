@@ -224,15 +224,7 @@ func (s *L1Miner) ActL1EndBlock(t Testing) *types.Block {
 	isCancun := s.l1Cfg.Config.IsCancun(s.l1BuildingHeader.Number, s.l1BuildingHeader.Time)
 	if isCancun {
 		parent := s.l1Chain.GetHeaderByHash(s.l1BuildingHeader.ParentHash)
-		var (
-			parentExcessBlobGas uint64
-			parentBlobGasUsed   uint64
-		)
-		if parent.ExcessBlobGas != nil {
-			parentExcessBlobGas = *parent.ExcessBlobGas
-			parentBlobGasUsed = *parent.BlobGasUsed
-		}
-		excessBlobGas := eip4844.CalcExcessBlobGas(parentExcessBlobGas, parentBlobGasUsed)
+		excessBlobGas := eip4844.CalcExcessBlobGas(s.l1Cfg.Config, parent, s.l1BuildingHeader.Time)
 		s.l1BuildingHeader.ExcessBlobGas = &excessBlobGas
 	}
 

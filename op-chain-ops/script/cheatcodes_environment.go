@@ -136,7 +136,7 @@ type Log struct {
 
 // SetNonce implements https://book.getfoundry.sh/cheatcodes/set-nonce
 func (c *CheatCodesPrecompile) SetNonce(account common.Address, nonce uint64) {
-	c.h.state.SetNonce(account, nonce)
+	c.h.state.SetNonce(account, nonce, tracing.NonceChangeUnspecified)
 }
 
 // GetNonce implements https://book.getfoundry.sh/cheatcodes/get-nonce
@@ -149,9 +149,9 @@ func (c *CheatCodesPrecompile) ResetNonce(addr common.Address) {
 	// Resets nonce to 0 if EOA, or 1 if contract.
 	// In scripts often set code to empty first when using it, it then becomes 0.
 	if c.h.state.GetCodeHash(addr) == types.EmptyCodeHash {
-		c.h.state.SetNonce(addr, 0)
+		c.h.state.SetNonce(addr, 0, tracing.NonceChangeUnspecified)
 	} else {
-		c.h.state.SetNonce(addr, 1)
+		c.h.state.SetNonce(addr, 1, tracing.NonceChangeUnspecified)
 	}
 }
 

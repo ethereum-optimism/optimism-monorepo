@@ -149,6 +149,8 @@ func NewL1Genesis(config *DeployConfig) (*core.Genesis, error) {
 		// To enable post-Merge consensus at genesis
 		MergeNetsplitBlock:      big.NewInt(0),
 		TerminalTotalDifficulty: big.NewInt(0),
+		// use default Ethereum prod blob schedules
+		BlobScheduleConfig: params.DefaultBlobSchedule,
 	}
 
 	gasLimit := config.L1GenesisBlockGasLimit

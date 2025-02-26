@@ -266,8 +266,8 @@ func (fst *ForkableState) GetNonce(address common.Address) uint64 {
 	return fst.stateFor(address).GetNonce(address)
 }
 
-func (fst *ForkableState) SetNonce(address common.Address, u uint64) {
-	fst.stateFor(address).SetNonce(address, u)
+func (fst *ForkableState) SetNonce(address common.Address, u uint64, reason tracing.NonceChangeReason) {
+	fst.stateFor(address).SetNonce(address, u, reason)
 }
 
 func (fst *ForkableState) GetCodeHash(address common.Address) common.Hash {
@@ -384,6 +384,10 @@ func (fst *ForkableState) AddPreimage(hash common.Hash, img []byte) {
 
 func (fst *ForkableState) Witness() *stateless.Witness {
 	return fst.selected.Witness()
+}
+
+func (fst *ForkableState) AccessEvents() *state.AccessEvents {
+	return fst.selected.AccessEvents()
 }
 
 func (fst *ForkableState) SetBalance(addr common.Address, amount *uint256.Int, reason tracing.BalanceChangeReason) {

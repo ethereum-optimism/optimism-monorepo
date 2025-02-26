@@ -134,11 +134,6 @@ func (ch *Cheater) RunAndClose(fn HeadFn) error {
 	// rawdb.WriteTxLookupEntriesByBlock(batch, block)
 	rawdb.WriteHeadBlockHash(batch, blockHash)
 
-	// Geth stores the TD for each block separately from the block itself. We must update this
-	// manually, otherwise Geth thinks we haven't reached TTD yet and tries to build a block
-	// using pre-merge consensus, which causes a panic.
-	rawdb.WriteTd(batch, blockHash, preID.Number, ch.Blockchain.GetTd(preID.Hash, preID.Number))
-
 	// Need to copy over receipts since they are keyed by block hash.
 	receipts := rawdb.ReadReceipts(ch.DB, preID.Hash, preID.Number, preHeader.Time, ch.Blockchain.Config())
 	rawdb.WriteReceipts(batch, blockHash, preID.Number, receipts)
@@ -351,7 +346,7 @@ func SetCode(addr common.Address, code hexutil.Bytes) HeadFn {
 
 func SetNonce(addr common.Address, nonce uint64) HeadFn {
 	return func(_ *types.Header, headState *state.StateDB) error {
-		headState.SetNonce(addr, nonce)
+		headState.SetNonce(addr, nonce, tracing.NonceChangeEoACall)
 		return nil
 	}
 }

@@ -169,7 +169,7 @@ func TestChannel_NextTxData_singleFrameTx(t *testing.T) {
 
 func TestChannel_NextTxData_multiFrameTx(t *testing.T) {
 	require := require.New(t)
-	const n = eth.MaxBlobsPerBlobTx
+	const n = 6
 	lgr := testlog.Logger(t, log.LevelWarn)
 	ch, err := newChannelWithChannelOut(lgr, metrics.NoopMetrics, ChannelConfig{
 		UseBlobs:        true,
