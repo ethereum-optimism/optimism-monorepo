@@ -118,8 +118,10 @@ func (st *StatusTracker) OnEvent(ev event.Event) bool {
 		st.data.SafeL2 = eth.L2BlockRef{}
 		st.data.CurrentL1 = eth.L1BlockRef{}
 	case engine.EngineResetConfirmedEvent:
-		st.data.UnsafeL2 = x.Unsafe
-		st.data.SafeL2 = x.Safe
+		st.data.UnsafeL2 = x.LocalUnsafe
+		st.data.CrossUnsafeL2 = x.CrossUnsafe
+		st.data.LocalSafeL2 = x.LocalSafe
+		st.data.SafeL2 = x.CrossSafe
 		st.data.FinalizedL2 = x.Finalized
 	default: // other events do not affect the sync status
 		return false

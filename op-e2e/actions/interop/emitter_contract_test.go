@@ -43,7 +43,7 @@ func TestEmitterContract(gt *testing.T) {
 		actors = is.CreateActors()
 		aliceA = setupUser(t, is, actors.ChainA, 0)
 		aliceB = setupUser(t, is, actors.ChainB, 0)
-		initializeChainState(t, actors)
+		actors.PrepareChainState(t)
 		emitTx = initializeEmitterContractTest(t, aliceA, actors)
 	}
 
@@ -143,25 +143,6 @@ func idForTx(t helpers.Testing, tx *types.Transaction, srcChain *dsl.Chain) inbo
 		Timestamp:   big.NewInt(int64(block.Time())),
 		ChainId:     srcChain.RollupCfg.L2ChainID,
 	}
-}
-
-func initializeChainState(t helpers.Testing, actors *dsl.InteropActors) {
-	// Initialize both chain states
-	actors.ChainA.Sequencer.ActL2PipelineFull(t)
-	actors.ChainB.Sequencer.ActL2PipelineFull(t)
-
-	// Sync supervisors
-	actors.ChainA.Sequencer.SyncSupervisor(t)
-	actors.ChainB.Sequencer.SyncSupervisor(t)
-
-	// Verify initial state
-	statusA := actors.ChainA.Sequencer.SyncStatus()
-	statusB := actors.ChainB.Sequencer.SyncStatus()
-	require.Equal(t, uint64(0), statusA.UnsafeL2.Number)
-	require.Equal(t, uint64(0), statusB.UnsafeL2.Number)
-
-	// Complete initial sync
-	actors.Supervisor.ProcessFull(t)
 }
 
 func initializeEmitterContractTest(t helpers.Testing, aliceA *userWithKeys, actors *dsl.InteropActors) *types.Transaction {

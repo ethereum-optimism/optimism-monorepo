@@ -73,6 +73,28 @@ func (m *ManagedNode) resetIfInconsistent() {
 	}
 }
 
+func (m *ManagedNode) resetIfNotAlready() {
+	if m.resetting.Load() {
+		return
+	}
+	ctx, cancel := context.WithTimeout(m.ctx, internalTimeout)
+	defer cancel()
+	last, err := m.backend.LocalUnsafe(ctx, m.chainID)
+	if err != nil {
+		m.log.Error("failed to get last local unsafe block", "err", err)
+		return
+	}
+	m.ongoingReset = &ongoingReset{z: last}
+	m.resetting.Store(true)
+
+	// action tests may prefer to run the managed node totally synchronously
+	if m.syncReset {
+		m.prepareResetRequest()
+	} else {
+		go m.prepareResetRequest()
+	}
+}
+
 func (m *ManagedNode) beginReset() {
 	m.resetting.Store(true)
 	m.cancelReset.Store(false)
@@ -90,7 +112,7 @@ func (m *ManagedNode) endReset() {
 	m.ongoingReset = nil
 }
 
-// prepareResetRequest prepares the reset by bisecting the the search range
+// prepareResetRequest prepares the reset by bisecting the search range
 // until the last consistent block is found. It then identifies the correct
 // unsafe, safe, and finalized blocks to target for the reset.
 func (m *ManagedNode) prepareResetRequest() {

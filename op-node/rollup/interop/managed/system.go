@@ -299,22 +299,27 @@ func (m *ManagedMode) Reset(ctx context.Context, lUnsafe, xUnsafe, lSafe, xSafe,
 	// verify all provided references
 	_, err := verify(lUnsafe, "unsafe")
 	if err != nil {
+		logger.Error("Cannot reset, local-unsafe block not known")
 		return err
 	}
 	xUnsafeRef, err := verify(xUnsafe, "cross-unsafe")
 	if err != nil {
+		logger.Error("Cannot reset, cross-safe block not known")
 		return err
 	}
 	lSafeRef, err := verify(lSafe, "safe")
 	if err != nil {
+		logger.Error("Cannot reset, local-safe block not known")
 		return err
 	}
 	xSafeRef, err := verify(xSafe, "cross-safe")
 	if err != nil {
+		logger.Error("Cannot reset, cross-safe block not known")
 		return err
 	}
 	finalizedRef, err := verify(finalized, "finalized")
 	if err != nil {
+		logger.Error("Cannot reset, finalized block not known")
 		return err
 	}
 
@@ -322,7 +327,7 @@ func (m *ManagedMode) Reset(ctx context.Context, lUnsafe, xUnsafe, lSafe, xSafe,
 		// Unsafe is not provided, because it is never considered for reset.
 		// it is either invalid, in which case we cannot reset to it,
 		// or valid, in which case we reset to the full chain.
-		// LocalUnsafe:      eth.L2BlockRef{},
+		LocalUnsafe: eth.L2BlockRef{},
 		CrossUnsafe: xUnsafeRef,
 		LocalSafe:   lSafeRef,
 		CrossSafe:   xSafeRef,

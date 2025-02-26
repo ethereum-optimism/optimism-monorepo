@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"io"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -264,10 +263,7 @@ func (m *ManagedNode) onNodeEvent(ev *types.ManagedEvent) {
 // onResetEvent handles a reset event from the node
 func (m *ManagedNode) onResetEvent(errStr string) {
 	m.log.Warn("Node sent us a reset error", "err", errStr)
-	if strings.Contains(errStr, "cannot continue derivation until Engine has been reset") {
-		// TODO
-		return
-	}
+	m.resetIfNotAlready()
 }
 
 func (m *ManagedNode) onUpdateLocalSafeFailed(ev superevents.UpdateLocalSafeFailedEvent) {

@@ -64,17 +64,11 @@ type InteropDSL struct {
 func NewInteropDSL(t helpers.Testing) *InteropDSL {
 	setup := SetupInterop(t)
 	actors := setup.CreateActors()
+	actors.PrepareChainState(t)
 
 	t.Logf("ChainA: %v, ChainB: %v", actors.ChainA.ChainID, actors.ChainB.ChainID)
 
 	allChains := []*Chain{actors.ChainA, actors.ChainB}
-
-	// Get all the initial events processed
-	for _, chain := range allChains {
-		chain.Sequencer.ActL2PipelineFull(t)
-		chain.Sequencer.SyncSupervisor(t)
-	}
-	actors.Supervisor.ProcessFull(t)
 
 	superRootSource, err := NewSuperRootSource(
 		t.Ctx(),

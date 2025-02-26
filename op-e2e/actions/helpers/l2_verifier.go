@@ -180,7 +180,7 @@ func NewL2Verifier(t Testing, log log.Logger, l1 derive.L1Fetcher,
 		Log:            log,
 		Ctx:            ctx,
 		Drain:          executor.Drain,
-		ManagedMode:    false,
+		ManagedMode:    managedMode,
 	}, opts)
 
 	sys.Register("engine", engine.NewEngDeriver(log, ctx, cfg, metrics, ec), opts)
