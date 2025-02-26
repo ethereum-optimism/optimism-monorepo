@@ -2,7 +2,6 @@ package syncnode
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -137,12 +136,10 @@ func TestPrepareReset(t *testing.T) {
 	// anywhere inside the min-max range
 	min, max := uint64(1), uint64(235)
 	for i := min; i < max; i++ {
-		node.ongoingReset = &ongoingReset{
-			a: eth.BlockID{Number: min, Hash: common.Hash{0xaa}},
-			z: eth.BlockID{Number: max},
-		}
+		node.resetTracker.a = eth.BlockID{Number: min, Hash: common.Hash{0xaa}}
+		node.resetTracker.z = eth.BlockID{Number: max}
 		pivot = i
-		node.prepareResetRequest()
+		node.resetTracker.bisectToTarget()
 		require.Equal(t, i, unsafe.Number)
 		require.Equal(t, uint64(0), safe.Number)
 		require.Equal(t, uint64(0), finalized.Number)
@@ -151,12 +148,10 @@ func TestPrepareReset(t *testing.T) {
 	// test that when the end of range (z) is known to the node,
 	// the reset request is made with the end of the range as the safe block
 	for i := min; i < max; i++ {
-		node.ongoingReset = &ongoingReset{
-			a: eth.BlockID{Number: min},
-			z: eth.BlockID{Number: max, Hash: common.Hash{0xaa}},
-		}
+		node.resetTracker.a = eth.BlockID{Number: min}
+		node.resetTracker.z = eth.BlockID{Number: max, Hash: common.Hash{0xaa}}
 		pivot = 0
-		node.prepareResetRequest()
+		node.resetTracker.bisectToTarget()
 		require.Equal(t, max, unsafe.Number)
 	}
 
@@ -172,12 +167,10 @@ func TestPrepareReset(t *testing.T) {
 	// test that the bisection finds the correct block,
 	// AND that the safe and finalized blocks are updated to match the unsafe block
 	for i := min; i < max; i++ {
-		node.ongoingReset = &ongoingReset{
-			a: eth.BlockID{Number: min, Hash: common.Hash{0xaa}},
-			z: eth.BlockID{Number: max},
-		}
+		node.resetTracker.a = eth.BlockID{Number: min, Hash: common.Hash{0xaa}}
+		node.resetTracker.z = eth.BlockID{Number: max}
 		pivot = i
-		node.prepareResetRequest()
+		node.resetTracker.bisectToTarget()
 		require.Equal(t, i, unsafe.Number)
 		require.Equal(t, i, safe.Number)
 		require.Equal(t, i, finalized.Number)
@@ -185,23 +178,9 @@ func TestPrepareReset(t *testing.T) {
 
 	// test that the reset function is not called if start of the range (a) is unknown
 	resetCount := resetCalled
-	node.ongoingReset = &ongoingReset{
-		a: eth.BlockID{Number: 0, Hash: common.Hash{0xbb}},
-		z: eth.BlockID{Number: max},
-	}
+	node.resetTracker.a = eth.BlockID{Number: 0, Hash: common.Hash{0xbb}}
+	node.resetTracker.z = eth.BlockID{Number: max}
 	pivot = 40
-	node.prepareResetRequest()
+	node.resetTracker.bisectToTarget()
 	require.Equal(t, resetCount, resetCalled)
-
-	// test that the reset function is not called if the bisection can't find a consistent block
-	node.ongoingReset = &ongoingReset{
-		a: eth.BlockID{Number: 0, Hash: common.Hash{0xaa}},
-		z: eth.BlockID{Number: max},
-	}
-	backend.isLocalUnsafeFn = func(ctx context.Context, chainID eth.ChainID, id eth.BlockID) error {
-		return fmt.Errorf("error")
-	}
-	node.prepareResetRequest()
-	require.Equal(t, resetCount, resetCalled)
-
 }

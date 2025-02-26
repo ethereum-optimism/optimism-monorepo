@@ -276,13 +276,30 @@ func (e *EngineController) initializeUnknowns(ctx context.Context) error {
 		e.SetUnsafeHead(ref)
 		e.log.Info("Loaded initial local-unsafe block ref", "local_unsafe", ref)
 	}
+	var finalizedRef eth.L2BlockRef
+	if e.finalizedHead == (eth.L2BlockRef{}) {
+		var err error
+		finalizedRef, err = e.engine.L2BlockRefByLabel(ctx, eth.Finalized)
+		if err != nil {
+			return fmt.Errorf("failed to load finalized head: %w", err)
+		}
+		e.SetFinalizedHead(finalizedRef)
+		e.log.Info("Loaded initial finalized block ref", "finalized", finalizedRef)
+	}
 	if e.safeHead == (eth.L2BlockRef{}) {
 		ref, err := e.engine.L2BlockRefByLabel(ctx, eth.Safe)
 		if err != nil {
-			return fmt.Errorf("failed to load cross-safe head: %w", err)
+			if errors.Is(err, ethereum.NotFound) {
+				// If the engine doesn't have a safe head, then we can use the finalized head
+				e.SetSafeHead(finalizedRef)
+				e.log.Info("Loaded initial cross-safe block from finalized", "cross_safe", finalizedRef)
+			} else {
+				return fmt.Errorf("failed to load cross-safe head: %w", err)
+			}
+		} else {
+			e.SetSafeHead(ref)
+			e.log.Info("Loaded initial cross-safe block ref", "cross_safe", ref)
 		}
-		e.SetSafeHead(ref)
-		e.log.Info("Loaded initial cross-safe block ref", "cross_safe", ref)
 	}
 	if e.crossUnsafeHead == (eth.L2BlockRef{}) {
 		e.SetCrossUnsafeHead(e.safeHead) // preserve cross-safety, don't fall back to a non-cross safety level
@@ -291,14 +308,6 @@ func (e *EngineController) initializeUnknowns(ctx context.Context) error {
 	if e.localSafeHead == (eth.L2BlockRef{}) {
 		e.SetLocalSafeHead(e.safeHead)
 		e.log.Info("Set initial local-safe block ref to match cross-safe", "local_safe", e.safeHead)
-	}
-	if e.finalizedHead == (eth.L2BlockRef{}) {
-		ref, err := e.engine.L2BlockRefByLabel(ctx, eth.Finalized)
-		if err != nil {
-			return fmt.Errorf("failed to load finalized head: %w", err)
-		}
-		e.SetFinalizedHead(ref)
-		e.log.Info("Loaded initial finalized block ref", "finalized", ref)
 	}
 	return nil
 }

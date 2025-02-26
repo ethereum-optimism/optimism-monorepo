@@ -66,10 +66,7 @@ type ManagedNode struct {
 	lastNodeLocalUnsafe eth.BlockID
 	lastNodeLocalSafe   eth.BlockID
 
-	ongoingReset *ongoingReset
-	resetting    atomic.Bool
-	cancelReset  atomic.Bool
-	syncReset    bool
+	resetTracker *resetTracker
 }
 
 var _ event.AttachEmitter = (*ManagedNode)(nil)
@@ -78,13 +75,18 @@ var _ event.Deriver = (*ManagedNode)(nil)
 func NewManagedNode(log log.Logger, id eth.ChainID, node SyncControl, backend backend, noSubscribe bool) *ManagedNode {
 	ctx, cancel := context.WithCancel(context.Background())
 	m := &ManagedNode{
-		log:       log.New("chain", id),
-		backend:   backend,
-		Node:      node,
-		chainID:   id,
-		ctx:       ctx,
-		cancel:    cancel,
-		syncReset: noSubscribe,
+		log:     log.New("chain", id),
+		backend: backend,
+		Node:    node,
+		chainID: id,
+		ctx:     ctx,
+		cancel:  cancel,
+	}
+	m.resetTracker = &resetTracker{
+		managed:     m,
+		synchronous: noSubscribe,
+		cancelling:  &atomic.Bool{},
+		resetting:   &atomic.Bool{},
 	}
 	if !noSubscribe {
 		m.SubscribeToNodeEvents()
@@ -99,10 +101,10 @@ func (m *ManagedNode) AttachEmitter(em event.Emitter) {
 
 func (m *ManagedNode) OnEvent(ev event.Event) bool {
 	// if we're resetting, ignore all events
-	if m.resetting.Load() {
+	if m.resetTracker.isResetting() {
 		// even if we are resetting, cancel the reset if the L1 rewinds
 		if _, ok := ev.(superevents.ChainRewoundEvent); ok {
-			m.CancelReset()
+			m.resetTracker.cancelReset()
 		}
 		m.log.Debug("Ignoring event during ongoing reset", "event", ev)
 		return false
@@ -142,13 +144,6 @@ func (m *ManagedNode) OnEvent(ev event.Event) bool {
 		return false
 	}
 	return true
-}
-
-func (m *ManagedNode) CancelReset() {
-	if !m.resetting.Load() {
-		return
-	}
-	m.cancelReset.Store(true)
 }
 
 func (m *ManagedNode) SubscribeToNodeEvents() {
@@ -232,7 +227,7 @@ func (m *ManagedNode) PullEvents(ctx context.Context) (pulledAny bool, err error
 }
 
 func (m *ManagedNode) onNodeEvent(ev *types.ManagedEvent) {
-	if m.resetting.Load() {
+	if m.resetTracker.isResetting() {
 		m.log.Debug("Ignoring event during ongoing reset", "event", ev)
 		return
 	}
@@ -263,7 +258,10 @@ func (m *ManagedNode) onNodeEvent(ev *types.ManagedEvent) {
 // onResetEvent handles a reset event from the node
 func (m *ManagedNode) onResetEvent(errStr string) {
 	m.log.Warn("Node sent us a reset error", "err", errStr)
-	m.resetIfNotAlready()
+	//if strings.Contains(errStr, "cannot continue derivation until Engine has been reset") {
+	//return
+	//}
+	m.resetFullRange()
 }
 
 func (m *ManagedNode) onUpdateLocalSafeFailed(ev superevents.UpdateLocalSafeFailedEvent) {
@@ -288,15 +286,14 @@ func (m *ManagedNode) OnResetReady(lUnsafe, xUnsafe, lSafe, xSafe, finalized eth
 		"finalized", finalized)
 	ctx, cancel := context.WithTimeout(m.ctx, nodeTimeout)
 	defer cancel()
+	// whether the reset passes or fails, this ongoing reset is done
+	m.resetTracker.endReset()
 	if err := m.Node.Reset(ctx,
 		lUnsafe, xUnsafe,
 		lSafe, xSafe,
 		finalized); err != nil {
-		m.log.Error("Failed to reset node. Checking consistency again", "err", err)
-		// if we failed to reset, immediately check consistency again
-		m.resetIfInconsistent()
+		m.log.Error("Failed to reset node", "err", err)
 	}
-	m.endReset()
 }
 
 func (m *ManagedNode) onCrossUnsafeUpdate(seal types.BlockSeal) {
@@ -424,4 +421,73 @@ func (m *ManagedNode) Close() error {
 		sub.Unsubscribe()
 	}
 	return nil
+}
+
+// resetIfInconsistent checks if the node is consistent with the logs db
+// and initiates a bisection based reset preparation if it is
+func (m *ManagedNode) resetIfInconsistent() {
+	ctx, cancel := context.WithTimeout(m.ctx, internalTimeout)
+	defer cancel()
+
+	var last eth.BlockID
+
+	// check if the last unsafe block we saw is consistent with the logs db
+	err := m.backend.IsLocalUnsafe(ctx, m.chainID, m.lastNodeLocalUnsafe)
+	if errors.Is(err, types.ErrConflict) {
+		m.log.Warn("local unsafe block is inconsistent with logs db. Initiating reset",
+			"lastUnsafeblock", m.lastNodeLocalUnsafe,
+			"err", err)
+		last = m.lastNodeLocalUnsafe
+	}
+
+	// check if the last safe block we saw is consistent with the local safe db
+	err = m.backend.IsLocalSafe(ctx, m.chainID, m.lastNodeLocalSafe)
+	if errors.Is(err, types.ErrConflict) {
+		m.log.Warn("local safe block is inconsistent with logs db. Initiating reset",
+			"lastSafeblock", m.lastNodeLocalSafe,
+			"err", err)
+		last = m.lastNodeLocalSafe
+	}
+
+	// there is inconsistency. begin the reset process
+	if last != (eth.BlockID{}) {
+		m.resetTracker.beginBisectionReset(last)
+	} else {
+		m.log.Debug("no inconsistency found")
+	}
+}
+
+// resetIfAhead checks if the node is ahead of the logs db
+// and initiates a bisection based reset preparation if it is
+func (m *ManagedNode) resetIfAhead() {
+	ctx, cancel := context.WithTimeout(m.ctx, internalTimeout)
+	defer cancel()
+
+	// get the last local safe block
+	lastDBLocalSafe, err := m.backend.LocalSafe(ctx, m.chainID)
+	if err != nil {
+		m.log.Error("failed to get last local safe block", "err", err)
+		return
+	}
+	// if the node is ahead of the logs db, initiate a reset
+	// with the end of the range being the last safe block in the db
+	if m.lastNodeLocalSafe.Number > lastDBLocalSafe.Derived.Number {
+		m.log.Warn("local safe block on node is ahead of logs db. Initiating reset",
+			"lastNodeLocalSafe", m.lastNodeLocalSafe,
+			"lastDBLocalSafe", lastDBLocalSafe.Derived)
+		m.resetTracker.beginBisectionReset(lastDBLocalSafe.Derived)
+	}
+}
+
+// resetFullRange resets the node using the last block in the db
+// as the end of the range to search for the last consistent block
+func (m *ManagedNode) resetFullRange() {
+	internalCtx, iCancel := context.WithTimeout(m.ctx, internalTimeout)
+	defer iCancel()
+	dbLast, err := m.backend.LocalUnsafe(internalCtx, m.chainID)
+	if err != nil {
+		m.log.Error("failed to get last local unsafe block", "err", err)
+		return
+	}
+	m.resetTracker.beginBisectionReset(dbLast)
 }
