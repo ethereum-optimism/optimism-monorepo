@@ -84,6 +84,13 @@ var (
 		Value:   false,
 		EnvVars: prefixEnvVars("WAIT_NODE_SYNC"),
 	}
+	StoppedFlag = &cli.BoolFlag{
+		Name:    "stopped",
+		Usage:   "Initialize the proposer in a stopped state. The proposer can be started using the admin_startProposer RPC",
+		Value:   false,
+		EnvVars: prefixEnvVars("STOPPED"),
+	}
+
 	// Legacy Flags
 	L2OutputHDPathFlag = txmgr.L2OutputHDPathFlag
 )
@@ -104,6 +111,7 @@ var optionalFlags = []cli.Flag{
 	DisputeGameTypeFlag,
 	ActiveSequencerCheckDurationFlag,
 	WaitNodeSyncFlag,
+	StoppedFlag,
 }
 
 func init() {
