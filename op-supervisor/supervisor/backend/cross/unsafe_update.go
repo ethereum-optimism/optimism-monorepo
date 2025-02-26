@@ -25,7 +25,6 @@ type CrossUnsafeDeps interface {
 
 func CrossUnsafeUpdate(logger log.Logger, chainID eth.ChainID, d CrossUnsafeDeps) error {
 	var candidate types.BlockSeal
-	var execMsgs []*types.ExecutingMessage
 
 	// fetch cross-head to determine next cross-unsafe candidate
 	if crossUnsafe, err := d.CrossUnsafe(chainID); err != nil {
@@ -39,7 +38,7 @@ func CrossUnsafeUpdate(logger log.Logger, chainID eth.ChainID, d CrossUnsafeDeps
 	} else {
 		// Open block N+1: this is a local-unsafe block,
 		// just after cross-safe, that can be promoted if it passes the dependency checks.
-		bl, _, msgs, err := d.OpenBlock(chainID, crossUnsafe.Number+1)
+		bl, _, _, err := d.OpenBlock(chainID, crossUnsafe.Number+1)
 		if err != nil {
 			return fmt.Errorf("failed to open block %d: %w", crossUnsafe.Number+1, err)
 		}
@@ -47,10 +46,9 @@ func CrossUnsafeUpdate(logger log.Logger, chainID eth.ChainID, d CrossUnsafeDeps
 			return fmt.Errorf("cannot use block %s, it does not build on cross-unsafe block %s: %w", bl, crossUnsafe, types.ErrConflict)
 		}
 		candidate = types.BlockSealFromRef(bl)
-		execMsgs = sliceOfExecMsgs(msgs)
 	}
 
-	hazards, err := CrossUnsafeHazards(d, chainID, candidate, execMsgs)
+	hazards, err := CrossUnsafeHazards(d, logger, chainID, candidate)
 	if err != nil {
 		// TODO(#11693): reorgs can be detected by checking if the error is ErrConflict,
 		// missing data is identified by ErrFuture,

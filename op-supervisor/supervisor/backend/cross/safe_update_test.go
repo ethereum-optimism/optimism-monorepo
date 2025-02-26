@@ -371,7 +371,7 @@ func TestScopedCrossSafeUpdate(t *testing.T) {
 		// but only on the second call (which will be used by HazardSafeFrontierChecks)
 		csd.deps.chainIDFromIndexfn = func() (eth.ChainID, error) {
 			defer func() { count++ }()
-			if count == 0 {
+			if count < 2 {
 				return eth.ChainID{}, nil
 			}
 			return eth.ChainID{}, errors.New("some error")
