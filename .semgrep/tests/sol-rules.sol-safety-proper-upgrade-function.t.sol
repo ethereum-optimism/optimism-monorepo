@@ -11,54 +11,54 @@
 /// remainder of the file after the `@custom:proxied` natspec tag is detected. This means that we must test the case
 /// without this natspec tag BEFORE the case with the tag or the rule will apply to the remainder of the file.
 
-// If no proxied natspec, initialize functions can have no initializer modifier and be public or external
-contract SemgrepTest__sol_safety_proper_initializer {
-    // ok: sol-safety-proper-initializer
-    function initialize() external {
+// If no proxied natspec, upgrade functions can have no upgrade modifier and be public or external
+contract SemgrepTest__sol_safety_proper_upgrade_function_1 {
+    // ok: sol-safety-proper-upgrade-function
+    function upgrade() external {
         // ...
     }
 
-    // ok: sol-safety-proper-initializer
-    function initialize() public {
+    // ok: sol-safety-proper-upgrade-function
+    function upgrade() public {
         // ...
     }
 }
 
 /// NOTE: the proxied natspec below is valid for all contracts after this one
 /// @custom:proxied true
-contract SemgrepTest__sol_safety_proper_initializer {
-    // ok: sol-safety-proper-initializer
-    function initialize() external initializer {
+contract SemgrepTest__sol_safety_proper_upgrade_function_2 {
+    // ok: sol-safety-proper-upgrade-function
+    function upgrade() external reinitializer(1) {
         // ...
     }
 
-    // ok: sol-safety-proper-initializer
-    function initialize() public initializer {
+    // ok: sol-safety-proper-upgrade-function
+    function upgrade() external reinitializer(1) {
         // ...
     }
 
-    // ok: sol-safety-proper-initializer
-    function initialize() external reinitializer(1) {
+    // ruleid: sol-safety-proper-upgrade-function
+    function upgrade() public reinitializer(2) {
         // ...
     }
 
-    // ok: sol-safety-proper-initializer
-    function initialize() external reinitializer(1) {
+    // ruleid: sol-safety-proper-upgrade-function
+    function upgrade() external initializer {
         // ...
     }
 
-    // ok: sol-safety-proper-initializer
-    function initialize() public reinitializer(2) {
+    // ruleid: sol-safety-proper-upgrade-function
+    function upgrade() public initializer {
         // ...
     }
 
-    // ruleid: sol-safety-proper-initializer
-    function initialize() internal {
+    // ruleid: sol-safety-proper-upgrade-function
+    function upgrade() external {
         // ...
     }
 
-    // ruleid: sol-safety-proper-initializer
-    function initialize() public {
+    // ruleid: sol-safety-proper-upgrade-function
+    function upgrade() public {
         // ...
     }
 }
