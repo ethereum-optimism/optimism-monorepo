@@ -368,13 +368,13 @@ func (s *channelManager) processBlocks() error {
 	for i := s.blockCursor; ; i++ {
 		block, ok := s.blocks.PeekN(i)
 		if !ok {
-			break
+			return nil
 		}
 
 		l1info, err := s.currentChannel.AddBlock(block)
 		if errors.As(err, &_chFullErr) {
 			// current block didn't get added because channel is already full
-			break
+			return nil
 		} else if err != nil {
 			return fmt.Errorf("adding block[%d] to channel builder: %w", i, err)
 		}
@@ -385,10 +385,9 @@ func (s *channelManager) processBlocks() error {
 		s.metr.RecordL2BlockInChannel(block)
 		// current block got added but channel is now full
 		if s.currentChannel.IsFull() {
-			break
+			return nil
 		}
 	}
-	return nil
 }
 
 // outputFrames generates frames for the current channel, and computes and logs the compression ratio
