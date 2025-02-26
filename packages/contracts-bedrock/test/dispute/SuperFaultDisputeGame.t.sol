@@ -85,7 +85,7 @@ contract SuperFaultDisputeGame_Init is DisputeGameFactory_Init {
                                 vm: _vm,
                                 weth: delayedWeth,
                                 anchorStateRegistry: anchorStateRegistry,
-                                l2ChainId: 10
+                                l2ChainId: 0
                             })
                         )
                     )
@@ -192,7 +192,7 @@ contract SuperFaultDisputeGame_Test is SuperFaultDisputeGame_Init {
                             vm: alphabetVM,
                             weth: IDelayedWETH(payable(address(0))),
                             anchorStateRegistry: IAnchorStateRegistry(address(0)),
-                            l2ChainId: 10
+                            l2ChainId: 0
                         })
                     )
                 )
@@ -236,7 +236,7 @@ contract SuperFaultDisputeGame_Test is SuperFaultDisputeGame_Init {
                             vm: alphabetVM,
                             weth: IDelayedWETH(payable(address(0))),
                             anchorStateRegistry: IAnchorStateRegistry(address(0)),
-                            l2ChainId: 10
+                            l2ChainId: 0
                         })
                     )
                 )
@@ -276,7 +276,7 @@ contract SuperFaultDisputeGame_Test is SuperFaultDisputeGame_Init {
                             vm: alphabetVM,
                             weth: IDelayedWETH(payable(address(0))),
                             anchorStateRegistry: IAnchorStateRegistry(address(0)),
-                            l2ChainId: 10
+                            l2ChainId: 0
                         })
                     )
                 )
@@ -316,7 +316,7 @@ contract SuperFaultDisputeGame_Test is SuperFaultDisputeGame_Init {
                             vm: alphabetVM,
                             weth: IDelayedWETH(payable(address(0))),
                             anchorStateRegistry: IAnchorStateRegistry(address(0)),
-                            l2ChainId: 10
+                            l2ChainId: 0
                         })
                     )
                 )
@@ -364,7 +364,7 @@ contract SuperFaultDisputeGame_Test is SuperFaultDisputeGame_Init {
                             vm: alphabetVM,
                             weth: IDelayedWETH(payable(address(0))),
                             anchorStateRegistry: IAnchorStateRegistry(address(0)),
-                            l2ChainId: 10
+                            l2ChainId: 0
                         })
                     )
                 )
@@ -402,7 +402,7 @@ contract SuperFaultDisputeGame_Test is SuperFaultDisputeGame_Init {
                             vm: alphabetVM,
                             weth: IDelayedWETH(payable(address(0))),
                             anchorStateRegistry: IAnchorStateRegistry(address(0)),
-                            l2ChainId: 10
+                            l2ChainId: 0
                         })
                     )
                 )

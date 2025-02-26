@@ -64,6 +64,8 @@ import { IDisputeGame } from "interfaces/dispute/IDisputeGame.sol";
 contract SuperFaultDisputeGame is Clone, ISemver {
     /// @dev Error to prevent initialization a dispute game with an actually valid, invalid state
     error SuperFaultDisputeGameInvalidRootClaim();
+    /// @dev Error to prevent passing a chainId to this dispute game
+    error NoChainIdNeeded();
 
     ////////////////////////////////////////////////////////////////
     //                         Structs                            //
@@ -153,20 +155,12 @@ contract SuperFaultDisputeGame is Clone, ISemver {
     /// @notice The anchor state registry.
     IAnchorStateRegistry internal immutable ANCHOR_STATE_REGISTRY;
 
-    /// @notice The chain ID of the L2 network this contract argues about.
-    uint256 internal immutable L2_CHAIN_ID;
-
     /// @notice The duration of the clock extension. Will be doubled if the grandchild is the root claim of an execution
     ///         trace bisection subgame.
     Duration internal immutable CLOCK_EXTENSION;
 
     /// @notice The global root claim's position is always at gindex 1.
     Position internal constant ROOT_POSITION = Position.wrap(1);
-
-    /// @notice The index of the block number in the RLP-encoded block header.
-    /// @dev Consensus encoding reference:
-    /// https://github.com/paradigmxyz/reth/blob/5f82993c23164ce8ccdc7bf3ae5085205383a5c8/crates/primitives/src/header.rs#L368
-    uint256 internal constant HEADER_BLOCK_NUMBER_INDEX = 8;
 
     /// @notice Semantic version.
     /// @custom:semver 0.1.0-beta.1
@@ -258,6 +252,8 @@ contract SuperFaultDisputeGame is Clone, ISemver {
         // OptimismPortal respected game type trick.
         if (_params.gameType.raw() == type(uint32).max) revert ReservedGameType();
 
+        if (_params.l2ChainId == 0) revert NoChainIdNeeded();
+
         // Set up initial game state.
         GAME_TYPE = _params.gameType;
         ABSOLUTE_PRESTATE = _params.absolutePrestate;
@@ -268,7 +264,6 @@ contract SuperFaultDisputeGame is Clone, ISemver {
         VM = _params.vm;
         WETH = _params.weth;
         ANCHOR_STATE_REGISTRY = _params.anchorStateRegistry;
-        L2_CHAIN_ID = _params.l2ChainId;
     }
 
     /// @notice Initializes the contract.
@@ -1039,11 +1034,6 @@ contract SuperFaultDisputeGame is Clone, ISemver {
     /// @notice Returns the anchor state registry contract.
     function anchorStateRegistry() external view returns (IAnchorStateRegistry registry_) {
         registry_ = ANCHOR_STATE_REGISTRY;
-    }
-
-    /// @notice Returns the chain ID of the L2 network this contract argues about.
-    function l2ChainId() external view returns (uint256 l2ChainId_) {
-        l2ChainId_ = L2_CHAIN_ID;
     }
 
     ////////////////////////////////////////////////////////////////

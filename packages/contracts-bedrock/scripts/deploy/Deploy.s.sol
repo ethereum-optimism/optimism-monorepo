@@ -782,7 +782,7 @@ contract Deploy is Deployer {
         _setFaultGameImplementation({
             _factory: factory,
             _params: IFaultDisputeGame.GameConstructorParams({
-                gameType: GameTypes.SUPER_CANNON,
+                gameType: GameType.wrap(4),
                 absolutePrestate: loadInteropDevnetAbsolutePrestate(),
                 maxGameDepth: cfg.faultGameMaxDepth(),
                 splitDepth: cfg.faultGameSplitDepth(),
@@ -791,8 +791,8 @@ contract Deploy is Deployer {
                 vm: IBigStepper(artifacts.mustGetAddress("MipsSingleton")),
                 weth: weth,
                 anchorStateRegistry: IAnchorStateRegistry(artifacts.mustGetAddress("AnchorStateRegistryProxy")),
-                l2ChainId: cfg.l2ChainID()
-            })
+                l2ChainId: 0 // Unused Param on SuperDisputeGame
+             })
         });
     }
 
@@ -805,7 +805,7 @@ contract Deploy is Deployer {
         _setFaultGameImplementation({
             _factory: factory,
             _params: IFaultDisputeGame.GameConstructorParams({
-                gameType: GameTypes.SUPER_CANNON,
+                gameType: GameType.wrap(4),
                 absolutePrestate: loadInteropDevnetAbsolutePrestate(),
                 maxGameDepth: cfg.faultGameMaxDepth(),
                 splitDepth: cfg.faultGameSplitDepth(),
@@ -814,8 +814,8 @@ contract Deploy is Deployer {
                 vm: IBigStepper(artifacts.mustGetAddress("MipsSingleton")),
                 weth: weth,
                 anchorStateRegistry: IAnchorStateRegistry(artifacts.mustGetAddress("AnchorStateRegistryProxy")),
-                l2ChainId: cfg.l2ChainID()
-            })
+                l2ChainId: 0 // Unused Param on SuperDisputeGame
+             })
         });
     }
 
@@ -875,7 +875,7 @@ contract Deploy is Deployer {
             rawGameType != GameTypes.PERMISSIONED_CANNON.raw(), "Deploy: Permissioned Game should be deployed by OPCM"
         );
 
-        if (rawGameType == GameTypes.SUPER_CANNON.raw()) {
+        if (rawGameType == 4) {
             _factory.setImplementation(
                 _params.gameType,
                 IDisputeGame(
@@ -888,7 +888,7 @@ contract Deploy is Deployer {
                     })
                 )
             );
-        } else if (rawGameType == GameTypes.PERMISSIONED_SUPER_CANNON.raw()) {
+        } else if (rawGameType == 5) {
             _factory.setImplementation(
                 _params.gameType,
                 IDisputeGame(
@@ -930,9 +930,9 @@ contract Deploy is Deployer {
             gameTypeString = "OP Succinct";
         } else if (rawGameType == GameTypes.KAILUA.raw()) {
             gameTypeString = "Kailua";
-        } else if (rawGameType == GameTypes.SUPER_CANNON.raw()) {
+        } else if (rawGameType == 4) {
             gameTypeString = "Super Cannon";
-        } else if (rawGameType == GameTypes.PERMISSIONED_SUPER_CANNON.raw()) {
+        } else if (rawGameType == 5) {
             gameTypeString = "Permissioned Super Cannon";
         } else {
             gameTypeString = "Unknown";
@@ -965,7 +965,7 @@ contract Deploy is Deployer {
             ),
             saltMixer: saltMixer,
             gasLimit: uint64(cfg.l2GenesisBlockGasLimit()),
-            disputeGameType: GameTypes.PERMISSIONED_CANNON,
+            disputeGameType: GameType.wrap(4),
             disputeAbsolutePrestate: Claim.wrap(bytes32(cfg.faultGameAbsolutePrestate())),
             disputeMaxGameDepth: cfg.faultGameMaxDepth(),
             disputeSplitDepth: cfg.faultGameSplitDepth(),
