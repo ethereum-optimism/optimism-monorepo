@@ -12,18 +12,22 @@ def get_used_ports():
     return used_ports
 
 
-def run(plan, source_path):
+def run(plan, source_path, server_image=FILESERVER_IMAGE):
     service_name = "fileserver"
     config = get_fileserver_config(
-        plan,
-        service_name,
-        source_path,
+        plan = plan,
+        service_name = service_name,
+        source_path = source_path,
+        server_image = server_image,
     )
-    service = plan.add_service(service_name, config)
+    plan.add_service(
+        name = service_name,
+        config = config,
+    )
     return service_name
 
 
-def get_fileserver_config(plan, service_name, source_path):
+def get_fileserver_config(plan, service_name, source_path, server_image):
     files = {}
 
     # Upload content to container
@@ -42,7 +46,7 @@ def get_fileserver_config(plan, service_name, source_path):
 
     ports = get_used_ports()
     return ServiceConfig(
-        image=FILESERVER_IMAGE,
+        image=server_image,
         ports=ports,
         cmd=["nginx", "-g", "daemon off;"],
         files=files,
