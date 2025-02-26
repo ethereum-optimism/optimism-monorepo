@@ -267,7 +267,11 @@ func (ev TryUpdateEngineEvent) getBlockProcessingMetrics() []interface{} {
 }
 
 type EngineResetConfirmedEvent struct {
-	Unsafe, Safe, Finalized eth.L2BlockRef
+	LocalUnsafe eth.L2BlockRef
+	CrossUnsafe eth.L2BlockRef
+	LocalSafe   eth.L2BlockRef
+	CrossSafe   eth.L2BlockRef
+	Finalized   eth.L2BlockRef
 }
 
 func (ev EngineResetConfirmedEvent) String() string {
@@ -430,10 +434,22 @@ func (d *EngDeriver) OnEvent(ev event.Event) bool {
 		// Time to apply the changes to the underlying engine
 		d.emitter.Emit(TryUpdateEngineEvent{})
 
-		log.Debug("Reset of Engine is completed",
-			"safeHead", x.Safe, "unsafe", x.Unsafe, "safe_timestamp", x.Safe.Time,
-			"unsafe_timestamp", x.Unsafe.Time)
-		d.emitter.Emit(EngineResetConfirmedEvent(x))
+		v := EngineResetConfirmedEvent{
+			LocalUnsafe: d.ec.LocalSafeL2Head(),
+			CrossUnsafe: d.ec.CrossUnsafeL2Head(),
+			LocalSafe:   d.ec.LocalSafeL2Head(),
+			CrossSafe:   d.ec.SafeL2Head(),
+			Finalized:   d.ec.Finalized(),
+		}
+		// We do not emit the original event values, since those might not be set (optional attributes).
+		d.emitter.Emit(v)
+		d.log.Info("Reset of Engine is completed",
+			"local_unsafe", v.LocalUnsafe,
+			"cross_unsafe", v.CrossUnsafe,
+			"local_safe", v.LocalSafe,
+			"cross_safe", v.CrossSafe,
+			"finalized", v.Finalized,
+		)
 	case PromoteUnsafeEvent:
 		// Backup unsafeHead when new block is not built on original unsafe head.
 		if d.ec.unsafeHead.Number >= x.Ref.Number {
@@ -570,24 +586,31 @@ func (d *EngDeriver) OnEvent(ev event.Event) bool {
 
 type ResetEngineControl interface {
 	SetUnsafeHead(eth.L2BlockRef)
+	SetCrossUnsafeHead(ref eth.L2BlockRef)
+	SetLocalSafeHead(ref eth.L2BlockRef)
 	SetSafeHead(eth.L2BlockRef)
 	SetFinalizedHead(eth.L2BlockRef)
-	SetLocalSafeHead(ref eth.L2BlockRef)
-	SetCrossUnsafeHead(ref eth.L2BlockRef)
 	SetBackupUnsafeL2Head(block eth.L2BlockRef, triggerReorg bool)
 	SetPendingSafeL2Head(eth.L2BlockRef)
 }
 
-// ForceEngineReset is not to be used. The op-program needs it for now, until event processing is adopted there.
 func ForceEngineReset(ec ResetEngineControl, x rollup.ForceResetEvent) {
-	// if the unsafe head is not provided, do not override the existing unsafe head
-	if x.Unsafe != (eth.L2BlockRef{}) {
-		ec.SetUnsafeHead(x.Unsafe)
+	// local-unsafe is an optional attribute, empty to preserve the existing latest chain
+	if x.LocalUnsafe != (eth.L2BlockRef{}) {
+		ec.SetUnsafeHead(x.LocalUnsafe)
 	}
-	ec.SetLocalSafeHead(x.Safe)
-	ec.SetPendingSafeL2Head(x.Safe)
+	// cross-safe is fine to revert back, it does not affect engine logic, just sync-status
+	ec.SetCrossUnsafeHead(x.CrossUnsafe)
+
+	// derivation continues at local-safe point
+	ec.SetLocalSafeHead(x.LocalSafe)
+	ec.SetPendingSafeL2Head(x.LocalSafe)
+
+	// "safe" in RPC terms is cross-safe
+	ec.SetSafeHead(x.CrossSafe)
+
+	// finalized head
 	ec.SetFinalizedHead(x.Finalized)
-	ec.SetSafeHead(x.Safe)
-	ec.SetCrossUnsafeHead(x.Safe)
+
 	ec.SetBackupUnsafeL2Head(eth.L2BlockRef{}, false)
 }

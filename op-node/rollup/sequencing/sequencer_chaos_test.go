@@ -107,9 +107,11 @@ func (c *ChaoticEngine) OnEvent(ev event.Event) bool {
 		c.currentPayloadInfo = eth.PayloadInfo{}
 		c.currentAttributes = nil
 		c.emitter.Emit(engine.EngineResetConfirmedEvent{
-			Unsafe:    c.unsafe,
-			Safe:      c.safe,
-			Finalized: c.finalized,
+			LocalUnsafe: c.unsafe,
+			CrossUnsafe: c.unsafe,
+			LocalSafe:   c.safe,
+			CrossSafe:   c.safe,
+			Finalized:   c.finalized,
 		})
 	case engine.BuildInvalidEvent:
 		// Engine translates the internal BuildInvalidEvent event

@@ -36,6 +36,7 @@ type SyncSource interface {
 type SyncControl interface {
 	SubscribeEvents(ctx context.Context, c chan *types.ManagedEvent) (ethereum.Subscription, error)
 	PullEvent(ctx context.Context) (*types.ManagedEvent, error)
+	BlockRefByNumber(ctx context.Context, number uint64) (eth.BlockRef, error)
 
 	UpdateCrossUnsafe(ctx context.Context, id eth.BlockID) error
 	UpdateCrossSafe(ctx context.Context, derived eth.BlockID, source eth.BlockID) error
@@ -43,7 +44,7 @@ type SyncControl interface {
 
 	InvalidateBlock(ctx context.Context, seal types.BlockSeal) error
 
-	Reset(ctx context.Context, unsafe, safe, finalized eth.BlockID) error
+	Reset(ctx context.Context, lUnsafe, xUnsafe, lSafe, xSafe, finalized eth.BlockID) error
 	ProvideL1(ctx context.Context, nextL1 eth.BlockRef) error
 	AnchorPoint(ctx context.Context) (types.DerivedBlockRefPair, error)
 

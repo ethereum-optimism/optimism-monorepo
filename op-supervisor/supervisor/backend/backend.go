@@ -522,6 +522,14 @@ func (su *SupervisorBackend) SafeDerivedAt(ctx context.Context, chainID eth.Chai
 	return v.ID(), nil
 }
 
+func (su *SupervisorBackend) FindSealedBlock(ctx context.Context, chainID eth.ChainID, number uint64) (eth.BlockID, error) {
+	seal, err := su.chainDBs.FindSealedBlock(chainID, number)
+	if err != nil {
+		return eth.BlockID{}, err
+	}
+	return seal.ID(), nil
+}
+
 // AllSafeDerivedAt returns the last derived block for each chain, from the given L1 block
 func (su *SupervisorBackend) AllSafeDerivedAt(ctx context.Context, source eth.BlockID) (map[eth.ChainID]eth.BlockID, error) {
 	chains := su.depSet.Chains()
@@ -546,6 +554,18 @@ func (su *SupervisorBackend) Finalized(ctx context.Context, chainID eth.ChainID)
 
 func (su *SupervisorBackend) FinalizedL1() eth.BlockRef {
 	return su.chainDBs.FinalizedL1()
+}
+
+func (su *SupervisorBackend) IsLocalUnsafe(ctx context.Context, chainID eth.ChainID, block eth.BlockID) error {
+	return su.chainDBs.IsLocalUnsafe(chainID, block)
+}
+
+func (su *SupervisorBackend) IsCrossSafe(ctx context.Context, chainID eth.ChainID, block eth.BlockID) error {
+	return su.chainDBs.IsCrossSafe(chainID, block)
+}
+
+func (su *SupervisorBackend) IsLocalSafe(ctx context.Context, chainID eth.ChainID, block eth.BlockID) error {
+	return su.chainDBs.IsLocalSafe(chainID, block)
 }
 
 func (su *SupervisorBackend) CrossDerivedToSource(ctx context.Context, chainID eth.ChainID, derived eth.BlockID) (source eth.BlockRef, err error) {

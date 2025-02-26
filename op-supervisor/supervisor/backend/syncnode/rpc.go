@@ -126,8 +126,8 @@ func (rs *RPCSyncNode) InvalidateBlock(ctx context.Context, seal types.BlockSeal
 	return rs.cl.CallContext(ctx, nil, "interop_invalidateBlock", seal)
 }
 
-func (rs *RPCSyncNode) Reset(ctx context.Context, unsafe, safe, finalized eth.BlockID) error {
-	return rs.cl.CallContext(ctx, nil, "interop_reset", unsafe, safe, finalized)
+func (rs *RPCSyncNode) Reset(ctx context.Context, lUnsafe, xUnsafe, lSafe, xSafe, finalized eth.BlockID) error {
+	return rs.cl.CallContext(ctx, nil, "interop_reset", lUnsafe, xUnsafe, lSafe, xSafe, finalized)
 }
 
 func (rs *RPCSyncNode) ProvideL1(ctx context.Context, nextL1 eth.BlockRef) error {

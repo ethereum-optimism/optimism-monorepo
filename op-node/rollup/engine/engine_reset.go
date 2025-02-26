@@ -14,6 +14,7 @@ import (
 // ResetEngineRequestEvent requests the EngineResetDeriver to walk
 // the L2 chain backwards until it finds a plausible unsafe head,
 // and find an L2 safe block that is guaranteed to still be from the L1 chain.
+// This event is not used in interop.
 type ResetEngineRequestEvent struct{}
 
 func (ev ResetEngineRequestEvent) String() string {
@@ -56,9 +57,11 @@ func (d *EngineResetDeriver) OnEvent(ev event.Event) bool {
 			return true
 		}
 		d.emitter.Emit(rollup.ForceResetEvent{
-			Unsafe:    result.Unsafe,
-			Safe:      result.Safe,
-			Finalized: result.Finalized,
+			LocalUnsafe: result.Unsafe,
+			CrossUnsafe: result.Unsafe,
+			LocalSafe:   result.Safe,
+			CrossSafe:   result.Safe,
+			Finalized:   result.Finalized,
 		})
 	default:
 		return false
