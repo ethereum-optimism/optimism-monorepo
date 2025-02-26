@@ -265,3 +265,20 @@ rules:
       exclude:
         - packages/contracts-bedrock/src/L1/SystemConfig.sol
         - packages/contracts-bedrock/src/L1/SystemConfigInterop.sol
+
+  - id: sol-safety-implement-isemver
+    languages: [solidity]
+    severity: ERROR
+    message: All on-chain contracts must implement ISemver
+    patterns:
+      - pattern: |
+          contract $CONTRACT is $BASE {
+            ...
+          }
+      - pattern-not: |
+          contract $CONTRACT is $BASE, ISemver {
+            ...
+          }
+    paths:
+      include:
+        - packages/contracts-bedrock/src
