@@ -18,7 +18,7 @@ func TestHazardSafeFrontierChecks(t *testing.T) {
 		hazards := map[types.ChainIndex]types.BlockSeal{}
 		// when there are no hazards,
 		// no work is done, and no error is returned
-		err := HazardSafeFrontierChecks(sfcd, l1Source, hazards)
+		err := HazardSafeFrontierChecks(sfcd, l1Source, NewHazardSetFromEntries(hazards))
 		require.NoError(t, err)
 	})
 	t.Run("unknown chain", func(t *testing.T) {
@@ -33,7 +33,7 @@ func TestHazardSafeFrontierChecks(t *testing.T) {
 		hazards := map[types.ChainIndex]types.BlockSeal{types.ChainIndex(0): {}}
 		// when there is one hazard, and ChainIDFromIndex returns ErrUnknownChain,
 		// an error is returned as a ErrConflict
-		err := HazardSafeFrontierChecks(sfcd, l1Source, hazards)
+		err := HazardSafeFrontierChecks(sfcd, l1Source, NewHazardSetFromEntries(hazards))
 		require.ErrorIs(t, err, types.ErrConflict)
 	})
 	t.Run("initSource in scope", func(t *testing.T) {
@@ -46,7 +46,7 @@ func TestHazardSafeFrontierChecks(t *testing.T) {
 		// when there is one hazard, and CrossSource returns a BlockSeal within scope
 		// (ie the hazard's block number is less than or equal to the source block number),
 		// no error is returned
-		err := HazardSafeFrontierChecks(sfcd, l1Source, hazards)
+		err := HazardSafeFrontierChecks(sfcd, l1Source, NewHazardSetFromEntries(hazards))
 		require.NoError(t, err)
 	})
 	t.Run("initSource out of scope", func(t *testing.T) {
@@ -59,7 +59,7 @@ func TestHazardSafeFrontierChecks(t *testing.T) {
 		// when there is one hazard, and CrossSource returns a BlockSeal out of scope
 		// (ie the hazard's block number is greater than the source block number),
 		// an error is returned as a ErrOutOfScope
-		err := HazardSafeFrontierChecks(sfcd, l1Source, hazards)
+		err := HazardSafeFrontierChecks(sfcd, l1Source, NewHazardSetFromEntries(hazards))
 		require.ErrorIs(t, err, types.ErrOutOfScope)
 	})
 	t.Run("errFuture: candidate cross safe failure", func(t *testing.T) {
@@ -78,7 +78,7 @@ func TestHazardSafeFrontierChecks(t *testing.T) {
 		// when there is one hazard, and CrossSource returns an ErrFuture,
 		// and CandidateCrossSafe returns an error,
 		// the error from CandidateCrossSafe is returned
-		err := HazardSafeFrontierChecks(sfcd, l1Source, hazards)
+		err := HazardSafeFrontierChecks(sfcd, l1Source, NewHazardSetFromEntries(hazards))
 		require.ErrorContains(t, err, "some error")
 	})
 	t.Run("errFuture: expected block does not match candidate", func(t *testing.T) {
@@ -98,7 +98,7 @@ func TestHazardSafeFrontierChecks(t *testing.T) {
 		// and CandidateCrossSafe returns a candidate that does not match the hazard,
 		// (ie the candidate's block number is the same as the hazard's block number, but the hashes are different),
 		// an error is returned as a ErrConflict
-		err := HazardSafeFrontierChecks(sfcd, l1Source, hazards)
+		err := HazardSafeFrontierChecks(sfcd, l1Source, NewHazardSetFromEntries(hazards))
 		require.ErrorIs(t, err, types.ErrConflict)
 	})
 	t.Run("errFuture: local-safe hazard out of scope", func(t *testing.T) {
@@ -117,7 +117,7 @@ func TestHazardSafeFrontierChecks(t *testing.T) {
 		// when there is one hazard, and CrossSource returns an ErrFuture,
 		// and the initSource is out of scope,
 		// an error is returned as a ErrOutOfScope
-		err := HazardSafeFrontierChecks(sfcd, l1Source, hazards)
+		err := HazardSafeFrontierChecks(sfcd, l1Source, NewHazardSetFromEntries(hazards))
 		require.ErrorIs(t, err, types.ErrOutOfScope)
 	})
 	t.Run("CrossSource Error", func(t *testing.T) {
@@ -136,7 +136,7 @@ func TestHazardSafeFrontierChecks(t *testing.T) {
 		// when there is one hazard, and CrossSource returns an ErrFuture,
 		// and the initSource is out of scope,
 		// an error is returned as a ErrOutOfScope
-		err := HazardSafeFrontierChecks(sfcd, l1Source, hazards)
+		err := HazardSafeFrontierChecks(sfcd, l1Source, NewHazardSetFromEntries(hazards))
 		require.ErrorContains(t, err, "some error")
 	})
 }
