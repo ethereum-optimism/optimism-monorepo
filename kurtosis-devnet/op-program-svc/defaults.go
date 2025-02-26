@@ -48,6 +48,10 @@ func (fs *DefaultFileSystem) Join(elem ...string) string {
 	return filepath.Join(elem...)
 }
 
+func (fs *DefaultFileSystem) Stat(name string) (fs.FileInfo, error) {
+	return os.Stat(name)
+}
+
 // commandWrapper wraps exec.Cmd to implement CommandRunner
 type commandWrapper struct {
 	*exec.Cmd
