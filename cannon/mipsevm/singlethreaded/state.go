@@ -190,7 +190,6 @@ func (s *State) EncodeWitness() ([]byte, common.Hash) {
 // The format is a simple concatenation of fields, with prefixed item count for repeating items and using big endian
 // encoding for numbers.
 //
-// StateVersion                uint8(0)
 // Memory                      As per Memory.Serialize
 // PreimageKey                 [32]byte
 // PreimageOffset              Word

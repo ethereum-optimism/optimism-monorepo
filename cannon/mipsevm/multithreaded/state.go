@@ -248,7 +248,6 @@ func (s *State) ThreadCount() int {
 // The format is a simple concatenation of fields, with prefixed item count for repeating items and using big endian
 // encoding for numbers.
 //
-// StateVersion                uint8(1)
 // Memory                      As per Memory.Serialize
 // PreimageKey                 [32]byte
 // PreimageOffset              Word
