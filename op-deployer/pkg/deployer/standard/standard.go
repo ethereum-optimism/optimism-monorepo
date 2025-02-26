@@ -28,6 +28,7 @@ const (
 	ProofMaturityDelaySeconds       uint64 = 604800
 	DisputeGameFinalityDelaySeconds uint64 = 302400
 	MIPSVersion                     uint64 = 1
+	DisputeGameUsesSuperRoots       bool   = false
 	DisputeGameType                 uint32 = 1 // PERMISSIONED game type
 	DisputeMaxGameDepth             uint64 = 73
 	DisputeSplitDepth               uint64 = 30

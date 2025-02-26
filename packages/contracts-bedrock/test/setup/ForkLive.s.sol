@@ -174,7 +174,8 @@ contract ForkLive is Deployer {
         opChains[0] = IOPContractsManager.OpChainConfig({
             systemConfigProxy: systemConfig,
             proxyAdmin: proxyAdmin,
-            absolutePrestate: Claim.wrap(bytes32(keccak256("absolutePrestate")))
+            absolutePrestate: Claim.wrap(bytes32(keccak256("absolutePrestate"))),
+            disputeGameUsesSuperRoots: false
         });
 
         // Temporarily replace the upgrader with a DelegateCaller so we can test the upgrade,

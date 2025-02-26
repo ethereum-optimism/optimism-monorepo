@@ -120,6 +120,9 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
     /// @notice Address of the AnchorStateRegistry contract.
     IAnchorStateRegistry public anchorStateRegistry;
 
+    /// @notice Whether the OptimismPortal is using Super Roots or Output Roots.
+    bool public superRootsActive;
+
     /// @notice Emitted when a transaction is deposited from L1 to L2. The parameters of this event
     ///         are read by the rollup node and used to derive deposit transactions on L2.
     /// @param from       Address that triggered the deposit transaction.
@@ -191,6 +194,18 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
     /// @notice Thrown when a withdrawal has not been proven.
     error OptimismPortal_Unproven();
 
+    /// @notice Thrown when the wrong proof method is used.
+    error OptimismPortal_WrongProofMethod();
+
+    /// @notice Thrown when a super root proof is invalid.
+    error OptimismPortal_InvalidSuperRootProof();
+
+    /// @notice Thrown when an output root index is invalid.
+    error OptimismPortal_InvalidOutputRootIndex();
+
+    /// @notice Thrown when an output root chain id is invalid.
+    error OptimismPortal_InvalidOutputRootChainId();
+
     /// @notice Reverts when paused.
     modifier whenNotPaused() {
         if (paused()) revert OptimismPortal_CallPaused();
@@ -213,11 +228,13 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
     /// @param _disputeGameFactory Contract of the DisputeGameFactory.
     /// @param _systemConfig Contract of the SystemConfig.
     /// @param _superchainConfig Contract of the SuperchainConfig.
+    /// @param _superRootsActive Whether the OptimismPortal is using Super Roots or Output Roots.
     function initialize(
         IDisputeGameFactory _disputeGameFactory,
         ISystemConfig _systemConfig,
         ISuperchainConfig _superchainConfig,
-        IAnchorStateRegistry _anchorStateRegistry
+        IAnchorStateRegistry _anchorStateRegistry,
+        bool _superRootsActive
     )
         external
         reinitializer(2)
@@ -226,6 +243,7 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
         systemConfig = _systemConfig;
         superchainConfig = _superchainConfig;
         anchorStateRegistry = _anchorStateRegistry;
+        superRootsActive = _superRootsActive;
 
         // Set the l2Sender slot, only if it is currently empty. This signals the first
         // initialization of the contract.
@@ -238,8 +256,10 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
 
     /// @notice Upgrades the OptimismPortal contract to have a reference to the AnchorStateRegistry.
     /// @param _anchorStateRegistry AnchorStateRegistry contract.
-    function upgrade(IAnchorStateRegistry _anchorStateRegistry) external reinitializer(2) {
+    /// @param _superRootsActive Whether the OptimismPortal is using Super Roots or Output Roots.
+    function upgrade(IAnchorStateRegistry _anchorStateRegistry, bool _superRootsActive) external reinitializer(2) {
         anchorStateRegistry = _anchorStateRegistry;
+        superRootsActive = _superRootsActive;
     }
 
     /// @notice Getter for the current paused status.
@@ -303,7 +323,38 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
         // Intentionally empty.
     }
 
-    /// @notice Proves a withdrawal transaction.
+    /// @notice Proves a withdrawal transaction using a Super Root proof. Only callable when the
+    ///         OptimismPortal is using Super Roots (superRootsActive flag is true).
+    /// @param _tx               Withdrawal transaction to finalize.
+    /// @param _disputeGameIndex Index of the dispute game to prove the withdrawal against.
+    /// @param _outputRootIndex  Index of the target Output Root within the Super Root.
+    /// @param _superRootProof   Inclusion proof of the Output Root within the Super Root.
+    /// @param _outputRootProof  Inclusion proof of the L2ToL1MessagePasser storage root.
+    /// @param _withdrawalProof  Inclusion proof of the withdrawal within the L2ToL1MessagePasser.
+    function proveWithdrawalTransaction(
+        Types.WithdrawalTransaction memory _tx,
+        uint256 _disputeGameIndex,
+        uint256 _outputRootIndex,
+        Types.SuperRootProof calldata _superRootProof,
+        Types.OutputRootProof calldata _outputRootProof,
+        bytes[] calldata _withdrawalProof
+    )
+        external
+        whenNotPaused
+    {
+        // Make sure that the OptimismPortal is using Super Roots.
+        if (!superRootsActive) {
+            revert OptimismPortal_WrongProofMethod();
+        }
+
+        // Prove the transaction.
+        _proveWithdrawalTransaction(
+            _tx, _disputeGameIndex, _outputRootIndex, _superRootProof, _outputRootProof, _withdrawalProof
+        );
+    }
+
+    /// @notice Proves a withdrawal transaction using an Output Root proof. Only callable when the
+    ///         OptimismPortal is using Output Roots (superRootsActive flag is false).
     /// @param _tx               Withdrawal transaction to finalize.
     /// @param _disputeGameIndex Index of the dispute game to prove the withdrawal against.
     /// @param _outputRootProof  Inclusion proof of the L2ToL1MessagePasser storage root.
@@ -316,6 +367,40 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
     )
         external
         whenNotPaused
+    {
+        // Make sure that the OptimismPortal is using Output Roots.
+        if (superRootsActive) {
+            revert OptimismPortal_WrongProofMethod();
+        }
+
+        // Create a dummy super root proof to pass into the internal function. Note that this is
+        // not a valid Super Root proof but it isn't used anywhere in the internal function when
+        // using Output Roots.
+        Types.SuperRootProof memory superRootProof =
+            Types.SuperRootProof({ version: 0x01, timestamp: 0, outputRoots: new Types.OutputRootWithChainId[](0) });
+
+        // Prove the transaction.
+        _proveWithdrawalTransaction(_tx, _disputeGameIndex, 0, superRootProof, _outputRootProof, _withdrawalProof);
+    }
+
+    /// @notice Internal function for proving a withdrawal transaction, used by both the Super Root
+    ///         and Output Root proof functions. Will eventually be replaced with a single function
+    ///         when the Output Root proof method is deprecated.
+    /// @param _tx               Withdrawal transaction to prove.
+    /// @param _disputeGameIndex Index of the dispute game to prove the withdrawal against.
+    /// @param _outputRootIndex  Index of the target Output Root within the Super Root.
+    /// @param _superRootProof   Inclusion proof of the Output Root within the Super Root.
+    /// @param _outputRootProof  Inclusion proof of the L2ToL1MessagePasser storage root.
+    /// @param _withdrawalProof  Inclusion proof of the withdrawal within the L2ToL1MessagePasser.
+    function _proveWithdrawalTransaction(
+        Types.WithdrawalTransaction memory _tx,
+        uint256 _disputeGameIndex,
+        uint256 _outputRootIndex,
+        Types.SuperRootProof memory _superRootProof,
+        Types.OutputRootProof memory _outputRootProof,
+        bytes[] memory _withdrawalProof
+    )
+        internal
     {
         // Make sure that the target address is safe.
         if (_isUnsafeTarget(_tx.target)) {
@@ -340,17 +425,41 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
             revert OptimismPortal_InvalidDisputeGame();
         }
 
-        // Verify that the output root can be generated with the elements in the proof.
-        if (gameProxy.rootClaim().raw() != Hashing.hashOutputRootProof(_outputRootProof)) {
-            revert OptimismPortal_InvalidOutputRootProof();
-        }
-
         // As a sanity check, we make sure that the current timestamp is not less than or equal to
         // the dispute game's creation timestamp. Not strictly necessary but extra layer of
         // safety against weird bugs. Note that this blocks withdrawals from being proven in the
         // same block that a dispute game is created.
         if (block.timestamp <= gameProxy.createdAt().raw()) {
             revert OptimismPortal_InvalidProofTimestamp();
+        }
+
+        // Validate the provided Output Root and/or Super Root proof depending on proof method.
+        if (superRootsActive) {
+            // Verify that the super root can be generated with the elements in the proof.
+            if (gameProxy.rootClaim().raw() != Hashing.hashSuperRootProof(_superRootProof)) {
+                revert OptimismPortal_InvalidSuperRootProof();
+            }
+
+            // Check that the index exists in the super root proof.
+            if (_outputRootIndex >= _superRootProof.outputRoots.length) {
+                revert OptimismPortal_InvalidOutputRootIndex();
+            }
+
+            // Check that the output root has the correct chain id.
+            Types.OutputRootWithChainId memory outputRoot = _superRootProof.outputRoots[_outputRootIndex];
+            if (outputRoot.chainId != systemConfig.l2ChainId()) {
+                revert OptimismPortal_InvalidOutputRootChainId();
+            }
+
+            // Verify that the output root can be generated with the elements in the proof.
+            if (outputRoot.root != Hashing.hashOutputRootProof(_outputRootProof)) {
+                revert OptimismPortal_InvalidOutputRootProof();
+            }
+        } else {
+            // Verify that the output root can be generated with the elements in the proof.
+            if (gameProxy.rootClaim().raw() != Hashing.hashOutputRootProof(_outputRootProof)) {
+                revert OptimismPortal_InvalidOutputRootProof();
+            }
         }
 
         // Load the ProvenWithdrawal into memory, using the withdrawal hash as a unique identifier.

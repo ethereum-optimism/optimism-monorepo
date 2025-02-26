@@ -46,7 +46,8 @@ contract SystemConfigInterop is SystemConfig {
         IResourceMetering.ResourceConfig memory _config,
         address _batchInbox,
         SystemConfig.Addresses memory _addresses,
-        address _dependencyManager
+        address _dependencyManager,
+        uint256 _l2ChainId
     )
         external
     {
@@ -60,14 +61,15 @@ contract SystemConfigInterop is SystemConfig {
             _unsafeBlockSigner: _unsafeBlockSigner,
             _config: _config,
             _batchInbox: _batchInbox,
-            _addresses: _addresses
+            _addresses: _addresses,
+            _l2ChainId: _l2ChainId
         });
         Storage.setAddress(DEPENDENCY_MANAGER_SLOT, _dependencyManager);
     }
 
-    /// @custom:semver +interop
+    /// @custom:semver +interop.1
     function version() public pure override returns (string memory) {
-        return string.concat(super.version(), "+interop");
+        return string.concat(super.version(), "+interop.1");
     }
 
     /// @notice Adds a chain to the interop dependency set. Can only be called by the dependency manager.

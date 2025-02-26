@@ -29,6 +29,12 @@ interface IOptimismPortal2 {
     error OptimismPortal_NoReentrancy();
     error OptimismPortal_ProofNotOldEnough();
     error OptimismPortal_Unproven();
+    error OptimismPortal_InvalidOutputRootIndex();
+    error OptimismPortal_InvalidSuperRootProof();
+    error OptimismPortal_InvalidOutputRootChainId();
+    error OptimismPortal_WrongProofMethod();
+    error Encoding_EmptySuperRoot();
+    error Encoding_InvalidSuperRootVersion();
     error OutOfGas();
     error UnexpectedList();
     error UnexpectedString();
@@ -67,7 +73,8 @@ interface IOptimismPortal2 {
         IDisputeGameFactory _disputeGameFactory,
         ISystemConfig _systemConfig,
         ISuperchainConfig _superchainConfig,
-        IAnchorStateRegistry _anchorStateRegistry
+        IAnchorStateRegistry _anchorStateRegistry,
+        bool _superRootsActive
     )
         external;
     function l2Sender() external view returns (address);
@@ -84,6 +91,15 @@ interface IOptimismPortal2 {
         bytes[] memory _withdrawalProof
     )
         external;
+    function proveWithdrawalTransaction(
+        Types.WithdrawalTransaction memory _tx,
+        uint256 _disputeGameIndex,
+        uint256 _outputRootIndex,
+        Types.SuperRootProof memory _superRootProof,
+        Types.OutputRootProof memory _outputRootProof,
+        bytes[] memory _withdrawalProof
+    )
+        external;
     function provenWithdrawals(
         bytes32,
         address
@@ -94,8 +110,9 @@ interface IOptimismPortal2 {
     function respectedGameType() external view returns (GameType);
     function respectedGameTypeUpdatedAt() external view returns (uint64);
     function superchainConfig() external view returns (ISuperchainConfig);
+    function superRootsActive() external view returns (bool);
     function systemConfig() external view returns (ISystemConfig);
-    function upgrade(IAnchorStateRegistry _anchorStateRegistry) external;
+    function upgrade(IAnchorStateRegistry _anchorStateRegistry, bool _superRootsActive) external;
     function version() external pure returns (string memory);
 
     function __constructor__(uint256 _proofMaturityDelaySeconds) external;

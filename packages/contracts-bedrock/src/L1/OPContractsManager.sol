@@ -17,7 +17,6 @@ import { IAnchorStateRegistry } from "interfaces/dispute/IAnchorStateRegistry.so
 import { IDisputeGame } from "interfaces/dispute/IDisputeGame.sol";
 import { IAddressManager } from "interfaces/legacy/IAddressManager.sol";
 import { IProxyAdmin } from "interfaces/universal/IProxyAdmin.sol";
-import { IDelayedWETH } from "interfaces/dispute/IDelayedWETH.sol";
 import { IDisputeGameFactory } from "interfaces/dispute/IDisputeGameFactory.sol";
 import { IFaultDisputeGame } from "interfaces/dispute/IFaultDisputeGame.sol";
 import { IPermissionedDisputeGame } from "interfaces/dispute/IPermissionedDisputeGame.sol";
@@ -56,6 +55,7 @@ contract OPContractsManager is ISemver {
         string saltMixer;
         uint64 gasLimit;
         // Configurable dispute game parameters.
+        bool disputeGameUsesSuperRoots;
         GameType disputeGameType;
         Claim disputeAbsolutePrestate;
         uint256 disputeMaxGameDepth;
@@ -121,6 +121,7 @@ contract OPContractsManager is ISemver {
         ISystemConfig systemConfigProxy;
         IProxyAdmin proxyAdmin;
         Claim absolutePrestate;
+        bool disputeGameUsesSuperRoots;
     }
 
     struct AddGameInput {
@@ -380,7 +381,7 @@ contract OPContractsManager is ISemver {
             output.opChainProxyAdmin, address(output.l1ERC721BridgeProxy), implementation.l1ERC721BridgeImpl, data
         );
 
-        data = encodeOptimismPortalInitializer(output);
+        data = encodeOptimismPortalInitializer(_input, output);
         upgradeToAndCall(
             output.opChainProxyAdmin, address(output.optimismPortalProxy), implementation.optimismPortalImpl, data
         );
@@ -542,6 +543,7 @@ contract OPContractsManager is ISemver {
                     )
                 )
             );
+
             // We're also going to need the l2ChainId below, so we cache it in the outer scope.
             uint256 l2ChainId = getL2ChainId(IFaultDisputeGame(address(permissionedDisputeGame)));
 
@@ -590,7 +592,9 @@ contract OPContractsManager is ISemver {
                     );
 
                     // Upgrade the OptimismPortal to have a reference to the new AnchorStateRegistry.
-                    IOptimismPortal2(payable(opChainAddrs.optimismPortal)).upgrade(newAnchorStateRegistryProxy);
+                    IOptimismPortal2(payable(opChainAddrs.optimismPortal)).upgrade(
+                        newAnchorStateRegistryProxy, _opChainConfigs[i].disputeGameUsesSuperRoots
+                    );
                 }
 
                 // Deploy and set a new permissioned game to update its prestate
@@ -649,6 +653,7 @@ contract OPContractsManager is ISemver {
 
             // This conversion is safe because the GameType is a uint32, which will always fit in an int256.
             int256 gameTypeInt = int256(uint256(gameConfig.disputeGameType.raw()));
+
             // Ensure that the game configs are added in ascending order, and not duplicated.
             if (lastGameConfig >= gameTypeInt) revert InvalidGameConfigs();
             lastGameConfig = gameTypeInt;
@@ -660,20 +665,27 @@ contract OPContractsManager is ISemver {
                     getGameImplementation(getDisputeGameFactory(gameConfig.systemConfig), GameTypes.PERMISSIONED_CANNON)
                 )
             );
+
             // Pull out the chain ID.
             uint256 l2ChainId = getL2ChainId(pdg);
 
             // Deploy a new DelayedWETH proxy for this game if one hasn't already been specified. Leaving
             /// gameConfig.delayedWETH as the zero address will cause a new DelayedWETH to be deployed for this game.
             if (address(gameConfig.delayedWETH) == address(0)) {
-                string memory contractName = string.concat(
-                    "DelayedWETH-",
-                    // This is a safe cast because GameType is a uint256 under the hood and no operation has been done
-                    // on it at this point
-                    Strings.toString(uint256(gameTypeInt))
-                );
                 outputs[i].delayedWETH = IDelayedWETH(
-                    payable(deployProxy(l2ChainId, gameConfig.proxyAdmin, gameConfig.saltMixer, contractName))
+                    payable(
+                        deployProxy(
+                            l2ChainId,
+                            gameConfig.proxyAdmin,
+                            gameConfig.saltMixer,
+                            string.concat(
+                                "DelayedWETH-",
+                                // This is a safe cast because GameType is a uint256 under the hood
+                                // and no operation has been done on it at this point
+                                Strings.toString(uint256(gameTypeInt))
+                            )
+                        )
+                    )
                 );
 
                 // Initialize the proxy.
@@ -687,14 +699,15 @@ contract OPContractsManager is ISemver {
                 outputs[i].delayedWETH = gameConfig.delayedWETH;
             }
 
-            // The FDG is only used for the event below, and only if it is being replaced,
-            // so we declare it here, but only assign it below if needed.
-            IFaultDisputeGame fdg;
+            // The FDG is only used for the event below, and only if it is being replaced.
+            IFaultDisputeGame fdg = IFaultDisputeGame(
+                address(getGameImplementation(getDisputeGameFactory(gameConfig.systemConfig), GameTypes.CANNON))
+            );
 
-            // The below sections are functionally the same. Both deploy a new dispute game. The dispute game type is
-            // either permissioned or permissionless depending on game config.
-            if (gameConfig.permissioned) {
-                outputs[i].faultDisputeGame = IFaultDisputeGame(
+            // The below sections are functionally the same. Both deploy a new dispute game. The
+            // dispute game type is either permissioned or permissionless depending on game config.
+            outputs[i].faultDisputeGame = gameConfig.permissioned
+                ? IFaultDisputeGame(
                     Blueprint.deployFrom(
                         bps.permissionedDisputeGame1,
                         bps.permissionedDisputeGame2,
@@ -716,12 +729,8 @@ contract OPContractsManager is ISemver {
                             getChallenger(IPermissionedDisputeGame(address(pdg)))
                         )
                     )
-                );
-            } else {
-                fdg = IFaultDisputeGame(
-                    address(getGameImplementation(getDisputeGameFactory(gameConfig.systemConfig), GameTypes.CANNON))
-                );
-                outputs[i].faultDisputeGame = IFaultDisputeGame(
+                )
+                : IFaultDisputeGame(
                     Blueprint.deployFrom(
                         bps.permissionlessDisputeGame1,
                         bps.permissionlessDisputeGame2,
@@ -744,7 +753,6 @@ contract OPContractsManager is ISemver {
                         )
                     )
                 );
-            }
 
             // As a last step, register the new game type with the DisputeGameFactory. If the game type already exists,
             // then its implementation will be overwritten.
@@ -845,7 +853,10 @@ contract OPContractsManager is ISemver {
     }
 
     /// @notice Helper method for encoding the OptimismPortal initializer data.
-    function encodeOptimismPortalInitializer(DeployOutput memory _output)
+    function encodeOptimismPortalInitializer(
+        DeployInput memory _input,
+        DeployOutput memory _output
+    )
         internal
         view
         virtual
@@ -857,7 +868,8 @@ contract OPContractsManager is ISemver {
                 _output.disputeGameFactoryProxy,
                 _output.systemConfigProxy,
                 superchainConfig,
-                _output.anchorStateRegistryProxy
+                _output.anchorStateRegistryProxy,
+                _input.disputeGameUsesSuperRoots
             )
         );
     }
@@ -886,7 +898,8 @@ contract OPContractsManager is ISemver {
                 _input.roles.unsafeBlockSigner,
                 referenceResourceConfig,
                 chainIdToBatchInboxAddress(_input.l2ChainId),
-                opChainAddrs
+                opChainAddrs,
+                _input.l2ChainId
             )
         );
     }

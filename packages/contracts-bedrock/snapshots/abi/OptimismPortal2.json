@@ -259,6 +259,11 @@
         "internalType": "contract IAnchorStateRegistry",
         "name": "_anchorStateRegistry",
         "type": "address"
+      },
+      {
+        "internalType": "bool",
+        "name": "_superRootsActive",
+        "type": "bool"
       }
     ],
     "name": "initialize",
@@ -435,6 +440,127 @@
         "type": "uint256"
       },
       {
+        "internalType": "uint256",
+        "name": "_outputRootIndex",
+        "type": "uint256"
+      },
+      {
+        "components": [
+          {
+            "internalType": "bytes1",
+            "name": "version",
+            "type": "bytes1"
+          },
+          {
+            "internalType": "uint64",
+            "name": "timestamp",
+            "type": "uint64"
+          },
+          {
+            "components": [
+              {
+                "internalType": "uint256",
+                "name": "chainId",
+                "type": "uint256"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "root",
+                "type": "bytes32"
+              }
+            ],
+            "internalType": "struct Types.OutputRootWithChainId[]",
+            "name": "outputRoots",
+            "type": "tuple[]"
+          }
+        ],
+        "internalType": "struct Types.SuperRootProof",
+        "name": "_superRootProof",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "internalType": "bytes32",
+            "name": "version",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "stateRoot",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "messagePasserStorageRoot",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "latestBlockhash",
+            "type": "bytes32"
+          }
+        ],
+        "internalType": "struct Types.OutputRootProof",
+        "name": "_outputRootProof",
+        "type": "tuple"
+      },
+      {
+        "internalType": "bytes[]",
+        "name": "_withdrawalProof",
+        "type": "bytes[]"
+      }
+    ],
+    "name": "proveWithdrawalTransaction",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "nonce",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "sender",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "target",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "value",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "gasLimit",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bytes",
+            "name": "data",
+            "type": "bytes"
+          }
+        ],
+        "internalType": "struct Types.WithdrawalTransaction",
+        "name": "_tx",
+        "type": "tuple"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_disputeGameIndex",
+        "type": "uint256"
+      },
+      {
         "components": [
           {
             "internalType": "bytes32",
@@ -529,6 +655,19 @@
   },
   {
     "inputs": [],
+    "name": "superRootsActive",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "superchainConfig",
     "outputs": [
       {
@@ -559,6 +698,11 @@
         "internalType": "contract IAnchorStateRegistry",
         "name": "_anchorStateRegistry",
         "type": "address"
+      },
+      {
+        "internalType": "bool",
+        "name": "_superRootsActive",
+        "type": "bool"
       }
     ],
     "name": "upgrade",
@@ -698,6 +842,16 @@
   },
   {
     "inputs": [],
+    "name": "Encoding_EmptySuperRoot",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "Encoding_InvalidSuperRootVersion",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "InvalidDataRemainder",
     "type": "error"
   },
@@ -753,6 +907,16 @@
   },
   {
     "inputs": [],
+    "name": "OptimismPortal_InvalidOutputRootChainId",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "OptimismPortal_InvalidOutputRootIndex",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "OptimismPortal_InvalidOutputRootProof",
     "type": "error"
   },
@@ -768,6 +932,11 @@
   },
   {
     "inputs": [],
+    "name": "OptimismPortal_InvalidSuperRootProof",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "OptimismPortal_NoReentrancy",
     "type": "error"
   },
@@ -779,6 +948,11 @@
   {
     "inputs": [],
     "name": "OptimismPortal_Unproven",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "OptimismPortal_WrongProofMethod",
     "type": "error"
   },
   {
