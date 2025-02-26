@@ -34,8 +34,6 @@ type DependencySet interface {
 	// See CanExecuteAt and CanInitiateAt to check if a chain may message at a given time.
 	HasChain(chainID eth.ChainID) bool
 
-	ChainIndexFromID(id eth.ChainID) (types.ChainIndex, error)
-
 	ChainIndexFromID
 	ChainIDFromIndex
 }

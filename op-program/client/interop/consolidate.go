@@ -106,7 +106,7 @@ func RunConsolidation(
 		if err != nil {
 			return eth.Bytes32{}, fmt.Errorf("no rollup config available for chain ID %v: %w", chain.ChainID, err)
 		}
-		if err := checkHazards(rollupCfg, deps, candidate, chain.ChainID, execMsgs); err != nil {
+		if err := checkHazards(logger, rollupCfg, deps, candidate, chain.ChainID, execMsgs); err != nil {
 			if !isInvalidMessageError(err) {
 				return eth.Bytes32{}, err
 			}
@@ -163,6 +163,7 @@ type ConsolidateCheckDeps interface {
 }
 
 func checkHazards(
+	logger log.Logger,
 	rollupCfg *rollup.Config,
 	deps ConsolidateCheckDeps,
 	candidate supervisortypes.BlockSeal,
@@ -180,7 +181,8 @@ func checkHazards(
 		}
 	}
 
-	hazards, err := cross.CrossUnsafeHazards(deps, chainID, candidate, execMsgs)
+	hazardDeps := &cross.UnsafeHazardDeps{UnsafeStartDeps: deps}
+	hazards, err := cross.CrossUnsafeHazards(hazardDeps, logger, chainID, candidate)
 	if err != nil {
 		return err
 	}

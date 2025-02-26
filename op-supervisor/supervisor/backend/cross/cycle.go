@@ -69,7 +69,7 @@ func (g *graph) addEdge(from, to node) {
 // succeeds if and only if a graph is acyclic.
 //
 // Returns nil if no cycles are found or ErrCycle if a cycle is detected.
-func HazardCycleChecks(depSet depset.ChainIDFromIndex, d CycleCheckDeps, inTimestamp uint64, hazards map[types.ChainIndex]types.BlockSeal) error {
+func HazardCycleChecks(depSet depset.ChainIDFromIndex, d CycleCheckDeps, inTimestamp uint64, hazards *HazardSet) error {
 	g, err := buildGraph(depSet, d, inTimestamp, hazards)
 	if err != nil {
 		return err
@@ -82,7 +82,7 @@ func HazardCycleChecks(depSet depset.ChainIDFromIndex, d CycleCheckDeps, inTimes
 // Returns:
 // - map of chain index to its log count
 // - map of chain index to map of log index to executing message (nil if doesn't exist or ignored)
-func gatherLogs(depSet depset.ChainIDFromIndex, d CycleCheckDeps, inTimestamp uint64, hazards map[types.ChainIndex]types.BlockSeal) (
+func gatherLogs(depSet depset.ChainIDFromIndex, d CycleCheckDeps, inTimestamp uint64, hazards *HazardSet) (
 	map[types.ChainIndex]uint32,
 	map[types.ChainIndex]map[uint32]*types.ExecutingMessage,
 	error,
@@ -90,7 +90,7 @@ func gatherLogs(depSet depset.ChainIDFromIndex, d CycleCheckDeps, inTimestamp ui
 	logCounts := make(map[types.ChainIndex]uint32)
 	execMsgs := make(map[types.ChainIndex]map[uint32]*types.ExecutingMessage)
 
-	for hazardChainIndex, hazardBlock := range hazards {
+	for hazardChainIndex, hazardBlock := range hazards.Entries() {
 		hazardChainID, err := depSet.ChainIDFromIndex(hazardChainIndex)
 		if err != nil {
 			return nil, nil, err
@@ -130,7 +130,7 @@ func gatherLogs(depSet depset.ChainIDFromIndex, d CycleCheckDeps, inTimestamp ui
 }
 
 // buildGraph constructs a dependency graph from the hazard blocks.
-func buildGraph(depSet depset.ChainIDFromIndex, d CycleCheckDeps, inTimestamp uint64, hazards map[types.ChainIndex]types.BlockSeal) (*graph, error) {
+func buildGraph(depSet depset.ChainIDFromIndex, d CycleCheckDeps, inTimestamp uint64, hazards *HazardSet) (*graph, error) {
 	g := &graph{
 		inDegree0:     make(map[node]struct{}),
 		inDegreeNon0:  make(map[node]uint32),
@@ -165,10 +165,11 @@ func buildGraph(depSet depset.ChainIDFromIndex, d CycleCheckDeps, inTimestamp ui
 	}
 
 	// Add edges for executing messages to their initiating messages
+	hazardEntries := hazards.Entries()
 	for hazardChainIndex, msgs := range execMsgs {
 		for execLogIdx, m := range msgs {
 			// Error if the chain is unknown
-			if _, ok := hazards[m.Chain]; !ok {
+			if _, ok := hazardEntries[m.Chain]; !ok {
 				return nil, ErrExecMsgUnknownChain
 			}
 
