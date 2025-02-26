@@ -90,7 +90,7 @@ func TestForking(t *testing.T) {
 	bob := common.Address(bytes.Repeat([]byte{0xbb}, 20))
 
 	forkState.CreateAccount(alice)
-	forkState.SetNonce(alice, 3)
+	forkState.SetNonce(alice, 3, tracing.NonceChangeUnspecified)
 	forkState.AddBalance(alice, uint256.NewInt(123), tracing.BalanceChangeUnspecified)
 	// Check if writes worked
 	require.Equal(t, uint64(123), forkState.GetBalance(alice).Uint64())
@@ -126,7 +126,7 @@ func TestForking(t *testing.T) {
 	require.Equal(t, uint64(1000), forkState.GetNonce(bob))
 
 	// Apply a diff change on top of the fork
-	forkState.SetNonce(bob, 99999)
+	forkState.SetNonce(bob, 99999, tracing.NonceChangeUnspecified)
 
 	// Now unselect the fork, going back to the default again.
 	require.NoError(t, forkState.SelectFork(ForkID{}))
@@ -140,7 +140,7 @@ func TestForking(t *testing.T) {
 	require.Equal(t, uint64(0), forkState.GetNonce(bob))
 
 	// Make a change to the base-state, to see if it survives going back to the fork.
-	forkState.SetNonce(bob, 5)
+	forkState.SetNonce(bob, 5, tracing.NonceChangeUnspecified)
 
 	// Re-select the fork, see if the changes come back, including the diff we made
 	require.NoError(t, forkState.SelectFork(forkA))
@@ -149,7 +149,7 @@ func TestForking(t *testing.T) {
 
 	// This change will continue to be visible across forks,
 	// alice is going to be persistent.
-	forkState.SetNonce(alice, 777)
+	forkState.SetNonce(alice, 777, tracing.NonceChangeUnspecified)
 
 	// Now make Alice persistent, see if we can get the original value
 	forkState.MakePersistent(alice)
@@ -173,8 +173,8 @@ func TestForking(t *testing.T) {
 	require.Equal(t, uint64(222), forkState.GetNonce(bob), "bob is forked")
 
 	// Mutate both, and undo the fork, to test if the persistent change is still there in non-fork mode
-	forkState.SetNonce(alice, 1001) // this mutates forkA, because alice was made persistent there
-	forkState.SetNonce(bob, 1002)
+	forkState.SetNonce(alice, 1001, tracing.NonceChangeUnspecified) // this mutates forkA, because alice was made persistent there
+	forkState.SetNonce(bob, 1002, tracing.NonceChangeUnspecified)
 	require.NoError(t, forkState.SelectFork(ForkID{}))
 	require.Equal(t, uint64(1001), forkState.GetNonce(alice), "alice is persistent")
 	require.Equal(t, uint64(5), forkState.GetNonce(bob), "bob is not persistent")
@@ -255,7 +255,7 @@ func TestForking(t *testing.T) {
 	require.Equal(t, uint64(9000), forkState.GetNonce(bob))
 
 	// Put in some mutations, for the fork-diff testing
-	forkState.SetNonce(alice, 1234)
+	forkState.SetNonce(alice, 1234, tracing.NonceChangeUnspecified)
 	forkState.SetBalance(alice, uint256.NewInt(100_000), tracing.BalanceChangeUnspecified)
 	forkState.SetState(alice, common.Hash{4}, common.Hash{42})
 	forkState.SetState(alice, common.Hash{5}, common.Hash{100})

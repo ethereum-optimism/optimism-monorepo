@@ -74,8 +74,8 @@ contract L1StandardBridge is StandardBridge, ISemver {
     );
 
     /// @notice Semantic version.
-    /// @custom:semver 2.2.1
-    string public constant version = "2.2.1";
+    /// @custom:semver 2.2.2
+    string public constant version = "2.2.2";
 
     /// @notice Address of the SuperchainConfig contract.
     ISuperchainConfig public superchainConfig;

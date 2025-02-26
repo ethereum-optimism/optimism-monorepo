@@ -35,6 +35,9 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 )
 
+// Update to Prague if L1 changes to Prague and we need more blobs in multi-blob tests.
+var maxBlobsPerBlock = params.DefaultCancunBlobConfig.Max
+
 // TestSystem4844E2E* run the SystemE2E test with 4844 enabled on L1, and active on the rollup in
 // the op-batcher and verifier.  It submits a txpool-blocking transaction before running
 // each test to ensure the batcher is able to clear it.
@@ -60,9 +63,9 @@ func testSystem4844E2E(t *testing.T, multiBlob bool, daType batcherFlags.DataAva
 
 	var maxL1TxSize int
 	if multiBlob {
-		cfg.BatcherTargetNumFrames = eth.MaxBlobsPerBlobTx
+		cfg.BatcherTargetNumFrames = maxBlobsPerBlock
 		cfg.BatcherUseMaxTxSizeForBlobs = true
-		// leads to eth.MaxBlobsPerBlobTx blobs for an L2 block with a user tx with 400 random bytes
+		// leads to maxBlobsPerBlock blobs for an L2 block with a user tx with 400 random bytes
 		// while all other L2 blocks take 1 blob (deposit tx)
 		maxL1TxSize = derive.FrameV0OverHeadSize + 100
 		cfg.BatcherMaxL1TxSizeBytes = uint64(maxL1TxSize)
@@ -137,7 +140,7 @@ func testSystem4844E2E(t *testing.T, multiBlob bool, daType batcherFlags.DataAva
 		opts.Value = big.NewInt(1_000_000_000)
 		opts.Nonce = 1 // Already have deposit
 		opts.ToAddr = &common.Address{0xff, 0xff}
-		// put some random data in the tx to make it fill up eth.MaxBlobsPerBlobTx blobs (multi-blob case)
+		// put some random data in the tx to make it fill up maxBlobsPerBlock blobs (multi-blob case)
 		opts.Data = testutils.RandomData(rand.New(rand.NewSource(420)), 400)
 		opts.Gas, err = core.IntrinsicGas(opts.Data, nil, nil, false, true, true, false)
 		require.NoError(t, err)
@@ -215,21 +218,20 @@ func testSystem4844E2E(t *testing.T, multiBlob bool, daType batcherFlags.DataAva
 	if !multiBlob {
 		require.NotZero(t, numBlobs, "single-blob: expected to find L1 blob tx")
 	} else {
-		const maxBlobs = eth.MaxBlobsPerBlobTx
-		require.Equal(t, maxBlobs, numBlobs, fmt.Sprintf("multi-blob: expected to find L1 blob tx with %d blobs", maxBlobs))
+		require.Equal(t, maxBlobsPerBlock, numBlobs, fmt.Sprintf("multi-blob: expected to find L1 blob tx with %d blobs", maxBlobsPerBlock))
 		// blob tx should have filled up all but last blob
 		bcl := sys.L1BeaconHTTPClient()
 		hashes := toIndexedBlobHashes(blobTx.BlobHashes()...)
 		sidecars, err := bcl.BeaconBlobSideCars(context.Background(), false, sys.L1Slot(blobBlock.Time()), hashes)
 		require.NoError(t, err)
-		require.Len(t, sidecars.Data, maxBlobs)
-		for i := 0; i < maxBlobs-1; i++ {
+		require.Len(t, sidecars.Data, maxBlobsPerBlock)
+		for i := 0; i < maxBlobsPerBlock-1; i++ {
 			data, err := sidecars.Data[i].Blob.ToData()
 			require.NoError(t, err)
 			require.Len(t, data, maxL1TxSize)
 		}
 		// last blob should only be partially filled
-		data, err := sidecars.Data[maxBlobs-1].Blob.ToData()
+		data, err := sidecars.Data[maxBlobsPerBlock-1].Blob.ToData()
 		require.NoError(t, err)
 		require.Less(t, len(data), maxL1TxSize)
 	}
@@ -261,12 +263,14 @@ func TestBatcherAutoDA(t *testing.T) {
 	cfg.DataAvailabilityType = batcherFlags.AutoType
 	// We set the genesis fee values and block gas limit such that calldata txs are initially cheaper,
 	// but then manipulate the fee markets over the coming L1 blocks such that blobs become cheaper again.
-	cfg.DeployConfig.L1GenesisBlockBaseFeePerGas = (*hexutil.Big)(big.NewInt(3100))
-	// 100 blob targets leads to 130_393 starting blob base fee, which is ~ 42 * 2_000 (equilibrium is ~16x or ~40x under Pectra)
-	cfg.DeployConfig.L1GenesisBlockExcessBlobGas = (*hexutil.Uint64)(u64Ptr(100 * params.BlobTxTargetBlobGasPerBlock))
+	cfg.DeployConfig.L1GenesisBlockBaseFeePerGas = (*hexutil.Big)(big.NewInt(3000))
+	// The following excess blob gas leads to a blob base fee ~41 times higher than the base fee at genesis,
+	// so the batcher starts with calldata (equilibrium is ~16x or ~40x under Pectra).
+	cfg.DeployConfig.L1GenesisBlockExcessBlobGas = (*hexutil.Uint64)(u64Ptr(
+		450 * params.BlobTxBlobGasPerBlob))
 	cfg.DeployConfig.L1GenesisBlockBlobGasUsed = (*hexutil.Uint64)(u64Ptr(0))
 	cfg.DeployConfig.L1GenesisBlockGasLimit = 2_500_000
-	cfg.BatcherTargetNumFrames = eth.MaxBlobsPerBlobTx
+	cfg.BatcherTargetNumFrames = maxBlobsPerBlock
 	sys, err := cfg.Start(t)
 	require.NoError(t, err, "Error starting up system")
 	log := testlog.Logger(t, log.LevelInfo)

@@ -212,6 +212,14 @@ interfaces-check-no-build:
 # artifacts can cause the script to detect issues incorrectly.
 interfaces-check: clean build interfaces-check-no-build
 
+# Checks that all upgrade/initialize funcitons have proper reinitializer modifiers.
+reinitializer-check: build-source reinitializer-check-no-build
+
+# Checks that all upgrade/initialize funcitons have proper reinitializer modifiers.
+# Does not build contracts.
+reinitializer-check-no-build:
+  go run ./scripts/checks/reinitializer
+
 # Checks that the size of the contracts is within the limit.
 size-check:
   forge build --sizes --skip "/**/test/**" --skip "/**/scripts/**"

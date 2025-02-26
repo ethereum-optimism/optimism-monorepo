@@ -264,7 +264,18 @@ contract L1StandardBridge_DepositETH_Test is PreBridgeETH {
     ///      Calls depositTransaction on the OptimismPortal.
     ///      Only EOA can call depositETH.
     ///      ETH ends up in the optimismPortal.
-    function test_depositETH_succeeds() external {
+    function test_depositETH_fromEOA_succeeds() external {
+        _preBridgeETH({ isLegacy: true, value: 500 });
+        uint256 balanceBefore = address(optimismPortal2).balance;
+        l1StandardBridge.depositETH{ value: 500 }(50000, hex"dead");
+        assertEq(address(optimismPortal2).balance, balanceBefore + 500);
+    }
+
+    /// @dev Tests that depositing ETH succeeds for an EOA using 7702 delegation.
+    function test_depositETH_fromEOA7702_succeeds() external {
+        // Set alice to have 7702 code.
+        vm.etch(alice, abi.encodePacked(hex"EF0100", address(0)));
+
         _preBridgeETH({ isLegacy: true, value: 500 });
         uint256 balanceBefore = address(optimismPortal2).balance;
         l1StandardBridge.depositETH{ value: 500 }(50000, hex"dead");
@@ -461,7 +472,7 @@ contract L1StandardBridge_DepositERC20_Test is CommonTest {
         vm.expectEmit(address(l1CrossDomainMessenger));
         emit SentMessageExtension1(address(l1StandardBridge), 0);
 
-        vm.prank(alice);
+        vm.prank(alice, alice);
         l1StandardBridge.depositERC20(address(L1Token), address(L2Token), 100, 10000, hex"");
         assertEq(l1StandardBridge.deposits(address(L1Token), address(L2Token)), 100);
     }
@@ -475,7 +486,7 @@ contract L1StandardBridge_DepositERC20_TestFail is CommonTest {
         vm.etch(alice, hex"ffff");
 
         vm.expectRevert("StandardBridge: function can only be called from an EOA");
-        vm.prank(alice, alice);
+        vm.prank(alice);
         l1StandardBridge.depositERC20(address(0), address(0), 100, 100, hex"");
     }
 }

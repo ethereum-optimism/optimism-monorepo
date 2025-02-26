@@ -201,11 +201,13 @@ type AstNode struct {
 	Value    interface{} `json:"value,omitempty"`
 
 	// Other fields
-	Arguments []Expression `json:"arguments,omitempty"`
-	Condition *Expression  `json:"condition,omitempty"`
-	TrueBody  *AstBlock    `json:"trueBody,omitempty"`
-	FalseBody *AstBlock    `json:"falseBody,omitempty"`
-	Operator  string       `json:"operator,omitempty"`
+	ModifierName *Expression  `json:"modifierName,omitempty"`
+	Modifiers    []AstNode    `json:"modifiers,omitempty"`
+	Arguments    []Expression `json:"arguments,omitempty"`
+	Condition    *Expression  `json:"condition,omitempty"`
+	TrueBody     *AstBlock    `json:"trueBody,omitempty"`
+	FalseBody    *AstBlock    `json:"falseBody,omitempty"`
+	Operator     string       `json:"operator,omitempty"`
 }
 
 type AstBaseContract struct {
@@ -259,6 +261,7 @@ type Expression struct {
 	OverloadedDeclarations []int                 `json:"overloadedDeclarations,omitempty"`
 	ReferencedDeclaration  int                   `json:"referencedDeclaration,omitempty"`
 	ArgumentTypes          []AstTypeDescriptions `json:"argumentTypes,omitempty"`
+	Value                  interface{}           `json:"value,omitempty"`
 }
 
 type ForgeArtifact struct {

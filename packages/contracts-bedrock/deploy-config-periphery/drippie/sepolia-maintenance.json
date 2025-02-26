@@ -1,5 +1,6 @@
 {
-  "drippie": "0xa0fF2a54AdC3fB33c44a141E67d194CF249258cb",
+  "__comment": "Main contract addresses",
+  "drippie": "0x41d918d94fDF4A354AB515ea646ce73b36A17c7b",
 
   "__comment": "Addresses of dripcheck contracts to be used in drips",
   "dripchecks": [
@@ -16,47 +17,46 @@
       "01__address": "0xcBCb3896Ddec35d91901768733C5d3738e10509F"
     }
   ],
-
   "__comment": "Prefix is used to namespace drips so that drip management can be handled modularly",
-  "prefix": "operations",
+  "prefix": "maintenance",
 
   "__comment": "Object attributes below are prefixed with numbers because of how foundry parses JSON into structs in alphabetical order",
   "drips": [
     {
-      "00__name": "sequencer_v4",
-      "01__dripcheck": "CheckBalanceLow",
-      "02__checkparams": {
-        "01__target": "0x8F23BB38F531600e5d8FDDaAEC41F13FaB46E98c",
-        "02__threshold": 1000000000000000000000
-      },
-      "03__recipient": "0x8F23BB38F531600e5d8FDDaAEC41F13FaB46E98c",
-      "04__value": 100000000000000000000,
-      "05__interval": 3600,
-      "06__data": ""
-    },
-    {
-      "00__name": "proposer_v3",
+      "00__name": "proposer_v1",
       "01__dripcheck": "CheckBalanceLow",
       "02__checkparams": {
         "01__target": "0x49277EE36A024120Ee218127354c4a3591dc90A9",
-        "02__threshold": 100000000000000000000
+        "02__threshold": 20000000000000000000
       },
       "03__recipient": "0x49277EE36A024120Ee218127354c4a3591dc90A9",
-      "04__value": 20000000000000000000,
+      "04__value": 10000000000000000000,
       "05__interval": 86400,
       "06__data": ""
     },
     {
-      "00__name": "challenger_v2",
+      "00__name": "challenger_v1",
       "01__dripcheck": "CheckBalanceLow",
       "02__checkparams": {
-        "01__target": "0xffb026F67DA0869EB3ABB090cB7F015CE0925CdF",
-        "02__threshold": 1000000000000000000000
+        "01__target": "0xfd1D2e729aE8eEe2E146c033bf4400fE75284301",
+        "02__threshold": 50000000000000000000
       },
-      "03__recipient": "0x49277EE36A024120Ee218127354c4a3591dc90A9",
-      "04__value": 100000000000000000000,
-      "05__interval": 3600,
+      "03__recipient": "0xfd1D2e729aE8eEe2E146c033bf4400fE75284301",
+      "04__value": 10000000000000000000,
+      "05__interval": 86400,
       "06__data": ""
-    }
-  ]
+    },
+    {
+      "00__name": "batcher_v1",
+      "01__dripcheck": "CheckBalanceLow",
+      "02__checkparams": {
+        "01__target": "0x8F23BB38F531600e5d8FDDaAEC41F13FaB46E98c",
+        "02__threshold": 100000000000000000000
+      },
+      "03__recipient": "0x8F23BB38F531600e5d8FDDaAEC41F13FaB46E98c",
+      "04__value": 10000000000000000000,
+      "05__interval": 86400,
+      "06__data": ""
+    },
+  ],
 }

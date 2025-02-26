@@ -15,7 +15,6 @@ import (
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/consensus/misc/eip4844"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/txpool"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -152,7 +151,8 @@ func (g *gasPricer) expGasFeeCap() *big.Int {
 
 func (g *gasPricer) expBlobFeeCap() *big.Int {
 	_, _, excessBlobGas := g.feesForEpoch(g.mineAtEpoch)
-	return eip4844.CalcBlobFee(excessBlobGas)
+	// Needs to be adjusted when Prague gas pricing is needed.
+	return eth.CalcBlobFeeCancun(excessBlobGas)
 }
 
 func (g *gasPricer) shouldMine(gasFeeCap *big.Int) bool {
@@ -504,7 +504,8 @@ func TestTxMgrConfirmsBlobTxAtHigherGasPrice(t *testing.T) {
 	h := newTestHarness(t)
 
 	gasTipCap, gasFeeCap, excessBlobGas := h.gasPricer.sample()
-	blobFeeCap := eip4844.CalcBlobFee(excessBlobGas)
+	// Needs to be adjusted when testing with Prague activated on L1.
+	blobFeeCap := eth.CalcBlobFeeCancun(excessBlobGas)
 	t.Log("Blob fee cap:", blobFeeCap, "gasFeeCap:", gasFeeCap)
 
 	tx := types.NewTx(&types.BlobTx{

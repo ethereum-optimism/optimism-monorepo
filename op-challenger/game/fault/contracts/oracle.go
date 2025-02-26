@@ -292,7 +292,14 @@ func (c *PreimageOracleContractLatest) GetInputDataBlocks(ctx context.Context, b
 	}
 	blockNums := make([]uint64, 0, len(results))
 	for _, result := range results {
-		blockNums = append(blockNums, result.GetUint64(0))
+		num := result.GetUint64(0)
+		if len(blockNums) > 0 && blockNums[len(blockNums)-1] == num {
+			// Deduplicate block numbers. The contract guarantees they are in order so we just need to check if the
+			// previous block number is the same as this one.
+			// Duplicate entries happen when there are two addLeavesLPP calls in the same block.
+			continue
+		}
+		blockNums = append(blockNums, num)
 	}
 	return blockNums, nil
 }

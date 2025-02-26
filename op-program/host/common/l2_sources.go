@@ -9,6 +9,8 @@ import (
 
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum-optimism/optimism/op-service/client"
+	"github.com/ethereum-optimism/optimism/op-service/retry"
+
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/log"
 )
@@ -103,10 +105,12 @@ func NewL2Sources(ctx context.Context, logger log.Logger, configs []*rollup.Conf
 }
 
 func loadChainID(ctx context.Context, rpc client.RPC) (uint64, error) {
-	var id hexutil.Big
-	err := rpc.CallContext(ctx, &id, "eth_chainId")
-	if err != nil {
-		return 0, err
-	}
-	return (*big.Int)(&id).Uint64(), nil
+	return retry.Do(ctx, 3, retry.Exponential(), func() (uint64, error) {
+		var id hexutil.Big
+		err := rpc.CallContext(ctx, &id, "eth_chainId")
+		if err != nil {
+			return 0, err
+		}
+		return (*big.Int)(&id).Uint64(), nil
+	})
 }

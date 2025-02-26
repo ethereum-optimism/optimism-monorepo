@@ -346,6 +346,23 @@ func (s *channelManager) processBlocks() error {
 		latestL2ref eth.L2BlockRef
 	)
 
+	defer func() {
+		s.blockCursor += blocksAdded
+
+		s.metr.RecordL2BlocksAdded(latestL2ref,
+			blocksAdded,
+			s.pendingBlocks(),
+			s.currentChannel.InputBytes(),
+			s.currentChannel.ReadyBytes())
+		s.log.Debug("Added blocks to channel",
+			"blocks_added", blocksAdded,
+			"blocks_pending", s.pendingBlocks(),
+			"channel_full", s.currentChannel.IsFull(),
+			"input_bytes", s.currentChannel.InputBytes(),
+			"ready_bytes", s.currentChannel.ReadyBytes(),
+		)
+	}()
+
 	for i := s.blockCursor; ; i++ {
 		block, ok := s.blocks.PeekN(i)
 		if !ok {
@@ -369,21 +386,6 @@ func (s *channelManager) processBlocks() error {
 			break
 		}
 	}
-
-	s.blockCursor += blocksAdded
-
-	s.metr.RecordL2BlocksAdded(latestL2ref,
-		blocksAdded,
-		s.pendingBlocks(),
-		s.currentChannel.InputBytes(),
-		s.currentChannel.ReadyBytes())
-	s.log.Debug("Added blocks to channel",
-		"blocks_added", blocksAdded,
-		"blocks_pending", s.pendingBlocks(),
-		"channel_full", s.currentChannel.IsFull(),
-		"input_bytes", s.currentChannel.InputBytes(),
-		"ready_bytes", s.currentChannel.ReadyBytes(),
-	)
 	return nil
 }
 

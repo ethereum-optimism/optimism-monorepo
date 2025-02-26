@@ -265,6 +265,57 @@ contract OptimismPortal2_Test is CommonTest {
         assertEq(address(optimismPortal2).balance, balanceBefore + _mint);
     }
 
+    /// @dev Tests that `depositTransaction` succeeds for an EOA using 7702 delegation.
+    function testFuzz_depositTransaction_eoa7702_succeeds(
+        address _to,
+        uint64 _gasLimit,
+        uint256 _value,
+        uint256 _mint,
+        bool _isCreation,
+        bytes memory _data,
+        address _7702Target
+    )
+        external
+    {
+        _gasLimit = uint64(
+            bound(
+                _gasLimit,
+                optimismPortal2.minimumGasLimit(uint64(_data.length)),
+                systemConfig.resourceConfig().maxResourceLimit
+            )
+        );
+        if (_isCreation) _to = address(0);
+
+        uint256 balanceBefore = address(optimismPortal2).balance;
+        _mint = bound(_mint, 0, type(uint256).max - balanceBefore);
+
+        // EOA emulation
+        vm.expectEmit(address(optimismPortal2));
+        emitTransactionDeposited({
+            _from: depositor,
+            _to: _to,
+            _value: _value,
+            _mint: _mint,
+            _gasLimit: _gasLimit,
+            _isCreation: _isCreation,
+            _data: _data
+        });
+
+        // 7702 delegation using the 7702 prefix
+        vm.etch(depositor, abi.encodePacked(hex"EF0100", _7702Target));
+
+        vm.deal(depositor, _mint);
+        vm.prank(depositor, address(0x0420));
+        optimismPortal2.depositTransaction{ value: _mint }({
+            _to: _to,
+            _value: _value,
+            _gasLimit: _gasLimit,
+            _isCreation: _isCreation,
+            _data: _data
+        });
+        assertEq(address(optimismPortal2).balance, balanceBefore + _mint);
+    }
+
     /// @dev Tests that `depositTransaction` succeeds for a contract.
     function testFuzz_depositTransaction_contract_succeeds(
         address _to,

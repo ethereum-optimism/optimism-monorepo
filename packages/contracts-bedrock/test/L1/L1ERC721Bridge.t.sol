@@ -91,7 +91,7 @@ contract L1ERC721Bridge_Test is CommonTest {
     }
 
     /// @dev Tests that the ERC721 can be bridged successfully.
-    function test_bridgeERC721_succeeds() public {
+    function test_bridgeERC721_fromEOA_succeeds() public {
         // Expect a call to the messenger.
         vm.expectCall(
             address(l1CrossDomainMessenger),
@@ -111,6 +111,40 @@ contract L1ERC721Bridge_Test is CommonTest {
         // Expect an event to be emitted.
         vm.expectEmit(true, true, true, true);
         emit ERC721BridgeInitiated(address(localToken), address(remoteToken), alice, alice, tokenId, hex"5678");
+
+        // Bridge the token.
+        vm.prank(alice, alice);
+        l1ERC721Bridge.bridgeERC721(address(localToken), address(remoteToken), tokenId, 1234, hex"5678");
+
+        // Token is locked in the bridge.
+        assertEq(l1ERC721Bridge.deposits(address(localToken), address(remoteToken), tokenId), true);
+        assertEq(localToken.ownerOf(tokenId), address(l1ERC721Bridge));
+    }
+
+    /// @dev Tests that the ERC721 can be bridged successfully.
+    function test_bridgeERC721_fromEOA7702_succeeds() public {
+        // Expect a call to the messenger.
+        vm.expectCall(
+            address(l1CrossDomainMessenger),
+            abi.encodeCall(
+                l1CrossDomainMessenger.sendMessage,
+                (
+                    address(l2ERC721Bridge),
+                    abi.encodeCall(
+                        IL2ERC721Bridge.finalizeBridgeERC721,
+                        (address(remoteToken), address(localToken), alice, alice, tokenId, hex"5678")
+                    ),
+                    1234
+                )
+            )
+        );
+
+        // Expect an event to be emitted.
+        vm.expectEmit(true, true, true, true);
+        emit ERC721BridgeInitiated(address(localToken), address(remoteToken), alice, alice, tokenId, hex"5678");
+
+        // Set alice to have 7702 code.
+        vm.etch(alice, abi.encodePacked(hex"EF0100", address(0)));
 
         // Bridge the token.
         vm.prank(alice);
@@ -137,7 +171,7 @@ contract L1ERC721Bridge_Test is CommonTest {
     /// @dev Tests that the ERC721 bridge reverts for a zero address local token.
     function test_bridgeERC721_localTokenZeroAddress_reverts() external {
         // Bridge the token.
-        vm.prank(alice);
+        vm.prank(alice, alice);
         vm.expectRevert(bytes(""));
         l1ERC721Bridge.bridgeERC721(address(0), address(remoteToken), tokenId, 1234, hex"5678");
 
@@ -149,7 +183,7 @@ contract L1ERC721Bridge_Test is CommonTest {
     /// @dev Tests that the ERC721 bridge reverts for a zero address remote token.
     function test_bridgeERC721_remoteTokenZeroAddress_reverts() external {
         // Bridge the token.
-        vm.prank(alice);
+        vm.prank(alice, alice);
         vm.expectRevert("L1ERC721Bridge: remote token cannot be address(0)");
         l1ERC721Bridge.bridgeERC721(address(localToken), address(0), tokenId, 1234, hex"5678");
 
@@ -161,7 +195,7 @@ contract L1ERC721Bridge_Test is CommonTest {
     /// @dev Tests that the ERC721 bridge reverts for an incorrect owner.
     function test_bridgeERC721_wrongOwner_reverts() external {
         // Bridge the token.
-        vm.prank(bob);
+        vm.prank(bob, bob);
         vm.expectRevert("ERC721: transfer from incorrect owner");
         l1ERC721Bridge.bridgeERC721(address(localToken), address(remoteToken), tokenId, 1234, hex"5678");
 
@@ -252,7 +286,7 @@ contract L1ERC721Bridge_Test is CommonTest {
     /// @dev Tests that the ERC721 bridge successfully finalizes a withdrawal.
     function test_finalizeBridgeERC721_succeeds() external {
         // Bridge the token.
-        vm.prank(alice);
+        vm.prank(alice, alice);
         l1ERC721Bridge.bridgeERC721(address(localToken), address(remoteToken), tokenId, 1234, hex"5678");
 
         // Expect an event to be emitted.
