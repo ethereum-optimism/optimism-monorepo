@@ -315,7 +315,7 @@ type SystemConfig struct {
 	// Default is 1 if unset.
 	BatcherTargetNumFrames int
 
-	// whether to actually use BatcherMaxL1TxSizeBytes for blobs, insteaf of max blob size
+	// whether to actually use BatcherMaxL1TxSizeBytes for blobs, instead of max blob size
 	BatcherUseMaxTxSizeForBlobs bool
 
 	// Singular (0) or span batches (1)
