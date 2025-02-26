@@ -312,7 +312,29 @@ func (m *Metrics) RecordL2BlockInPendingQueue(block *types.Block) {
 func (m *Metrics) RecordL2BlockInChannel(block *types.Block) {
 	daSize, rawSize := estimateBatchSize(block)
 	m.pendingBlocksBytesCurrent.Add(-1.0 * float64(rawSize))
-	atomic.AddInt64(&m.pendingDABytes, -1*int64(daSize))
+
+	// Ensure we don't subtract more than what's available to avoid negative values
+	for {
+		current := atomic.LoadInt64(&m.pendingDABytes)
+		// If current value is already 0 or negative, don't subtract more
+		if current <= 0 {
+			atomic.StoreInt64(&m.pendingDABytes, 0)
+			break
+		}
+
+		// Calculate new value, ensuring it doesn't go below 0
+		newValue := current - int64(daSize)
+		if newValue < 0 {
+			newValue = 0
+		}
+
+		// Try to update the value atomically
+		if atomic.CompareAndSwapInt64(&m.pendingDABytes, current, newValue) {
+			break
+		}
+		// If CAS failed, loop and try again
+	}
+
 	// Refer to RecordL2BlocksAdded to see the current + count of bytes added to a channel
 }
 
