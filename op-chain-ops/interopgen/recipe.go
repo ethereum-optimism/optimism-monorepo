@@ -261,7 +261,7 @@ func InteropL2DevConfig(l1ChainID, l2ChainID uint64, addrs devkeys.Addresses, me
 		SaltMixer:               "",
 		GasLimit:                60_000_000,
 		DisputeGameType:         1, // PERMISSIONED_CANNON Game Type
-		DisputeAbsolutePrestate: common.HexToHash("0x038512e02c4c3f7bdaec27d00edf55b7155e0905301e1a88083e4e0a6764d54c"),
+		DisputeAbsolutePrestate: common.HexToHash("0x0x035ac388b5cb22acf52a2063cfde108d09b1888655d21f02f595f9c3ea6cbdcd"),
 		DisputeMaxGameDepth:     73,
 		DisputeSplitDepth:       30,
 		DisputeClockExtension:   10800,  // 3 hours (input in seconds)

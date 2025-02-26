@@ -334,7 +334,7 @@ contract DeployOPChain_TestBase is Test {
     uint64 gasLimit = 60_000_000;
     // Configurable dispute game parameters.
     uint32 disputeGameType = GameType.unwrap(GameTypes.PERMISSIONED_CANNON);
-    bytes32 disputeAbsolutePrestate = hex"038512e02c4c3f7bdaec27d00edf55b7155e0905301e1a88083e4e0a6764d54c";
+    bytes32 disputeAbsolutePrestate = hex"0x035ac388b5cb22acf52a2063cfde108d09b1888655d21f02f595f9c3ea6cbdcd";
     uint256 disputeMaxGameDepth = 73;
     uint256 disputeSplitDepth = 30;
     uint64 disputeClockExtension = Duration.unwrap(Duration.wrap(3 hours));
@@ -473,7 +473,7 @@ contract DeployOPChain_Test is DeployOPChain_TestBase {
         assertEq(doo.permissionedDisputeGame().l2BlockNumber(), 0, "3000");
         assertEq(
             Claim.unwrap(doo.permissionedDisputeGame().absolutePrestate()),
-            0x038512e02c4c3f7bdaec27d00edf55b7155e0905301e1a88083e4e0a6764d54c,
+            0x0x035ac388b5cb22acf52a2063cfde108d09b1888655d21f02f595f9c3ea6cbdcd,
             "3100"
         );
         assertEq(Duration.unwrap(doo.permissionedDisputeGame().clockExtension()), 10800, "3200");
