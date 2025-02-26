@@ -550,7 +550,7 @@ func TestInteropFaultProofs_MessageExpiry(gt *testing.T) {
 	system.SubmitBatchData()
 
 	// Advance the chain until the init msg expires
-	msgExpiryTime := actors.ChainA.RollupCfg.GetMessageExpiryTimeInterop()
+	msgExpiryTime := system.DepSet().MessageExpiryWindow()
 	end := emitTx.Identifier().Timestamp.Uint64() + msgExpiryTime
 	system.AddL2Block(actors.ChainA, dsl.WithL2BlocksUntilTimestamp(end))
 	system.AddL2Block(actors.ChainB, dsl.WithL2BlocksUntilTimestamp(end))
