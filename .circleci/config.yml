@@ -807,6 +807,18 @@ jobs:
 
   contracts-bedrock-tests-upgrade:
     circleci_ip_ranges: true
+    parameters:
+      fork_op_chain:
+        description: Fork OP Chain
+        type: string
+        default: "op"
+      fork_base_chain:
+        description: Fork Base Chain
+        type: string
+        default: "mainnet"
+      fork_base_rpc:
+        description: Fork Base RPC
+        type: string
     docker:
       - image: <<pipeline.parameters.default_docker_image>>
     resource_class: large
@@ -836,7 +848,7 @@ jobs:
           working_directory: packages/contracts-bedrock
       - restore_cache:
           name: Restore forked state
-          key: forked-state-contracts-bedrock-tests-upgrade-{{ checksum "packages/contracts-bedrock/pinnedBlockNumber.txt" }}
+          key: forked-state-contracts-bedrock-tests-upgrade-<<parameters.fork_op_chain>>-<<parameters.fork_base_chain>>-{{ checksum "packages/contracts-bedrock/pinnedBlockNumber.txt" }}
       - run:
           name: Run tests
           command: just test-upgrade
@@ -844,7 +856,9 @@ jobs:
             FOUNDRY_FUZZ_SEED: 42424242
             FOUNDRY_FUZZ_RUNS: 1
             FOUNDRY_PROFILE: ci
-            ETH_RPC_URL: https://ci-mainnet-l1-archive.optimism.io
+            ETH_RPC_URL: <<parameters.fork_base_rpc>>
+            FORK_OP_CHAIN: <<parameters.fork_op_chain>>
+            FORK_BASE_CHAIN: <<parameters.fork_base_chain>>
           working_directory: packages/contracts-bedrock
           no_output_timeout: 15m
       - run:
@@ -854,7 +868,9 @@ jobs:
             FOUNDRY_FUZZ_SEED: 42424242
             FOUNDRY_FUZZ_RUNS: 1
             FOUNDRY_PROFILE: ci
-            ETH_RPC_URL: https://ci-mainnet-l1-archive.optimism.io
+            ETH_RPC_URL: <<parameters.fork_base_rpc>>
+            FORK_OP_CHAIN: <<parameters.fork_op_chain>>
+            FORK_BASE_CHAIN: <<parameters.fork_base_chain>>
           working_directory: packages/contracts-bedrock
           when: on_fail
       - save_cache:
@@ -864,7 +880,7 @@ jobs:
             - "/root/.cache/go-build"
       - save_cache:
           name: Save forked state
-          key: forked-state-contracts-bedrock-tests-upgrade-{{ checksum "packages/contracts-bedrock/pinnedBlockNumber.txt" }}
+          key: forked-state-contracts-bedrock-tests-upgrade-<<parameters.fork_op_chain>>-<<parameters.fork_base_chain>>-{{ checksum "packages/contracts-bedrock/pinnedBlockNumber.txt" }}
           when: always
           paths:
             - "/root/.foundry/cache"
@@ -1447,7 +1463,15 @@ workflows:
           requires:
             - contracts-bedrock-build
       - contracts-bedrock-tests-upgrade:
-          name: contracts-bedrock-tests-upgrade
+          name: contracts-bedrock-tests-upgrade op-mainnet
+          fork_op_chain: op
+          fork_base_chain: mainnet
+          fork_base_rpc: https://ci-mainnet-l1-archive.optimism.io
+      - contracts-bedrock-tests-upgrade:
+          name: contracts-bedrock-tests-upgrade op-sepolia
+          fork_op_chain: op
+          fork_base_chain: sepolia
+          fork_base_rpc: https://ci-sepolia-l1-archive.optimism.io
       - contracts-bedrock-checks:
           requires:
             - contracts-bedrock-build
