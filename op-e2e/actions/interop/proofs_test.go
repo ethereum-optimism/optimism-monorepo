@@ -367,8 +367,6 @@ func TestInteropFaultProofs(gt *testing.T) {
 
 func TestInteropFaultProofs_Cycle(gt *testing.T) {
 	t := helpers.NewDefaultTesting(gt)
-	// TODO(#14425): Handle cyclic valid messages
-	t.Skip("Cyclic valid messages does not work")
 
 	system := dsl.NewInteropDSL(t)
 	actors := system.Actors
