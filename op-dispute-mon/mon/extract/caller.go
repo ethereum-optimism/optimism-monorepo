@@ -56,7 +56,9 @@ func (g *GameCallerCreator) CreateContract(ctx context.Context, game gameTypes.G
 		faultTypes.AsteriscGameType,
 		faultTypes.AlphabetGameType,
 		faultTypes.FastGameType,
-		faultTypes.AsteriscKonaGameType:
+		faultTypes.AsteriscKonaGameType,
+		faultTypes.SuperCannonGameType,
+		faultTypes.SuperPermissionedGameType:
 		fdg, err := contracts.NewFaultDisputeGameContract(ctx, g.m, game.Proxy, g.caller)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create fault dispute game contract: %w", err)

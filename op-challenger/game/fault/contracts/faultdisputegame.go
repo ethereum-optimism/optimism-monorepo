@@ -76,6 +76,19 @@ type outputRootProof struct {
 }
 
 func NewFaultDisputeGameContract(ctx context.Context, metrics metrics.ContractMetricer, addr common.Address, caller *batching.MultiCaller) (FaultDisputeGameContract, error) {
+	gameType, err := DetectGameType(ctx, addr, caller)
+	if err != nil {
+		return nil, fmt.Errorf("failed to detect game type: %w", err)
+	}
+	switch gameType {
+	case types.SuperCannonGameType, types.SuperPermissionedGameType:
+		return NewSuperFaultDisputeGameContract(ctx, metrics, addr, caller)
+	default:
+		return NewPreInteropFaultDisputeGameContract(ctx, metrics, addr, caller)
+	}
+}
+
+func NewPreInteropFaultDisputeGameContract(ctx context.Context, metrics metrics.ContractMetricer, addr common.Address, caller *batching.MultiCaller) (FaultDisputeGameContract, error) {
 	contractAbi := snapshots.LoadFaultDisputeGameABI()
 
 	var builder VersionedBuilder[FaultDisputeGameContract]
@@ -211,7 +224,7 @@ func (f *FaultDisputeGameContractLatest) GetGameMetadata(ctx context.Context, bl
 		return GameMetadata{}, fmt.Errorf("failed to retrieve game metadata: %w", err)
 	}
 	if len(results) != 7 {
-		return GameMetadata{}, fmt.Errorf("expected 6 results but got %v", len(results))
+		return GameMetadata{}, fmt.Errorf("expected 7 results but got %v", len(results))
 	}
 	l1Head := results[0].GetHash(0)
 	l2BlockNumber := results[1].GetBigInt(0).Uint64()
