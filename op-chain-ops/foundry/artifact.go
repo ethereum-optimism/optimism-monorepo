@@ -59,6 +59,7 @@ func (a Artifact) MarshalJSON() ([]byte, error) {
 // foundry artifacts.
 type artifactMarshaling struct {
 	ABI              json.RawMessage    `json:"abi"`
+	Source           string             `json:"source"`
 	StorageLayout    solc.StorageLayout `json:"storageLayout"`
 	DeployedBytecode DeployedBytecode   `json:"deployedBytecode"`
 	Bytecode         Bytecode           `json:"bytecode"`
@@ -77,7 +78,7 @@ type Metadata struct {
 
 	Settings struct {
 		// Remappings of the contract imports
-		Remappings json.RawMessage `json:"remappings"`
+		Remappings []string `json:"remappings"`
 		// Optimizer settings affect the compiler output, but can be arbitrary.
 		// We load them opaquely, to include it in the hash of what we run.
 		Optimizer json.RawMessage `json:"optimizer"`
@@ -102,6 +103,7 @@ type Metadata struct {
 type ContractSource struct {
 	Keccak256 common.Hash `json:"keccak256"`
 	URLs      []string    `json:"urls"`
+	Content   string      `json:"content"`
 	License   string      `json:"license"`
 }
 
@@ -152,4 +154,28 @@ func ReadArtifact(path string) (*Artifact, error) {
 		return nil, err
 	}
 	return &artifact, nil
+}
+
+// SearchRemappings applies the configured remappings to a given source path,
+// or returns the source path unchanged if no remapping is found. It assumes that
+// each remapping is of the form "alias/=actualPath".
+func (a Artifact) SearchRemappings(sourcePath string) string {
+	for _, mapping := range a.Metadata.Settings.Remappings {
+		parts := strings.Split(mapping, "/=")
+		if len(parts) != 2 {
+			continue
+		}
+		alias := parts[0]
+		if !strings.HasSuffix(alias, "/") {
+			alias += "/"
+		}
+		actualPath := parts[1]
+		if !strings.HasSuffix(actualPath, "/") {
+			actualPath += "/"
+		}
+		if strings.HasPrefix(sourcePath, actualPath) {
+			return alias + sourcePath[len(actualPath):]
+		}
+	}
+	return sourcePath
 }
