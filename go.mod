@@ -32,9 +32,9 @@ require (
 	github.com/ipfs/go-ds-leveldb v0.5.0
 	github.com/klauspost/compress v1.17.11
 	github.com/kurtosis-tech/kurtosis/api/golang v1.4.4
-	github.com/libp2p/go-libp2p v0.36.2
+	github.com/libp2p/go-libp2p v0.36.3
 	github.com/libp2p/go-libp2p-mplex v0.9.0
-	github.com/libp2p/go-libp2p-pubsub v0.12.0
+	github.com/libp2p/go-libp2p-pubsub v0.13.0
 	github.com/libp2p/go-libp2p-testing v0.12.0
 	github.com/lmittmann/w3 v0.17.8
 	github.com/mattn/go-isatty v0.0.20
