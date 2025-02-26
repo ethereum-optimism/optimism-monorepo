@@ -10,10 +10,6 @@ type DeployAsteriscInput struct {
 	PreimageOracle common.Address
 }
 
-func (input *DeployAsteriscInput) InputSet() bool {
-	return true
-}
-
 type DeployAsteriscOutput struct {
 	AsteriscSingleton common.Address
 }
