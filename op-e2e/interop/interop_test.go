@@ -215,7 +215,7 @@ func TestInterop_EmitLogs(t *testing.T) {
 		// all logs should be cross-safe
 		for _, log := range logsA {
 			identifier, expectedHash := logToIdentifier(chainA, log)
-			safety, err := supervisor.CheckMessage(context.Background(), identifier, expectedHash)
+			safety, err := supervisor.CheckMessage(context.Background(), identifier, expectedHash, types.ExecutingDescriptor{Timestamp: identifier.Timestamp})
 			require.NoError(t, err)
 			// the supervisor could progress the safety level more quickly than we expect,
 			// which is why we check for a minimum safety level
@@ -223,7 +223,7 @@ func TestInterop_EmitLogs(t *testing.T) {
 		}
 		for _, log := range logsB {
 			identifier, expectedHash := logToIdentifier(chainB, log)
-			safety, err := supervisor.CheckMessage(context.Background(), identifier, expectedHash)
+			safety, err := supervisor.CheckMessage(context.Background(), identifier, expectedHash, types.ExecutingDescriptor{Timestamp: identifier.Timestamp})
 			require.NoError(t, err)
 			// the supervisor could progress the safety level more quickly than we expect,
 			// which is why we check for a minimum safety level
@@ -234,7 +234,7 @@ func TestInterop_EmitLogs(t *testing.T) {
 		identifier, expectedHash := logToIdentifier(chainA, logsA[0])
 		// make the timestamp incorrect
 		identifier.Timestamp = 333
-		safety, err := supervisor.CheckMessage(context.Background(), identifier, expectedHash)
+		safety, err := supervisor.CheckMessage(context.Background(), identifier, expectedHash, types.ExecutingDescriptor{Timestamp: 333})
 		require.NoError(t, err)
 		require.Equal(t, types.Invalid, safety)
 

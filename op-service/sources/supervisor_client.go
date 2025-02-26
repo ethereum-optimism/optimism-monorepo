@@ -60,20 +60,22 @@ func (cl *SupervisorClient) AddL2RPC(ctx context.Context, rpc string, auth eth.B
 	return result
 }
 
-func (cl *SupervisorClient) CheckMessage(ctx context.Context, identifier types.Identifier, logHash common.Hash) (types.SafetyLevel, error) {
+func (cl *SupervisorClient) CheckMessage(ctx context.Context, identifier types.Identifier, logHash common.Hash, executingDescriptor types.ExecutingDescriptor) (types.SafetyLevel, error) {
 	var result types.SafetyLevel
 	err := cl.client.CallContext(
 		ctx,
 		&result,
 		"supervisor_checkMessage",
 		identifier,
-		logHash)
+		logHash,
+		executingDescriptor)
 	if err != nil {
-		return types.Invalid, fmt.Errorf("failed to check message (chain %s), (block %v), (index %v), (logHash %s): %w",
+		return types.Invalid, fmt.Errorf("failed to check message (chain %s), (block %v), (index %v), (logHash %s), (executingTimestamp %v): %w",
 			identifier.ChainID,
 			identifier.BlockNumber,
 			identifier.LogIndex,
 			logHash,
+			executingDescriptor.Timestamp,
 			err)
 	}
 	return result, nil

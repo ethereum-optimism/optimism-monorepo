@@ -166,9 +166,10 @@ func (m *mockSafeFrontierCheckDeps) DependencySet() depset.DependencySet {
 }
 
 type mockDependencySet struct {
-	chainIDFromIndexfn func() (eth.ChainID, error)
-	canExecuteAtfn     func() (bool, error)
-	canInitiateAtfn    func() (bool, error)
+	chainIDFromIndexfn  func() (eth.ChainID, error)
+	canExecuteAtfn      func() (bool, error)
+	canInitiateAtfn     func() (bool, error)
+	messageExpiryWindow uint64
 }
 
 func (m mockDependencySet) CanExecuteAt(chain eth.ChainID, timestamp uint64) (bool, error) {
@@ -208,4 +209,11 @@ func (m mockDependencySet) Chains() []eth.ChainID {
 
 func (m mockDependencySet) HasChain(chain eth.ChainID) bool {
 	return true
+}
+
+func (m mockDependencySet) MessageExpiryWindow() uint64 {
+	if m.messageExpiryWindow == 0 {
+		return 100
+	}
+	return m.messageExpiryWindow
 }

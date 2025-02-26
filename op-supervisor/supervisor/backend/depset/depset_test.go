@@ -7,6 +7,7 @@ import (
 	"path"
 	"testing"
 
+	"github.com/ethereum-optimism/optimism/op-node/params"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/stretchr/testify/require"
 )
@@ -75,4 +76,41 @@ func TestDependencySet(t *testing.T) {
 	v, err = result.CanInitiateAt(eth.ChainIDFromUInt64(902), 100000)
 	require.NoError(t, err)
 	require.False(t, v, "902 not a dependency")
+
+	require.Equal(t, uint64(params.MessageExpiryTimeSecondsInterop), result.MessageExpiryWindow())
+}
+
+func TestDependencySetWithMessageExpiryOverride(t *testing.T) {
+	d := path.Join(t.TempDir(), "tmp_dep_set.json")
+
+	depSet, err := NewStaticConfigDependencySet(
+		map[eth.ChainID]*StaticConfigDependency{
+			eth.ChainIDFromUInt64(900): {
+				ChainIndex:     900,
+				ActivationTime: 42,
+				HistoryMinTime: 100,
+			},
+			eth.ChainIDFromUInt64(901): {
+				ChainIndex:     901,
+				ActivationTime: 30,
+				HistoryMinTime: 20,
+			},
+		})
+	require.NoError(t, err)
+	depSet.overrideMessageExpiryWindow = 10
+	data, err := json.Marshal(depSet)
+	require.NoError(t, err)
+
+	require.NoError(t, os.WriteFile(d, data, 0644))
+
+	loader := &JsonDependencySetLoader{Path: d}
+	result, err := loader.LoadDependencySet(context.Background())
+	require.NoError(t, err)
+
+	chainIDs := result.Chains()
+	require.Equal(t, []eth.ChainID{
+		eth.ChainIDFromUInt64(900),
+		eth.ChainIDFromUInt64(901),
+	}, chainIDs)
+	require.Equal(t, uint64(10), result.MessageExpiryWindow())
 }

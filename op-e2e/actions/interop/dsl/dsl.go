@@ -5,6 +5,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-node/rollup/derive"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/event"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
 	"github.com/stretchr/testify/require"
 )
 
@@ -95,6 +96,10 @@ func NewInteropDSL(t helpers.Testing) *InteropDSL {
 
 		allChains: allChains,
 	}
+}
+
+func (d *InteropDSL) DepSet() *depset.StaticConfigDependencySet {
+	return d.setup.DepSet
 }
 
 func (d *InteropDSL) defaultChainOpts() ChainOpts {

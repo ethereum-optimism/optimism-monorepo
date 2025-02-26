@@ -73,7 +73,7 @@ func TestSupervisorService(t *testing.T) {
 				LogIndex:    42,
 				Timestamp:   1234567,
 				ChainID:     eth.ChainID{0xbb},
-			}, common.Hash{0xcc})
+			}, common.Hash{0xcc}, types.ExecutingDescriptor{Timestamp: 1234568})
 		cancel()
 		require.NoError(t, err)
 		require.Equal(t, types.CrossUnsafe, dest, "expecting mock to return cross-unsafe")
