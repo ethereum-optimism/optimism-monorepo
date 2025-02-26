@@ -58,9 +58,6 @@ func SupervisorFromConfig(ctx context.Context, cfg *config.Config, logger log.Lo
 }
 
 func (su *SupervisorService) initFromCLIConfig(ctx context.Context, cfg *config.Config) error {
-	if cfg.OverrideMessageExpiryWindow != 0 {
-		su.log.Warn("Message expiry window is overridden from protocol-defined constant", "expiry-window", cfg.OverrideMessageExpiryWindow)
-	}
 	su.initMetrics(cfg)
 	if err := su.initPProf(cfg); err != nil {
 		return fmt.Errorf("failed to start PProf server: %w", err)

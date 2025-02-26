@@ -177,10 +177,9 @@ func checkHazards(
 }
 
 type consolidateCheckDeps struct {
-	oracle              l2.Oracle
-	depset              depset.DependencySet
-	canonBlocks         map[eth.ChainID]*l2.FastCanonicalBlockHeaderOracle
-	messageExpiryWindow uint64
+	oracle      l2.Oracle
+	depset      depset.DependencySet
+	canonBlocks map[eth.ChainID]*l2.FastCanonicalBlockHeaderOracle
 }
 
 func newConsolidateCheckDeps(
@@ -208,16 +207,11 @@ func newConsolidateCheckDeps(
 		fallback := l2.NewCanonicalBlockHeaderOracle(head.Header(), blockByHash)
 		canonBlocks[chain.ChainID] = l2.NewFastCanonicalBlockHeaderOracle(head.Header(), blockByHash, l2ChainConfig, oracle, rawdb.NewMemoryDatabase(), fallback)
 	}
-	rollupCfg, err := bootInfo.Configs.RollupConfig(chains[0].ChainID)
-	if err != nil {
-		return nil, fmt.Errorf("no rollup config available for chain ID %v: %w", chains[0].ChainID, err)
-	}
 
 	return &consolidateCheckDeps{
-		oracle:              oracle,
-		depset:              depset,
-		canonBlocks:         canonBlocks,
-		messageExpiryWindow: rollupCfg.GetMessageExpiryTimeInterop(),
+		oracle:      oracle,
+		depset:      depset,
+		canonBlocks: canonBlocks,
 	}, nil
 }
 
@@ -303,10 +297,6 @@ func (d *consolidateCheckDeps) OpenBlock(
 
 func (d *consolidateCheckDeps) DependencySet() depset.DependencySet {
 	return d.depset
-}
-
-func (d *consolidateCheckDeps) MessageExpiryWindow() uint64 {
-	return d.messageExpiryWindow
 }
 
 func (d *consolidateCheckDeps) CanonBlockByNumber(oracle l2.Oracle, blockNum uint64, chainID eth.ChainID) (*ethtypes.Block, error) {

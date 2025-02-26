@@ -17,7 +17,6 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
-	supervisortypes "github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/require"
@@ -769,7 +768,7 @@ func runFppAndChallengerTests(gt *testing.T, system *dsl.InteropDSL, tests []*tr
 	for _, test := range tests {
 		test := test
 		gt.Run(fmt.Sprintf("%s-fpp", test.name), func(gt *testing.T) {
-			runFppTest(gt, test, system.Actors)
+			runFppTest(gt, test, system.Actors, system.DepSet())
 		})
 
 		gt.Run(fmt.Sprintf("%s-challenger", test.name), func(gt *testing.T) {
@@ -778,7 +777,7 @@ func runFppAndChallengerTests(gt *testing.T, system *dsl.InteropDSL, tests []*tr
 	}
 }
 
-func runFppTest(gt *testing.T, test *transitionTest, actors *dsl.InteropActors) {
+func runFppTest(gt *testing.T, test *transitionTest, actors *dsl.InteropActors, depSet *depset.StaticConfigDependencySet) {
 	t := helpers.NewDefaultTesting(gt)
 	if test.skipProgram {
 		t.Skip("Not yet implemented")
@@ -802,7 +801,7 @@ func runFppTest(gt *testing.T, test *transitionTest, actors *dsl.InteropActors) 
 		logger,
 		actors.L1Miner,
 		checkResult,
-		WithInteropEnabled(t, actors, test.agreedClaim, crypto.Keccak256Hash(test.disputedClaim), proposalTimestamp),
+		WithInteropEnabled(t, actors, depSet, test.agreedClaim, crypto.Keccak256Hash(test.disputedClaim), proposalTimestamp),
 		fpHelpers.WithL1Head(l1Head),
 	)
 }
@@ -850,29 +849,14 @@ func runChallengerTest(gt *testing.T, test *transitionTest, actors *dsl.InteropA
 	}
 }
 
-func WithInteropEnabled(t helpers.StatefulTesting, actors *dsl.InteropActors, agreedPrestate []byte, disputedClaim common.Hash, claimTimestamp uint64) fpHelpers.FixtureInputParam {
+func WithInteropEnabled(t helpers.StatefulTesting, actors *dsl.InteropActors, depSet *depset.StaticConfigDependencySet, agreedPrestate []byte, disputedClaim common.Hash, claimTimestamp uint64) fpHelpers.FixtureInputParam {
 	return func(f *fpHelpers.FixtureInputs) {
 		f.InteropEnabled = true
 		f.AgreedPrestate = agreedPrestate
 		f.L2OutputRoot = crypto.Keccak256Hash(agreedPrestate)
 		f.L2Claim = disputedClaim
 		f.L2BlockNumber = claimTimestamp
-
-		deps := map[eth.ChainID]*depset.StaticConfigDependency{
-			actors.ChainA.ChainID: {
-				ChainIndex:     supervisortypes.ChainIndex(0),
-				ActivationTime: 0,
-				HistoryMinTime: 0,
-			},
-			actors.ChainB.ChainID: {
-				ChainIndex:     supervisortypes.ChainIndex(1),
-				ActivationTime: 0,
-				HistoryMinTime: 0,
-			},
-		}
-		var err error
-		f.DependencySet, err = depset.NewStaticConfigDependencySet(deps)
-		require.NoError(t, err)
+		f.DependencySet = depSet
 
 		for _, chain := range []*dsl.Chain{actors.ChainA, actors.ChainB} {
 			f.L2Sources = append(f.L2Sources, &fpHelpers.FaultProofProgramL2Source{

@@ -15,8 +15,6 @@ type SafeStartDeps interface {
 	CrossDerivedToSource(chainID eth.ChainID, derived eth.BlockID) (source types.BlockSeal, err error)
 
 	DependencySet() depset.DependencySet
-
-	MessageExpiryWindow() uint64
 }
 
 // CrossSafeHazards checks if the given messages all exist and pass invariants.
@@ -80,8 +78,8 @@ func CrossSafeHazards(d SafeStartDeps, chainID eth.ChainID, inL1Source eth.Block
 					msg, includedIn, initSource, inL1Source, types.ErrOutOfScope)
 			}
 			// Run expiry window invariant check *after* verifying that the message is non-conflicting.
-			if msg.Timestamp+d.MessageExpiryWindow() < candidate.Timestamp {
-				return nil, fmt.Errorf("timestamp of message %s (chain %s) has expired: %d < %d: %w", msg, chainID, msg.Timestamp+d.MessageExpiryWindow(), candidate.Timestamp, types.ErrConflict)
+			if msg.Timestamp+depSet.MessageExpiryWindow() < candidate.Timestamp {
+				return nil, fmt.Errorf("timestamp of message %s (chain %s) has expired: %d < %d: %w", msg, chainID, msg.Timestamp+depSet.MessageExpiryWindow(), candidate.Timestamp, types.ErrConflict)
 			}
 		} else if msg.Timestamp == candidate.Timestamp {
 			// If timestamp is equal: we have to inspect ordering of individual

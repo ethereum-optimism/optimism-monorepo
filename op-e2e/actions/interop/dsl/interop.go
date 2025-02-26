@@ -165,7 +165,7 @@ func worldToDepSet(t helpers.Testing, worldOutput *interopgen.WorldOutput) *deps
 			HistoryMinTime: 0,
 		}
 	}
-	depSet, err := depset.NewStaticConfigDependencySet(depSetCfg)
+	depSet, err := depset.NewStaticConfigDependencySetWithMessageExpiryOverride(depSetCfg, messageExpiryTime)
 	require.NoError(t, err)
 	return depSet
 }
@@ -176,11 +176,10 @@ func NewSupervisor(t helpers.Testing, logger log.Logger, depSet depset.Dependenc
 	supervisorDataDir := t.TempDir()
 	logger.Info("supervisor data dir", "dir", supervisorDataDir)
 	svCfg := &config.Config{
-		DependencySetSource:         depSet,
-		SynchronousProcessors:       true,
-		Datadir:                     supervisorDataDir,
-		SyncSources:                 &syncnode.CLISyncNodes{}, // sources are added dynamically afterwards
-		OverrideMessageExpiryWindow: messageExpiryTime,
+		DependencySetSource:   depSet,
+		SynchronousProcessors: true,
+		Datadir:               supervisorDataDir,
+		SyncSources:           &syncnode.CLISyncNodes{}, // sources are added dynamically afterwards
 	}
 	evExec := event.NewGlobalSynchronous(t.Ctx())
 	b, err := backend.NewSupervisorBackend(t.Ctx(), logger, metrics.NoopMetrics, svCfg, evExec)

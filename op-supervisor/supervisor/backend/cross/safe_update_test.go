@@ -113,7 +113,6 @@ func TestCrossSafeUpdate(t *testing.T) {
 		logger := testlog.Logger(t, log.LevelDebug)
 		chainID := eth.ChainIDFromUInt64(0)
 		csd := &mockCrossSafeDeps{}
-		csd.messageExpiryWindow = 10
 		candidate := eth.BlockRef{Number: 1, Time: 11}
 		candidateScope := eth.BlockRef{Number: 2}
 		csd.candidateCrossSafeFn = func() (pair types.DerivedBlockRefPair, err error) {
@@ -139,6 +138,7 @@ func TestCrossSafeUpdate(t *testing.T) {
 			return nil
 		}
 		csd.deps = mockDependencySet{}
+		csd.deps.messageExpiryWindow = 10
 		// when scopedCrossSafeUpdate returns no error,
 		// no error is returned
 		err := CrossSafeUpdate(logger, chainID, csd)
@@ -447,7 +447,7 @@ func TestScopedCrossSafeUpdate(t *testing.T) {
 		logger := testlog.Logger(t, log.LevelDebug)
 		chainID := eth.ChainIDFromUInt64(0)
 		csd := &mockCrossSafeDeps{}
-		csd.messageExpiryWindow = 10
+		csd.deps.messageExpiryWindow = 10
 		candidate := eth.BlockRef{Number: 1, Time: 11}
 		csd.candidateCrossSafeFn = func() (types.DerivedBlockRefPair, error) {
 			return types.DerivedBlockRefPair{
@@ -511,7 +511,6 @@ func TestScopedCrossSafeUpdate(t *testing.T) {
 
 type mockCrossSafeDeps struct {
 	deps                  mockDependencySet
-	messageExpiryWindow   uint64
 	crossSafeFn           func(chainID eth.ChainID) (pair types.DerivedBlockSealPair, err error)
 	candidateCrossSafeFn  func() (candidate types.DerivedBlockRefPair, err error)
 	openBlockFn           func(chainID eth.ChainID, blockNum uint64) (ref eth.BlockRef, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error)
@@ -540,10 +539,6 @@ func (m *mockCrossSafeDeps) CandidateCrossSafe(chain eth.ChainID) (candidate typ
 
 func (m *mockCrossSafeDeps) DependencySet() depset.DependencySet {
 	return m.deps
-}
-
-func (m *mockCrossSafeDeps) MessageExpiryWindow() uint64 {
-	return m.messageExpiryWindow
 }
 
 func (m *mockCrossSafeDeps) CrossDerivedToSource(chainID eth.ChainID, derived eth.BlockID) (source types.BlockSeal, err error) {

@@ -11,7 +11,6 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/stretchr/testify/require"
 
-	"github.com/ethereum-optimism/optimism/op-node/params"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/event"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
@@ -771,7 +770,7 @@ func setupTestChains(t *testing.T, chainIDs ...eth.ChainID) *testSetup {
 	require.NoError(t, err)
 
 	// Create ChainsDB with mock emitter
-	chainsDB := db.NewChainsDB(logger, depSet, metrics.NoopMetrics, params.MessageExpiryTimeSecondsInterop)
+	chainsDB := db.NewChainsDB(logger, depSet, metrics.NoopMetrics)
 	chainsDB.AttachEmitter(&mockEmitter{})
 
 	setup := &testSetup{

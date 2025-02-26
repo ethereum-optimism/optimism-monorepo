@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math"
 	"slices"
 	"sync/atomic"
 
@@ -114,7 +113,7 @@ func NewSupervisorBackend(ctx context.Context, logger log.Logger,
 	sysCtx, sysCancel := context.WithCancel(ctx)
 
 	// create initial per-chain resources
-	chainsDBs := db.NewChainsDB(logger, depSet, m, cfg.MessageExpiryWindow())
+	chainsDBs := db.NewChainsDB(logger, depSet, m)
 	eventSys.Register("chainsDBs", chainsDBs, event.DefaultRegisterOpts())
 
 	l1Accessor := l1access.NewL1Accessor(sysCtx, logger, nil)
@@ -447,8 +446,12 @@ func (su *SupervisorBackend) CheckMessage(identifier types.Identifier, payloadHa
 	if err != nil {
 		return types.Invalid, fmt.Errorf("failed to check log: %w", err)
 	}
-	if identifier.Timestamp+su.chainDBs.MessageExpiryWindow() < executingDescriptor.Timestamp {
+	if identifier.Timestamp+su.depSet.MessageExpiryWindow() < executingDescriptor.Timestamp {
 		su.logger.Debug("Message expired", "identifier", identifier, "payloadHash", payloadHash, "executingTimestamp", executingDescriptor.Timestamp)
+		return types.Invalid, nil
+	}
+	if identifier.Timestamp > executingDescriptor.Timestamp {
+		su.logger.Debug("Message timestamp is in the future", "identifier", identifier, "payloadHash", payloadHash, "executingTimestamp", executingDescriptor.Timestamp)
 		return types.Invalid, nil
 	}
 	return su.chainDBs.Safest(chainID, blockNum, logIdx)
@@ -485,7 +488,30 @@ func (su *SupervisorBackend) CheckMessagesV2(
 func (su *SupervisorBackend) CheckMessages(
 	messages []types.Message,
 	minSafety types.SafetyLevel) error {
-	return su.CheckMessagesV2(messages, minSafety, types.ExecutingDescriptor{Timestamp: math.MaxUint64})
+	su.logger.Debug("Checking messages", "count", len(messages), "minSafety", minSafety)
+
+	for _, msg := range messages {
+		su.logger.Debug("Checking message",
+			"identifier", msg.Identifier, "payloadHash", msg.PayloadHash.String())
+		// Guarantee message expiry checks do not fail by setting the executing timestamp to the message timestamp
+		// This is intentionally done to avoid breaking checkMessagesV1 which doesn't handle message expiry checks
+		safety, err := su.CheckMessage(msg.Identifier, msg.PayloadHash, types.ExecutingDescriptor{Timestamp: msg.Identifier.Timestamp})
+		if err != nil {
+			su.logger.Error("Check message failed", "err", err,
+				"identifier", msg.Identifier, "payloadHash", msg.PayloadHash.String())
+			return fmt.Errorf("failed to check message: %w", err)
+		}
+		if !safety.AtLeastAsSafe(minSafety) {
+			su.logger.Error("Message is not sufficiently safe",
+				"safety", safety, "minSafety", minSafety,
+				"identifier", msg.Identifier, "payloadHash", msg.PayloadHash.String())
+			return fmt.Errorf("message %v (safety level: %v) does not meet the minimum safety %v",
+				msg.Identifier,
+				safety,
+				minSafety)
+		}
+	}
+	return nil
 }
 
 func (su *SupervisorBackend) CrossSafe(ctx context.Context, chainID eth.ChainID) (types.DerivedIDPair, error) {

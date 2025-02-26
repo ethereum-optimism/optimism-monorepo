@@ -316,7 +316,7 @@ func TestCrossSafeHazards(t *testing.T) {
 	})
 	t.Run("message expiry", func(t *testing.T) {
 		ssd := &mockSafeStartDeps{}
-		ssd.expiryWindow = 10
+		ssd.deps.messageExpiryWindow = 10
 		chainID := eth.ChainIDFromUInt64(0)
 		inL1Source := eth.BlockID{Number: 1}
 		candidate := types.BlockSeal{Timestamp: 12}
@@ -332,7 +332,7 @@ func TestCrossSafeHazards(t *testing.T) {
 	})
 	t.Run("message close to expiry", func(t *testing.T) {
 		ssd := &mockSafeStartDeps{}
-		ssd.expiryWindow = 10
+		ssd.deps.messageExpiryWindow = 10
 		chainID := eth.ChainIDFromUInt64(0)
 		inL1Source := eth.BlockID{Number: 1}
 		candidate := types.BlockSeal{Timestamp: 11}
@@ -349,7 +349,6 @@ func TestCrossSafeHazards(t *testing.T) {
 
 type mockSafeStartDeps struct {
 	deps           mockDependencySet
-	expiryWindow   uint64
 	checkFn        func() (includedIn types.BlockSeal, err error)
 	derivedToSrcFn func() (source types.BlockSeal, err error)
 }
@@ -370,11 +369,4 @@ func (m *mockSafeStartDeps) CrossDerivedToSource(chainID eth.ChainID, derived et
 
 func (m *mockSafeStartDeps) DependencySet() depset.DependencySet {
 	return m.deps
-}
-
-func (m *mockSafeStartDeps) MessageExpiryWindow() uint64 {
-	if m.expiryWindow == 0 {
-		return 100
-	}
-	return m.expiryWindow
 }

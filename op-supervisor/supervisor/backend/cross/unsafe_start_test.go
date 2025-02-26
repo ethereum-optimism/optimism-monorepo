@@ -255,7 +255,7 @@ func TestCrossUnsafeHazards(t *testing.T) {
 	})
 	t.Run("message expiry", func(t *testing.T) {
 		usd := &mockUnsafeStartDeps{}
-		usd.messageExpiryWindow = 10
+		usd.deps.messageExpiryWindow = 10
 		sampleBlockSeal := types.BlockSeal{Timestamp: 1}
 		usd.checkFn = func() (includedIn types.BlockSeal, err error) {
 			return sampleBlockSeal, nil
@@ -273,7 +273,7 @@ func TestCrossUnsafeHazards(t *testing.T) {
 	})
 	t.Run("message near expiry", func(t *testing.T) {
 		usd := &mockUnsafeStartDeps{}
-		usd.messageExpiryWindow = 10
+		usd.deps.messageExpiryWindow = 10
 		sampleBlockSeal := types.BlockSeal{Timestamp: 1}
 		usd.checkFn = func() (includedIn types.BlockSeal, err error) {
 			return sampleBlockSeal, nil
@@ -290,10 +290,9 @@ func TestCrossUnsafeHazards(t *testing.T) {
 }
 
 type mockUnsafeStartDeps struct {
-	deps                mockDependencySet
-	messageExpiryWindow uint64
-	checkFn             func() (includedIn types.BlockSeal, err error)
-	isCrossUnsafeFn     func() error
+	deps            mockDependencySet
+	checkFn         func() (includedIn types.BlockSeal, err error)
+	isCrossUnsafeFn func() error
 }
 
 func (m *mockUnsafeStartDeps) Contains(chain eth.ChainID, q types.ContainsQuery) (includedIn types.BlockSeal, err error) {
@@ -312,11 +311,4 @@ func (m *mockUnsafeStartDeps) IsCrossUnsafe(chainID eth.ChainID, derived eth.Blo
 
 func (m *mockUnsafeStartDeps) DependencySet() depset.DependencySet {
 	return m.deps
-}
-
-func (m *mockUnsafeStartDeps) MessageExpiryWindow() uint64 {
-	if m.messageExpiryWindow == 0 {
-		return 100
-	}
-	return m.messageExpiryWindow
 }
