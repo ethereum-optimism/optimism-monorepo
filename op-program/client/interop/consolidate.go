@@ -102,6 +102,11 @@ func RunConsolidation(
 			Timestamp: optimisticBlock.Time(),
 		}
 		if err := checkHazards(deps, candidate, chain.ChainID, execMsgs); err != nil {
+		rollupCfg, err := bootInfo.Configs.RollupConfig(chain.ChainID)
+		if err != nil {
+			return eth.Bytes32{}, fmt.Errorf("no rollup config available for chain ID %v: %w", chain.ChainID, err)
+		}
+		if err := checkHazards(logger, rollupCfg, deps, candidate, chain.ChainID, execMsgs); err != nil {
 			if !isInvalidMessageError(err) {
 				return eth.Bytes32{}, err
 			}
@@ -158,12 +163,27 @@ type ConsolidateCheckDeps interface {
 }
 
 func checkHazards(
+	logger log.Logger,
+	rollupCfg *rollup.Config,
 	deps ConsolidateCheckDeps,
 	candidate supervisortypes.BlockSeal,
 	chainID eth.ChainID,
 	execMsgs []*supervisortypes.ExecutingMessage,
 ) error {
 	hazards, err := cross.CrossUnsafeHazards(deps, chainID, candidate, execMsgs)
+	// TODO(#14234): remove this check once the supervisor is updated handle msg expiry
+	messageExpiryTimeSeconds := rollupCfg.GetMessageExpiryTimeInterop()
+	for _, msg := range execMsgs {
+		if msg.Timestamp+messageExpiryTimeSeconds < candidate.Timestamp {
+			return fmt.Errorf(
+				"message timestamp is too old: %d < %d: %w",
+				msg.Timestamp+messageExpiryTimeSeconds, candidate.Timestamp, supervisortypes.ErrConflict,
+			)
+		}
+	}
+
+	hazardDeps := &cross.UnsafeHazardDeps{UnsafeStartDeps: deps}
+	hazards, err := cross.CrossUnsafeHazards(hazardDeps, logger, chainID, candidate)
 	if err != nil {
 		return err
 	}
