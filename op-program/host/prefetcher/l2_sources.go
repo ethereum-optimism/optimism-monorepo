@@ -12,6 +12,8 @@ import (
 	"github.com/ethereum-optimism/optimism/op-program/host/types"
 	"github.com/ethereum-optimism/optimism/op-service/client"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
+	"github.com/ethereum-optimism/optimism/op-service/retry"
+
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/log"
 )
@@ -130,10 +132,12 @@ func (s *RetryingL2Sources) ForChainIDWithoutRetries(chainID eth.ChainID) (types
 }
 
 func loadChainID(ctx context.Context, rpc client.RPC) (eth.ChainID, error) {
-	var id hexutil.Big
-	err := rpc.CallContext(ctx, &id, "eth_chainId")
-	if err != nil {
-		return eth.ChainID{}, err
-	}
-	return eth.ChainIDFromBig((*big.Int)(&id)), nil
+	return retry.Do(ctx, 3, retry.Exponential(), func() (eth.ChainID, error) {
+		var id hexutil.Big
+		err := rpc.CallContext(ctx, &id, "eth_chainId")
+		if err != nil {
+			return eth.ChainID{}, err
+		}
+		return eth.ChainIDFromBig((*big.Int)(&id)), nil
+	})
 }
