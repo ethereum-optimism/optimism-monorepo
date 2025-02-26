@@ -15,25 +15,6 @@ import (
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 )
 
-// newTestDepSet creates a StaticConfigDependencySet for testing with predefined chain IDs and indices
-func newTestDepSet() depset.DependencySet {
-	deps := make(map[eth.ChainID]*depset.StaticConfigDependency)
-	// Add test chains - use enough to handle deep recursion test
-	for i := uint64(0); i < 100; i++ {
-		chainID := eth.ChainIDFromUInt64(i)
-		deps[chainID] = &depset.StaticConfigDependency{
-			ChainIndex:     types.ChainIndex(i),
-			ActivationTime: 0, // Allow execution at any time
-			HistoryMinTime: 0, // Allow initiation at any time
-		}
-	}
-	ds, err := depset.NewStaticConfigDependencySet(deps)
-	if err != nil {
-		panic(fmt.Sprintf("failed to create test dependency set: %v", err))
-	}
-	return ds
-}
-
 // mockHazardDeps implements HazardDeps for testing
 type mockHazardDeps struct {
 	logger        log.Logger
@@ -420,7 +401,7 @@ func setupMockDeps(t *testing.T, tc testVector) *mockHazardDeps {
 
 	mock := &mockHazardDeps{
 		logger:   newTestLogger(t),
-		deps:     newTestDepSet(),
+		deps:     mockDependencySet{},
 		blockMap: blockMap,
 	}
 
@@ -441,6 +422,7 @@ func TestHazardSet_CrossValidBlocks(t *testing.T) {
 	require := require.New(t)
 	logger := newTestLogger(t)
 	chainID := eth.ChainIDFromUInt64(0) // System chain
+	deps := mockDependencySet{}
 
 	// Helper function to create block hash
 	makeBlockHash := func(chainID eth.ChainID, num uint64) common.Hash {
@@ -479,7 +461,7 @@ func TestHazardSet_CrossValidBlocks(t *testing.T) {
 		blockMap := make(map[blockKey]blockDef)
 		for _, block := range blocks {
 			// Extract chain index from chain ID
-			chainIndex, err := newTestDepSet().ChainIndexFromID(block.chain)
+			chainIndex, err := deps.ChainIndexFromID(block.chain)
 			if err != nil {
 				// Use a fallback if error
 				chainIndex = types.ChainIndex(block.chain[0])
@@ -706,7 +688,7 @@ func TestHazardSet_CrossValidBlocks(t *testing.T) {
 			expectedErr: fmt.Errorf("msg ExecMsg(chainIndex: 2, block: 5, log: 1, time: 50, logHash: 0x0000000000000000000000000000000000000000000000000000000000000000) included in non-cross-safe block BlockSeal(hash:0x0000000000000005000000000000000200000000000000000000000000000000, number:5, time:50): block 0x0000000000000005000000000000000200000000000000000000000000000000:5 (chain 2) is not cross-valid: verification database error"),
 			verifyBlockFn: func(chainID eth.ChainID, block eth.BlockID) error {
 				// Add debug logging to verify this function is called
-				chainIdx, _ := newTestDepSet().ChainIndexFromID(chainID)
+				chainIdx, _ := deps.ChainIndexFromID(chainID)
 				fmt.Printf("DEBUG: verifyBlockFn called with chainIdx %d, block %s\n", chainIdx, block)
 
 				// Return an error for any chain to make sure our test case works
@@ -831,7 +813,7 @@ func TestHazardSet_CrossValidBlocks(t *testing.T) {
 			// Create dependency mock
 			mockDeps := &mockHazardDeps{
 				logger:        logger,
-				deps:          newTestDepSet(),
+				deps:          deps,
 				blockMap:      makeBlockMap(tc.blocks),
 				verifyBlockFn: tc.verifyBlockFn,
 			}
@@ -841,7 +823,7 @@ func TestHazardSet_CrossValidBlocks(t *testing.T) {
 				// Use a specific verifyBlockFn for this test case only
 				mockDeps.verifyBlockFn = func(chainID eth.ChainID, block eth.BlockID) error {
 					// Add debug logging to verify this function is called
-					chainIdx, _ := newTestDepSet().ChainIndexFromID(chainID)
+					chainIdx, _ := deps.ChainIndexFromID(chainID)
 					fmt.Printf("DEBUG: verifyBlockFn called with chainIdx %d, block %s\n", chainIdx, block)
 
 					// Return an error for any chain to make sure our test case works
@@ -897,11 +879,11 @@ func TestHazardSet_CrossValidBlocks(t *testing.T) {
 // TestHazardSet_CrossValidation tests that cross-valid blocks are not included in the hazard set
 func TestHazardSet_CrossValidation(t *testing.T) {
 	logger := newTestLogger(t)
-
+	deps := mockDependencySet{}
 	// Create a mock dependency set
 	mockDeps := &mockHazardDeps{
 		logger: logger,
-		deps:   newTestDepSet(),
+		deps:   deps,
 		blockMap: map[blockKey]blockDef{
 			// Chain 0 block with message referencing Chain 1
 			{chain: 0, number: 10}: makeBlock(0, 100, 10, makeMessage(1, 50, 5, 1)),
