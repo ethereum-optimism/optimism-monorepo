@@ -9,30 +9,33 @@ env:
   MISE_VERSION: 2024.12.14
 
 jobs:
+  # We turn off this devnet while holesky is borked... see https://eigenda.statuspage.io/
+  # Holesky forked after pectra upgrade, and eigenda has been down for 2 days.
+  #
   # This is an optimism devnet which talks to the eigenda holesky testnet via an eigenda-proxy.
   # TODO: we should connect this to an eigenda kurtosis devnet instead of using our holesky testnet.
-  run_op_eigenda_holesky_devnet:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: jdx/mise-action@v2
-        with:
-          version: ${{ env.MISE_VERSION }}
-          experimental: true
-      # Needed by the just eigenda-holesky-devnet command below
-      # These secrets get injected into the eigenda-holesky.yaml kurtosis config file
-      - name: Create EigenDA secrets file
-        run: |
-          cat > kurtosis-devnet/eigenda-secrets.json << EOF
-          {
-            "secrets": {
-              "eigenda.signer-private-key-hex": "${{ secrets.EIGENDA_V1_HOLESKY_TESTNET_SIGNER_KEY }}",
-              "eigenda.eth_rpc": "https://ethereum-holesky-rpc.publicnode.com"
-            }
-          }
-          EOF
-      - run: just eigenda-holesky-devnet
-        working-directory: kurtosis-devnet
+  # run_op_eigenda_holesky_devnet:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: jdx/mise-action@v2
+  #       with:
+  #         version: ${{ env.MISE_VERSION }}
+  #         experimental: true
+  #     # Needed by the just eigenda-holesky-devnet command below
+  #     # These secrets get injected into the eigenda-holesky.yaml kurtosis config file
+  #     - name: Create EigenDA secrets file
+  #       run: |
+  #         cat > kurtosis-devnet/eigenda-secrets.json << EOF
+  #         {
+  #           "secrets": {
+  #             "eigenda.signer-private-key-hex": "${{ secrets.EIGENDA_V1_HOLESKY_TESTNET_SIGNER_KEY }}",
+  #             "eigenda.eth_rpc": "https://ethereum-holesky-rpc.publicnode.com"
+  #           }
+  #         }
+  #         EOF
+  #     - run: just eigenda-holesky-devnet-start
+  #       working-directory: kurtosis-devnet
 
   run_op_eigenda_memstore_devnet:
     runs-on: ubuntu-latest
@@ -42,5 +45,5 @@ jobs:
         with:
           version: ${{ env.MISE_VERSION }}
           experimental: true
-      - run: just eigenda-memstore-devnet
+      - run: just eigenda-memstore-devnet-start
         working-directory: kurtosis-devnet

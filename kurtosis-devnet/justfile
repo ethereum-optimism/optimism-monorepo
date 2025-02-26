@@ -75,17 +75,90 @@ devnet-test DEVNET *TEST:
 
 # EigenDA devnet that uses eigenda-proxy connected to eigenda holesky testnet network
 [group('eigenda')]
-eigenda-holesky-devnet: (devnet "eigenda-holesky.yaml" "eigenda-secrets.json" "eigenda-holesky")
+eigenda-holesky-devnet-start: (devnet "eigenda-holesky.yaml" "eigenda-secrets.json" "eigenda-holesky")
 [group('eigenda')]
 eigenda-holesky-devnet-clean:
   kurtosis enclave rm eigenda-holesky-devnet --force
 # EigenDA devnet that uses the eigenda-proxy in memstore mode (simulates an eigenda network but generates random certs)
 [group('eigenda')]
-eigenda-memstore-devnet: (devnet "eigenda-memstore.yaml")
+eigenda-memstore-devnet-start: (devnet "eigenda-memstore.yaml")
 [group('eigenda')]
 eigenda-memstore-devnet-clean:
   kurtosis enclave rm eigenda-memstore-devnet --force
-
+# Cause proxy to start returning 503 errors to batcher, as a signal
+# to failover to ethDA. Use `eigenda-memstore-devnet-failback` to revert.
+[group('eigenda')]
+eigenda-memstore-devnet-failover:
+  #!/usr/bin/env bash
+  PROXY_ENDPOINT=$(kurtosis port print eigenda-memstore-devnet da-server-op-kurtosis http)
+  curl -X PATCH $PROXY_ENDPOINT/memstore/config -d '{"PutReturnsFailoverError": true}'
+[group('eigenda')]
+eigenda-memstore-devnet-failback:
+  #!/usr/bin/env bash
+  PROXY_ENDPOINT=$(kurtosis port print eigenda-memstore-devnet da-server-op-kurtosis http)
+  curl -X PATCH $PROXY_ENDPOINT/memstore/config -d '{"PutReturnsFailoverError": false}'
+[group('eigenda')]
+eigenda-memstore-devnet-grafana:
+  #!/usr/bin/env bash
+  GRAFANA_URL=$(kurtosis port print eigenda-memstore-devnet grafana http)
+  open $GRAFANA_URL
+[group('eigenda')]
+eigenda-memstore-devnet-sync-status:
+  #!/usr/bin/env bash
+  OPNODE_ENDPOINT=$(kurtosis port print eigenda-memstore-devnet op-cl-1-op-node-op-geth-op-kurtosis http)
+  cast rpc optimism_syncStatus --rpc-url $OPNODE_ENDPOINT | jq
+[group('eigenda')]
+eigenda-memstore-devnet-configs:
+  #!/usr/bin/env bash
+  echo "OP-NODE ROLLUP CONFIG:"
+  OPNODE_ENDPOINT=$(kurtosis port print eigenda-memstore-devnet op-cl-1-op-node-op-geth-op-kurtosis http)
+  cast rpc optimism_rollupConfig --rpc-url $OPNODE_ENDPOINT | jq
+  echo "TEKU L1-CL SPEC:"
+  TEKU_ENDPOINT=$(kurtosis port print eigenda-memstore-devnet cl-1-teku-geth http)
+  curl $TEKU_ENDPOINT/eth/v1/config/spec | jq
+  echo "PROXY MEMSTORE CONFIG:"
+  PROXY_ENDPOINT=$(kurtosis port print eigenda-memstore-devnet da-server-op-kurtosis http)
+  curl $PROXY_ENDPOINT/memstore/config | jq
+# We unfortunately have to restart the batcher in this ugly way right now just to change even a single flag.
+# This is b/c op's kurtosis setup right now is not idempotent so if we change a param in eigenda-memstore.yaml
+# and rerun `just eigenda-memstore-devnet`, the entire devnet gets respun up which takes a long time.
+# Track progress for fixing this in https://github.com/ethereum-optimism/optimism/issues/14390.
+# Kurtosis also doesn't have a simple way to update a running service's config, like `kubectl edit` for k8s.
+# See https://github.com/kurtosis-tech/kurtosis/issues/2628 for this issue.
+# Restart batcher with new flags or image.
+[group('eigenda')]
+eigenda-memstore-devnet-restart-batcher:
+  #!/usr/bin/env bash
+  # IMAGE=op-batcher:eigenda-memstore-devnet
+  IMAGE=us-docker.pkg.dev/oplabs-tools-artifacts/images/op-batcher:v1.10.0
+  kurtosis service add eigenda-memstore-devnet op-batcher-op-kurtosis \
+    $IMAGE \
+    --ports "http=8548,metrics=9001" \
+    -- op-batcher \
+      --l2-eth-rpc=http://op-el-1-op-geth-op-node-op-kurtosis:8545 \
+      --rollup-rpc=http://op-cl-1-op-node-op-geth-op-kurtosis:8547 \
+      --poll-interval=1s \
+      --sub-safety-margin=6 \
+      --num-confirmations=1 \
+      --safe-abort-nonce-too-low-count=3 \
+      --resubmission-timeout=30s \
+      --rpc.addr=0.0.0.0 \
+      --rpc.port=8548 \
+      --rpc.enable-admin \
+      --metrics.enabled \
+      --metrics.addr=0.0.0.0 \
+      --metrics.port=9001 \
+      --l1-eth-rpc=http://el-1-geth-teku:8545 \
+      --private-key=0xb3d2d558e3491a3709b7c451100a0366b5872520c7aa020c17a0e7fa35b6a8df \
+      --data-availability-type=calldata \
+      --altda.enabled=True \
+      --altda.da-server=http://da-server-op-kurtosis:3100 \
+      --altda.da-service \
+      --altda.max-concurrent-da-requests=1 \
+      --max-channel-duration=25 \
+      --target-num-frames=1 \
+      --max-l1-tx-size-bytes=1000 \
+      --batch-type=1
 
 # Simple devnet
 simple-devnet: (devnet "simple.yaml")

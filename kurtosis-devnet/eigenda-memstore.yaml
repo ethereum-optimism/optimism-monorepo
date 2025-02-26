@@ -24,7 +24,9 @@ optimism_package:
   chains:
     - participants:
       - el_type: op-geth
-        el_image: ""
+        # latest tag is currently broken until the next stable release, see https://github.com/ethereum-optimism/op-geth/pull/515
+        # Also see discussion in https://discord.com/channels/1244729134312198194/1260624141497798706/1342556343495692320
+        el_image: "us-docker.pkg.dev/oplabs-tools-artifacts/images/op-geth:optimism"
         el_log_level: ""
         el_extra_env_vars: {}
         el_extra_labels: {}
@@ -47,7 +49,12 @@ optimism_package:
         fund_dev_accounts: true
       batcher_params:
         image: {{ localDockerImage "op-batcher" }}
-        extra_params: []
+        extra_params:
+          - --altda.max-concurrent-da-requests=1
+          - --max-channel-duration=25
+          - --target-num-frames=1
+          - --max-l1-tx-size-bytes=1000
+          - --batch-type=1
       proposer_params:
         image: {{ localDockerImage "op-proposer" }}
         extra_params: []
@@ -69,7 +76,7 @@ optimism_package:
           - "3100"
           - --memstore.enabled
           - --memstore.expiration
-          - "1m"
+          - "30m"
       additional_services:
         - da_server
   global_log_level: "info"
