@@ -111,6 +111,7 @@ func (s *channelManager) TxConfirmed(_id txID, inclusionBlock eth.BlockID) {
 	if channel, ok := s.txChannels[id]; ok {
 		delete(s.txChannels, id)
 		if timedOut := channel.TxConfirmed(id, inclusionBlock); timedOut {
+			s.log.Warn("channel timed out on chain", "channel_id", channel.ID(), "tx_id", id)
 			s.handleChannelInvalidated(channel)
 		}
 	} else {
