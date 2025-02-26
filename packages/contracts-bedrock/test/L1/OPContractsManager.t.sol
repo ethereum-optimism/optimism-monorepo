@@ -587,7 +587,7 @@ contract OPContractsManager_AddGameType_Test is Test {
             }),
             optimismPortalImpl: DeployUtils.create1({
                 _name: "OptimismPortal2",
-                _args: DeployUtils.encodeConstructor(abi.encodeCall(IOptimismPortal2.__constructor__, (1, 1)))
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(IOptimismPortal2.__constructor__, (1)))
             }),
             systemConfigImpl: DeployUtils.create1({
                 _name: "SystemConfig",
@@ -611,7 +611,7 @@ contract OPContractsManager_AddGameType_Test is Test {
             }),
             anchorStateRegistryImpl: DeployUtils.create1({
                 _name: "AnchorStateRegistry",
-                _args: DeployUtils.encodeConstructor(abi.encodeCall(IAnchorStateRegistry.__constructor__, ()))
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(IAnchorStateRegistry.__constructor__, (1)))
             }),
             delayedWETHImpl: DeployUtils.create1({
                 _name: "DelayedWETH",
