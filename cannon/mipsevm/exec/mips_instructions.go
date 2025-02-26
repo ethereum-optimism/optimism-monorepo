@@ -350,6 +350,16 @@ func ExecuteMipsInstruction(insn uint32, opcode uint32, fun uint32, rs, rt, mem 
 					rs <<= 1
 				}
 				return Word(i)
+			case 0x24, 0x25: // dclz, dclo
+				assertMips64Fun(insn)
+				if fun == 0x24 {
+					rs = ^rs
+				}
+				i := uint32(0)
+				for ; uint64(rs)&0x80000000_00000000 != 0; i++ {
+					rs <<= 1
+				}
+				return Word(i)
 			}
 		case 0x0F: // lui
 			return SignExtend(rt<<16, 32)

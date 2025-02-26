@@ -469,6 +469,18 @@ library MIPS64Instructions {
                         }
                         return i;
                     }
+                    // dclz, dclo
+                    else if (_fun == 0x24 || _fun == 0x25) {
+                        if (_fun == 0x24) {
+                            _rs = ~_rs;
+                        }
+                        uint32 i = 0;
+                        while (_rs & 0x80000000_00000000 != 0) {
+                            i++;
+                            _rs <<= 1;
+                        }
+                        return i;
+                    }
                 }
                 // lui
                 else if (_opcode == 0x0F) {
