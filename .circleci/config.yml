@@ -852,7 +852,7 @@ jobs:
           name: Run tests
           command: just test-upgrade
           environment:
-            FOUNDRY_FUZZ_SEED: 42424242
+            FOUNDRY_FUZZ_SEED: 4242424
             FOUNDRY_FUZZ_RUNS: 1
             FOUNDRY_PROFILE: ci
             ETH_RPC_URL: <<parameters.fork_base_rpc>>
