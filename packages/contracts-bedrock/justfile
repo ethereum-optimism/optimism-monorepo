@@ -227,7 +227,7 @@ size-check:
 # Checks that any contracts with a modified semver lock also have a modified semver version.
 # Does not build contracts.
 semver-diff-check-no-build:
-  ./scripts/checks/check-semver-diff.sh
+  go run scripts/checks/semver-diff/main.go
 
 # Checks that any contracts with a modified semver lock also have a modified semver version.
 semver-diff-check: build semver-diff-check-no-build
