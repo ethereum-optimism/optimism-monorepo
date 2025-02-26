@@ -206,6 +206,11 @@ func (n *OpNode) initL1(ctx context.Context, cfg *Config) error {
 		return fmt.Errorf("failed to validate the L1 config: %w", err)
 	}
 
+	// log error when L1 Genesis blockhash can't be retrieved (happens on EIP-4444 enabled L1 EL nodes)
+	if err := cfg.Rollup.ValidateL1Genesis(ctx, n.l1Source); err != nil {
+		n.log.Warn("failed to validate the L1 genesis block hash, might be using EIP-4444 pruned node", "err", err)
+	}
+
 	// Keep subscribed to the L1 heads, which keeps the L1 maintainer pointing to the best headers to sync
 	n.l1HeadsSub = gethevent.ResubscribeErr(time.Second*10, func(ctx context.Context, err error) (gethevent.Subscription, error) {
 		if err != nil {
