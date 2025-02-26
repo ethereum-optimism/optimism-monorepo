@@ -47,12 +47,6 @@ func (e *PreconditionError) Unwrap() error {
 // Any other result indicates this acquirer was selected and its result (success or failure) should be used.
 type SystemAcquirer func(t BasicT) (system.System, error)
 
-// systemAcquirers is the list of ways to acquire a system, tried in order
-var systemAcquirers = []SystemAcquirer{
-	acquireFromEnvURL,
-	// Add more acquirers here as needed
-}
-
 // tryAcquirers attempts to acquire a system using the provided acquirers in order.
 // Each acquirer is tried in sequence until one returns a non-(nil,nil) result.
 // If an acquirer returns (nil, nil), it is skipped and the next one is tried.
@@ -70,19 +64,6 @@ func tryAcquirers(t BasicT, acquirers []SystemAcquirer) (system.System, error) {
 	return nil, fmt.Errorf("no acquirer was able to create a system")
 }
 
-// acquireFromEnvURL attempts to create a system from the URL specified in the environment variable.
-func acquireFromEnvURL(t BasicT) (system.System, error) {
-	url := os.Getenv(env.EnvURLVar)
-	if url == "" {
-		return nil, nil // Skip this acquirer
-	}
-	sys, err := currentPackage.NewSystemFromURL(url)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create system from URL %q: %w", url, err)
-	}
-	return sys, nil
-}
-
 type PreconditionValidator func(t T, sys system.System) (context.Context, error)
 type SystemTestFunc func(t T, sys system.System)
 type InteropSystemTestFunc func(t T, sys system.InteropSystem)
@@ -91,11 +72,29 @@ type InteropSystemTestFunc func(t T, sys system.InteropSystem)
 type systemTestHelper interface {
 	SystemTest(t BasicT, f SystemTestFunc, validators ...PreconditionValidator)
 	InteropSystemTest(t BasicT, f InteropSystemTestFunc, validators ...PreconditionValidator)
+	WithAcquirers(acquirers []SystemAcquirer) *basicSystemTestHelper
+	WithProvider(provider systemProvider) *basicSystemTestHelper
 }
 
 // basicSystemTestHelper provides a basic implementation of systemTestHelper using environment variables
 type basicSystemTestHelper struct {
 	expectPreconditionsMet bool
+	acquirers              []SystemAcquirer
+	provider               systemProvider
+	envGetter              envGetter
+}
+
+// acquireFromEnvURL attempts to create a system from the URL specified in the environment variable.
+func (h *basicSystemTestHelper) acquireFromEnvURL(t BasicT) (system.System, error) {
+	url := h.envGetter.Getenv(env.EnvURLVar)
+	if url == "" {
+		return nil, nil // Skip this acquirer
+	}
+	sys, err := h.provider.NewSystemFromURL(url)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create system from URL %q: %w", url, err)
+	}
+	return sys, nil
 }
 
 func (h *basicSystemTestHelper) handlePreconditionError(t BasicT, err error) {
@@ -117,9 +116,10 @@ func (h *basicSystemTestHelper) SystemTest(t BasicT, f SystemTestFunc, validator
 
 	wt = wt.WithContext(ctx)
 
-	sys, err := tryAcquirers(t, systemAcquirers)
+	sys, err := tryAcquirers(t, h.acquirers)
 	if err != nil {
-		t.Fatalf("failed to acquire system: %v", err)
+		h.handlePreconditionError(t, err)
+		return
 	}
 
 	for _, validator := range validators {
@@ -151,9 +151,33 @@ func newBasicSystemTestHelper(envGetter envGetter) *basicSystemTestHelper {
 	if err != nil {
 		expectPreconditionsMet = false // empty string or invalid value returns false
 	}
-	return &basicSystemTestHelper{
+
+	helper := &basicSystemTestHelper{
 		expectPreconditionsMet: expectPreconditionsMet,
+		provider:               &defaultProvider{},
+		envGetter:              envGetter,
 	}
+
+	// Set up acquirers after helper is constructed so we can use the method
+	helper.acquirers = []SystemAcquirer{
+		helper.acquireFromEnvURL,
+	}
+
+	return helper
+}
+
+// WithAcquirers returns a new helper with the specified acquirers
+func (h *basicSystemTestHelper) WithAcquirers(acquirers []SystemAcquirer) *basicSystemTestHelper {
+	newHelper := *h
+	newHelper.acquirers = acquirers
+	return &newHelper
+}
+
+// WithProvider returns a new helper with the specified provider
+func (h *basicSystemTestHelper) WithProvider(provider systemProvider) *basicSystemTestHelper {
+	newHelper := *h
+	newHelper.provider = provider
+	return &newHelper
 }
 
 // SystemTest delegates to the default helper

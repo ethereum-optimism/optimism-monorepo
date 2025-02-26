@@ -140,24 +140,6 @@ func (p *testPackage) NewSystemFromURL(string) (system.System, error) {
 	return p.creator()
 }
 
-// withTestSystem runs a test with a custom system creator
-func withTestSystem(t *testing.T, creator testSystemCreator, f func(t *testing.T)) {
-	// Save original acquirers and restore after test
-	origAcquirers := systemAcquirers
-	defer func() {
-		systemAcquirers = origAcquirers
-	}()
-
-	// Replace acquirers with just our test creator
-	systemAcquirers = []SystemAcquirer{
-		func(t BasicT) (system.System, error) {
-			return creator()
-		},
-	}
-
-	f(t)
-}
-
 // TestNewT tests the creation and basic functionality of the test wrapper
 func TestNewT(t *testing.T) {
 	t.Run("wraps *testing.T correctly", func(t *testing.T) {
@@ -290,14 +272,8 @@ func TestTryAcquirers(t *testing.T) {
 	})
 }
 
-// Update TestSystemAcquisition to match new behavior
+// TestSystemAcquisition tests the system acquisition functionality
 func TestSystemAcquisition(t *testing.T) {
-	// Save original acquirers and restore after test
-	origAcquirers := systemAcquirers
-	defer func() {
-		systemAcquirers = origAcquirers
-	}()
-
 	t.Run("uses first non-skip acquirer (success)", func(t *testing.T) {
 		sys1, sys2 := newMockSystem(), newMockSystem()
 		acquirers := []SystemAcquirer{
@@ -305,78 +281,184 @@ func TestSystemAcquisition(t *testing.T) {
 			mockAcquirer(sys1, nil), // selected and succeeds
 			mockAcquirer(sys2, nil), // not reached
 		}
-		systemAcquirers = acquirers
+
+		helper := newBasicSystemTestHelper(&mockEnvGetter{}).
+			WithAcquirers(acquirers)
 
 		var acquiredSys system.System
-		SystemTest(t, func(t T, sys system.System) {
+		helper.SystemTest(t, func(t T, sys system.System) {
 			acquiredSys = sys
 		})
 		require.Equal(t, sys1, acquiredSys)
 	})
 
 	t.Run("fails when selected acquirer fails", func(t *testing.T) {
-		expectedErr := fmt.Errorf("selected acquirer failed")
-		systemAcquirers = []SystemAcquirer{
-			mockAcquirer(nil, nil),         // skipped
-			mockAcquirer(nil, expectedErr), // selected and fails
+		testCases := []struct {
+			name        string
+			expectMet   bool
+			expectSkip  bool
+			expectFatal bool
+		}{
+			{
+				name:        "preconditions not expected skips test",
+				expectMet:   false,
+				expectSkip:  true,
+				expectFatal: false,
+			},
+			{
+				name:        "preconditions expected fails test",
+				expectMet:   true,
+				expectSkip:  false,
+				expectFatal: true,
+			},
 		}
 
-		mock := &mockTB{name: "mock"}
-		SystemTest(mock, func(t T, sys system.System) {
-			require.Fail(t, "should not reach here")
-		})
-		require.True(t, mock.failed)
-		require.Contains(t, mock.lastError, expectedErr.Error())
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				expectedErr := fmt.Errorf("selected acquirer failed")
+				acquirers := []SystemAcquirer{
+					mockAcquirer(nil, nil),         // skipped
+					mockAcquirer(nil, expectedErr), // selected and fails
+				}
+
+				// Create a new helper with the right configuration
+				helper := newBasicSystemTestHelper(&mockEnvGetter{}).
+					WithAcquirers(acquirers)
+				helper.expectPreconditionsMet = tc.expectMet
+
+				recorder := &mockTBRecorder{mockTB: mockTB{name: "test"}}
+				helper.SystemTest(recorder, func(t T, sys system.System) {
+					require.Fail(t, "should not reach here")
+				})
+
+				require.Equal(t, tc.expectSkip, recorder.skipped, "unexpected skip state")
+				require.Equal(t, tc.expectFatal, recorder.failed, "unexpected fatal state")
+				if tc.expectSkip {
+					require.Contains(t, recorder.skipMsg, expectedErr.Error())
+				}
+				if tc.expectFatal {
+					require.Contains(t, recorder.fatalMsg, expectedErr.Error())
+				}
+			})
+		}
 	})
 
 	t.Run("fails when all acquirers skip", func(t *testing.T) {
-		systemAcquirers = []SystemAcquirer{
-			mockAcquirer(nil, nil),
-			mockAcquirer(nil, nil),
+		testCases := []struct {
+			name        string
+			expectMet   bool
+			expectSkip  bool
+			expectFatal bool
+		}{
+			{
+				name:        "preconditions not expected skips test",
+				expectMet:   false,
+				expectSkip:  true,
+				expectFatal: false,
+			},
+			{
+				name:        "preconditions expected fails test",
+				expectMet:   true,
+				expectSkip:  false,
+				expectFatal: true,
+			},
 		}
 
-		mock := &mockTB{name: "mock"}
-		SystemTest(mock, func(t T, sys system.System) {
-			require.Fail(t, "should not reach here")
-		})
-		require.True(t, mock.failed)
-		require.Contains(t, mock.lastError, "no acquirer was able to create a system")
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				acquirers := []SystemAcquirer{
+					mockAcquirer(nil, nil),
+					mockAcquirer(nil, nil),
+				}
+
+				// Create a new helper with the right configuration
+				helper := newBasicSystemTestHelper(&mockEnvGetter{}).
+					WithAcquirers(acquirers)
+				helper.expectPreconditionsMet = tc.expectMet
+
+				recorder := &mockTBRecorder{mockTB: mockTB{name: "test"}}
+				helper.SystemTest(recorder, func(t T, sys system.System) {
+					require.Fail(t, "should not reach here")
+				})
+
+				require.Equal(t, tc.expectSkip, recorder.skipped, "unexpected skip state")
+				require.Equal(t, tc.expectFatal, recorder.failed, "unexpected fatal state")
+				if tc.expectSkip {
+					require.Contains(t, recorder.skipMsg, "no acquirer was able to create a system")
+				}
+				if tc.expectFatal {
+					require.Contains(t, recorder.fatalMsg, "no acquirer was able to create a system")
+				}
+			})
+		}
 	})
 
 	t.Run("acquireFromEnvURL behavior", func(t *testing.T) {
-		// Save original env var and package
-		origEnvFile := os.Getenv(env.EnvURLVar)
-		origPkg := currentPackage
-		defer func() {
-			os.Setenv(env.EnvURLVar, origEnvFile)
-			currentPackage = origPkg
-		}()
+		// Create a mockEnvGetter with the original env value
+		origEnv := &mockEnvGetter{
+			values: map[string]string{
+				env.EnvURLVar: os.Getenv(env.EnvURLVar),
+			},
+		}
 
 		t.Run("skips when env var not set", func(t *testing.T) {
-			os.Unsetenv(env.EnvURLVar)
-			sys, err := acquireFromEnvURL(t)
+			helper := newBasicSystemTestHelper(&mockEnvGetter{
+				values: make(map[string]string),
+			})
+			sys, err := helper.acquireFromEnvURL(t)
 			require.NoError(t, err)
 			require.Nil(t, sys)
 		})
 
 		t.Run("fails with error for invalid URL", func(t *testing.T) {
-			os.Setenv(env.EnvURLVar, "invalid://url")
-			sys, err := acquireFromEnvURL(t)
+			helper := newBasicSystemTestHelper(&mockEnvGetter{
+				values: map[string]string{
+					env.EnvURLVar: "invalid://url",
+				},
+			}).WithProvider(&testPackage{
+				creator: func() (system.System, error) {
+					return nil, fmt.Errorf("invalid URL")
+				},
+			})
+			sys, err := helper.acquireFromEnvURL(t)
 			require.Error(t, err)
 			require.Nil(t, sys)
 		})
 
 		t.Run("succeeds with valid URL", func(t *testing.T) {
-			// Set up test package that returns a mock system
-			currentPackage = &testPackage{
-				creator: func() (system.System, error) {
-					return newMockSystem(), nil
+			mockSys := newMockSystem()
+			helper := newBasicSystemTestHelper(&mockEnvGetter{
+				values: map[string]string{
+					env.EnvURLVar: "file:///valid/url",
 				},
-			}
-			os.Setenv(env.EnvURLVar, "file:///valid/url")
-			sys, err := acquireFromEnvURL(t)
+			}).WithProvider(&testPackage{
+				creator: func() (system.System, error) {
+					return mockSys, nil
+				},
+			})
+			sys, err := helper.acquireFromEnvURL(t)
 			require.NoError(t, err)
-			require.NotNil(t, sys)
+			require.Equal(t, mockSys, sys)
+		})
+
+		// Verify original environment is preserved by running a test with the original env
+		t.Run("preserves original environment", func(t *testing.T) {
+			helper := newBasicSystemTestHelper(origEnv)
+			sys, err := helper.acquireFromEnvURL(t)
+			if origEnv.values[env.EnvURLVar] == "" {
+				require.NoError(t, err)
+				require.Nil(t, sys)
+			} else {
+				// If there was a value, we'd need a provider to handle it properly
+				helper = helper.WithProvider(&testPackage{
+					creator: func() (system.System, error) {
+						return newMockSystem(), nil
+					},
+				})
+				sys, err = helper.acquireFromEnvURL(t)
+				require.NoError(t, err)
+				require.NotNil(t, sys)
+			}
 		})
 	})
 }

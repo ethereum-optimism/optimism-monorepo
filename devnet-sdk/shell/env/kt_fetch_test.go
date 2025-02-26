@@ -12,19 +12,37 @@ import (
 )
 
 // testFS implements EnclaveFS for testing
-type testFS struct{}
+type testFS struct {
+	artifacts map[string]bool
+}
 
 func (m *testFS) GetArtifact(_ context.Context, name string) (*ktfs.Artifact, error) {
 	if name == "error" {
 		return nil, fmt.Errorf("mock error")
 	}
+	if !m.artifacts[name] {
+		return nil, fmt.Errorf("artifact %s not found", name)
+	}
 	// We don't need to return a real artifact since we're only testing error cases
 	return nil, nil
+}
+
+func (m *testFS) GetAllArtifactNames(_ context.Context) ([]string, error) {
+	if m.artifacts == nil {
+		return nil, nil
+	}
+	names := make([]string, 0, len(m.artifacts))
+	for name := range m.artifacts {
+		names = append(names, name)
+	}
+	return names, nil
 }
 
 func (m *testFS) Close() error {
 	return nil
 }
+
+var _ EnclaveFS = (*testFS)(nil)
 
 func TestParseKurtosisURL(t *testing.T) {
 	tests := []struct {
@@ -39,7 +57,7 @@ func TestParseKurtosisURL(t *testing.T) {
 			name:         "basic url",
 			urlStr:       "kt://myenclave",
 			wantEnclave:  "myenclave",
-			wantArtifact: "devnet",
+			wantArtifact: "",
 			wantFile:     "env.json",
 		},
 		{
@@ -106,10 +124,19 @@ func TestFetchKurtosisDataErrors(t *testing.T) {
 			name: "error getting artifact",
 			setupMock: func() {
 				NewEnclaveFS = func(_ context.Context, _ string) (EnclaveFS, error) {
-					return &testFS{}, nil
+					return &testFS{artifacts: map[string]bool{"error": true}}, nil
 				}
 			},
 			urlStr: "kt://myenclave/error",
+		},
+		{
+			name: "no default descriptor",
+			setupMock: func() {
+				NewEnclaveFS = func(_ context.Context, _ string) (EnclaveFS, error) {
+					return &testFS{artifacts: map[string]bool{}}, nil
+				}
+			},
+			urlStr: "kt://myenclave",
 		},
 	}
 
@@ -125,6 +152,65 @@ func TestFetchKurtosisDataErrors(t *testing.T) {
 
 			_, _, err = fetchKurtosisData(u)
 			assert.Error(t, err)
+		})
+	}
+}
+
+func TestGetDefaultDescriptor(t *testing.T) {
+	tests := []struct {
+		name        string
+		artifacts   map[string]bool
+		wantName    string
+		wantErrText string
+	}{
+		{
+			name: "finds highest numbered descriptor",
+			artifacts: map[string]bool{
+				"devnet-descriptor-1":  true,
+				"devnet-descriptor-5":  true,
+				"devnet-descriptor-10": true,
+				"other":                true,
+			},
+			wantName: "devnet-descriptor-10",
+		},
+		{
+			name: "handles non-numeric suffixes",
+			artifacts: map[string]bool{
+				"devnet-descriptor-1":   true,
+				"devnet-descriptor-5":   true,
+				"devnet-descriptor-abc": true,
+				"devnet-descriptor-10":  true,
+				"other":                 true,
+				"devnet-descriptor-def": true,
+			},
+			wantName: "devnet-descriptor-10",
+		},
+		{
+			name:        "no descriptors",
+			artifacts:   map[string]bool{},
+			wantErrText: "no descriptor found with valid numerical suffix",
+		},
+		{
+			name: "no valid descriptors",
+			artifacts: map[string]bool{
+				"other":      true,
+				"devnet-abc": true,
+			},
+			wantErrText: "no descriptor found with valid numerical suffix",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fs := &testFS{artifacts: tt.artifacts}
+			got, err := getDefaultDescriptor(context.Background(), fs)
+			if tt.wantErrText != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.wantErrText)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantName, got)
 		})
 	}
 }
