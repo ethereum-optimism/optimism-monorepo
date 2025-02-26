@@ -842,7 +842,7 @@ jobs:
       - run:
           name: Write pinned block number for cache key
           command: |
-            echo $FORK_BLOCK_NUMBER > ./pinnedBlockNumber.txt
+            just print-pinned-block-number > ./pinnedBlockNumber.txt
             cat pinnedBlockNumber.txt
           working_directory: packages/contracts-bedrock
       - restore_cache:
