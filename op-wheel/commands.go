@@ -117,6 +117,11 @@ var (
 		Usage:   "allow gaps in block building, like missed slots on the beacon chain.",
 		EnvVars: prefixEnvVars("ALLOW_GAPS"),
 	}
+	UpdateFinality = &cli.BoolFlag{
+		Name:    "update-finality",
+		Usage:   "update safe and finalized blocks during auto mode.",
+		EnvVars: prefixEnvVars("UPDATE_FINALITY"),
+	}
 )
 
 func withEngineFlags(flags ...cli.Flag) []cli.Flag {
@@ -127,11 +132,12 @@ func withEngineFlags(flags ...cli.Flag) []cli.Flag {
 
 func ParseBuildingArgs(ctx *cli.Context) *engine.BlockBuildingSettings {
 	return &engine.BlockBuildingSettings{
-		BlockTime:    ctx.Uint64(BlockTimeFlag.Name),
-		AllowGaps:    ctx.Bool(AllowGaps.Name),
-		Random:       hashFlagValue(RandaoFlag.Name, ctx),
-		FeeRecipient: addrFlagValue(FeeRecipientFlag.Name, ctx),
-		BuildTime:    ctx.Duration(BuildingTime.Name),
+		BlockTime:      ctx.Uint64(BlockTimeFlag.Name),
+		AllowGaps:      ctx.Bool(AllowGaps.Name),
+		Random:         hashFlagValue(RandaoFlag.Name, ctx),
+		FeeRecipient:   addrFlagValue(FeeRecipientFlag.Name, ctx),
+		BuildTime:      ctx.Duration(BuildingTime.Name),
+		UpdateFinality: ctx.Bool(UpdateFinality.Name),
 	}
 }
 
@@ -473,11 +479,10 @@ var (
 		Name:  "block",
 		Usage: "build the next block using the Engine API",
 		Flags: withEngineFlags(
-			FeeRecipientFlag, RandaoFlag, BlockTimeFlag, BuildingTime, AllowGaps,
+			FeeRecipientFlag, RandaoFlag, BlockTimeFlag, BuildingTime, AllowGaps, UpdateFinality,
 		),
 		// TODO: maybe support transaction and tx pool engine flags, since we use op-geth?
 		// TODO: reorg flag
-		// TODO: finalize/safe flag
 
 		Action: EngineAction(func(ctx *cli.Context, client *sources.EngineAPIClient, _ log.Logger) error {
 			settings := ParseBuildingArgs(ctx)
@@ -498,11 +503,10 @@ var (
 		Usage:       "Run a proof-of-nothing chain with fixed block time.",
 		Description: "The block time can be changed. The execution engine must be synced to a post-Merge state first.",
 		Flags: append(withEngineFlags(
-			FeeRecipientFlag, RandaoFlag, BlockTimeFlag, BuildingTime, AllowGaps),
+			FeeRecipientFlag, RandaoFlag, BlockTimeFlag, BuildingTime, AllowGaps, UpdateFinality),
 			opmetrics.CLIFlags(envVarPrefix)...),
 		Action: EngineAction(func(ctx *cli.Context, client *sources.EngineAPIClient, l log.Logger) error {
 			settings := ParseBuildingArgs(ctx)
-			// TODO: finalize/safe flag
 
 			metricsCfg := opmetrics.ReadCLIConfig(ctx)
 

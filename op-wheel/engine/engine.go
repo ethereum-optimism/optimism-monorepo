@@ -140,6 +140,8 @@ type BlockBuildingSettings struct {
 	Random       common.Hash
 	FeeRecipient common.Address
 	BuildTime    time.Duration
+	// Whether to update safe and finalized blocks during auto mode
+	UpdateFinality bool
 }
 
 func BuildBlock(ctx context.Context, client *sources.EngineAPIClient, status *StatusData, settings *BlockBuildingSettings) (*eth.ExecutionPayloadEnvelope, error) {
@@ -250,7 +252,7 @@ func Auto(
 
 				// On a mocked "beacon epoch transition", update finalization and justification checkpoints.
 				// There are no gap slots, so we just go back 32 blocks.
-				if status.Head.Number%32 == 0 {
+				if status.Head.Number%32 == 0 && settings.UpdateFinality {
 					if status.Safe.Number+32 <= status.Head.Number {
 						safe, err := getHeader(ctx, client.RPC, methodEthGetBlockByNumber, hexutil.Uint64(status.Head.Number-32).String())
 						if err != nil {
@@ -272,11 +274,12 @@ func Auto(
 				}
 
 				payloadEnv, err := BuildBlock(ctx, client, status, &BlockBuildingSettings{
-					BlockTime:    settings.BlockTime,
-					AllowGaps:    settings.AllowGaps,
-					Random:       settings.Random,
-					FeeRecipient: settings.FeeRecipient,
-					BuildTime:    buildTime,
+					BlockTime:      settings.BlockTime,
+					AllowGaps:      settings.AllowGaps,
+					Random:         settings.Random,
+					FeeRecipient:   settings.FeeRecipient,
+					BuildTime:      buildTime,
+					UpdateFinality: settings.UpdateFinality,
 				})
 				if err != nil {
 					buildErr = err
