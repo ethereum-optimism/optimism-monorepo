@@ -198,7 +198,7 @@ func (s *channelManager) TxData(l1Head eth.BlockID, isPectra bool) (txData, erro
 		return emptyTxData, err
 	}
 	// If the channel has already started being submitted,
-	// return now and ensure no requeueing happens
+	// return now and ensure no requeuing happens
 	if !channel.NoneSubmitted() {
 		return s.nextTxData(channel)
 	}
