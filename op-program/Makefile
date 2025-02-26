@@ -7,11 +7,6 @@ LDFLAGSSTRING +=-X main.GitDate=$(GITDATE)
 
 # op-program-client version must ALWAYS be set to the same value (v0.0.0) to ensure exact build is reproducible
 PC_LDFLAGSSTRING := $(LDFLAGSSTRING)
-PC_LDFLAGSSTRING +=-X github.com/ethereum-optimism/optimism/op-program/version.Version=v0.0.0
-PC_LDFLAGSSTRING +=-X github.com/ethereum-optimism/optimism/op-program/version.Meta=
-
-LDFLAGSSTRING +=-X github.com/ethereum-optimism/optimism/op-program/version.Version=$(VERSION)
-LDFLAGSSTRING +=-X github.com/ethereum-optimism/optimism/op-program/version.Meta=$(VERSION_META)
 
 COMPAT_DIR := temp/compat
 
