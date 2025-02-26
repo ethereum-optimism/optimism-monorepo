@@ -114,7 +114,7 @@ func TestCrossUnsafeUpdate(t *testing.T) {
 		// (the first one is in CrossSafeHazards)
 		usd.deps.chainIDFromIndexfn = func() (eth.ChainID, error) {
 			defer func() { count++ }()
-			if count == 1 {
+			if count < 2 {
 				return eth.ChainID{}, errors.New("some error")
 			}
 			return eth.ChainID{}, nil
@@ -156,11 +156,19 @@ func TestCrossUnsafeUpdate(t *testing.T) {
 		usd.crossUnsafeFn = func(chainID eth.ChainID) (types.BlockSeal, error) {
 			return crossUnsafe, nil
 		}
-		bl := eth.BlockRef{ParentHash: common.Hash{0x01}, Time: 1}
+		bl := eth.BlockRef{ParentHash: common.Hash{0x01}, Time: 1, Number: 1}
 		em1 := &types.ExecutingMessage{Timestamp: 1}
 		usd.openBlockFn = func(chainID eth.ChainID, blockNum uint64) (ref eth.BlockRef, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error) {
 			// include one executing message to ensure one hazard is returned
-			return bl, 2, map[uint32]*types.ExecutingMessage{1: em1}, nil
+			if blockNum == 1 {
+				return bl, 2, map[uint32]*types.ExecutingMessage{1: em1}, nil
+			}
+			return eth.BlockRef{
+				Hash: crossUnsafe.Hash,
+			}, 0, nil, nil
+		}
+		usd.checkFn = func(chainID eth.ChainID, blockNum uint64, timestamp uint64, logIdx uint32, logHash common.Hash) (types.BlockSeal, error) {
+			return crossUnsafe, nil
 		}
 		usd.deps = mockDependencySet{}
 		var updatingChainID eth.ChainID
