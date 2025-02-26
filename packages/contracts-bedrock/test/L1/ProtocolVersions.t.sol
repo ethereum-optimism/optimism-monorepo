@@ -9,6 +9,9 @@ import { EIP1967Helper } from "test/mocks/EIP1967Helper.sol";
 import { IProxy } from "interfaces/universal/IProxy.sol";
 import { IProtocolVersions, ProtocolVersion } from "interfaces/L1/IProtocolVersions.sol";
 
+// Libraries
+import { Encoding } from "src/libraries/Encoding.sol";
+
 contract ProtocolVersions_Init is CommonTest {
     event ConfigUpdate(uint256 indexed version, IProtocolVersions.UpdateType indexed updateType, bytes data);
 
@@ -101,5 +104,123 @@ contract ProtocolVersions_Setters_Test is ProtocolVersions_Init {
         vm.prank(protocolVersions.owner());
         protocolVersions.setRecommended(ProtocolVersion.wrap(_version));
         assertEq(ProtocolVersion.unwrap(protocolVersions.recommended()), _version);
+    }
+
+    /// @dev Tests that `requiredVersion` returns the correct string representation
+    function test_requiredVersion_succeeds() external {
+        // Set a known protocol version
+        ProtocolVersion version = ProtocolVersion.wrap(
+            uint256(bytes32(hex"00000000000000000123456789abcdef00000001000000020000000300000004"))
+        );
+
+        vm.prank(protocolVersions.owner());
+        protocolVersions.setRequired(version);
+
+        // Check the string representation
+        assertEq(protocolVersions.requiredVersion(), "v1.2.3-4+0x0123456789abcdef");
+    }
+
+    /// @dev Tests that `recommendedVersion` returns the correct string representation
+    function test_recommendedVersion_succeeds() external {
+        // Set a known protocol version
+        ProtocolVersion version = ProtocolVersion.wrap(
+            uint256(bytes32(hex"00000000000000000123456789abcdef00000001000000020000000300000004"))
+        );
+
+        vm.prank(protocolVersions.owner());
+        protocolVersions.setRecommended(version);
+
+        // Check the string representation
+        assertEq(protocolVersions.recommendedVersion(), "v1.2.3-4+0x0123456789abcdef");
+    }
+
+    /// @dev Tests that version strings are correct for versions without build/prerelease
+    function test_versionStrings_minimal_succeeds() external {
+        // Version with no build ID or prerelease
+        ProtocolVersion version = ProtocolVersion.wrap(
+            uint256(bytes32(hex"0000000000000000000000000000000000000001000000020000000300000000"))
+        );
+
+        vm.startPrank(protocolVersions.owner());
+        protocolVersions.setRequired(version);
+        protocolVersions.setRecommended(version);
+        vm.stopPrank();
+
+        assertEq(protocolVersions.requiredVersion(), "v1.2.3");
+        assertEq(protocolVersions.recommendedVersion(), "v1.2.3");
+    }
+
+    /// @dev Fuzz test that required version string encoding/decoding is consistent
+    function testFuzz_requiredVersion_succeeds(
+        bytes8 _build,
+        uint32 _major,
+        uint32 _minor,
+        uint32 _patch,
+        uint32 _preRelease
+    )
+        external
+    {
+        ProtocolVersion version =
+            ProtocolVersion.wrap(uint256(Encoding.encodeProtocolVersion(_build, _major, _minor, _patch, _preRelease)));
+
+        vm.prank(protocolVersions.owner());
+        protocolVersions.setRequired(version);
+
+        // Get version string from contract
+        string memory versionString = protocolVersions.requiredVersion();
+
+        // Build expected string
+        string memory expected = string(
+            abi.encodePacked(
+                "v", Encoding.uint2str(_major), ".", Encoding.uint2str(_minor), ".", Encoding.uint2str(_patch)
+            )
+        );
+
+        if (_preRelease != 0) {
+            expected = string(abi.encodePacked(expected, "-", Encoding.uint2str(_preRelease)));
+        }
+
+        if (uint64(_build) != 0) {
+            expected = string(abi.encodePacked(expected, "+0x", Encoding.bytes2hex(_build)));
+        }
+
+        assertEq(versionString, expected);
+    }
+
+    /// @dev Fuzz test that recommended version string encoding/decoding is consistent
+    function testFuzz_recommendedVersion_succeeds(
+        bytes8 _build,
+        uint32 _major,
+        uint32 _minor,
+        uint32 _patch,
+        uint32 _preRelease
+    )
+        external
+    {
+        ProtocolVersion version =
+            ProtocolVersion.wrap(uint256(Encoding.encodeProtocolVersion(_build, _major, _minor, _patch, _preRelease)));
+
+        vm.prank(protocolVersions.owner());
+        protocolVersions.setRecommended(version);
+
+        // Get version string from contract
+        string memory versionString = protocolVersions.recommendedVersion();
+
+        // Build expected string
+        string memory expected = string(
+            abi.encodePacked(
+                "v", Encoding.uint2str(_major), ".", Encoding.uint2str(_minor), ".", Encoding.uint2str(_patch)
+            )
+        );
+
+        if (_preRelease != 0) {
+            expected = string(abi.encodePacked(expected, "-", Encoding.uint2str(_preRelease)));
+        }
+
+        if (uint64(_build) != 0) {
+            expected = string(abi.encodePacked(expected, "+0x", Encoding.bytes2hex(_build)));
+        }
+
+        assertEq(versionString, expected);
     }
 }
