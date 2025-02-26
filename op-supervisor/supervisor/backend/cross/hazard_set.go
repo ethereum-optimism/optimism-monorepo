@@ -147,9 +147,9 @@ func (h *HazardSet) build(deps HazardDeps, logger log.Logger, chainID eth.ChainI
 				// and then proceed with transitive block checks,
 				// to ensure the local block we depend on is becoming cross-safe also.
 				logger.Debug("Checking message with current timestamp", "msg", msg, "candidate", candidate)
-				existing, ok := h.entries[msg.Chain]
-				if ok {
-					if existing != includedIn {
+
+				if existing, ok := h.hazards[msg.Chain]; ok {
+					if existing.block != includedIn {
 						return fmt.Errorf("found dependency on %s (chain %d), but already depend on %s", includedIn, initChainID, chainID)
 					}
 				} else {
