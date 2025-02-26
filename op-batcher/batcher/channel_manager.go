@@ -498,22 +498,6 @@ func (s *channelManager) PendingDABytes() int64 {
 	return int64(f)
 }
 
-// CheckExpectedProgress uses the supplied syncStatus to infer
-// whether the node providing the status has made the expected
-// safe head progress given fully submitted channels held in
-// state.
-func (m *channelManager) CheckExpectedProgress(syncStatus eth.SyncStatus) error {
-	for _, ch := range m.channelQueue {
-		if ch.isFullySubmitted() && // This implies a number of l1 confirmations has passed, depending on how the txmgr was configured
-			!ch.isTimedOut() &&
-			syncStatus.CurrentL1.Number > ch.maxInclusionBlock &&
-			syncStatus.SafeL2.Number < ch.LatestL2().Number {
-			return errors.New("safe head did not make expected progress")
-		}
-	}
-	return nil
-}
-
 func (m *channelManager) LastStoredBlock() eth.BlockID {
 	if m.blocks.Len() == 0 {
 		return eth.BlockID{}
