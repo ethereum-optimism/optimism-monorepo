@@ -58,7 +58,8 @@ func (db *ChainsDB) maybeInitSafeDB(id eth.ChainID, anchor types.DerivedBlockRef
 		if err := db.initializedUpdateCrossSafe(id, anchor.Source, anchor.Derived); err != nil {
 			return err
 		}
-		db.initializedUpdateLocalSafe(id, anchor.Source, anchor.Derived)
+		// "anchor" is not a node, so failure to update won't be caught by any SyncNode
+		db.initializedUpdateLocalSafe(id, anchor.Source, anchor.Derived, "anchor")
 	} else if err != nil {
 		return fmt.Errorf("failed to check if chain database is initialized: %w", err)
 	} else {

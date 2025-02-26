@@ -82,16 +82,16 @@ func (db *ChainsDB) Rewind(chain eth.ChainID, headBlock eth.BlockID) error {
 
 // UpdateLocalSafe updates the local-safe database with the given source and lastDerived blocks.
 // It wraps an inner function, blocking the call if the database is not initialized.
-func (db *ChainsDB) UpdateLocalSafe(chain eth.ChainID, source eth.BlockRef, lastDerived eth.BlockRef) {
+func (db *ChainsDB) UpdateLocalSafe(chain eth.ChainID, source eth.BlockRef, lastDerived eth.BlockRef, nodeId string) {
 	logger := db.logger.New("chain", chain, "source", source, "lastDerived", lastDerived)
 	if !db.isInitialized(chain) {
 		logger.Error("cannot UpdateLocalSafe on uninitialized database", "chain", chain)
 		return
 	}
-	db.initializedUpdateLocalSafe(chain, source, lastDerived)
+	db.initializedUpdateLocalSafe(chain, source, lastDerived, nodeId)
 }
 
-func (db *ChainsDB) initializedUpdateLocalSafe(chain eth.ChainID, source eth.BlockRef, lastDerived eth.BlockRef) {
+func (db *ChainsDB) initializedUpdateLocalSafe(chain eth.ChainID, source eth.BlockRef, lastDerived eth.BlockRef, nodeId string) {
 	logger := db.logger.New("chain", chain, "ource", source, "lastDerived", lastDerived)
 	localDB, ok := db.localDBs.Get(chain)
 	if !ok {
@@ -108,6 +108,7 @@ func (db *ChainsDB) initializedUpdateLocalSafe(chain eth.ChainID, source eth.Blo
 		db.emitter.Emit(superevents.UpdateLocalSafeFailedEvent{
 			ChainID: chain,
 			Err:     err,
+			NodeID:  nodeId,
 		})
 		return
 	}

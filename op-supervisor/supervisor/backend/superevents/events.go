@@ -103,6 +103,7 @@ func (ev LocalUnsafeReceivedEvent) String() string {
 type LocalDerivedEvent struct {
 	ChainID eth.ChainID
 	Derived types.DerivedBlockRefPair
+	NodeID  string
 }
 
 func (ev LocalDerivedEvent) String() string {
@@ -164,6 +165,7 @@ func (ev ChainRewoundEvent) String() string {
 type UpdateLocalSafeFailedEvent struct {
 	ChainID eth.ChainID
 	Err     error
+	NodeID  string
 }
 
 func (ev UpdateLocalSafeFailedEvent) String() string {

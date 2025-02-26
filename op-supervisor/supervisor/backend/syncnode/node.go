@@ -110,7 +110,8 @@ func (m *ManagedNode) OnEvent(ev event.Event) bool {
 	}
 	switch x := ev.(type) {
 	case superevents.UpdateLocalSafeFailedEvent:
-		if x.ChainID != m.chainID {
+		if x.ChainID != m.chainID ||
+			x.NodeID != m.Node.String() {
 			return false
 		}
 		m.onUpdateLocalSafeFailed(x)
@@ -354,6 +355,7 @@ func (m *ManagedNode) onDerivationUpdate(pair types.DerivedBlockRefPair) {
 	m.emitter.Emit(superevents.LocalDerivedEvent{
 		ChainID: m.chainID,
 		Derived: pair,
+		NodeID:  m.Node.String(),
 	})
 	m.lastNodeLocalSafe = pair.Derived.ID()
 	m.resetIfInconsistent()

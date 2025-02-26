@@ -851,7 +851,7 @@ func (s *testSetup) makeBlockSafe(chainID eth.ChainID, block eth.L2BlockRef, l1B
 		Number:     block.Number,
 		Time:       block.Time,
 		ParentHash: block.ParentHash,
-	})
+	}, "test")
 
 	if makeCrossSafe {
 		require.NoError(s.t, s.chainsDB.UpdateCrossUnsafe(chainID, types.BlockSeal{
