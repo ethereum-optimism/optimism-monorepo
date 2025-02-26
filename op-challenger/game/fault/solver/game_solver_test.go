@@ -257,7 +257,7 @@ func TestMultipleRounds(t *testing.T) {
 			actor: incorrectAttackLastClaim,
 		},
 		{
-			name:  "LinearDefendInorrect",
+			name:  "LinearDefendIncorrect",
 			actor: incorrectDefendLastClaim,
 		},
 		{
