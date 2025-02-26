@@ -125,6 +125,10 @@ type Config struct {
 	// Active if IsthmusTime != nil && L2 block timestamp >= *IsthmusTime, inactive otherwise.
 	IsthmusTime *uint64 `json:"isthmus_time,omitempty"`
 
+	// JovianTime sets the activation time of the Jovian network upgrade.
+	// Active if JovianTime != nil && L2 block timestamp >= *JovianTime, inactive otherwise.
+	JovianTime *uint64 `json:"jovian_time,omitempty"`
+
 	// InteropTime sets the activation time for an experimental feature-set, activated like a hardfork.
 	// Active if InteropTime != nil && L2 block timestamp >= *InteropTime, inactive otherwise.
 	InteropTime *uint64 `json:"interop_time,omitempty"`
@@ -432,6 +436,11 @@ func (c *Config) IsIsthmus(timestamp uint64) bool {
 	return c.IsthmusTime != nil && timestamp >= *c.IsthmusTime
 }
 
+// IsJovian returns true if the Jovian hardfork is active at or past the given timestamp.
+func (c *Config) IsJovian(timestamp uint64) bool {
+	return c.JovianTime != nil && timestamp >= *c.JovianTime
+}
+
 // IsInterop returns true if the Interop hardfork is active at or past the given timestamp.
 func (c *Config) IsInterop(timestamp uint64) bool {
 	return c.InteropTime != nil && timestamp >= *c.InteropTime
@@ -495,6 +504,14 @@ func (c *Config) IsIsthmusActivationBlock(l2BlockTime uint64) bool {
 		!c.IsIsthmus(l2BlockTime-c.BlockTime)
 }
 
+// IsJovianActivationBlock returns whether the specified block is the first block subject to the
+// Jovian upgrade.
+func (c *Config) IsJovianActivationBlock(l2BlockTime uint64) bool {
+	return c.IsJovian(l2BlockTime) &&
+		l2BlockTime >= c.BlockTime &&
+		!c.IsJovian(l2BlockTime-c.BlockTime)
+}
+
 func (c *Config) IsInteropActivationBlock(l2BlockTime uint64) bool {
 	return c.IsInterop(l2BlockTime) &&
 		l2BlockTime >= c.BlockTime &&
@@ -517,6 +534,9 @@ func (c *Config) ActivateAtGenesis(hardfork ForkName) {
 	switch hardfork {
 	case Interop:
 		c.InteropTime = new(uint64)
+		fallthrough
+	case Jovian:
+		c.JovianTime = new(uint64)
 		fallthrough
 	case Isthmus:
 		c.IsthmusTime = new(uint64)
@@ -675,6 +695,7 @@ func (c *Config) Description(l2Chains map[string]string) string {
 	banner += fmt.Sprintf("  - Granite: %s\n", fmtForkTimeOrUnset(c.GraniteTime))
 	banner += fmt.Sprintf("  - Holocene: %s\n", fmtForkTimeOrUnset(c.HoloceneTime))
 	banner += fmt.Sprintf("  - Isthmus: %s\n", fmtForkTimeOrUnset(c.IsthmusTime))
+	banner += fmt.Sprintf("  - Jovian: %s\n", fmtForkTimeOrUnset(c.JovianTime))
 	banner += fmt.Sprintf("  - Interop: %s\n", fmtForkTimeOrUnset(c.InteropTime))
 	// Report the protocol version
 	banner += fmt.Sprintf("Node supports up to OP-Stack Protocol Version: %s\n", OPStackSupport)
@@ -712,6 +733,7 @@ func (c *Config) LogDescription(log log.Logger, l2Chains map[string]string) {
 		"granite_time", fmtForkTimeOrUnset(c.GraniteTime),
 		"holocene_time", fmtForkTimeOrUnset(c.HoloceneTime),
 		"isthmus_time", fmtForkTimeOrUnset(c.IsthmusTime),
+		"jovian_time", fmtForkTimeOrUnset(c.JovianTime),
 		"interop_time", fmtForkTimeOrUnset(c.InteropTime),
 		"alt_da", c.AltDAConfig != nil,
 	)

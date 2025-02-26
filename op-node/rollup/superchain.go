@@ -89,6 +89,7 @@ func LoadOPStackRollupConfig(chainID uint64) (*Config, error) {
 		GraniteTime:            hardforks.GraniteTime,
 		HoloceneTime:           hardforks.HoloceneTime,
 		IsthmusTime:            hardforks.IsthmusTime,
+		JovianTime:             hardforks.JovianTime,
 		BatchInboxAddress:      chConfig.BatchInboxAddr,
 		DepositContractAddress: *addrs.OptimismPortalProxy,
 		L1SystemConfigAddress:  *addrs.SystemConfigProxy,
