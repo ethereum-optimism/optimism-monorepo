@@ -171,7 +171,7 @@ func (s *channelManager) handleChannelInvalidated(c *channel) {
 	}
 
 	for i := invalidatedChannelIdx; i < len(s.channelQueue); i++ {
-		s.log.Info("dropped channel",
+		s.log.Warn("Dropped channel",
 			"id", s.channelQueue[i].ID(),
 			"none_submitted", s.channelQueue[i].NoneSubmitted(),
 			"fully_submitted", s.channelQueue[i].isFullySubmitted(),
