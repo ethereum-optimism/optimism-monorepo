@@ -179,6 +179,16 @@ func TestHazardCycleChecksFailures(t *testing.T) {
 			msg:       "expected error when OpenBlock fails",
 		},
 		{
+			name:        "block mismatch error",
+			chainBlocks: emptyChainBlocks,
+			// openBlockFn returns a block number that doesn't match the expected block number.
+			openBlockFn: func(chainID eth.ChainID, blockNum uint64) (eth.BlockRef, uint32, map[uint32]*types.ExecutingMessage, error) {
+				return eth.BlockRef{Number: blockNum + 1}, 0, make(map[uint32]*types.ExecutingMessage), nil
+			},
+			expectErr: errors.New("tried to open block"),
+			msg:       "expected error due to block mismatch",
+		},
+		{
 			name: "multiple blocks with messages",
 			chainBlocks: map[string]chainBlockDef{
 				"1": {
@@ -203,13 +213,50 @@ func TestHazardCycleChecksFailures(t *testing.T) {
 			expectErr: ErrCycle,
 			msg:       "expected cycle error with multiple blocks and messages",
 		},
+		{
+			name: "invalid log index error",
+			chainBlocks: map[string]chainBlockDef{
+				"1": {
+					logCount: 3,
+					messages: map[uint32]*types.ExecutingMessage{
+						5: execMsg("1", 0), // Invalid index >= logCount.
+					},
+				},
+			},
+			expectErr: ErrExecMsgHasInvalidIndex,
+			msg:       "expected invalid log index error",
+		},
+		{
+			name: "self reference detected error",
+			chainBlocks: map[string]chainBlockDef{
+				"1": {
+					logCount: 1,
+					messages: map[uint32]*types.ExecutingMessage{
+						0: execMsg("1", 0), // Points at itself.
+					},
+				},
+			},
+			expectErr: types.ErrConflict,
+			msg:       "expected self reference detection error",
+		},
+		{
+			name: "unknown chain",
+			chainBlocks: map[string]chainBlockDef{
+				"1": {
+					logCount: 2,
+					messages: map[uint32]*types.ExecutingMessage{
+						1: execMsg("2", 0), // References chain 2 which isn't in hazards.
+					},
+				},
+			},
+			hazards: map[types.ChainIndex]types.BlockSeal{
+				1: {Number: 1}, // Only include chain 1.
+			},
+			expectErr: ErrExecMsgUnknownChain,
+			msg:       "expected unknown chain error",
+		},
 	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			runHazardCycleChecksTestCase(t, tc)
-		})
-	}
+	runHazardCycleChecksTestCaseGroup(t, "Failure", tests)
 }
 
 func TestHazardCycleChecksNoCycle(t *testing.T) {
