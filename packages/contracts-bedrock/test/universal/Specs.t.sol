@@ -226,7 +226,8 @@ contract Specification_Test is CommonTest {
         });
         _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("finalizedWithdrawals(bytes32)") });
         _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("guardian()") });
-        _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("initialize(address,address,address)") });
+        _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("adminOwner()") });
+        _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("initialize(address,address,address,address)") });
         _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("l2Sender()") });
         _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("minimumGasLimit(uint64)") });
         _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("params()") });
@@ -271,7 +272,8 @@ contract Specification_Test is CommonTest {
         });
         _addSpec({ _name: "OptimismPortal2", _sel: _getSel("finalizedWithdrawals(bytes32)") });
         _addSpec({ _name: "OptimismPortal2", _sel: _getSel("guardian()") });
-        _addSpec({ _name: "OptimismPortal2", _sel: _getSel("initialize(address,address,address)") });
+        _addSpec({ _name: "OptimismPortal2", _sel: _getSel("adminOwner()") });
+        _addSpec({ _name: "OptimismPortal2", _sel: _getSel("initialize(address,address,address,address)") });
         _addSpec({ _name: "OptimismPortal2", _sel: _getSel("l2Sender()") });
         _addSpec({ _name: "OptimismPortal2", _sel: _getSel("minimumGasLimit(uint64)") });
         _addSpec({ _name: "OptimismPortal2", _sel: _getSel("params()") });
@@ -315,6 +317,21 @@ contract Specification_Test is CommonTest {
         });
         _addSpec({ _name: "ProtocolVersions", _sel: _getSel("transferOwnership(address)") });
         _addSpec({ _name: "ProtocolVersions", _sel: _getSel("version()") });
+
+        // ETHLockbox
+        _addSpec({ _name: "ETHLockbox", _sel: _getSel("version()") });
+        _addSpec({ _name: "ETHLockbox", _sel: _getSel("initialize(address)") });
+        _addSpec({ _name: "ETHLockbox", _sel: _getSel("superchainConfig()") });
+        _addSpec({ _name: "ETHLockbox", _sel: _getSel("adminOwner()") });
+        _addSpec({ _name: "ETHLockbox", _sel: _getSel("paused()") });
+        _addSpec({ _name: "ETHLockbox", _sel: _getSel("authorizedPortals(address)") });
+        _addSpec({ _name: "ETHLockbox", _sel: _getSel("authorizedLockboxes(address)") });
+        _addSpec({ _name: "ETHLockbox", _sel: _getSel("receiveLiquidity()") });
+        _addSpec({ _name: "ETHLockbox", _sel: _getSel("lockETH()") });
+        _addSpec({ _name: "ETHLockbox", _sel: _getSel("unlockETH(uint256)") });
+        _addSpec({ _name: "ETHLockbox", _sel: _getSel("authorizePortal(address)") });
+        _addSpec({ _name: "ETHLockbox", _sel: _getSel("authorizeLockbox(address)") });
+        _addSpec({ _name: "ETHLockbox", _sel: _getSel("migrateLiquidity(address)") });
 
         // ResourceMetering
         _addSpec({ _name: "ResourceMetering", _sel: _getSel("params()") });

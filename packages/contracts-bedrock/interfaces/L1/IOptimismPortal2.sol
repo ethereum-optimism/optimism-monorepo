@@ -8,8 +8,9 @@ import { IDisputeGameFactory } from "interfaces/dispute/IDisputeGameFactory.sol"
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 import { IAnchorStateRegistry } from "interfaces/dispute/IAnchorStateRegistry.sol";
+import { IProxyAdminOwnable } from "interfaces/L1/IProxyAdminOwnable.sol";
 
-interface IOptimismPortal2 {
+interface IOptimismPortal2 is IProxyAdminOwnable {
     error ContentLengthMismatch();
     error EmptyItem();
     error InvalidDataRemainder();

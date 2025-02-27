@@ -20,6 +20,7 @@ import { IAnchorStateRegistry } from "interfaces/dispute/IAnchorStateRegistry.so
 import { IOPContractsManager } from "interfaces/L1/IOPContractsManager.sol";
 import { IOPContractsManagerInterop } from "interfaces/L1/IOPContractsManagerInterop.sol";
 import { IOptimismPortal2 } from "interfaces/L1/IOptimismPortal2.sol";
+import { IETHLockbox } from "interfaces/L1/IETHLockbox.sol";
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 import { IL1CrossDomainMessenger } from "interfaces/L1/IL1CrossDomainMessenger.sol";
 import { IL1ERC721Bridge } from "interfaces/L1/IL1ERC721Bridge.sol";
@@ -150,6 +151,7 @@ contract DeployImplementationsOutput is BaseDeployIO {
     IOPContractsManager internal _opcm;
     IDelayedWETH internal _delayedWETHImpl;
     IOptimismPortal2 internal _optimismPortalImpl;
+    IETHLockbox internal _ethLockboxImpl;
     IPreimageOracle internal _preimageOracleSingleton;
     IMIPS internal _mipsSingleton;
     ISystemConfig internal _systemConfigImpl;
@@ -170,6 +172,7 @@ contract DeployImplementationsOutput is BaseDeployIO {
         else if (_sel == this.superchainConfigImpl.selector) _superchainConfigImpl = ISuperchainConfig(_addr);
         else if (_sel == this.protocolVersionsImpl.selector) _protocolVersionsImpl = IProtocolVersions(_addr);
         else if (_sel == this.optimismPortalImpl.selector) _optimismPortalImpl = IOptimismPortal2(payable(_addr));
+        else if (_sel == this.ethLockboxImpl.selector) _ethLockboxImpl = IETHLockbox(payable(_addr));
         else if (_sel == this.delayedWETHImpl.selector) _delayedWETHImpl = IDelayedWETH(payable(_addr));
         else if (_sel == this.preimageOracleSingleton.selector) _preimageOracleSingleton = IPreimageOracle(_addr);
         else if (_sel == this.mipsSingleton.selector) _mipsSingleton = IMIPS(_addr);
@@ -204,7 +207,8 @@ contract DeployImplementationsOutput is BaseDeployIO {
             address(this.l1StandardBridgeImpl()),
             address(this.optimismMintableERC20FactoryImpl()),
             address(this.disputeGameFactoryImpl()),
-            address(this.anchorStateRegistryImpl())
+            address(this.anchorStateRegistryImpl()),
+            address(this.ethLockboxImpl())
         );
 
         DeployUtils.assertValidContractAddresses(Solarray.extend(addrs1, addrs2));
@@ -230,6 +234,11 @@ contract DeployImplementationsOutput is BaseDeployIO {
     function optimismPortalImpl() public view returns (IOptimismPortal2) {
         DeployUtils.assertValidContractAddress(address(_optimismPortalImpl));
         return _optimismPortalImpl;
+    }
+
+    function ethLockboxImpl() public view returns (IETHLockbox) {
+        DeployUtils.assertValidContractAddress(address(_ethLockboxImpl));
+        return _ethLockboxImpl;
     }
 
     function delayedWETHImpl() public view returns (IDelayedWETH) {
@@ -294,6 +303,7 @@ contract DeployImplementationsOutput is BaseDeployIO {
         assertValidOpcm(_dii);
         assertValidOptimismMintableERC20FactoryImpl(_dii);
         assertValidOptimismPortalImpl(_dii);
+        assertValidETHLockboxImpl(_dii);
         assertValidPreimageOracleSingleton(_dii);
         assertValidSystemConfigImpl(_dii);
     }
@@ -318,6 +328,14 @@ contract DeployImplementationsOutput is BaseDeployIO {
         // This slot is the custom gas token _balance and this check ensures
         // that it stays unset for forwards compatibility with custom gas token.
         require(vm.load(address(portal), bytes32(uint256(61))) == bytes32(0), "PORTAL-50");
+    }
+
+    function assertValidETHLockboxImpl(DeployImplementationsInput) internal view {
+        IETHLockbox lockbox = ethLockboxImpl();
+
+        DeployUtils.assertInitializedOZv5({ _contractAddress: address(lockbox), _isProxy: false });
+
+        require(address(lockbox.superchainConfig()) == address(0), "ELB-10");
     }
 
     function assertValidDelayedWETHImpl(DeployImplementationsInput _dii) internal view {
@@ -452,6 +470,7 @@ contract DeployImplementations is Script {
         deployL1StandardBridgeImpl(_dio);
         deployOptimismMintableERC20FactoryImpl(_dio);
         deployOptimismPortalImpl(_dii, _dio);
+        deployETHLockboxImpl(_dio);
         deployDelayedWETHImpl(_dii, _dio);
         deployPreimageOracleSingleton(_dii, _dio);
         deployMipsSingleton(_dii, _dio);
@@ -488,6 +507,7 @@ contract DeployImplementations is Script {
             protocolVersionsImpl: address(_dio.protocolVersionsImpl()),
             l1ERC721BridgeImpl: address(_dio.l1ERC721BridgeImpl()),
             optimismPortalImpl: address(_dio.optimismPortalImpl()),
+            ethLockboxImpl: address(_dio.ethLockboxImpl()),
             systemConfigImpl: address(_dio.systemConfigImpl()),
             optimismMintableERC20FactoryImpl: address(_dio.optimismMintableERC20FactoryImpl()),
             l1CrossDomainMessengerImpl: address(_dio.l1CrossDomainMessengerImpl()),
@@ -644,6 +664,18 @@ contract DeployImplementations is Script {
         );
         vm.label(address(impl), "OptimismMintableERC20FactoryImpl");
         _dio.set(_dio.optimismMintableERC20FactoryImpl.selector, address(impl));
+    }
+
+    function deployETHLockboxImpl(DeployImplementationsOutput _dio) public virtual {
+        IETHLockbox impl = IETHLockbox(
+            DeployUtils.createDeterministic({
+                _name: "ETHLockbox",
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(IETHLockbox.__constructor__, ())),
+                _salt: _salt
+            })
+        );
+        vm.label(address(impl), "ETHLockboxImpl");
+        _dio.set(_dio.ethLockboxImpl.selector, address(impl));
     }
 
     // --- Fault Proofs Contracts ---
@@ -872,6 +904,7 @@ contract DeployImplementationsInterop is DeployImplementations {
             protocolVersionsImpl: address(_dio.protocolVersionsImpl()),
             l1ERC721BridgeImpl: address(_dio.l1ERC721BridgeImpl()),
             optimismPortalImpl: address(_dio.optimismPortalImpl()),
+            ethLockboxImpl: address(_dio.ethLockboxImpl()),
             systemConfigImpl: address(_dio.systemConfigImpl()),
             optimismMintableERC20FactoryImpl: address(_dio.optimismMintableERC20FactoryImpl()),
             l1CrossDomainMessengerImpl: address(_dio.l1CrossDomainMessengerImpl()),

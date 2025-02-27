@@ -9,6 +9,7 @@ import { EIP1967Helper } from "test/mocks/EIP1967Helper.sol";
 
 // Contracts
 import { SuperchainConfig } from "src/L1/SuperchainConfig.sol";
+import { ProxyAdmin } from "src/universal/ProxyAdmin.sol";
 
 // Libraries
 import { Types } from "src/libraries/Types.sol";
@@ -17,6 +18,7 @@ import { Constants } from "src/libraries/Constants.sol";
 import { AddressAliasHelper } from "src/vendor/AddressAliasHelper.sol";
 import { EIP1967Helper } from "test/mocks/EIP1967Helper.sol";
 import "src/dispute/lib/Types.sol";
+import { Predeploys } from "src/libraries/Predeploys.sol";
 
 // Interfaces
 import { IResourceMetering } from "interfaces/L1/IResourceMetering.sol";
@@ -138,6 +140,11 @@ contract OptimismPortal2_Test is CommonTest {
         superchainConfig.unpause();
 
         assertEq(optimismPortal2.paused(), true);
+    }
+
+    /// @notice Tests the proxy admin owner is correctly returned.
+    function test_proxyAdminOwner_succeeds() public view {
+        assertEq(optimismPortal2.adminOwner(), ProxyAdmin(Predeploys.PROXY_ADMIN).owner());
     }
 
     /// @dev Tests that `receive` successdully deposits ETH.

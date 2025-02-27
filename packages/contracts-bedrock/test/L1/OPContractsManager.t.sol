@@ -39,6 +39,7 @@ import { IFaultDisputeGame } from "interfaces/dispute/IFaultDisputeGame.sol";
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 import { IOPContractsManager } from "interfaces/L1/IOPContractsManager.sol";
 import { ISemver } from "interfaces/universal/ISemver.sol";
+import { IETHLockbox } from "interfaces/L1/IETHLockbox.sol";
 
 // Contracts
 import { OPContractsManager } from "src/L1/OPContractsManager.sol";
@@ -298,6 +299,7 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
         expectEmitUpgraded(impls.l1ERC721BridgeImpl, address(l1ERC721Bridge));
         expectEmitUpgraded(impls.disputeGameFactoryImpl, address(disputeGameFactory));
         expectEmitUpgraded(impls.optimismPortalImpl, address(optimismPortal2));
+        expectEmitUpgraded(impls.ethLockboxImpl, address(ethLockbox));
         expectEmitUpgraded(impls.optimismMintableERC20FactoryImpl, address(l1OptimismMintableERC20Factory));
         vm.expectEmit(address(newAnchorStateRegistryProxy));
         emit AdminChanged(address(0), address(proxyAdmin));
@@ -339,6 +341,7 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
         assertEq(impls.l1ERC721BridgeImpl, EIP1967Helper.getImplementation(address(l1ERC721Bridge)));
         assertEq(impls.disputeGameFactoryImpl, EIP1967Helper.getImplementation(address(disputeGameFactory)));
         assertEq(impls.optimismPortalImpl, EIP1967Helper.getImplementation(address(optimismPortal2)));
+        assertEq(impls.ethLockboxImpl, EIP1967Helper.getImplementation(address(ethLockbox)));
         assertEq(
             impls.optimismMintableERC20FactoryImpl,
             EIP1967Helper.getImplementation(address(l1OptimismMintableERC20Factory))
@@ -588,6 +591,10 @@ contract OPContractsManager_AddGameType_Test is Test {
             optimismPortalImpl: DeployUtils.create1({
                 _name: "OptimismPortal2",
                 _args: DeployUtils.encodeConstructor(abi.encodeCall(IOptimismPortal2.__constructor__, (1)))
+            }),
+            ethLockboxImpl: DeployUtils.create1({
+                _name: "ETHLockbox",
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(IETHLockbox.__constructor__, ()))
             }),
             systemConfigImpl: DeployUtils.create1({
                 _name: "SystemConfig",

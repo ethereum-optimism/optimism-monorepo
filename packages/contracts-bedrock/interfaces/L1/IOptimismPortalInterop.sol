@@ -65,6 +65,7 @@ interface IOptimismPortalInterop {
         external;
     function finalizedWithdrawals(bytes32) external view returns (bool);
     function guardian() external view returns (address);
+    function adminOwner() external view returns (address);
     function initialize(
         ISystemConfig _systemConfig,
         ISuperchainConfig _superchainConfig,

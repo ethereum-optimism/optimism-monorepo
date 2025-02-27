@@ -16,6 +16,19 @@
   },
   {
     "inputs": [],
+    "name": "adminOwner",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "anchorStateRegistry",
     "outputs": [
       {

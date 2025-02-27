@@ -118,6 +118,7 @@ contract Deploy is Deployer {
             AnchorStateRegistry: artifacts.getAddress("AnchorStateRegistryProxy"),
             OptimismMintableERC20Factory: artifacts.getAddress("OptimismMintableERC20FactoryProxy"),
             OptimismPortal: artifacts.getAddress("OptimismPortalProxy"),
+            ETHLockbox: artifacts.getAddress("ETHLockboxProxy"),
             SystemConfig: artifacts.getAddress("SystemConfigProxy"),
             L1ERC721Bridge: artifacts.getAddress("L1ERC721BridgeProxy"),
             ProtocolVersions: artifacts.getAddress("ProtocolVersionsProxy"),
@@ -137,6 +138,7 @@ contract Deploy is Deployer {
             AnchorStateRegistry: artifacts.getAddress("AnchorStateRegistryImpl"),
             OptimismMintableERC20Factory: artifacts.getAddress("OptimismMintableERC20FactoryImpl"),
             OptimismPortal: artifacts.getAddress("OptimismPortal2Impl"),
+            ETHLockbox: artifacts.getAddress("ETHLockboxImpl"),
             SystemConfig: artifacts.getAddress("SystemConfigImpl"),
             L1ERC721Bridge: artifacts.getAddress("L1ERC721BridgeImpl"),
             ProtocolVersions: artifacts.getAddress("ProtocolVersionsImpl"),
@@ -317,6 +319,7 @@ contract Deploy is Deployer {
             AnchorStateRegistry: address(0),
             OptimismMintableERC20Factory: address(dio.optimismMintableERC20FactoryImpl()),
             OptimismPortal: address(dio.optimismPortalImpl()),
+            ETHLockbox: address(dio.ethLockboxImpl()),
             SystemConfig: address(dio.systemConfigImpl()),
             L1ERC721Bridge: address(dio.l1ERC721BridgeImpl()),
             ProtocolVersions: address(dio.protocolVersionsImpl()),
@@ -327,6 +330,7 @@ contract Deploy is Deployer {
         ChainAssertions.checkL1StandardBridge({ _contracts: impls, _isProxy: false });
         ChainAssertions.checkL1ERC721Bridge({ _contracts: impls, _isProxy: false });
         ChainAssertions.checkOptimismPortal2({ _contracts: impls, _cfg: cfg, _isProxy: false });
+        ChainAssertions.checkETHLockbox({ _contracts: impls, _isProxy: false });
         ChainAssertions.checkOptimismMintableERC20Factory({ _contracts: impls, _isProxy: false });
         ChainAssertions.checkDisputeGameFactory({ _contracts: impls, _expectedOwner: address(0), _isProxy: false });
         ChainAssertions.checkDelayedWETH({ _contracts: impls, _cfg: cfg, _isProxy: false, _expectedOwner: address(0) });
@@ -371,6 +375,7 @@ contract Deploy is Deployer {
         artifacts.save("OptimismMintableERC20FactoryProxy", address(deployOutput.optimismMintableERC20FactoryProxy));
         artifacts.save("L1StandardBridgeProxy", address(deployOutput.l1StandardBridgeProxy));
         artifacts.save("L1CrossDomainMessengerProxy", address(deployOutput.l1CrossDomainMessengerProxy));
+        artifacts.save("ETHLockboxProxy", address(deployOutput.ethLockboxProxy));
 
         // Fault Proof contracts
         artifacts.save("DisputeGameFactoryProxy", address(deployOutput.disputeGameFactoryProxy));
@@ -379,7 +384,6 @@ contract Deploy is Deployer {
         artifacts.save("PermissionedDisputeGame", address(deployOutput.permissionedDisputeGame));
         artifacts.save("OptimismPortalProxy", address(deployOutput.optimismPortalProxy));
         artifacts.save("OptimismPortal2Proxy", address(deployOutput.optimismPortalProxy));
-
         // Check if the permissionless game implementation is already set
         IDisputeGameFactory factory = IDisputeGameFactory(artifacts.mustGetAddress("DisputeGameFactoryProxy"));
         address permissionlessGameImpl = address(factory.gameImpls(GameTypes.CANNON));

@@ -27,9 +27,9 @@ contract OPPrestateUpdater is OPContractsManager {
     error PrestateRequired();
 
     // @return Version string
-    /// @custom:semver 1.7.1
+    /// @custom:semver 1.7.2
     function version() public pure override returns (string memory) {
-        return "1.7.1";
+        return "1.7.2";
     }
 
     // @notice Constructs the OPPrestateUpdater contract
@@ -52,6 +52,7 @@ contract OPPrestateUpdater is OPContractsManager {
                 address(0), //protocolVersionsImpl
                 address(0), //l1ERC721BridgeImpl
                 address(0), //optimismPortalImpl
+                address(0), //ethLockboxImpl
                 address(0), //systemConfigImpl
                 address(0), //optimismMintableERC20FactoryImpl
                 address(0), //l1CrossDomainMessengerImpl

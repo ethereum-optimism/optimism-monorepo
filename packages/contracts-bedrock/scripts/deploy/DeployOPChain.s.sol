@@ -33,6 +33,7 @@ import { IL1CrossDomainMessenger } from "interfaces/L1/IL1CrossDomainMessenger.s
 import { IL1ERC721Bridge } from "interfaces/L1/IL1ERC721Bridge.sol";
 import { IL1StandardBridge } from "interfaces/L1/IL1StandardBridge.sol";
 import { IOptimismMintableERC20Factory } from "interfaces/universal/IOptimismMintableERC20Factory.sol";
+import { IETHLockbox } from "interfaces/L1/IETHLockbox.sol";
 
 contract DeployOPChainInput is BaseDeployIO {
     address internal _opChainProxyAdminOwner;
@@ -225,6 +226,7 @@ contract DeployOPChainOutput is BaseDeployIO {
     IL1StandardBridge internal _l1StandardBridgeProxy;
     IL1CrossDomainMessenger internal _l1CrossDomainMessengerProxy;
     IOptimismPortal2 internal _optimismPortalProxy;
+    IETHLockbox internal _ethLockboxProxy;
     IDisputeGameFactory internal _disputeGameFactoryProxy;
     IAnchorStateRegistry internal _anchorStateRegistryProxy;
     IFaultDisputeGame internal _faultDisputeGame;
@@ -243,6 +245,7 @@ contract DeployOPChainOutput is BaseDeployIO {
         else if (_sel == this.l1StandardBridgeProxy.selector) _l1StandardBridgeProxy = IL1StandardBridge(payable(_addr)) ;
         else if (_sel == this.l1CrossDomainMessengerProxy.selector) _l1CrossDomainMessengerProxy = IL1CrossDomainMessenger(_addr) ;
         else if (_sel == this.optimismPortalProxy.selector) _optimismPortalProxy = IOptimismPortal2(payable(_addr)) ;
+        else if (_sel == this.ethLockboxProxy.selector) _ethLockboxProxy = IETHLockbox(payable(_addr)) ;
         else if (_sel == this.disputeGameFactoryProxy.selector) _disputeGameFactoryProxy = IDisputeGameFactory(_addr) ;
         else if (_sel == this.anchorStateRegistryProxy.selector) _anchorStateRegistryProxy = IAnchorStateRegistry(_addr) ;
         else if (_sel == this.faultDisputeGame.selector) _faultDisputeGame = IFaultDisputeGame(_addr) ;
@@ -297,6 +300,12 @@ contract DeployOPChainOutput is BaseDeployIO {
         DeployUtils.assertValidContractAddress(address(_optimismPortalProxy));
         DeployUtils.assertERC1967ImplementationSet(address(_optimismPortalProxy));
         return _optimismPortalProxy;
+    }
+
+    function ethLockboxProxy() public returns (IETHLockbox) {
+        DeployUtils.assertValidContractAddress(address(_ethLockboxProxy));
+        DeployUtils.assertERC1967ImplementationSet(address(_ethLockboxProxy));
+        return _ethLockboxProxy;
     }
 
     function disputeGameFactoryProxy() public returns (IDisputeGameFactory) {
@@ -375,6 +384,7 @@ contract DeployOPChain is Script {
         vm.label(address(deployOutput.l1StandardBridgeProxy), "l1StandardBridgeProxy");
         vm.label(address(deployOutput.l1CrossDomainMessengerProxy), "l1CrossDomainMessengerProxy");
         vm.label(address(deployOutput.optimismPortalProxy), "optimismPortalProxy");
+        vm.label(address(deployOutput.ethLockboxProxy), "ethLockboxProxy");
         vm.label(address(deployOutput.disputeGameFactoryProxy), "disputeGameFactoryProxy");
         vm.label(address(deployOutput.anchorStateRegistryProxy), "anchorStateRegistryProxy");
         // vm.label(address(deployOutput.faultDisputeGame), "faultDisputeGame");
@@ -393,6 +403,7 @@ contract DeployOPChain is Script {
         _doo.set(_doo.l1StandardBridgeProxy.selector, address(deployOutput.l1StandardBridgeProxy));
         _doo.set(_doo.l1CrossDomainMessengerProxy.selector, address(deployOutput.l1CrossDomainMessengerProxy));
         _doo.set(_doo.optimismPortalProxy.selector, address(deployOutput.optimismPortalProxy));
+        _doo.set(_doo.ethLockboxProxy.selector, address(deployOutput.ethLockboxProxy));
         _doo.set(_doo.disputeGameFactoryProxy.selector, address(deployOutput.disputeGameFactoryProxy));
         _doo.set(_doo.anchorStateRegistryProxy.selector, address(deployOutput.anchorStateRegistryProxy));
         // _doo.set(_doo.faultDisputeGame.selector, address(deployOutput.faultDisputeGame));
@@ -425,7 +436,8 @@ contract DeployOPChain is Script {
             address(_doo.anchorStateRegistryProxy()),
             address(_doo.permissionedDisputeGame()),
             // address(_doo.faultDisputeGame()),
-            address(_doo.delayedWETHPermissionedGameProxy())
+            address(_doo.delayedWETHPermissionedGameProxy()),
+            address(_doo.ethLockboxProxy())
         );
         // TODO: Eventually switch from Permissioned to Permissionless. Add this address back in.
         // address(_delayedWETHPermissionlessGameProxy)
@@ -444,6 +456,7 @@ contract DeployOPChain is Script {
         assertValidL1StandardBridge(_doi, _doo);
         assertValidOptimismMintableERC20Factory(_doi, _doo);
         assertValidOptimismPortal(_doi, _doo);
+        assertValidETHLockbox(_doi, _doo);
         assertValidPermissionedDisputeGame(_doi, _doo);
         assertValidSystemConfig(_doi, _doo);
         assertValidAddressManager(_doi, _doo);
@@ -608,6 +621,16 @@ contract DeployOPChain is Script {
         // This slot is the custom gas token _balance and this check ensures
         // that it stays unset for forwards compatibility with custom gas token.
         require(vm.load(address(portal), bytes32(uint256(61))) == bytes32(0), "PORTAL-80");
+
+        // Check once the portal is updated to use the new lockbox.
+        require(address(portal.ethLockbox()) == address(_doo.ethLockboxProxy()), "PORTAL-90");
+    }
+
+    function assertValidETHLockbox(DeployOPChainInput _doi, DeployOPChainOutput _doo) internal {
+        IETHLockbox lockbox = _doo.ethLockboxProxy();
+
+        require(address(lockbox.superchainConfig()) == address(_doi.opcm().superchainConfig()), "ETHLOCKBOX-10");
+        require(lockbox.authorizedPortals(address(_doo.optimismPortalProxy())), "ETHLOCKBOX-20");
     }
 
     function assertValidDisputeGameFactory(DeployOPChainInput _doi, DeployOPChainOutput _doo) internal {
@@ -687,6 +710,11 @@ contract DeployOPChain is Script {
             admin.getProxyImplementation(address(_doo.anchorStateRegistryProxy()))
                 == DeployUtils.assertERC1967ImplementationSet(address(_doo.anchorStateRegistryProxy())),
             "OPCPA-110"
+        );
+        require(
+            admin.getProxyImplementation(address(_doo.ethLockboxProxy()))
+                == DeployUtils.assertERC1967ImplementationSet(address(_doo.ethLockboxProxy())),
+            "OPCPA-120"
         );
     }
 
