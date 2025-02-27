@@ -311,7 +311,7 @@ func TestComputeStep(t *testing.T) {
 			} else {
 				require.Equal(t, prevTimestamp+1, timestamp, "Incorrect timestamp at trace index %d", traceIndex)
 				require.Zero(t, step, "Incorrect step at trace index %d", traceIndex)
-				require.Equal(t, uint64(1023), prevStep, "Should only loop back to step 0 after the consolidation step")
+				require.Equal(t, uint64(StepsPerTimestamp-1), prevStep, "Should only loop back to step 0 after the consolidation step")
 			}
 			prevTimestamp = timestamp
 			prevStep = step

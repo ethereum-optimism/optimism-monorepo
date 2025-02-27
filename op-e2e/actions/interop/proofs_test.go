@@ -22,6 +22,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	stepsPerTimestamp = 128
+	consolidateStep   = stepsPerTimestamp - 1
+)
+
 func TestInteropFaultProofs_TraceExtensionActivation(gt *testing.T) {
 	t := helpers.NewDefaultTesting(gt)
 	system := dsl.NewInteropDSL(t)
@@ -37,7 +42,7 @@ func TestInteropFaultProofs_TraceExtensionActivation(gt *testing.T) {
 	agreedClaim := system.Outputs.SuperRoot(endTimestamp).Marshal()
 	disputedClaim := system.Outputs.TransitionState(endTimestamp, 1,
 		system.Outputs.OptimisticBlockAtTimestamp(system.Actors.ChainA, endTimestamp+1)).Marshal()
-	disputedTraceIndex := int64(1024)
+	disputedTraceIndex := int64(stepsPerTimestamp)
 	tests := []*transitionTest{
 		{
 			name:               "CorrectlyDidNotActivate",
@@ -115,16 +120,16 @@ func TestInteropFaultProofs_ConsolidateValidCrossChainMessage(gt *testing.T) {
 	tests := []*transitionTest{
 		{
 			name:               "Consolidate-AllValid",
-			agreedClaim:        paddingStep(1023),
+			agreedClaim:        paddingStep(consolidateStep),
 			disputedClaim:      end.Marshal(),
-			disputedTraceIndex: 1023,
+			disputedTraceIndex: consolidateStep,
 			expectValid:        true,
 		},
 		{
 			name:               "Consolidate-AllValid-InvalidNoChange",
-			agreedClaim:        paddingStep(1023),
-			disputedClaim:      paddingStep(1023),
-			disputedTraceIndex: 1023,
+			agreedClaim:        paddingStep(consolidateStep),
+			disputedClaim:      paddingStep(consolidateStep),
+			disputedTraceIndex: consolidateStep,
 			expectValid:        false,
 		},
 	}
@@ -236,9 +241,9 @@ func TestInteropFaultProofs(gt *testing.T) {
 		},
 		{
 			name:               "LastPaddingStep",
-			agreedClaim:        paddingStep(1022),
-			disputedClaim:      paddingStep(1023),
-			disputedTraceIndex: 1022,
+			agreedClaim:        paddingStep(consolidateStep - 1),
+			disputedClaim:      paddingStep(consolidateStep),
+			disputedTraceIndex: consolidateStep - 1,
 			expectValid:        true,
 		},
 		{
@@ -252,7 +257,7 @@ func TestInteropFaultProofs(gt *testing.T) {
 				system.Outputs.OptimisticBlockAtTimestamp(actors.ChainA, endTimestamp+1),
 			).Marshal(),
 			proposalTimestamp:  endTimestamp + 100,
-			disputedTraceIndex: 1024,
+			disputedTraceIndex: consolidateStep + 1,
 			expectValid:        true,
 		},
 		{
@@ -269,7 +274,7 @@ func TestInteropFaultProofs(gt *testing.T) {
 				system.Outputs.OptimisticBlockAtTimestamp(actors.ChainB, endTimestamp+1),
 			).Marshal(),
 			proposalTimestamp:  endTimestamp + 100,
-			disputedTraceIndex: 1025,
+			disputedTraceIndex: consolidateStep + 2,
 			expectValid:        true,
 		},
 		{
@@ -277,7 +282,7 @@ func TestInteropFaultProofs(gt *testing.T) {
 			// Expect to transition to invalid because the unsafe head is reached but challenger needs to handle
 			// not having any data at the next timestamp because the chain doesn't extend that far.
 			name: "DisputeTimestampAfterChainHeadConsolidate",
-			agreedClaim: system.Outputs.TransitionState(endTimestamp, 1023,
+			agreedClaim: system.Outputs.TransitionState(endTimestamp, consolidateStep,
 				system.Outputs.OptimisticBlockAtTimestamp(actors.ChainA, endTimestamp+1),
 				system.Outputs.OptimisticBlockAtTimestamp(actors.ChainB, endTimestamp+1),
 			).Marshal(),
@@ -285,7 +290,7 @@ func TestInteropFaultProofs(gt *testing.T) {
 			// It will have an incremented timestamp but the same chain output roots
 			disputedClaim:      system.Outputs.SuperRoot(endTimestamp + 1).Marshal(),
 			proposalTimestamp:  endTimestamp + 100,
-			disputedTraceIndex: 2047,
+			disputedTraceIndex: 2*stepsPerTimestamp - 1,
 			expectValid:        true,
 		},
 		{
@@ -297,7 +302,7 @@ func TestInteropFaultProofs(gt *testing.T) {
 			// Timestamp has advanced enough to expect the next block now, but it doesn't exit so transition to invalid
 			disputedClaim:      interop.InvalidTransition,
 			proposalTimestamp:  endTimestamp + 100,
-			disputedTraceIndex: 2048,
+			disputedTraceIndex: 2 * stepsPerTimestamp,
 			expectValid:        true,
 		},
 		{
@@ -306,7 +311,7 @@ func TestInteropFaultProofs(gt *testing.T) {
 			agreedClaim:        interop.InvalidTransition,
 			disputedClaim:      interop.InvalidTransition,
 			proposalTimestamp:  endTimestamp + 100,
-			disputedTraceIndex: 3071,
+			disputedTraceIndex: 4 * stepsPerTimestamp,
 			expectValid:        true,
 		},
 		{
@@ -315,7 +320,7 @@ func TestInteropFaultProofs(gt *testing.T) {
 			agreedClaim:        interop.InvalidTransition,
 			disputedClaim:      interop.InvalidTransition,
 			proposalTimestamp:  endTimestamp + 100,
-			disputedTraceIndex: 3072,
+			disputedTraceIndex: 4*stepsPerTimestamp + 1,
 			expectValid:        true,
 		},
 
@@ -423,16 +428,16 @@ func TestInteropFaultProofs_Cycle(gt *testing.T) {
 	tests := []*transitionTest{
 		{
 			name:               "Consolidate-AllValid",
-			agreedClaim:        paddingStep(1023),
+			agreedClaim:        paddingStep(consolidateStep),
 			disputedClaim:      end.Marshal(),
-			disputedTraceIndex: 1023,
+			disputedTraceIndex: consolidateStep,
 			expectValid:        true,
 		},
 		{
 			name:               "Consolidate-AllValid-InvalidNoChange",
-			agreedClaim:        paddingStep(1023),
-			disputedClaim:      paddingStep(1023),
-			disputedTraceIndex: 1023,
+			agreedClaim:        paddingStep(consolidateStep),
+			disputedClaim:      paddingStep(consolidateStep),
+			disputedTraceIndex: consolidateStep,
 			expectValid:        false,
 		},
 	}
@@ -491,7 +496,7 @@ func TestInteropFaultProofs_CascadeInvalidBlock(gt *testing.T) {
 	startTimestamp := endTimestamp - 1
 	optimisticEnd := system.Outputs.SuperRoot(endTimestamp)
 
-	preConsolidation := system.Outputs.TransitionState(startTimestamp, 1023,
+	preConsolidation := system.Outputs.TransitionState(startTimestamp, consolidateStep,
 		system.Outputs.OptimisticBlockAtTimestamp(actors.ChainA, endTimestamp),
 		system.Outputs.OptimisticBlockAtTimestamp(actors.ChainB, endTimestamp),
 	).Marshal()
@@ -510,7 +515,7 @@ func TestInteropFaultProofs_CascadeInvalidBlock(gt *testing.T) {
 			name:               "Consolidate-ExpectInvalidPendingBlock",
 			agreedClaim:        preConsolidation,
 			disputedClaim:      optimisticEnd.Marshal(),
-			disputedTraceIndex: 1023,
+			disputedTraceIndex: consolidateStep,
 			expectValid:        false,
 			// TODO(#14306): Support cascading re-orgs in op-program
 			skipProgram:    true,
@@ -520,7 +525,7 @@ func TestInteropFaultProofs_CascadeInvalidBlock(gt *testing.T) {
 			name:               "Consolidate-ReplaceInvalidBlocks",
 			agreedClaim:        preConsolidation,
 			disputedClaim:      crossSafeEnd.Marshal(),
-			disputedTraceIndex: 1023,
+			disputedTraceIndex: consolidateStep,
 			expectValid:        true,
 			// TODO(#14306): Support cascading re-orgs in op-program
 			skipProgram:    true,
@@ -572,7 +577,7 @@ func TestInteropFaultProofs_MessageExpiry(gt *testing.T) {
 	startTimestamp := endTimestamp - 1
 	optimisticEnd := system.Outputs.SuperRoot(endTimestamp)
 
-	preConsolidation := system.Outputs.TransitionState(startTimestamp, 1023,
+	preConsolidation := system.Outputs.TransitionState(startTimestamp, consolidateStep,
 		system.Outputs.OptimisticBlockAtTimestamp(actors.ChainA, endTimestamp),
 		system.Outputs.OptimisticBlockAtTimestamp(actors.ChainB, endTimestamp),
 	).Marshal()
@@ -588,14 +593,14 @@ func TestInteropFaultProofs_MessageExpiry(gt *testing.T) {
 			name:               "Consolidate-ExpectInvalidPendingBlock",
 			agreedClaim:        preConsolidation,
 			disputedClaim:      optimisticEnd.Marshal(),
-			disputedTraceIndex: 1023,
+			disputedTraceIndex: consolidateStep,
 			expectValid:        false,
 		},
 		{
 			name:               "Consolidate-ReplaceInvalidBlocks",
 			agreedClaim:        preConsolidation,
 			disputedClaim:      crossSafeEnd.Marshal(),
-			disputedTraceIndex: 1023,
+			disputedTraceIndex: consolidateStep,
 			expectValid:        true,
 		},
 	}
@@ -705,23 +710,23 @@ func TestInteropFaultProofsInvalidBlock(gt *testing.T) {
 		},
 		{
 			name:               "LastPaddingStep",
-			agreedClaim:        paddingStep(1022),
-			disputedClaim:      paddingStep(1023),
-			disputedTraceIndex: 1022,
+			agreedClaim:        paddingStep(consolidateStep - 1),
+			disputedClaim:      paddingStep(consolidateStep),
+			disputedTraceIndex: consolidateStep - 1,
 			expectValid:        true,
 		},
 		{
 			name:               "Consolidate-ExpectInvalidPendingBlock",
-			agreedClaim:        paddingStep(1023),
+			agreedClaim:        paddingStep(consolidateStep),
 			disputedClaim:      end.Marshal(),
-			disputedTraceIndex: 1023,
+			disputedTraceIndex: consolidateStep,
 			expectValid:        false,
 		},
 		{
 			name:               "Consolidate-ReplaceInvalidBlock",
-			agreedClaim:        paddingStep(1023),
+			agreedClaim:        paddingStep(consolidateStep),
 			disputedClaim:      crossSafeSuperRootEnd.Marshal(),
-			disputedTraceIndex: 1023,
+			disputedTraceIndex: consolidateStep,
 			expectValid:        true,
 		},
 		{

@@ -29,7 +29,7 @@ var (
 )
 
 const (
-	ConsolidateStep = 1023
+	ConsolidateStep = 127
 )
 
 type taskExecutor interface {
