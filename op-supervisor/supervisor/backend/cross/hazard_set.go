@@ -49,70 +49,105 @@ type potentialHazard struct {
 	block   types.BlockSeal
 }
 
-// build adds a block to the hazard set and recursively adds any blocks that it depends on.
-// If a block has already been added, it will be skipped.
-func (h *HazardSet) build(deps HazardDeps, logger log.Logger, chainID eth.ChainID, block types.BlockSeal) error {
-	// Warning for future: If we have sub-second distinct blocks (different block number),
-	// we need to increase precision on the above timestamp invariant.
-	// Otherwise a local block can depend on a future local block of the same chain,
-	// simply by pulling in a block of another chain,
-	// which then depends on a block of the original chain,
-	// all with the same timestamp, without message cycles.
+// checkChainCanExecute verifies that a chain can execute messages at a given timestamp.
+// If there are any executing messages, then the chain must be able to execute at the timestamp.
+func (h *HazardSet) checkChainCanExecute(depSet depset.DependencySet, chainID eth.ChainID, block types.BlockSeal, execMsgs map[uint32]*types.ExecutingMessage) error {
+	if len(execMsgs) > 0 {
+		if ok, err := depSet.CanExecuteAt(chainID, block.Timestamp); err != nil {
+			return fmt.Errorf("cannot check message execution of block %s (chain %s): %w", block, chainID, err)
+		} else if !ok {
+			return fmt.Errorf("cannot execute messages in block %s (chain %s): %w", block, chainID, types.ErrConflict)
+		}
+	}
+	return nil
+}
 
-	// Process blocks until the stack is empty or we hit the limit
+// checkChainCanInitiate verifies that a chain can initiate messages at a given timestamp.
+// The chain must be able to initiate at the timestamp of the message we're referencing.
+func (h *HazardSet) checkChainCanInitiate(depSet depset.DependencySet, initChainID eth.ChainID, candidate types.BlockSeal, msg *types.ExecutingMessage) error {
+	if ok, err := depSet.CanInitiateAt(initChainID, msg.Timestamp); err != nil {
+		return fmt.Errorf("cannot check message initiation of msg %s (chain %s): %w", msg, initChainID, err)
+	} else if !ok {
+		return fmt.Errorf("cannot allow initiating message %s (chain %s): %w", msg, initChainID, types.ErrConflict)
+	}
+	return nil
+}
+
+// checkMessageWithOlderTimestamp handles messages from past blocks.
+// It ensures non-cyclic ordering relative to other messages.
+func (h *HazardSet) checkMessageWithOlderTimestamp(deps HazardDeps, msg *types.ExecutingMessage, initChainID eth.ChainID, includedIn types.BlockSeal, candidateTimestamp uint64) error {
+	if err := deps.IsCrossValidBlock(initChainID, includedIn.ID()); err != nil {
+		return fmt.Errorf("msg %s included in non-cross-safe block %s: %w", msg, includedIn, err)
+	}
+	// Run expiry window invariant check *after* verifying that the message is non-conflicting.
+	expiresAt := msg.Timestamp + deps.DependencySet().MessageExpiryWindow()
+	if expiresAt < candidateTimestamp {
+		return fmt.Errorf("timestamp of message %s (chain %s) has expired: %d < %d: %w", msg, initChainID, expiresAt, candidateTimestamp, types.ErrConflict)
+	}
+	return nil
+}
+
+// checkMessageWithCurrentTimestamp handles messages from the same time as the candidate block.
+// We have to inspect ordering of individual log events to ensure non-cyclic cross-chain message ordering.
+// And since we may have back-and-forth messaging, we cannot wait till the initiating side is cross-safe.
+// Thus check that it was included in a local-safe block, and then proceed with transitive block checks,
+// to ensure the local block we depend on is becoming cross-safe also.
+// Also returns a boolean indicating if the message already exists in the hazard set.
+func (h *HazardSet) checkMessageWithCurrentTimestamp(msg *types.ExecutingMessage, initChainID eth.ChainID, includedIn types.BlockSeal) (bool, error) {
+	existing, ok := h.entries[msg.Chain]
+	if ok {
+		if existing.ID() != includedIn.ID() {
+			return true, fmt.Errorf("found dependency on %s (chain %d), but already depend on %s", includedIn, initChainID, existing)
+		}
+	}
+	return ok, nil
+}
+
+// build adds a block to the hazard set and recursively adds any blocks that it depends on.
+// Warning for future: If we have sub-second distinct blocks (different block number),
+// we need to increase precision on the above timestamp invariant.
+// Otherwise a local block can depend on a future local block of the same chain,
+// simply by pulling in a block of another chain,
+// which then depends on a block of the original chain,
+// all with the same timestamp, without message cycles.
+func (h *HazardSet) build(deps HazardDeps, logger log.Logger, chainID eth.ChainID, block types.BlockSeal) error {
 	depSet := deps.DependencySet()
 	stack := []potentialHazard{{chainID: chainID, block: block}}
-	for len(stack) > 0 {
-		// Get the next block from the stack
-		next := stack[len(stack)-1]
-		candidate := next.block
-		stack = stack[:len(stack)-1]
-		logger.Debug("Processing block for hazards", "chainID", next.chainID, "block", candidate)
 
-		// Open the block to get its messages
-		opened, _, execMsgs, err := deps.OpenBlock(next.chainID, candidate.Number)
+	for len(stack) > 0 {
+		next := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+		candidate := next.block
+		destChainID := next.chainID
+		logger.Debug("Processing block for hazards", "chainID", destChainID, "block", candidate)
+
+		// Get the block and ensure it's allowed to execute messages.
+		opened, _, execMsgs, err := deps.OpenBlock(destChainID, candidate.Number)
 		if err != nil {
 			return fmt.Errorf("failed to open block: %w", err)
 		}
 		if opened.ID() != candidate.ID() {
 			return fmt.Errorf("unsafe L2 DB has %s, but candidate cross-safe was %s: %w", opened, candidate, types.ErrConflict)
 		}
-		logger.Debug("Block opened", "chainID", next.chainID, "block", opened, "execMsgs", len(execMsgs))
-
-		// invariant: if there are any executing messages, then the chain must be able to execute at the timestamp
-		if len(execMsgs) > 0 {
-			if ok, err := depSet.CanExecuteAt(next.chainID, candidate.Timestamp); err != nil {
-				return fmt.Errorf("cannot check message execution of block %s (chain %s): %w", candidate, next.chainID, err)
-			} else if !ok {
-				return fmt.Errorf("cannot execute messages in block %s (chain %s): %w", candidate, next.chainID, types.ErrConflict)
-			}
+		if err := h.checkChainCanExecute(depSet, destChainID, candidate, execMsgs); err != nil {
+			return err
 		}
 
-		// check all executing messages
 		for _, msg := range execMsgs {
-			logger.Debug("Processing executing message", "chainID", next.chainID, "block", candidate, "msg", msg)
+			logger.Debug("Processing message", "chainID", destChainID, "block", candidate, "msg", msg)
 
-			initChainID, err := depSet.ChainIDFromIndex(msg.Chain)
+			// Get the source chain, ensure it's allowed to initiate messages, and contains the initiating message.
+			srcChainID, err := depSet.ChainIDFromIndex(msg.Chain)
 			if err != nil {
 				if errors.Is(err, types.ErrUnknownChain) {
 					err = fmt.Errorf("msg %s may not execute from unknown chain %s: %w", msg, msg.Chain, types.ErrConflict)
 				}
 				return err
 			}
-
-			// invariant: the chain must be able to initiate at the timestamp of the message we're referencing
-			if ok, err := depSet.CanInitiateAt(initChainID, msg.Timestamp); err != nil {
-				return fmt.Errorf("cannot check message initiation of msg %s (chain %s): %w", msg, chainID, err)
-			} else if !ok {
-				return fmt.Errorf("cannot allow initiating message %s (chain %s): %w", msg, chainID, types.ErrConflict)
+			if err := h.checkChainCanInitiate(depSet, srcChainID, candidate, msg); err != nil {
+				return err
 			}
-
-			// invariant: the message must not be in the future
-			if msg.Timestamp > candidate.Timestamp {
-				return fmt.Errorf("executing message %s in %s breaks timestamp invariant", msg, candidate)
-			}
-
-			includedIn, err := deps.Contains(initChainID,
+			includedIn, err := deps.Contains(srcChainID,
 				types.ContainsQuery{
 					Timestamp: msg.Timestamp,
 					BlockNum:  msg.BlockNum,
@@ -120,42 +155,29 @@ func (h *HazardSet) build(deps HazardDeps, logger log.Logger, chainID eth.ChainI
 					LogHash:   msg.Hash,
 				})
 			if err != nil {
-				return fmt.Errorf("executing msg %s failed check: %w", msg, err)
+				return fmt.Errorf("executing msg %s failed inclusion check: %w", msg, err)
 			}
 
 			if msg.Timestamp < candidate.Timestamp {
-				// If timestamp is older: invariant ensures non-cyclic ordering relative to other messages.
-				// Ensure that the block that they are included in is cross-safe.
-				if err := deps.IsCrossValidBlock(initChainID, includedIn.ID()); err != nil {
-					return fmt.Errorf("msg %s included in non-cross-safe block %s: %w", msg, includedIn, err)
-				}
-				// Run expiry window invariant check *after* verifying that the message is non-conflicting.
-				if msg.Timestamp+depSet.MessageExpiryWindow() < candidate.Timestamp {
-					return fmt.Errorf("timestamp of message %s (chain %s) has expired: %d < %d: %w", msg, chainID, msg.Timestamp+depSet.MessageExpiryWindow(), candidate.Timestamp, types.ErrConflict)
+				if err := h.checkMessageWithOlderTimestamp(deps, msg, srcChainID, includedIn, candidate.Timestamp); err != nil {
+					return err
 				}
 			} else if msg.Timestamp == candidate.Timestamp {
-				// If timestamp is equal: we have to inspect ordering of individual
-				// log events to ensure non-cyclic cross-chain message ordering.
-				// And since we may have back-and-forth messaging, we cannot wait till the initiating side is cross-safe.
-				// Thus check that it was included in a local-safe block,
-				// and then proceed with transitive block checks,
-				// to ensure the local block we depend on is becoming cross-safe also.
-				logger.Debug("Checking message with current timestamp", "msg", msg, "candidate", candidate)
+				exists, err := h.checkMessageWithCurrentTimestamp(msg, srcChainID, includedIn)
+				if err != nil {
+					return err
+				}
 
-				if existing, ok := h.entries[msg.Chain]; ok {
-					if existing.ID() != includedIn.ID() {
-						return fmt.Errorf("found dependency on %s (chain %d), but already depend on %s", includedIn, initChainID, chainID)
-					}
-				} else {
-					// If we got here we have a hazard block so add it to the set and stack
-					logger.Debug("Adding hazard block into HazardSet", "chainID", initChainID, "block", includedIn)
+				if !exists {
+					logger.Debug("Adding block to the hazard set", "chainID", srcChainID, "block", includedIn)
 					h.entries[msg.Chain] = includedIn
-
 					stack = append(stack, potentialHazard{
-						chainID: initChainID,
+						chainID: srcChainID,
 						block:   includedIn,
 					})
 				}
+			} else {
+				return fmt.Errorf("executing message %s in %s breaks timestamp invariant", msg, candidate)
 			}
 		}
 	}
