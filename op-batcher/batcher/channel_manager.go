@@ -160,13 +160,35 @@ func (s *channelManager) handleChannelInvalidated(c *channel) {
 		s.log.Debug("channelManager.handleChannelInvalidated: channel had no blocks")
 	}
 
-	// Trim provided channel and any older channels:
+	// Trim provided channel and any newer channels:
+	invalidatedChannelIdx := 0
+
 	for i := range s.channelQueue {
 		if s.channelQueue[i] == c {
-			s.channelQueue = s.channelQueue[:i]
+			invalidatedChannelIdx = i
 			break
 		}
 	}
+
+	for i := invalidatedChannelIdx; i < len(s.channelQueue); i++ {
+		s.log.Info("dropped channel",
+			"id", s.channelQueue[i].ID(),
+			"none_submitted", s.channelQueue[i].NoneSubmitted(),
+			"fully_submitted", s.channelQueue[i].isFullySubmitted(),
+			"timed_out", s.channelQueue[i].isTimedOut(),
+			"full_reason", s.channelQueue[i].FullErr(),
+			"oldest_l2", s.channelQueue[i].OldestL2(),
+			"newest_l2", s.channelQueue[i].LatestL2(),
+		)
+		// Remove the channel from the txChannels map
+		for txID := range s.txChannels {
+			if s.txChannels[txID] == s.channelQueue[i] {
+				delete(s.txChannels, txID)
+			}
+		}
+	}
+	s.channelQueue = s.channelQueue[:invalidatedChannelIdx]
+
 	s.metr.RecordChannelQueueLength(len(s.channelQueue))
 
 	// We want to start writing to a new channel, so reset currentChannel.

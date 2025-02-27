@@ -417,10 +417,9 @@ func TestChannelManager_handleChannelInvalidated(t *testing.T) {
 	// Place an old channel in the queue.
 	// This channel should not be affected by
 	// a requeue or a later channel timing out.
-	oldChannel := newChannel(l, nil, m.defaultCfg, defaultTestRollupConfig, 0, nil)
+	require.NoError(t, m.ensureChannelWithSpace(eth.BlockID{}))
+	oldChannel := m.currentChannel
 	oldChannel.Close()
-	m.channelQueue = []*channel{oldChannel}
-	metrics.RecordChannelQueueLength(1) // we need to do this manually b/c we are not using the usual codepath to set state
 	require.Len(t, m.channelQueue, 1)
 	require.Equal(t, metrics.ChannelQueueLength, 1)
 
