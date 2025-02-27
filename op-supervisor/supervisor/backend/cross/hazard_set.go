@@ -139,6 +139,10 @@ func (h *HazardSet) build(deps HazardDeps, logger log.Logger, chainID eth.ChainI
 				if err := deps.IsCrossValidBlock(initChainID, includedIn.ID()); err != nil {
 					return fmt.Errorf("msg %s included in non-cross-safe block %s: %w", msg, includedIn, err)
 				}
+				// Run expiry window invariant check *after* verifying that the message is non-conflicting.
+				if msg.Timestamp+depSet.MessageExpiryWindow() < candidate.Timestamp {
+					return fmt.Errorf("timestamp of message %s (chain %s) has expired: %d < %d: %w", msg, chainID, msg.Timestamp+depSet.MessageExpiryWindow(), candidate.Timestamp, types.ErrConflict)
+				}
 			} else if msg.Timestamp == candidate.Timestamp {
 				// If timestamp is equal: we have to inspect ordering of individual
 				// log events to ensure non-cyclic cross-chain message ordering.

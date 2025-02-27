@@ -266,6 +266,7 @@ func TestCrossUnsafeHazards(t *testing.T) {
 		require.Empty(t, hazards.Entries())
 	})
 	t.Run("message expiry", func(t *testing.T) {
+		logger := newTestLogger(t)
 		usd := &mockUnsafeStartDeps{}
 		usd.deps.messageExpiryWindow = 10
 		sampleBlockSeal := types.BlockSeal{Timestamp: 1}
@@ -275,15 +276,16 @@ func TestCrossUnsafeHazards(t *testing.T) {
 		chainID := eth.ChainIDFromUInt64(0)
 		candidate := types.BlockSeal{Timestamp: 12}
 		em1 := &types.ExecutingMessage{Chain: types.ChainIndex(0), Timestamp: 1}
-		execMsgs := []*types.ExecutingMessage{em1}
+		usd.openBlockFn = newOpenBlockFn(em1)
 		// when there is one execMsg that has just expired,
 		// ErrExpired is returned
-		hazards, err := CrossUnsafeHazards(usd, chainID, candidate, execMsgs)
+		hazards, err := CrossUnsafeHazards(usd, logger, chainID, candidate)
 		require.ErrorIs(t, err, types.ErrConflict)
 		require.ErrorContains(t, err, "has expired")
-		require.Empty(t, hazards)
+		require.Empty(t, hazards.Entries())
 	})
 	t.Run("message near expiry", func(t *testing.T) {
+		logger := newTestLogger(t)
 		usd := &mockUnsafeStartDeps{}
 		usd.deps.messageExpiryWindow = 10
 		sampleBlockSeal := types.BlockSeal{Timestamp: 1}
@@ -293,11 +295,11 @@ func TestCrossUnsafeHazards(t *testing.T) {
 		chainID := eth.ChainIDFromUInt64(0)
 		candidate := types.BlockSeal{Timestamp: 11}
 		em1 := &types.ExecutingMessage{Chain: types.ChainIndex(0), Timestamp: 1}
-		execMsgs := []*types.ExecutingMessage{em1}
+		usd.openBlockFn = newOpenBlockFn(em1)
 		// when there is one execMsg that is near expiry, then no error is returned
-		hazards, err := CrossUnsafeHazards(usd, chainID, candidate, execMsgs)
+		hazards, err := CrossUnsafeHazards(usd, logger, chainID, candidate)
 		require.NoError(t, err)
-		require.Empty(t, hazards)
+		require.Empty(t, hazards.Entries())
 	})
 }
 
