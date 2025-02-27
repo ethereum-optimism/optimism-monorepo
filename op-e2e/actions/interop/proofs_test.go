@@ -444,8 +444,6 @@ func TestInteropFaultProofs_Cycle(gt *testing.T) {
 
 func TestInteropFaultProofs_CascadeInvalidBlock(gt *testing.T) {
 	t := helpers.NewDefaultTesting(gt)
-	// TODO(#14307): Support cascading invalidation in op-supervisor
-	t.Skip("Cascading invalidation not yet working")
 
 	system := dsl.NewInteropDSL(t)
 
@@ -481,7 +479,7 @@ func TestInteropFaultProofs_CascadeInvalidBlock(gt *testing.T) {
 	// as an invalid message.
 	system.AddL2Block(actors.ChainA,
 		dsl.WithL2BlockTransactions(system.InboxContract.Execute(alice, chainBInitTx)),
-		// Block becomes cross-unsafe because the init msg is currently present, but it should not become cross-safe.
+		dsl.WithL1BlockCrossUnsafe(),
 	)
 	chainAExecTx := system.InboxContract.LastTransaction()
 	chainAExecTx.CheckIncluded()
