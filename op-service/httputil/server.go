@@ -74,7 +74,7 @@ func (s *HTTPServer) Start() error {
 		},
 	}
 
-	if s.config.tls != nil {
+	if s.config.tls != nil && s.config.tls.CLIConfig.Enabled {
 		srv.TLSConfig = s.config.tls.Config
 	}
 
