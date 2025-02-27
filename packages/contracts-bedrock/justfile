@@ -89,7 +89,7 @@ test-upgrade *ARGS:
   just prepare-upgrade-env "forge test {{ARGS}}"
 
 test-upgrade-rerun *ARGS: build-go-ffi
-  just test-upgrade {{ARGS}} --rerun -vvv
+  just test-upgrade {{ARGS}} --rerun -vvvv
 
 # Starts a local anvil node with a mainnet fork and sends it to the background
 # Requires ETH_RPC_URL to be set to a production (Sepolia or Mainnet) RPC URL.
@@ -211,6 +211,14 @@ interfaces-check-no-build:
 # contract that they're meant to represent. We run "clean" before building because leftover
 # artifacts can cause the script to detect issues incorrectly.
 interfaces-check: clean build interfaces-check-no-build
+
+# Checks that all upgrade/initialize funcitons have proper reinitializer modifiers.
+reinitializer-check: build-source reinitializer-check-no-build
+
+# Checks that all upgrade/initialize funcitons have proper reinitializer modifiers.
+# Does not build contracts.
+reinitializer-check-no-build:
+  go run ./scripts/checks/reinitializer
 
 # Checks that the size of the contracts is within the limit.
 size-check:

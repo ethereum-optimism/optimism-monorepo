@@ -105,11 +105,9 @@ contract AnchorStateRegistry_GetAnchorRoot_Test is AnchorStateRegistry_Init {
         assertEq(root.raw(), gameProxy.rootClaim().raw());
         assertEq(l2BlockNumber, gameProxy.l2BlockNumber());
     }
-}
 
-contract AnchorStateRegistry_GetAnchorRoot_TestFail is AnchorStateRegistry_Init {
-    /// @notice Tests that getAnchorRoot will revert if the anchor game is blacklisted.
-    function test_getAnchorRoot_blacklistedGame_fails() public {
+    /// @notice Tests that getAnchorRoot returns even if the anchor game is blacklisted.
+    function test_getAnchorRoot_blacklistedGame_succeeds() public {
         // Mock the game to be resolved.
         vm.mockCall(address(gameProxy), abi.encodeCall(gameProxy.resolvedAt, ()), abi.encode(block.timestamp));
         vm.warp(block.timestamp + optimismPortal2.disputeGameFinalityDelaySeconds() + 1);
@@ -126,8 +124,11 @@ contract AnchorStateRegistry_GetAnchorRoot_TestFail is AnchorStateRegistry_Init 
             abi.encodeCall(optimismPortal2.disputeGameBlacklist, (gameProxy)),
             abi.encode(true)
         );
-        vm.expectRevert(IAnchorStateRegistry.AnchorStateRegistry_AnchorGameBlacklisted.selector);
-        anchorStateRegistry.getAnchorRoot();
+
+        // Get the anchor root.
+        (Hash root, uint256 l2BlockNumber) = anchorStateRegistry.getAnchorRoot();
+        assertEq(root.raw(), gameProxy.rootClaim().raw());
+        assertEq(l2BlockNumber, gameProxy.l2BlockNumber());
     }
 }
 

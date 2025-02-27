@@ -59,7 +59,7 @@ func L2SemversCLI(cliCtx *cli.Context) error {
 		return fmt.Errorf("chain state does not have allocs")
 	}
 
-	artifactsFS, err := artifacts.Download(ctx, intent.L2ContractsLocator, artifacts.BarProgressor())
+	artifactsFS, err := artifacts.Download(ctx, intent.L2ContractsLocator, artifacts.BarProgressor(), cliCfg.CacheDir)
 	if err != nil {
 		return fmt.Errorf("failed to download L2 artifacts: %w", err)
 	}

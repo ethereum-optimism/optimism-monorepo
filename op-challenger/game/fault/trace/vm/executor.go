@@ -6,18 +6,19 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/ethereum-optimism/optimism/op-node/chaincfg"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/trace/utils"
 	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/types"
 	"github.com/ethereum-optimism/optimism/op-challenger/metrics"
+	"github.com/ethereum-optimism/optimism/op-node/chaincfg"
 	"github.com/ethereum-optimism/optimism/op-service/jsonutil"
 )
 
@@ -32,6 +33,8 @@ var (
 	ErrMissingRollupConfig = errors.New("missing network or rollup config path")
 	ErrMissingL2Genesis    = errors.New("missing network or l2 genesis path")
 	ErrNetworkUnknown      = errors.New("unknown network")
+
+	ErrVMPanic = errors.New("vm exited with exit code 2 (panic)")
 )
 
 type Metricer = metrics.TypedVmMetricer
@@ -49,6 +52,7 @@ type Config struct {
 	L1                string
 	L1Beacon          string
 	L2s               []string
+	L2Experimental    string
 	Server            string // Path to the executable that provides the pre-image oracle server
 	Networks          []string
 	L2Custom          bool
@@ -177,6 +181,14 @@ func (e *Executor) DoGenerateProof(ctx context.Context, dir string, begin uint64
 	e.logger.Info("Generating trace", "proof", end, "cmd", e.cfg.VmBin, "args", strings.Join(args, ", "))
 	execStart := time.Now()
 	err = e.cmdExecutor(ctx, e.logger.New("proof", end), e.cfg.VmBin, args...)
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) {
+		e.logger.Error("VM command exited with non-zero exit code", "exit_code", exitErr.ExitCode())
+		if exitErr.ExitCode() == 2 {
+			// Handle panics specially
+			err = ErrVMPanic
+		}
+	}
 	execTime := time.Since(execStart)
 	memoryUsed := "unknown"
 	e.metrics.RecordExecutionTime(execTime)

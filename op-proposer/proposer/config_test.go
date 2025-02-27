@@ -24,7 +24,7 @@ func TestRollupRpc(t *testing.T) {
 		cfg.L2OOAddress = common.Address{0xaa}.Hex()
 		cfg.ProposalInterval = 0
 		cfg.RollupRpc = ""
-		cfg.SupervisorRpc = "http://localhost:8882/supervisor"
+		cfg.SupervisorRpcs = []string{"http://localhost:8882/supervisor"}
 		require.ErrorIs(t, cfg.Check(), ErrMissingRollupRpc)
 	})
 
@@ -34,7 +34,7 @@ func TestRollupRpc(t *testing.T) {
 			cfg.DGFAddress = common.Address{0xaa}.Hex()
 			cfg.ProposalInterval = 20
 			cfg.RollupRpc = ""
-			cfg.SupervisorRpc = "http://localhost:8882/supervisor"
+			cfg.SupervisorRpcs = []string{"http://localhost:8882/supervisor"}
 			cfg.DisputeGameType = gameType
 			require.ErrorIs(t, cfg.Check(), ErrMissingRollupRpc)
 		})
@@ -45,7 +45,7 @@ func TestRollupRpc(t *testing.T) {
 		cfg.DGFAddress = common.Address{0xaa}.Hex()
 		cfg.ProposalInterval = 20
 		cfg.RollupRpc = ""
-		cfg.SupervisorRpc = "http://localhost:8882/supervisor"
+		cfg.SupervisorRpcs = []string{"http://localhost:8882/supervisor"}
 		cfg.DisputeGameType = 492743
 		require.NoError(t, cfg.Check())
 	})
@@ -58,7 +58,7 @@ func TestSupervisorRpc(t *testing.T) {
 		cfg.L2OOAddress = common.Address{0xaa}.Hex()
 		cfg.ProposalInterval = 0
 		cfg.RollupRpc = "http://localhost/rollup"
-		cfg.SupervisorRpc = ""
+		cfg.SupervisorRpcs = nil
 		require.NoError(t, cfg.Check())
 	})
 
@@ -68,7 +68,7 @@ func TestSupervisorRpc(t *testing.T) {
 			cfg.DGFAddress = common.Address{0xaa}.Hex()
 			cfg.ProposalInterval = 20
 			cfg.RollupRpc = "http://localhost:8882/rollup"
-			cfg.SupervisorRpc = ""
+			cfg.SupervisorRpcs = nil
 			cfg.DisputeGameType = gameType
 			require.ErrorIs(t, cfg.Check(), ErrMissingSupervisorRpc)
 		})
@@ -78,7 +78,7 @@ func TestSupervisorRpc(t *testing.T) {
 			cfg.DGFAddress = common.Address{0xaa}.Hex()
 			cfg.ProposalInterval = 20
 			cfg.RollupRpc = "http://localhost:8882/rollup"
-			cfg.SupervisorRpc = ""
+			cfg.SupervisorRpcs = nil
 			cfg.DisputeGameType = 492743
 			require.NoError(t, cfg.Check())
 		})
@@ -89,7 +89,7 @@ func TestDisallowRollupAndSupervisorRPC(t *testing.T) {
 	cfg := validConfig()
 	cfg.ProposalInterval = 20
 	cfg.RollupRpc = "http://localhost:8882/rollup"
-	cfg.SupervisorRpc = "http://localhost:8882/supervisor"
+	cfg.SupervisorRpcs = []string{"http://localhost:8882/supervisor"}
 	cfg.DisputeGameType = 492743
 	require.ErrorIs(t, cfg.Check(), ErrConflictingSource)
 }
@@ -98,7 +98,7 @@ func validConfig() *CLIConfig {
 	return &CLIConfig{
 		L1EthRpc:                     "http://localhost:8888/l1",
 		RollupRpc:                    "http://localhost:8888/l2",
-		SupervisorRpc:                "",
+		SupervisorRpcs:               nil,
 		L2OOAddress:                  "",
 		PollInterval:                 100,
 		AllowNonFinalized:            false,

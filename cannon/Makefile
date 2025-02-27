@@ -68,15 +68,27 @@ test64: elf contract
 	go test -tags=cannon64 -run '(TestEVM.*64|TestHelloEVM|TestClaimEVM)' ./mipsevm/tests
 
 diff-%-cannon: cannon elf
-	$$OTHER_CANNON load-elf --type $* --path ./testdata/example/bin/hello.elf --out ./bin/prestate-other.bin.gz --meta ""
-	./bin/cannon   load-elf --type $* --path ./testdata/example/bin/hello.elf --out ./bin/prestate.bin.gz --meta ""
-	@cmp ./bin/prestate-other.bin.gz ./bin/prestate.bin.gz
+	# Load an elf file to create a prestate, and check that both cannon versions generate the same prestate
+	@VM=$*; \
+	echo "Running diff for VM type $${VM}"; \
+	if echo "$$VM" | grep -q '^multithreaded64'; then \
+		echo "Loading 64-bit program"; \
+		ELF_SUFFIX="64.elf"; \
+	else \
+		echo "Loading 32-bit program"; \
+		ELF_SUFFIX="elf"; \
+	fi; \
+	$$OTHER_CANNON load-elf --type $$VM --path ./testdata/example/bin/hello.$${ELF_SUFFIX} --out ./bin/prestate-other.bin.gz --meta ""; \
+	./bin/cannon   load-elf --type $$VM --path ./testdata/example/bin/hello.$${ELF_SUFFIX} --out ./bin/prestate.bin.gz --meta "";
+	@cmp ./bin/prestate-other.bin.gz ./bin/prestate.bin.gz;
 	@if [ $$? -eq 0 ]; then \
 		echo "Generated identical prestates"; \
 	else \
 		echo "Generated different prestates"; \
 		exit 1; \
 	fi
+
+  # Run cannon and check that both cannon versions produce identical states
 	$$OTHER_CANNON run --proof-at '=0' --stop-at '=100000000' --input=./bin/prestate.bin.gz  --output ./bin/out-other.bin.gz --meta ""
 	./bin/cannon   run --proof-at '=0' --stop-at '=100000000' --input=./bin/prestate.bin.gz  --output ./bin/out.bin.gz --meta ""
 	@cmp ./bin/out-other.bin.gz ./bin/out.bin.gz

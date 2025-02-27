@@ -8,10 +8,10 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/artifacts"
-
 	"github.com/ethereum-optimism/optimism/op-chain-ops/foundry"
+	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/artifacts"
 	op_service "github.com/ethereum-optimism/optimism/op-service"
+	"github.com/ethereum-optimism/optimism/op-service/testutils"
 	"github.com/stretchr/testify/require"
 )
 
@@ -27,7 +27,9 @@ func LocalArtifacts(t *testing.T) (*artifacts.Locator, foundry.StatDirFs) {
 		URL: artifactsURL,
 	}
 
-	artifactsFS, err := artifacts.Download(context.Background(), loc, artifacts.NoopProgressor())
+	testCacheDir := testutils.IsolatedTestDirWithAutoCleanup(t)
+
+	artifactsFS, err := artifacts.Download(context.Background(), loc, artifacts.NoopProgressor(), testCacheDir)
 	require.NoError(t, err)
 
 	return loc, artifactsFS

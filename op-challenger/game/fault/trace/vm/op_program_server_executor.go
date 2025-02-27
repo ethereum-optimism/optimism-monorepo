@@ -40,6 +40,9 @@ func (s *OpProgramServerExecutor) OracleCommand(cfg Config, dataDir string, inpu
 	if len(cfg.L2GenesisPaths) != 0 {
 		args = append(args, "--l2.genesis", strings.Join(cfg.L2GenesisPaths, ","))
 	}
+	if cfg.L2Experimental != "" {
+		args = append(args, "--l2.experimental", cfg.L2Experimental)
+	}
 	var logLevel string
 	if s.logger.Enabled(context.Background(), log.LevelTrace) {
 		logLevel = "TRACE"

@@ -77,6 +77,10 @@ func CrossSafeHazards(d SafeStartDeps, chainID eth.ChainID, inL1Source eth.Block
 				return nil, fmt.Errorf("msg %s was included in block %s derived from %s which is not in cross-safe scope %s: %w",
 					msg, includedIn, initSource, inL1Source, types.ErrOutOfScope)
 			}
+			// Run expiry window invariant check *after* verifying that the message is non-conflicting.
+			if msg.Timestamp+depSet.MessageExpiryWindow() < candidate.Timestamp {
+				return nil, fmt.Errorf("timestamp of message %s (chain %s) has expired: %d < %d: %w", msg, chainID, msg.Timestamp+depSet.MessageExpiryWindow(), candidate.Timestamp, types.ErrConflict)
+			}
 		} else if msg.Timestamp == candidate.Timestamp {
 			// If timestamp is equal: we have to inspect ordering of individual
 			// log events to ensure non-cyclic cross-chain message ordering.

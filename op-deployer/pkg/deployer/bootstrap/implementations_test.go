@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum-optimism/optimism/op-service/testutils"
 	"github.com/ethereum-optimism/optimism/op-service/testutils/devnet"
 
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/opcm"
@@ -19,17 +20,19 @@ import (
 )
 
 func TestImplementations(t *testing.T) {
+	testCacheDir := testutils.IsolatedTestDirWithAutoCleanup(t)
+
 	for _, network := range networks {
 		t.Run(network, func(t *testing.T) {
 			envVar := strings.ToUpper(network) + "_RPC_URL"
 			rpcURL := os.Getenv(envVar)
 			require.NotEmpty(t, rpcURL, "must specify RPC url via %s env var", envVar)
-			testImplementations(t, rpcURL)
+			testImplementations(t, rpcURL, testCacheDir)
 		})
 	}
 }
 
-func testImplementations(t *testing.T, forkRPCURL string) {
+func testImplementations(t *testing.T, forkRPCURL string, cacheDir string) {
 	t.Parallel()
 
 	if forkRPCURL == "" {
@@ -78,6 +81,7 @@ func testImplementations(t *testing.T, forkRPCURL string) {
 			ProtocolVersionsProxy:           superchain.ProtocolVersionsAddr,
 			UpgradeController:               proxyAdminOwner,
 			UseInterop:                      false,
+			CacheDir:                        cacheDir,
 		})
 		require.NoError(t, err)
 		return out

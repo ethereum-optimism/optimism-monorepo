@@ -165,7 +165,7 @@ func worldToDepSet(t helpers.Testing, worldOutput *interopgen.WorldOutput) *deps
 			HistoryMinTime: 0,
 		}
 	}
-	depSet, err := depset.NewStaticConfigDependencySet(depSetCfg)
+	depSet, err := depset.NewStaticConfigDependencySetWithMessageExpiryOverride(depSetCfg, messageExpiryTime)
 	require.NoError(t, err)
 	return depSet
 }

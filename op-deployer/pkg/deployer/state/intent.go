@@ -253,7 +253,7 @@ func NewIntent(configType IntentType, l1ChainId uint64, l2ChainIds []common.Hash
 		return NewIntentStandardOverrides(l1ChainId, l2ChainIds)
 
 	default:
-		return Intent{}, fmt.Errorf("intent config type not supported")
+		return Intent{}, fmt.Errorf("intent type not supported: %s (valid types: %s, %s, %s)", configType, IntentTypeStandard, IntentTypeCustom, IntentTypeStandardOverrides)
 	}
 }
 

@@ -39,7 +39,7 @@ type OracleConfigSource struct {
 
 	l2ChainConfigs map[eth.ChainID]*params.ChainConfig
 	rollupConfigs  map[eth.ChainID]*rollup.Config
-	depset         *depset.StaticConfigDependencySet
+	depset         depset.DependencySet
 }
 
 func (c *OracleConfigSource) RollupConfig(chainID eth.ChainID) (*rollup.Config, error) {
@@ -84,8 +84,17 @@ func (c *OracleConfigSource) DependencySet(chainID eth.ChainID) (depset.Dependen
 	if c.depset != nil {
 		return c.depset, nil
 	}
-	// TODO(#13887): The embedded depset must be loaded first before falling back to using custom configs
-	c.loadCustomConfigs()
+	depSet, err := chainconfig.DependencySetByChainID(chainID)
+	if !c.customConfigsLoaded && err != nil {
+		c.loadCustomConfigs()
+		if c.depset == nil {
+			return nil, fmt.Errorf("%w: %v", ErrUnknownChainID, chainID)
+		}
+		return c.depset, nil
+	} else if err != nil {
+		return nil, err
+	}
+	c.depset = depSet
 	return c.depset, nil
 }
 

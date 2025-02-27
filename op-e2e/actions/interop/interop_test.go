@@ -279,7 +279,8 @@ func TestInteropLocalSafeInvalidation(gt *testing.T) {
 	require.NoError(t, err)
 
 	actors.ChainB.Sequencer.ActL2StartBlock(t)
-	require.NoError(t, actors.ChainB.SequencerEngine.EngineApi.IncludeTx(tx, aliceB.address))
+	_, err = actors.ChainB.SequencerEngine.EngineApi.IncludeTx(tx, aliceB.address)
+	require.NoError(t, err)
 	actors.ChainB.Sequencer.ActL2EndBlock(t)
 	actors.ChainB.Sequencer.ActL2PipelineFull(t)
 	originalBlock := actors.ChainB.Sequencer.SyncStatus().UnsafeL2

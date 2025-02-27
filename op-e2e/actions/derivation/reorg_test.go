@@ -105,7 +105,7 @@ func ReorgOrphanBlock(gt *testing.T, deltaTimeOffset *hexutil.Uint64) {
 	miner.ActL1SetFeeRecipient(common.Address{'C'})
 	// note: the geth tx pool reorgLoop is too slow (responds to chain head events, but async),
 	// and there's no way to manually trigger runReorg, so we re-insert it ourselves.
-	require.NoError(t, miner.Eth.TxPool().Add([]*types.Transaction{batchTx}, true, true)[0])
+	require.NoError(t, miner.Eth.TxPool().Add([]*types.Transaction{batchTx}, true)[0])
 	// need to re-insert previously included tx into the block
 	miner.ActL1IncludeTx(sd.RollupCfg.Genesis.SystemConfig.BatcherAddr)(t)
 	miner.ActL1EndBlock(t)
@@ -177,7 +177,7 @@ func ReorgFlipFlop(gt *testing.T, deltaTimeOffset *hexutil.Uint64) {
 	// re-include the batch tx that submitted L2 chain data that pointed to A0, in the new block B1
 	miner.ActL1SetFeeRecipient(common.Address{'B', 1})
 	miner.ActL1StartBlock(12)(t)
-	require.NoError(t, miner.Eth.TxPool().Add([]*types.Transaction{batchTxA}, true, true)[0])
+	require.NoError(t, miner.Eth.TxPool().Add([]*types.Transaction{batchTxA}, true)[0])
 	miner.ActL1IncludeTx(sd.RollupCfg.Genesis.SystemConfig.BatcherAddr)(t)
 	miner.ActL1EndBlock(t)
 
@@ -242,7 +242,7 @@ func ReorgFlipFlop(gt *testing.T, deltaTimeOffset *hexutil.Uint64) {
 
 	miner.ActL1SetFeeRecipient(common.Address{'A', 2})
 	miner.ActL1StartBlock(12)(t)
-	require.NoError(t, miner.Eth.TxPool().Add([]*types.Transaction{batchTxA}, true, true)[0]) // replay chain A batches, but now in A2 instead of A1
+	require.NoError(t, miner.Eth.TxPool().Add([]*types.Transaction{batchTxA}, true)[0]) // replay chain A batches, but now in A2 instead of A1
 	miner.ActL1IncludeTx(sd.RollupCfg.Genesis.SystemConfig.BatcherAddr)(t)
 	miner.ActL1EndBlock(t)
 

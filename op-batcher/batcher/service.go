@@ -48,7 +48,6 @@ type BatcherConfig struct {
 	// For throttling DA. See CLIConfig in config.go for details on these parameters.
 	ThrottleThreshold, ThrottleTxSize          uint64
 	ThrottleBlockSize, ThrottleAlwaysBlockSize uint64
-	ThrottleInterval                           time.Duration
 }
 
 // BatcherService represents a full batch-submitter instance and its resources,
@@ -111,11 +110,13 @@ func (bs *BatcherService) initFromCLIConfig(ctx context.Context, version string,
 	bs.ThrottleTxSize = cfg.ThrottleTxSize
 	bs.ThrottleBlockSize = cfg.ThrottleBlockSize
 	bs.ThrottleAlwaysBlockSize = cfg.ThrottleAlwaysBlockSize
-	bs.ThrottleInterval = cfg.ThrottleInterval
 
-	if err := bs.initRPCClients(ctx, cfg); err != nil {
+	optsFromRPC, err := bs.initRPCClients(ctx, cfg)
+	if err != nil {
 		return err
 	}
+	opts = append(optsFromRPC, opts...)
+
 	if err := bs.initRollupConfig(ctx); err != nil {
 		return fmt.Errorf("failed to load rollup config: %w", err)
 	}
@@ -146,10 +147,10 @@ func (bs *BatcherService) initFromCLIConfig(ctx context.Context, version string,
 	return nil
 }
 
-func (bs *BatcherService) initRPCClients(ctx context.Context, cfg *CLIConfig) error {
+func (bs *BatcherService) initRPCClients(ctx context.Context, cfg *CLIConfig) (opts []DriverSetupOption, _ error) {
 	l1Client, err := dial.DialEthClientWithTimeout(ctx, dial.DefaultDialTimeout, bs.Log, cfg.L1EthRpc)
 	if err != nil {
-		return fmt.Errorf("failed to dial L1 RPC: %w", err)
+		return nil, fmt.Errorf("failed to dial L1 RPC: %w", err)
 	}
 	bs.L1Client = l1Client
 
@@ -157,16 +158,39 @@ func (bs *BatcherService) initRPCClients(ctx context.Context, cfg *CLIConfig) er
 	if strings.Contains(cfg.RollupRpc, ",") && strings.Contains(cfg.L2EthRpc, ",") {
 		rollupUrls := strings.Split(cfg.RollupRpc, ",")
 		ethUrls := strings.Split(cfg.L2EthRpc, ",")
-		endpointProvider, err = dial.NewActiveL2EndpointProvider(ctx, ethUrls, rollupUrls, cfg.ActiveSequencerCheckDuration, dial.DefaultDialTimeout, bs.Log)
+		provider, err := dial.NewActiveL2EndpointProvider(ctx, ethUrls, rollupUrls, cfg.ActiveSequencerCheckDuration, dial.DefaultDialTimeout, bs.Log)
+		if err != nil {
+			return nil, fmt.Errorf("failed to build active L2 endpoint provider: %w", err)
+		}
+		endpointProvider = provider
+
+		// If we use an active endpoint provider AND throttling is enabled,
+		// we need to set up the callback to notify the driver any time we
+		// get a new active sequencer
+		if cfg.ThrottleThreshold > 0 {
+			activeSeqChanged := make(chan struct{}, 1)
+			opts = []DriverSetupOption{func(setup *DriverSetup) {
+				setup.ActiveSeqChanged = activeSeqChanged
+			}}
+			// callback to notify the driver of a new active sequencer
+			cb := func() {
+				select {
+				case activeSeqChanged <- struct{}{}:
+				default:
+				}
+			}
+			provider.SetOnActiveProviderChanged(cb)
+
+		}
 	} else {
 		endpointProvider, err = dial.NewStaticL2EndpointProvider(ctx, bs.Log, cfg.L2EthRpc, cfg.RollupRpc)
-	}
-	if err != nil {
-		return fmt.Errorf("failed to build L2 endpoint provider: %w", err)
+		if err != nil {
+			return nil, fmt.Errorf("failed to build static L2 endpoint provider: %w", err)
+		}
 	}
 	bs.EndpointProvider = endpointProvider
 
-	return nil
+	return opts, nil
 }
 
 func (bs *BatcherService) initMetrics(cfg *CLIConfig) {

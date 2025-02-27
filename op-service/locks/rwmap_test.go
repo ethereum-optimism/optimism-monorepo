@@ -1,6 +1,7 @@
 package locks
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -62,25 +63,68 @@ func TestRWMap(t *testing.T) {
 	m.Delete(132983213)
 
 	m.Set(10001, 100)
-	m.Default(10001, func() int64 {
+	m.CreateIfMissing(10001, func() int64 {
 		t.Fatal("should not replace existing value")
 		return 0
 	})
-	m.Default(10002, func() int64 {
+	m.CreateIfMissing(10002, func() int64 {
 		return 42
 	})
 	v, ok = m.Get(10002)
 	require.True(t, ok)
 	require.Equal(t, int64(42), v)
+
+	require.True(t, m.SetIfMissing(10003, 111))
+	require.False(t, m.SetIfMissing(10003, 123))
+	v, ok = m.Get(10003)
+	require.True(t, ok)
+	require.Equal(t, int64(111), v)
 }
 
 func TestRWMap_DefaultOnEmpty(t *testing.T) {
 	m := &RWMap[uint64, int64]{}
 	// this should work, even if the first call to the map.
-	m.Default(10002, func() int64 {
+	m.CreateIfMissing(10002, func() int64 {
 		return 42
 	})
 	v, ok := m.Get(10002)
 	require.True(t, ok)
 	require.Equal(t, int64(42), v)
+}
+
+func TestRWMap_KeysValues(t *testing.T) {
+	m := &RWMap[uint64, int64]{}
+
+	require.Empty(t, m.Keys())
+	require.Empty(t, m.Values())
+
+	m.Set(1, 100)
+	m.Set(2, 200)
+	m.Set(3, 300)
+
+	length := m.Len()
+
+	keys := m.Keys()
+	require.Equal(t, length, len(keys))
+	slices.Sort(keys)
+	require.Equal(t, []uint64{1, 2, 3}, keys)
+
+	values := m.Values()
+	require.Equal(t, length, len(values))
+	slices.Sort(values)
+	require.Equal(t, []int64{100, 200, 300}, values)
+
+	m.Clear()
+
+	require.Empty(t, m.Keys())
+	require.Empty(t, m.Values())
+}
+
+func TestRWMapFromMap(t *testing.T) {
+	m := RWMapFromMap(map[uint64]int64{
+		1: 10,
+		2: 20,
+		3: 30,
+	})
+	require.Equal(t, 3, m.Len())
 }

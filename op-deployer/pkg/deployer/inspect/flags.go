@@ -72,9 +72,10 @@ var Commands = []*cli.Command{
 }
 
 type cliConfig struct {
-	Workdir string
-	Outfile string
-	ChainID common.Hash
+	Workdir  string
+	Outfile  string
+	ChainID  common.Hash
+	CacheDir string
 }
 
 func readConfig(cliCtx *cli.Context) (cliConfig, error) {
@@ -101,8 +102,9 @@ func readConfig(cliCtx *cli.Context) (cliConfig, error) {
 	}
 
 	return cliConfig{
-		Workdir: cliCtx.String(deployer.WorkdirFlagName),
-		Outfile: cliCtx.String(OutfileFlagName),
-		ChainID: chainID,
+		Workdir:  cliCtx.String(deployer.WorkdirFlagName),
+		Outfile:  cliCtx.String(OutfileFlagName),
+		ChainID:  chainID,
+		CacheDir: cliCtx.String(deployer.CacheDirFlag.Name),
 	}, nil
 }

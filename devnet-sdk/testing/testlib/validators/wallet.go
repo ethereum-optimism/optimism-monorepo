@@ -15,7 +15,7 @@ type WalletGetter = func(context.Context) system.Wallet
 func walletFundsValidator(chainIdx uint64, minFunds types.Balance, userMarker interface{}) systest.PreconditionValidator {
 	constraint := constraints.WithBalance(minFunds)
 	return func(t systest.T, sys system.System) (context.Context, error) {
-		chain := sys.L2(chainIdx)
+		chain := sys.L2s()[chainIdx]
 		wallets, err := chain.Wallets(t.Context())
 		if err != nil {
 			return nil, err
@@ -33,7 +33,7 @@ func walletFundsValidator(chainIdx uint64, minFunds types.Balance, userMarker in
 }
 
 func AcquireL2WalletWithFunds(chainIdx uint64, minFunds types.Balance) (WalletGetter, systest.PreconditionValidator) {
-	userMarker := &struct{}{}
+	userMarker := new(byte)
 	validator := walletFundsValidator(chainIdx, minFunds, userMarker)
 	return func(ctx context.Context) system.Wallet {
 		return ctx.Value(userMarker).(system.Wallet)

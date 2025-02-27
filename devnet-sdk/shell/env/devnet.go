@@ -20,9 +20,10 @@ type DataFetcher func(*url.URL) (string, []byte, error)
 
 // schemeToFetcher maps URL schemes to their respective data fetcher functions
 var schemeToFetcher = map[string]DataFetcher{
-	"":     fetchFileData,
-	"file": fetchFileData,
-	"kt":   fetchKurtosisData,
+	"":         fetchFileData,
+	"file":     fetchFileData,
+	"kt":       fetchKurtosisData,
+	"ktnative": fetchKurtosisNativeData,
 }
 
 // fetchDevnetData retrieves data from a URL based on its scheme

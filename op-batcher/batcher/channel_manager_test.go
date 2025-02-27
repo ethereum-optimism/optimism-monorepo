@@ -397,7 +397,7 @@ func TestChannelManager_TxData(t *testing.T) {
 // and then calls handleChannelInvalidated. It asserts on the final state of
 // the channel manager.
 func TestChannelManager_handleChannelInvalidated(t *testing.T) {
-	l := testlog.Logger(t, log.LevelCrit)
+	l := testlog.Logger(t, log.LevelDebug)
 	cfg := channelManagerTestConfig(100, derive.SingularBatchType)
 	metrics := new(metrics.TestMetrics)
 	m := NewChannelManager(l, metrics, cfg, defaultTestRollupConfig)
@@ -417,10 +417,9 @@ func TestChannelManager_handleChannelInvalidated(t *testing.T) {
 	// Place an old channel in the queue.
 	// This channel should not be affected by
 	// a requeue or a later channel timing out.
-	oldChannel := newChannel(l, nil, m.defaultCfg, defaultTestRollupConfig, 0, nil)
+	require.NoError(t, m.ensureChannelWithSpace(eth.BlockID{}))
+	oldChannel := m.currentChannel
 	oldChannel.Close()
-	m.channelQueue = []*channel{oldChannel}
-	metrics.RecordChannelQueueLength(1) // we need to do this manually b/c we are not using the usual codepath to set state
 	require.Len(t, m.channelQueue, 1)
 	require.Equal(t, metrics.ChannelQueueLength, 1)
 
@@ -433,7 +432,6 @@ func TestChannelManager_handleChannelInvalidated(t *testing.T) {
 	require.NoError(t, m.ensureChannelWithSpace(eth.BlockID{}))
 	require.Len(t, m.channelQueue, 2)
 	require.Equal(t, metrics.ChannelQueueLength, 2)
-
 	require.NoError(t, m.processBlocks())
 
 	// Assert that at least one block was processed into the channel
@@ -445,18 +443,29 @@ func TestChannelManager_handleChannelInvalidated(t *testing.T) {
 
 	l1OriginBefore := m.l1OriginLastSubmittedChannel
 
-	m.handleChannelInvalidated(m.currentChannel)
+	// Add another newer channel, this will be wiped when we invalidate
+	channelToInvalidate := m.currentChannel
+	m.currentChannel.Close()
+	require.NoError(t, m.ensureChannelWithSpace(eth.BlockID{}))
+	require.Len(t, m.channelQueue, 3)
+	require.Equal(t, metrics.ChannelQueueLength, 3)
+	require.NoError(t, m.processBlocks())
+	require.Equal(t, 2, m.blockCursor)
+
+	m.handleChannelInvalidated(channelToInvalidate)
 
 	// Ensure we got back to the state above
 	require.Equal(t, m.blocks, stateSnapshot)
 	require.Contains(t, m.channelQueue, oldChannel)
+	require.NotContains(t, m.channelQueue, channelToInvalidate)
+	require.NotContains(t, m.channelQueue, newChannel)
 	require.Len(t, m.channelQueue, 1)
 	require.Equal(t, metrics.ChannelQueueLength, 1)
 
 	// Check metric came back up to previous value
 	require.Equal(t, pendingBytesBefore, metrics.PendingBlocksBytesCurrent)
 
-	// Ensure the l1OridingLastSubmittedChannel was
+	// Ensure the l1OriginLastSubmittedChannel was
 	// not changed. This ensures the next channel
 	// has its duration timeout deadline computed
 	// properly.
@@ -655,58 +664,4 @@ func TestChannelManager_ChannelOutFactory(t *testing.T) {
 	require.NoError(t, m.ensureChannelWithSpace(eth.BlockID{}))
 
 	require.IsType(t, &ChannelOutWrapper{}, m.currentChannel.channelBuilder.co)
-}
-
-func TestChannelManager_CheckExpectedProgress(t *testing.T) {
-	l := testlog.Logger(t, log.LevelCrit)
-	cfg := channelManagerTestConfig(100, derive.SingularBatchType)
-	cfg.InitNoneCompressor()
-	m := NewChannelManager(l, metrics.NoopMetrics, cfg, defaultTestRollupConfig)
-
-	channelMaxInclusionBlockNumber := uint64(3)
-	channelLatestSafeBlockNumber := uint64(11)
-
-	// Prepare a (dummy) fully submitted channel
-	// with
-	// maxInclusionBlock and latest safe block number as above
-	A, err := newChannelWithChannelOut(l, metrics.NoopMetrics, cfg, m.rollupCfg, 0)
-	require.NoError(t, err)
-	rng := rand.New(rand.NewSource(123))
-	a0 := derivetest.RandomL2BlockWithChainId(rng, 1, defaultTestRollupConfig.L2ChainID)
-	a0 = a0.WithSeal(&types.Header{Number: big.NewInt(int64(channelLatestSafeBlockNumber))})
-	_, err = A.AddBlock(a0)
-	require.NoError(t, err)
-	A.maxInclusionBlock = channelMaxInclusionBlockNumber
-	A.Close()
-	A.channelBuilder.frames = nil
-	A.channelBuilder.frameCursor = 0
-	require.True(t, A.isFullySubmitted())
-
-	m.channelQueue = append(m.channelQueue, A)
-
-	// The current L1 number implies that
-	// channel A above should have been derived
-	// from, so we expect safe head to progress to
-	// the channelLatestSafeBlockNumber.
-	// Since the safe head moved to 11, there is no error:
-	ss := eth.SyncStatus{
-		CurrentL1: eth.L1BlockRef{Number: channelMaxInclusionBlockNumber + 1},
-		SafeL2:    eth.L2BlockRef{Number: channelLatestSafeBlockNumber},
-	}
-	err = m.CheckExpectedProgress(ss)
-	require.NoError(t, err)
-
-	// If the currentL1 is as above but the
-	// safe head is less than channelLatestSafeBlockNumber,
-	// the method should return an error:
-	ss.SafeL2 = eth.L2BlockRef{Number: channelLatestSafeBlockNumber - 1}
-	err = m.CheckExpectedProgress(ss)
-	require.Error(t, err)
-
-	// If the safe head is still less than channelLatestSafeBlockNumber
-	// but the currentL1 is _equal_ to the channelMaxInclusionBlockNumber
-	// there should be no error as that block is still being derived from:
-	ss.CurrentL1 = eth.L1BlockRef{Number: channelMaxInclusionBlockNumber}
-	err = m.CheckExpectedProgress(ss)
-	require.NoError(t, err)
 }

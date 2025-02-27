@@ -23,8 +23,8 @@ import { IOptimismPortal2 } from "interfaces/L1/IOptimismPortal2.sol";
 ///         be initialized with a more recent starting state which reduces the amount of required offchain computation.
 contract AnchorStateRegistry is Initializable, ISemver {
     /// @notice Semantic version.
-    /// @custom:semver 2.2.1
-    string public constant version = "2.2.1";
+    /// @custom:semver 2.2.2
+    string public constant version = "2.2.2";
 
     /// @notice Address of the SuperchainConfig contract.
     ISuperchainConfig public superchainConfig;
@@ -104,10 +104,6 @@ contract AnchorStateRegistry is Initializable, ISemver {
         // Return the starting anchor root if there is no anchor game.
         if (address(anchorGame) == address(0)) {
             return (startingAnchorRoot.root, startingAnchorRoot.l2BlockNumber);
-        }
-
-        if (isGameBlacklisted(anchorGame)) {
-            revert AnchorStateRegistry_AnchorGameBlacklisted();
         }
 
         // Otherwise, return the anchor root.
@@ -248,16 +244,12 @@ contract AnchorStateRegistry is Initializable, ISemver {
         // version of IDisputeGame in the future.
         IFaultDisputeGame game = IFaultDisputeGame(address(_game));
 
-        // Check if the candidate game is valid.
-        bool valid = isGameClaimValid(game);
-        if (!valid) {
+        // Check if the candidate game claim is valid.
+        if (!isGameClaimValid(game)) {
             revert AnchorStateRegistry_InvalidAnchorGame();
         }
 
         // Must be newer than the current anchor game.
-        // Note that this WILL block/brick if getAnchorRoot() ever reverts because the current
-        // anchor game is blacklisted. A blacklisted anchor game is *very* bad and we deliberately
-        // want to force the situation to be handled manually.
         (, uint256 anchorL2BlockNumber) = getAnchorRoot();
         if (game.l2BlockNumber() <= anchorL2BlockNumber) {
             revert AnchorStateRegistry_InvalidAnchorGame();

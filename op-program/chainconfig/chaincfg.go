@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/ethereum-optimism/optimism/op-service/superutil"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
 
 	"github.com/ethereum-optimism/optimism/op-node/chaincfg"
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
@@ -80,4 +81,32 @@ func mustLoadChainConfig(name string) *params.ChainConfig {
 		panic(fmt.Errorf("failed to load rollup config: %q: %w", name, err))
 	}
 	return cfg
+}
+
+func DependencySetByChainID(chainID eth.ChainID) (depset.DependencySet, error) {
+	// TODO(#13887): Load from the superchain registry when available.
+	return dependencySetByChainID(chainID, customChainConfigFS)
+}
+
+func dependencySetByChainID(chainID eth.ChainID, customChainFS embed.FS) (depset.DependencySet, error) {
+	// Load custom dependency set configs from embed FS
+	data, err := customChainFS.ReadFile("configs/depsets.json")
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, fmt.Errorf("no dependency set available for chain ID: %d", chainID)
+	} else if err != nil {
+		return nil, fmt.Errorf("failed to get dependency set for chain ID %v: %w", chainID, err)
+	}
+
+	var depSets []*depset.StaticConfigDependencySet
+
+	err = json.Unmarshal(data, &depSets)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse dependency set for chain ID %v: %w", chainID, err)
+	}
+	for _, depSet := range depSets {
+		if depSet.HasChain(chainID) {
+			return depSet, nil
+		}
+	}
+	return nil, fmt.Errorf("no dependency set config includes chain ID: %d", chainID)
 }

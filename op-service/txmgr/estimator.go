@@ -5,7 +5,7 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/consensus/misc/eip4844"
+	"github.com/ethereum-optimism/optimism/op-service/eth"
 )
 
 type GasPriceEstimatorFn func(ctx context.Context, backend ETHBackend) (*big.Int, *big.Int, *big.Int, error)
@@ -26,7 +26,7 @@ func DefaultGasPriceEstimatorFn(ctx context.Context, backend ETHBackend) (*big.I
 
 	var blobFee *big.Int
 	if head.ExcessBlobGas != nil {
-		blobFee = eip4844.CalcBlobFee(*head.ExcessBlobGas)
+		blobFee = eth.CalcBlobFeeDefault(head)
 	}
 
 	return tip, head.BaseFee, blobFee, nil

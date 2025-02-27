@@ -203,22 +203,22 @@ func TestStreamFallback(t *testing.T) {
 		outOfEvents: make(chan struct{}, 100),
 	}
 	// Create an HTTP server, this won't support RPC subscriptions
-	server := NewServer(
-		"127.0.0.1",
-		0,
-		appVersion,
-		WithLogger(logger),
-		WithAPIs([]rpc.API{
-			{
-				Namespace: "custom",
-				Service:   api,
-			},
-		}),
-	)
+	server := ServerFromConfig(&ServerConfig{
+		Host:       "127.0.0.1",
+		Port:       0,
+		AppVersion: appVersion,
+		RpcOptions: []Option{
+			WithLogger(logger),
+		},
+	})
+	server.AddAPI(rpc.API{
+		Namespace: "custom",
+		Service:   api,
+	})
 	require.NoError(t, server.Start(), "must start")
 
 	// Dial via HTTP, to ensure no subscription support
-	rpcClient, err := rpc.Dial(fmt.Sprintf("http://%s", server.endpoint))
+	rpcClient, err := rpc.Dial(fmt.Sprintf("http://%s", server.Endpoint()))
 	require.NoError(t, err)
 	t.Cleanup(rpcClient.Close)
 

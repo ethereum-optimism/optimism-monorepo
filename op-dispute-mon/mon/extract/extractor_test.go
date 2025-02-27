@@ -273,25 +273,26 @@ func (m *mockGameCallerCreator) CreateGameCaller(_ context.Context, _ gameTypes.
 }
 
 type mockGameCaller struct {
-	metadataCalls    int
-	metadataErr      error
-	claimsCalls      int
-	claimsErr        error
-	rootClaim        common.Hash
-	claims           []faultTypes.Claim
-	requestedCredits []common.Address
-	creditsErr       error
-	credits          map[common.Address]*big.Int
-	extraCredit      []*big.Int
-	balanceErr       error
-	balance          *big.Int
-	delayDuration    time.Duration
-	balanceAddr      common.Address
-	withdrawalsCalls int
-	withdrawalsErr   error
-	withdrawals      []*contracts.WithdrawalRequest
-	resolvedErr      error
-	resolved         map[int]bool
+	metadataCalls        int
+	metadataErr          error
+	claimsCalls          int
+	claimsErr            error
+	rootClaim            common.Hash
+	claims               []faultTypes.Claim
+	requestedCredits     []common.Address
+	creditsErr           error
+	credits              map[common.Address]*big.Int
+	extraCredit          []*big.Int
+	bondDistributionMode faultTypes.BondDistributionMode
+	balanceErr           error
+	balance              *big.Int
+	delayDuration        time.Duration
+	balanceAddr          common.Address
+	withdrawalsCalls     int
+	withdrawalsErr       error
+	withdrawals          []*contracts.WithdrawalRequest
+	resolvedErr          error
+	resolved             map[int]bool
 }
 
 func (m *mockGameCaller) GetWithdrawals(_ context.Context, _ rpcblock.Block, _ ...common.Address) ([]*contracts.WithdrawalRequest, error) {
@@ -348,6 +349,10 @@ func (m *mockGameCaller) GetCredits(_ context.Context, _ rpcblock.Block, recipie
 	}
 	response = append(response, m.extraCredit...)
 	return response, nil
+}
+
+func (m *mockGameCaller) GetBondDistributionMode(_ context.Context, _ rpcblock.Block) (faultTypes.BondDistributionMode, error) {
+	return m.bondDistributionMode, nil
 }
 
 func (m *mockGameCaller) GetBalanceAndDelay(_ context.Context, _ rpcblock.Block) (*big.Int, time.Duration, common.Address, error) {

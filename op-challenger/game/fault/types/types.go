@@ -326,3 +326,14 @@ func NewInvalidL2BlockNumberProof(output *eth.OutputResponse, header *ethTypes.H
 		Header: header,
 	}
 }
+
+type BondDistributionMode uint8
+
+const (
+	UndecidedDistributionMode BondDistributionMode = iota
+	NormalDistributionMode
+	RefundDistributionMode
+
+	// LegacyDistributionMode is used for contract versions that do not implement bond distribution modes.
+	LegacyDistributionMode BondDistributionMode = 255
+)

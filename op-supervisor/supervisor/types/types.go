@@ -184,6 +184,30 @@ const (
 	Invalid SafetyLevel = "invalid"
 )
 
+type ExecutingDescriptor struct {
+	// Timestamp is the timestamp of the executing message
+	Timestamp uint64
+}
+
+type executingDescriptorMarshaling struct {
+	Timestamp hexutil.Uint64 `json:"timestamp"`
+}
+
+func (ed ExecutingDescriptor) MarshalJSON() ([]byte, error) {
+	var enc executingDescriptorMarshaling
+	enc.Timestamp = hexutil.Uint64(ed.Timestamp)
+	return json.Marshal(&enc)
+}
+
+func (ed *ExecutingDescriptor) UnmarshalJSON(input []byte) error {
+	var dec executingDescriptorMarshaling
+	if err := json.Unmarshal(input, &dec); err != nil {
+		return err
+	}
+	ed.Timestamp = uint64(dec.Timestamp)
+	return nil
+}
+
 type ReferenceView struct {
 	Local eth.BlockID `json:"local"`
 	Cross eth.BlockID `json:"cross"`

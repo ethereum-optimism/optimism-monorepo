@@ -3,6 +3,7 @@ package deployer
 import (
 	"fmt"
 	"os"
+	"path"
 
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/state"
 
@@ -14,6 +15,7 @@ import (
 const (
 	EnvVarPrefix       = "DEPLOYER"
 	L1RPCURLFlagName   = "l1-rpc-url"
+	CacheDirFlagName   = "cache-dir"
 	L1ChainIDFlagName  = "l1-chain-id"
 	L2ChainIDsFlagName = "l2-chain-ids"
 	WorkdirFlagName    = "workdir"
@@ -46,6 +48,16 @@ func NewDeploymentTarget(s string) (DeploymentTarget, error) {
 	}
 }
 
+var homeDir string
+
+func init() {
+	var err error
+	homeDir, err = os.UserHomeDir()
+	if err != nil {
+		panic(fmt.Sprintf("failed to get home directory: %s", err))
+	}
+}
+
 var (
 	L1RPCURLFlag = &cli.StringFlag{
 		Name: L1RPCURLFlagName,
@@ -54,6 +66,13 @@ var (
 		EnvVars: []string{
 			"L1_RPC_URL",
 		},
+	}
+	CacheDirFlag = &cli.StringFlag{
+		Name: CacheDirFlagName,
+		Usage: "Cache directory. " +
+			"If set, the deployer will attempt to cache downloaded artifacts in the specified directory.",
+		EnvVars: PrefixEnvVar("CACHE_DIR"),
+		Value:   path.Join(homeDir, ".op-deployer/cache"),
 	}
 	L1ChainIDFlag = &cli.Uint64Flag{
 		Name:    L1ChainIDFlagName,
@@ -94,10 +113,13 @@ var (
 			state.IntentTypeStandardOverrides),
 		EnvVars: PrefixEnvVar("INTENT_TYPE"),
 		Value:   string(state.IntentTypeStandard),
+		Aliases: []string{
+			"intent-config-type",
+		},
 	}
 )
 
-var GlobalFlags = append([]cli.Flag{}, oplog.CLIFlags(EnvVarPrefix)...)
+var GlobalFlags = append([]cli.Flag{CacheDirFlag}, oplog.CLIFlags(EnvVarPrefix)...)
 
 var InitFlags = []cli.Flag{
 	L1ChainIDFlag,

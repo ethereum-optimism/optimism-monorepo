@@ -2,9 +2,12 @@ package vm
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"math/big"
+	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -21,7 +24,6 @@ import (
 )
 
 func TestGenerateProof(t *testing.T) {
-	input := "starting.json"
 	tempDir := t.TempDir()
 	dir := filepath.Join(tempDir, "gameDir")
 	cfg := Config{
@@ -35,7 +37,6 @@ func TestGenerateProof(t *testing.T) {
 		SnapshotFreq: 500,
 		InfoFreq:     900,
 	}
-	prestate := "pre.json"
 
 	inputs := utils.LocalGameInputs{
 		L1Head:        common.Hash{0x11},
@@ -56,42 +57,10 @@ func TestGenerateProof(t *testing.T) {
 		IdleStepCountThread0:         1314,
 	}
 
-	captureExec := func(t *testing.T, cfg Config, proofAt uint64, m Metricer) (string, string, map[string]string) {
-		executor := NewExecutor(testlog.Logger(t, log.LevelInfo), m, cfg, &noArgServerExecutor{}, prestate, inputs)
-		executor.selectSnapshot = func(logger log.Logger, dir string, absolutePreState string, i uint64, binary bool) (string, error) {
-			return input, nil
-		}
-		var binary string
-		var subcommand string
-		args := make(map[string]string)
-		executor.cmdExecutor = func(ctx context.Context, l log.Logger, b string, a ...string) error {
-			binary = b
-			subcommand = a[0]
-			for i := 1; i < len(a); {
-				if a[i] == "--" {
-					// Skip over the divider between vm and server program
-					i += 1
-					continue
-				}
-				args[a[i]] = a[i+1]
-				i += 2
-			}
-
-			// Write debuginfo file
-			debugPath := args["--debug-info"]
-			err := jsonutil.WriteJSON(info, ioutil.ToStdOutOrFileOrNoop(debugPath, 0o755))
-			require.NoError(t, err)
-			return nil
-		}
-		err := executor.GenerateProof(context.Background(), dir, proofAt)
-		require.NoError(t, err)
-		return binary, subcommand, args
-	}
-
 	t.Run("NoStopAtWhenProofIsMaxUInt", func(t *testing.T) {
 		m := newMetrics()
 		cfg.DebugInfo = true
-		_, _, args := captureExec(t, cfg, math.MaxUint64, m)
+		_, _, args := captureExec(t, dir, cfg, inputs, info, math.MaxUint64, m)
 		// stop-at would need to be one more than the proof step which would overflow back to 0
 		// so expect that it will be omitted. We'll ultimately want asterisc to execute until the program exits.
 		require.NotContains(t, args, "--stop-at")
@@ -101,7 +70,7 @@ func TestGenerateProof(t *testing.T) {
 	t.Run("BinarySnapshots", func(t *testing.T) {
 		m := newMetrics()
 		cfg.BinarySnapshots = true
-		_, _, args := captureExec(t, cfg, 100, m)
+		_, _, args := captureExec(t, dir, cfg, inputs, info, 100, m)
 		require.Equal(t, filepath.Join(dir, SnapsDir, "%d.bin.gz"), args["--snapshot-fmt"])
 		validateMetrics(t, m, info, cfg)
 	})
@@ -109,10 +78,120 @@ func TestGenerateProof(t *testing.T) {
 	t.Run("JsonSnapshots", func(t *testing.T) {
 		m := newMetrics()
 		cfg.BinarySnapshots = false
-		_, _, args := captureExec(t, cfg, 100, m)
+		_, _, args := captureExec(t, dir, cfg, inputs, info, 100, m)
 		require.Equal(t, filepath.Join(dir, SnapsDir, "%d.json.gz"), args["--snapshot-fmt"])
 		validateMetrics(t, m, info, cfg)
 	})
+
+	t.Run("ExecPanics", func(t *testing.T) {
+		m := newMetrics()
+		cfg.DebugInfo = true
+		cfg.BinarySnapshots = false
+		err, _ := customExec(t, panickingExecCmd(), dir, cfg, inputs, info, 100, m)
+		require.Equal(t, ErrVMPanic, err)
+		requireEmptyMetrics(t, m)
+	})
+
+	t.Run("ExecExitCode1", func(t *testing.T) {
+		m := newMetrics()
+		cfg.DebugInfo = true
+		cfg.BinarySnapshots = false
+		err, _ := customExec(t, failingExecCmd(1), dir, cfg, inputs, info, 100, m)
+		require.NotNil(t, err)
+		require.NotEqual(t, ErrVMPanic, err)
+		requireEmptyMetrics(t, m)
+	})
+
+	t.Run("ExecExitCode2", func(t *testing.T) {
+		m := newMetrics()
+		cfg.DebugInfo = true
+		cfg.BinarySnapshots = false
+		err, _ := customExec(t, failingExecCmd(2), dir, cfg, inputs, info, 100, m)
+		require.Equal(t, ErrVMPanic, err)
+		requireEmptyMetrics(t, m)
+	})
+}
+
+func captureExec(t *testing.T, dir string, cfg Config, inputs utils.LocalGameInputs, info *mipsevm.DebugInfo, proofAt uint64, m Metricer) (string, string, map[string]string) {
+	input := "starting.json"
+	prestate := "pre.json"
+	executor := NewExecutor(testlog.Logger(t, log.LevelInfo), m, cfg, &noArgServerExecutor{}, prestate, inputs)
+	executor.selectSnapshot = func(logger log.Logger, dir string, absolutePreState string, i uint64, binary bool) (string, error) {
+		return input, nil
+	}
+	var binary string
+	var subcommand string
+	var args map[string]string
+	executor.cmdExecutor = func(ctx context.Context, l log.Logger, b string, a ...string) error {
+		binary = b
+		subcommand = a[0]
+		args = copyArgs(a)
+
+		// Write debuginfo file
+		debugPath := args["--debug-info"]
+		err := jsonutil.WriteJSON(info, ioutil.ToStdOutOrFileOrNoop(debugPath, 0o755))
+		require.NoError(t, err)
+		return nil
+	}
+	err := executor.GenerateProof(context.Background(), dir, proofAt)
+	require.NoError(t, err)
+	return binary, subcommand, args
+}
+
+func failingExecCmd(exitCode int) *exec.Cmd {
+	exitCmd := fmt.Sprintf("exit %d", exitCode)
+	return exec.Command("sh", "-c", exitCmd)
+}
+
+func panickingExecCmd() *exec.Cmd {
+	cmd := exec.Command("go", "run", "-e", "-")
+	cmd.Stdin = strings.NewReader(`
+			package main
+			func main() {
+				panic("simulated panic")
+			}
+		`)
+	return cmd
+}
+
+func customExec(t *testing.T, cmd *exec.Cmd, dir string, cfg Config, inputs utils.LocalGameInputs, info *mipsevm.DebugInfo, proofAt uint64, m Metricer) (error, map[string]string) {
+	input := "starting.json"
+	prestate := "pre.json"
+	executor := NewExecutor(testlog.Logger(t, log.LevelInfo), m, cfg, &noArgServerExecutor{}, prestate, inputs)
+	executor.selectSnapshot = func(logger log.Logger, dir string, absolutePreState string, i uint64, binary bool) (string, error) {
+		return input, nil
+	}
+
+	var args map[string]string
+	executor.cmdExecutor = func(ctx context.Context, l log.Logger, b string, a ...string) error {
+		args = copyArgs(a)
+
+		// Write debuginfo file
+		debugPath := args["--debug-info"]
+		err := jsonutil.WriteJSON(info, ioutil.ToStdOutOrFileOrNoop(debugPath, 0o755))
+		require.NoError(t, err)
+
+		cmdError := cmd.Run()
+
+		return cmdError
+	}
+	err := executor.GenerateProof(context.Background(), dir, proofAt)
+
+	return err, args
+}
+
+func copyArgs(a []string) map[string]string {
+	args := make(map[string]string)
+	for i := 1; i < len(a); {
+		if a[i] == "--" {
+			// Skip over the divider between vm and server program
+			i += 1
+			continue
+		}
+		args[a[i]] = a[i+1]
+		i += 2
+	}
+	return args
 }
 
 func validateMetrics(t require.TestingT, m *capturingVmMetrics, expected *mipsevm.DebugInfo, cfg Config) {
@@ -130,15 +209,19 @@ func validateMetrics(t require.TestingT, m *capturingVmMetrics, expected *mipsev
 		require.Equal(t, expected.IdleStepCountThread0, m.idleStepsThread0)
 	} else {
 		// If debugInfo is disabled, json file should not be written and metrics should be zeroed out
-		require.Equal(t, hexutil.Uint64(0), m.memoryUsed)
-		require.Equal(t, uint64(0), m.steps)
-		require.Equal(t, uint64(0), m.rmwSuccessCount)
-		require.Equal(t, uint64(0), m.rmwFailCount)
-		require.Equal(t, uint64(0), m.maxStepsBetweenLLAndSC)
-		require.Equal(t, uint64(0), m.reservationInvalidations)
-		require.Equal(t, uint64(0), m.forcedPreemptions)
-		require.Equal(t, uint64(0), m.idleStepsThread0)
+		requireEmptyMetrics(t, m)
 	}
+}
+
+func requireEmptyMetrics(t require.TestingT, m *capturingVmMetrics) {
+	require.Equal(t, hexutil.Uint64(0), m.memoryUsed)
+	require.Equal(t, uint64(0), m.steps)
+	require.Equal(t, uint64(0), m.rmwSuccessCount)
+	require.Equal(t, uint64(0), m.rmwFailCount)
+	require.Equal(t, uint64(0), m.maxStepsBetweenLLAndSC)
+	require.Equal(t, uint64(0), m.reservationInvalidations)
+	require.Equal(t, uint64(0), m.forcedPreemptions)
+	require.Equal(t, uint64(0), m.idleStepsThread0)
 }
 
 func newMetrics() *capturingVmMetrics {

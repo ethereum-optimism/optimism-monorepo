@@ -9,12 +9,12 @@ import (
 	"github.com/ethereum-optimism/optimism/op-batcher/compressor"
 	"github.com/ethereum-optimism/optimism/op-batcher/flags"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/derive"
-	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/log"
 	"github.com/ethereum-optimism/optimism/op-service/metrics"
 	"github.com/ethereum-optimism/optimism/op-service/oppprof"
 	"github.com/ethereum-optimism/optimism/op-service/rpc"
 	"github.com/ethereum-optimism/optimism/op-service/txmgr"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/stretchr/testify/require"
 )
 
@@ -41,7 +41,6 @@ func validBatcherConfig() batcher.CLIConfig {
 		RPC:               rpc.DefaultCLIConfig(),
 		CompressionAlgo:   derive.Zlib,
 		ThrottleThreshold: 0, // no DA throttling
-		ThrottleInterval:  12 * time.Second,
 		ThrottleTxSize:    0,
 	}
 }
@@ -50,6 +49,9 @@ func TestValidBatcherConfig(t *testing.T) {
 	cfg := validBatcherConfig()
 	require.NoError(t, cfg.Check(), "valid config should pass the check function")
 }
+
+// Set current
+var maxBlobsPerBlock = params.DefaultPragueBlobConfig.Max
 
 func TestBatcherConfig(t *testing.T) {
 	tests := []struct {
@@ -103,12 +105,12 @@ func TestBatcherConfig(t *testing.T) {
 			errString: "TargetNumFrames must be at least 1",
 		},
 		{
-			name: fmt.Sprintf("larger %d TargetNumFrames for blobs", eth.MaxBlobsPerBlobTx),
+			name: fmt.Sprintf("larger %d TargetNumFrames for blobs", maxBlobsPerBlock),
 			override: func(c *batcher.CLIConfig) {
-				c.TargetNumFrames = eth.MaxBlobsPerBlobTx + 1
+				c.TargetNumFrames = maxBlobsPerBlock + 1
 				c.DataAvailabilityType = flags.BlobsType
 			},
-			errString: fmt.Sprintf("too many frames for blob transactions, max %d", eth.MaxBlobsPerBlobTx),
+			errString: fmt.Sprintf("too many frames for blob transactions, max %d", maxBlobsPerBlock),
 		},
 		{
 			name: "invalid compr ratio for ratio compressor",

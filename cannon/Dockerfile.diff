@@ -24,11 +24,22 @@ ARG GIT_DATE
 ARG TARGETOS TARGETARCH
 
 FROM --platform=$BUILDPLATFORM us-docker.pkg.dev/oplabs-tools-artifacts/images/cannon:v1.1.0-alpha.4 AS cannon-v2
+FROM --platform=$BUILDPLATFORM us-docker.pkg.dev/oplabs-tools-artifacts/images/cannon:v1.4.0 AS cannon-multithreaded64-3
 
 FROM --platform=$BUILDPLATFORM builder AS cannon-verify
 COPY --from=cannon-v2 /usr/local/bin/cannon /usr/local/bin/cannon-v2
+COPY --from=cannon-multithreaded64-3 /usr/local/bin/cannon /usr/local/bin/cannon-multithreaded64-3
+
+# Check cannon-v2
 # verify the latest singlethreaded VM behavior against cannon-v2
 RUN cd cannon && make diff-singlethreaded-2-cannon -e OTHER_CANNON=/usr/local/bin/cannon-v2
 RUN --mount=type=cache,target=/root/.cache/go-build cd cannon && \
   make diff-singlethreaded-2-cannon -e OTHER_CANNON=/usr/local/bin/cannon-v2 \
   GOOS=$TARGETOS GOARCH=$TARGETARCH GITCOMMIT=$GIT_COMMIT GITDATE=$GIT_DATE
+
+# Check cannon-multithreaded64-3
+# verify the latest multithreaded VM behavior against multithreaded64-3
+RUN cd cannon && make diff-multithreaded64-3-cannon -e OTHER_CANNON=/usr/local/bin/cannon-multithreaded64-3
+RUN --mount=type=cache,target=/root/.cache/go-build cd cannon && \
+ make diff-multithreaded64-3-cannon -e OTHER_CANNON=/usr/local/bin/cannon-multithreaded64-3 \
+ GOOS=$TARGETOS GOARCH=$TARGETARCH GITCOMMIT=$GIT_COMMIT GITDATE=$GIT_DATE

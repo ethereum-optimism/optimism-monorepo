@@ -122,7 +122,7 @@ func TestOutputAlphabetGame_ReclaimBond(t *testing.T) {
 	require.NoError(t, wait.ForNextBlock(ctx, l1Client))
 
 	// Wait for the game to have bond mode set
-	game.WaitForBondModeSet(ctx)
+	game.WaitForBondModeDecided(ctx)
 
 	// Expect Alice's credit to be non-zero
 	// But it can't be claimed right now since there is a delay on the weth unlock

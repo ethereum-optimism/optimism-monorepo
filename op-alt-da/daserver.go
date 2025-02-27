@@ -14,7 +14,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/ethereum-optimism/optimism/op-service/rpc"
+	"github.com/ethereum-optimism/optimism/op-service/httputil"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/log"
 )
@@ -30,7 +30,7 @@ type DAServer struct {
 	log            log.Logger
 	endpoint       string
 	store          KVStore
-	tls            *rpc.ServerTLSConfig
+	tls            *httputil.ServerTLSConfig
 	httpServer     *http.Server
 	listener       net.Listener
 	useGenericComm bool

@@ -209,7 +209,7 @@ func (o *OracleBackedL2Chain) InsertBlockWithoutSetHead(block *types.Block, make
 		return nil, err
 	}
 	for i, tx := range block.Transactions() {
-		err = processor.AddTx(tx)
+		_, err = processor.AddTx(tx)
 		if err != nil {
 			return nil, fmt.Errorf("invalid transaction (%d): %w", i, err)
 		}

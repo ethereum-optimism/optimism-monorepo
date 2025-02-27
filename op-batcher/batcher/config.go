@@ -6,19 +6,23 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/urfave/cli/v2"
 
 	altda "github.com/ethereum-optimism/optimism/op-alt-da"
 	"github.com/ethereum-optimism/optimism/op-batcher/compressor"
 	"github.com/ethereum-optimism/optimism/op-batcher/flags"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/derive"
-	"github.com/ethereum-optimism/optimism/op-service/eth"
 	oplog "github.com/ethereum-optimism/optimism/op-service/log"
 	opmetrics "github.com/ethereum-optimism/optimism/op-service/metrics"
 	"github.com/ethereum-optimism/optimism/op-service/oppprof"
 	oprpc "github.com/ethereum-optimism/optimism/op-service/rpc"
 	"github.com/ethereum-optimism/optimism/op-service/txmgr"
 )
+
+// Current max blobs const, irrespective of active fork, is that of the Prague
+// blob config.
+var maxBlobsPerBlock = params.DefaultPragueBlobConfig.Max
 
 type CLIConfig struct {
 	// L1EthRpc is the HTTP provider URL for L1.
@@ -96,11 +100,8 @@ type CLIConfig struct {
 	// ActiveSequencerCheckDuration is the duration between checks to determine the active sequencer endpoint.
 	ActiveSequencerCheckDuration time.Duration
 
-	// ThrottleInterval is the interval between notifying the block builder of the latest DA throttling state, or 0 to
-	// disable notifications entirely (only recommended for testing).
-	ThrottleInterval time.Duration
-	// ThrottleThreshold is the number of pending bytes beyond which the batcher will start throttling future bytes
-	// written to DA.
+	// ThrottleThreshold is the number of pending bytes beyond which the batcher will start throttling future bytes. Set to 0 to
+	// disable sequencer throttling entirely (only recommended for testing).
 	ThrottleThreshold uint64
 	// ThrottleTxSize is the DA size of a transaction to start throttling when we are over the throttling threshold.
 	ThrottleTxSize uint64
@@ -158,9 +159,11 @@ func (c *CLIConfig) Check() error {
 	if !flags.ValidDataAvailabilityType(c.DataAvailabilityType) {
 		return fmt.Errorf("unknown data availability type: %q", c.DataAvailabilityType)
 	}
-	// we want to enforce it for both blobs and auto
-	if c.DataAvailabilityType != flags.CalldataType && c.TargetNumFrames > eth.MaxBlobsPerBlobTx {
-		return fmt.Errorf("too many frames for blob transactions, max %d", eth.MaxBlobsPerBlobTx)
+	// Most chains' L1s still have only Cancun active, but we don't want to
+	// overcomplicate this check with a dynamic L1 query, so we just use maxBlobsPerBlock.
+	// We want to check for both, blobs and auto da-type.
+	if c.DataAvailabilityType != flags.CalldataType && c.TargetNumFrames > maxBlobsPerBlock {
+		return fmt.Errorf("too many frames for blob transactions, max %d", maxBlobsPerBlock)
 	}
 	if err := c.MetricsConfig.Check(); err != nil {
 		return err
@@ -209,7 +212,6 @@ func NewConfig(ctx *cli.Context) *CLIConfig {
 		RPC:                          oprpc.ReadCLIConfig(ctx),
 		AltDA:                        altda.ReadCLIConfig(ctx),
 		ThrottleThreshold:            ctx.Uint64(flags.ThrottleThresholdFlag.Name),
-		ThrottleInterval:             ctx.Duration(flags.ThrottleIntervalFlag.Name),
 		ThrottleTxSize:               ctx.Uint64(flags.ThrottleTxSizeFlag.Name),
 		ThrottleBlockSize:            ctx.Uint64(flags.ThrottleBlockSizeFlag.Name),
 		ThrottleAlwaysBlockSize:      ctx.Uint64(flags.ThrottleAlwaysBlockSizeFlag.Name),

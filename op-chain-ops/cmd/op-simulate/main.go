@@ -23,6 +23,7 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/consensus"
 	"github.com/ethereum/go-ethereum/consensus/beacon"
+	"github.com/ethereum/go-ethereum/consensus/ethash"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/rawdb"
 	gstate "github.com/ethereum/go-ethereum/core/state"
@@ -190,7 +191,7 @@ func fetchChainConfig(ctx context.Context, cl *rpc.Client) (*params.ChainConfig,
 	}
 	// if not already recognized, then fetch the chain config manually
 	var config params.ChainConfig
-	if err := cl.CallContext(ctx, &config, "eth_chainConfig"); err != nil {
+	if err := cl.CallContext(ctx, &config, "debug_chainConfig"); err != nil {
 		return nil, fmt.Errorf("failed to retrieve chain config: %w", err)
 	}
 	return &config, nil
@@ -234,6 +235,7 @@ func readDump(prestatePath string) (map[common.Address]DumpAccount, error) {
 type simChainContext struct {
 	eng  consensus.Engine
 	head *types.Header
+	cfg  *params.ChainConfig
 }
 
 func (d *simChainContext) Engine() consensus.Engine {
@@ -245,6 +247,10 @@ func (d *simChainContext) GetHeader(h common.Hash, n uint64) *types.Header {
 		return d.head
 	}
 	panic(fmt.Errorf("header retrieval not supported, cannot fetch %s %d", h, n))
+}
+
+func (d *simChainContext) Config() *params.ChainConfig {
+	return d.cfg
 }
 
 func simulate(ctx context.Context, logger log.Logger, conf *params.ChainConfig,
@@ -262,7 +268,7 @@ func simulate(ctx context.Context, logger log.Logger, conf *params.ChainConfig,
 	for addr, acc := range dump {
 		state.CreateAccount(addr)
 		state.SetBalance(addr, uint256.MustFromBig((*big.Int)(&acc.Balance)), tracing.BalanceChangeUnspecified)
-		state.SetNonce(addr, acc.Nonce)
+		state.SetNonce(addr, acc.Nonce, tracing.NonceChangeUnspecified)
 		state.SetCode(addr, acc.Code)
 		state.SetStorage(addr, acc.Storage)
 	}
@@ -284,7 +290,7 @@ func simulate(ctx context.Context, logger log.Logger, conf *params.ChainConfig,
 	state.Prepare(rules, sender, header.Coinbase, tx.To(), precompiles, tx.AccessList())
 	state.SetTxContext(tx.Hash(), 0)
 
-	cCtx := &simChainContext{eng: beacon.NewFaker(), head: header}
+	cCtx := &simChainContext{eng: beacon.New(ethash.NewFaker()), head: header, cfg: conf}
 	gp := core.GasPool(tx.Gas())
 	usedGas := uint64(0)
 	vmConfig := vm.Config{}
