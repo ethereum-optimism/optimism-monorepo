@@ -153,12 +153,17 @@ func TestHazardSet_Build(t *testing.T) {
 		{
 			name: "Multiple Independent Chains",
 			blocks: []blockDef{
+				// Chain 0 -> (Chain 1 & Chain 2)
 				makeBlock(0, 100, 1, makeMessage(1, 100, 1, 1), makeMessage(2, 100, 1, 1)),
-				// Chain 1: A -> B -> C
+
+				// Chain 1 -> Chain 3
 				makeBlock(1, 100, 1, makeMessage(3, 100, 1, 1)),
-				makeBlock(3, 100, 1),
-				// Chain 2: X -> Y -> Z
+
+				// Chain 2 -> Chain 4
 				makeBlock(2, 100, 1, makeMessage(4, 100, 1, 1)),
+
+				// No dependencies
+				makeBlock(3, 100, 1),
 				makeBlock(4, 100, 1),
 			},
 			expected: map[types.ChainIndex]types.BlockSeal{
