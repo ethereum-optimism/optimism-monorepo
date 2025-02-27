@@ -11,10 +11,6 @@ import (
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 )
 
-// MaxHazardBlockChecks is the maximum number of blocks that can be processed when building a hazard set.
-// It is a safety limit to prevent potential infinite loops or excessive resource consumption.
-const MaxHazardBlockChecks = 10000
-
 type HazardDeps interface {
 	Contains(chain eth.ChainID, query types.ContainsQuery) (types.BlockSeal, error)
 	DependencySet() depset.DependencySet
@@ -66,18 +62,12 @@ func (h *HazardSet) build(deps HazardDeps, logger log.Logger, chainID eth.ChainI
 	// Process blocks until the stack is empty or we hit the limit
 	depSet := deps.DependencySet()
 	stack := []potentialHazard{{chainID: chainID, block: block}}
-	blocksProcessed := 0
 	for len(stack) > 0 {
-		if blocksProcessed >= MaxHazardBlockChecks {
-			return fmt.Errorf("exceeded maximum number of blocks to process (%d): potential cycle or excessive dependencies", MaxHazardBlockChecks)
-		}
-		blocksProcessed++
-
 		// Get the next block from the stack
 		next := stack[len(stack)-1]
 		candidate := next.block
 		stack = stack[:len(stack)-1]
-		logger.Debug("Processing block for hazards", "chainID", next.chainID, "block", candidate, "processed", blocksProcessed)
+		logger.Debug("Processing block for hazards", "chainID", next.chainID, "block", candidate)
 
 		// Open the block to get its messages
 		opened, _, execMsgs, err := deps.OpenBlock(next.chainID, candidate.Number)
