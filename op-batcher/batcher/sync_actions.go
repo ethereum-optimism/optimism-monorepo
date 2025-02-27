@@ -43,18 +43,18 @@ func (s syncActions) TerminalString() string {
 		"SyncActions{blocksToPrune: %d, channelsToPrune: %d, clearState: %v, blocksToLoad: %v}", s.blocksToPrune, s.channelsToPrune, cs, btl)
 }
 
-func summarizeSyncStatusNumbers(ss eth.SyncStatus) string {
-	return fmt.Sprintf("SyncStatus{HeadL1: %d, CurrentL1: %d, LocalSafeL2: %d, UnsafeL2: %d}",
-		ss.HeadL1.Number, ss.CurrentL1.Number, ss.LocalSafeL2.Number, ss.UnsafeL2.Number)
-}
-
 // computeSyncActions determines the actions that should be taken based on the inputs provided. The inputs are the current
 // state of the batcher (blocks and channels), the new sync status, and the previous current L1 block. The actions are returned
 // in a struct specifying the number of blocks to prune, the number of channels to prune, whether to wait for node sync, the block
 // range to load into the local state, and whether to clear the state entirely. Returns an boolean indicating if the sequencer is out of sync.
 func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCurrentL1 eth.L1BlockRef, blocks queue.Queue[*types.Block], channels []T, l log.Logger) (syncActions, bool) {
 
-	m := l.With("newSyncStatus", summarizeSyncStatusNumbers(newSyncStatus))
+	m := l.With(
+		"syncStatus.headL1", newSyncStatus.HeadL1,
+		"syncStatus.currentL1", newSyncStatus.CurrentL1,
+		"syncStatus.localSafeL2", newSyncStatus.LocalSafeL2,
+		"syncStatus.unsafeL2", newSyncStatus.UnsafeL2,
+	)
 
 	// PART 1: Initial checks on the sync status
 	if newSyncStatus.HeadL1 == (eth.L1BlockRef{}) {
