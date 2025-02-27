@@ -1,8 +1,8 @@
 module github.com/ethereum-optimism/optimism
 
-go 1.23.0
+go 1.22.0
 
-toolchain go1.24.0
+toolchain go1.22.7
 
 require (
 	github.com/BurntSushi/toml v1.4.0
@@ -256,7 +256,7 @@ require (
 	rsc.io/tmplfunc v0.0.3 // indirect
 )
 
-replace github.com/ethereum/go-ethereum => github.com/ethereum-optimism/op-geth v1.101500.2-0.20250226170659-b3a3895bc4f7
+replace github.com/ethereum/go-ethereum => github.com/ethereum-optimism/op-geth v1.101500.2-0.20250227114022-d2e77be0e177
 
 // replace github.com/ethereum/go-ethereum => ../op-geth
 
