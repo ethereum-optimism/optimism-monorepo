@@ -258,9 +258,6 @@ func (m *ManagedNode) onNodeEvent(ev *types.ManagedEvent) {
 // onResetEvent handles a reset event from the node
 func (m *ManagedNode) onResetEvent(errStr string) {
 	m.log.Warn("Node sent us a reset error", "err", errStr)
-	//if strings.Contains(errStr, "cannot continue derivation until Engine has been reset") {
-	//return
-	//}
 	m.resetFullRange()
 }
 

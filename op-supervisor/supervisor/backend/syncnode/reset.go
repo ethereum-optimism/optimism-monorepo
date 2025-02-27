@@ -7,6 +7,7 @@ import (
 
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
+	"github.com/ethereum/go-ethereum"
 )
 
 // resetTracker manages a bisection
@@ -37,6 +38,7 @@ func (t *resetTracker) init() {
 // and starts the bisection process at the given block
 // which will lead to a reset request
 func (t *resetTracker) beginBisectionReset(z eth.BlockID) {
+	t.managed.log.Info("beginning reset", "endOfRange", z)
 	// only one reset can be in progress at a time
 	if t.resetting.Load() {
 		return
@@ -84,7 +86,7 @@ func (t *resetTracker) bisectToTarget() {
 		t.a, err = t.managed.backend.FindSealedBlock(internalCtx, t.managed.chainID, 0)
 		if err != nil {
 			t.managed.log.Error("failed to initialize start of bisection range", "err", err)
-			defer t.endReset()
+			t.endReset()
 			return
 		}
 	}
@@ -103,14 +105,14 @@ func (t *resetTracker) bisectToTarget() {
 	nodeA, err := t.managed.Node.BlockRefByNumber(nodeCtx, t.a.Number)
 	if err != nil {
 		t.managed.log.Error("failed to get block at start of range. cannot reset node", "err", err)
-		defer t.endReset()
+		t.endReset()
 		return
 	}
 	if nodeA.ID() != t.a {
 		t.managed.log.Error("start of range is inconsistent with logs db. cannot reset node",
 			"a", t.a,
 			"block", nodeA.ID())
-		defer t.endReset()
+		t.endReset()
 		return
 	}
 
@@ -118,7 +120,7 @@ func (t *resetTracker) bisectToTarget() {
 	for {
 		if t.cancelling.Load() {
 			t.managed.log.Debug("reset cancelled")
-			defer t.endReset()
+			t.endReset()
 			return
 		}
 		if t.a.Number >= t.z.Number {
@@ -132,7 +134,7 @@ func (t *resetTracker) bisectToTarget() {
 		err := t.bisect()
 		if err != nil {
 			t.managed.log.Error("failed to bisect recovery range. cannot reset node", "err", err)
-			defer t.endReset()
+			t.endReset()
 			return
 		}
 	}
@@ -154,8 +156,14 @@ func (t *resetTracker) bisect() error {
 	i := (t.a.Number + t.z.Number) / 2
 	nodeIRef, err := t.managed.Node.BlockRefByNumber(nodeCtx, i)
 	if err != nil {
-		t.z = eth.BlockID{Number: i}
-		return nil
+		// if the block is not known to the node, it is defacto inconsistent
+		if errors.Is(err, ethereum.NotFound) {
+			t.managed.log.Trace("midpoint of range is not known to node. pulling back end of range", "i", i)
+			t.z = eth.BlockID{Number: i}
+			return nil
+		} else {
+			t.managed.log.Error("failed to get block at midpoint of range. cannot reset node", "err", err)
+		}
 	}
 
 	// check if the block at i is consistent with the logs db
@@ -163,8 +171,10 @@ func (t *resetTracker) bisect() error {
 	nodeI := nodeIRef.ID()
 	err = t.managed.backend.IsLocalUnsafe(internalCtx, t.managed.chainID, nodeI)
 	if err != nil {
+		t.managed.log.Trace("midpoint of range is inconsistent with logs db. pulling back end of range", "i", i)
 		t.z = nodeI
 	} else {
+		t.managed.log.Trace("midpoint of range is consistent with logs db. pushing up start of range", "i", i)
 		t.a = nodeI
 	}
 	return nil
@@ -180,7 +190,7 @@ func (t *resetTracker) resetHeadsFromTarget(target eth.BlockID) {
 	// if the target is empty, no reset can be done
 	if target == (eth.BlockID{}) {
 		t.managed.log.Error("no reset target found. cannot reset node")
-		defer t.endReset()
+		t.endReset()
 		return
 	}
 
@@ -195,7 +205,7 @@ func (t *resetTracker) resetHeadsFromTarget(target eth.BlockID) {
 	lastXUnsafe, err := t.managed.backend.CrossUnsafe(internalCtx, t.managed.chainID)
 	if err != nil {
 		t.managed.log.Error("failed to get last cross unsafe block. cancelling reset", "err", err)
-		defer t.endReset()
+		t.endReset()
 		return
 	}
 	if lastXUnsafe.Number < target.Number {
@@ -207,7 +217,7 @@ func (t *resetTracker) resetHeadsFromTarget(target eth.BlockID) {
 	lastLSafe, err := t.managed.backend.LocalSafe(internalCtx, t.managed.chainID)
 	if err != nil {
 		t.managed.log.Error("failed to get last safe block. cancelling reset", "err", err)
-		defer t.endReset()
+		t.endReset()
 		return
 	}
 	if lastLSafe.Derived.Number < target.Number {
@@ -219,7 +229,7 @@ func (t *resetTracker) resetHeadsFromTarget(target eth.BlockID) {
 	lastXSafe, err := t.managed.backend.CrossSafe(internalCtx, t.managed.chainID)
 	if err != nil {
 		t.managed.log.Error("failed to get last cross safe block. cancelling reset", "err", err)
-		defer t.endReset()
+		t.endReset()
 		return
 	}
 	if lastXSafe.Derived.Number < target.Number {
@@ -234,7 +244,7 @@ func (t *resetTracker) resetHeadsFromTarget(target eth.BlockID) {
 		lastFinalized = eth.BlockID{}
 	} else if err != nil {
 		t.managed.log.Error("failed to get last finalized block. cancelling reset", "err", err)
-		defer t.endReset()
+		t.endReset()
 		return
 	}
 	if lastFinalized.Number < target.Number {
