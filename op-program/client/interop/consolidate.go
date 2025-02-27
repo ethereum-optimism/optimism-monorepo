@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum-optimism/optimism/op-program/client/boot"
 	"github.com/ethereum-optimism/optimism/op-program/client/interop/types"
 	"github.com/ethereum-optimism/optimism/op-program/client/l1"
@@ -102,7 +103,6 @@ func RunConsolidation(
 			Number:    optimisticBlock.NumberU64(),
 			Timestamp: optimisticBlock.Time(),
 		}
-		if err := checkHazards(deps, candidate, chain.ChainID, execMsgs); err != nil {
 		rollupCfg, err := bootInfo.Configs.RollupConfig(chain.ChainID)
 		if err != nil {
 			return eth.Bytes32{}, fmt.Errorf("no rollup config available for chain ID %v: %w", chain.ChainID, err)
@@ -171,7 +171,6 @@ func checkHazards(
 	chainID eth.ChainID,
 	execMsgs map[uint32]*supervisortypes.ExecutingMessage,
 ) error {
-	hazards, err := cross.CrossUnsafeHazards(deps, chainID, candidate, execMsgs)
 	// TODO(#14234): remove this check once the supervisor is updated handle msg expiry
 	messageExpiryTimeSeconds := rollupCfg.GetMessageExpiryTimeInterop()
 	for _, msg := range execMsgs {
@@ -183,8 +182,7 @@ func checkHazards(
 		}
 	}
 
-	hazardDeps := &cross.UnsafeHazardDeps{UnsafeStartDeps: deps}
-	hazards, err := cross.CrossUnsafeHazards(hazardDeps, logger, chainID, candidate)
+	hazards, err := cross.CrossUnsafeHazards(deps, logger, chainID, candidate)
 	if err != nil {
 		return err
 	}
