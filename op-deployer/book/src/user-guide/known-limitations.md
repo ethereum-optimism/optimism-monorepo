@@ -4,6 +4,8 @@ OP Deployer is subject to some known limitations which we're working on addressi
 
 ## Tagged Releases on New Chains
 
+**Fixed in all versions after v0.0.11.**
+
 It is not currently possible to deploy chains using tagged contract locators (i.e., those starting with `tag://`)
 anywhere except Sepolia and Ethereum mainnet. If you try to, you'll see an error like this:
 

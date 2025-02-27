@@ -3,6 +3,7 @@ package state
 import (
 	"errors"
 	"fmt"
+	"github.com/ethereum-optimism/superchain-registry/validation"
 	"math/big"
 	"net/url"
 	"reflect"
@@ -229,7 +230,7 @@ func (c *Intent) checkL1Prod() error {
 		return err
 	}
 
-	if _, ok := versions[c.L1ContractsLocator.Tag]; !ok {
+	if _, ok := versions[validation.Semver(c.L1ContractsLocator.Tag)]; !ok {
 		return fmt.Errorf("tag '%s' not found in standard versions", c.L1ContractsLocator.Tag)
 	}
 

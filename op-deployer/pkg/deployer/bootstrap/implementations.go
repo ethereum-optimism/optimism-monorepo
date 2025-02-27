@@ -134,6 +134,10 @@ func Implementations(ctx context.Context, cfg ImplementationsConfig) (opcm.Deplo
 
 	lgr := cfg.Logger
 
+	if cfg.ArtifactsLocator.IsTag() && !standard.IsSupportedL1Version(cfg.ArtifactsLocator.Tag) {
+		return dio, fmt.Errorf("unsupported L1 version: %s", cfg.ArtifactsLocator.Tag)
+	}
+
 	artifactsFS, err := artifacts.Download(ctx, cfg.ArtifactsLocator, artifacts.BarProgressor(), cfg.CacheDir)
 	if err != nil {
 		return dio, fmt.Errorf("failed to download artifacts: %w", err)
