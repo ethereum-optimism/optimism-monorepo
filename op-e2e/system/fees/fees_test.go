@@ -320,8 +320,14 @@ func testFees(t *testing.T, cfg e2esys.SystemConfig) {
 			"operator fee is correct",
 		)
 
-		require.Equal(t, cfg.DeployConfig.GasPriceOracleOperatorFeeScalar, uint32(*receipt.OperatorFeeScalar), "operator fee constant in receipt is correct")
-		require.Equal(t, cfg.DeployConfig.GasPriceOracleOperatorFeeConstant, *receipt.OperatorFeeConstant, "operator fee constant in receipt is correct")
+		if cfg.DeployConfig.GasPriceOracleOperatorFeeScalar == 0 && cfg.DeployConfig.GasPriceOracleOperatorFeeConstant == 0 {
+			// if both operator fee params are 0, they aren't added to receipts.
+			require.Nil(t, receipt.OperatorFeeScalar, "operator fee constant in receipt is nil")
+			require.Nil(t, receipt.OperatorFeeConstant, "operator fee constant in receipt is nil")
+		} else {
+			require.Equal(t, cfg.DeployConfig.GasPriceOracleOperatorFeeScalar, uint32(*receipt.OperatorFeeScalar), "operator fee constant in receipt is correct")
+			require.Equal(t, cfg.DeployConfig.GasPriceOracleOperatorFeeConstant, *receipt.OperatorFeeConstant, "operator fee constant in receipt is correct")
+		}
 	}
 
 	// Calculate total fee
