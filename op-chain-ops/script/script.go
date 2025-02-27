@@ -346,7 +346,7 @@ func (h *Host) prelude(from common.Address, to *common.Address) {
 // Call calls a contract in the EVM. The state changes persist.
 func (h *Host) Call(from common.Address, to common.Address, input []byte, gas uint64, value *uint256.Int) (returnData []byte, leftOverGas uint64, err error) {
 	h.prelude(from, &to)
-	return h.env.Call(vm.AccountRef(from), to, input, gas, value)
+	return h.env.Call(from, to, input, gas, value)
 }
 
 // LoadContract loads the bytecode of a contract, and deploys it with regular CREATE.
@@ -386,7 +386,7 @@ func (h *Host) RememberArtifact(addr common.Address, artifact *foundry.Artifact,
 // This create function helps deploy contracts quickly for scripting etc.
 func (h *Host) Create(from common.Address, initCode []byte) (common.Address, error) {
 	h.prelude(from, nil)
-	ret, addr, _, err := h.env.Create(vm.AccountRef(from),
+	ret, addr, _, err := h.env.Create(from,
 		initCode, DefaultFoundryGasLimit, uint256.NewInt(0))
 	if err != nil {
 		retStr := fmt.Sprintf("%x", ret)
@@ -790,9 +790,6 @@ func (h *Host) LogCallStack() {
 	for _, cf := range h.callStack {
 		callsite := ""
 		srcMap, ok := h.srcMaps[cf.Ctx.Address()]
-		if !ok && cf.Ctx.Contract.CodeAddr != nil { // if delegate-call, we might know the implementation code.
-			srcMap, ok = h.srcMaps[*cf.Ctx.Contract.CodeAddr]
-		}
 		if ok {
 			callsite = srcMap.FormattedInfo(cf.LastPC)
 			if callsite == "unknown:0:0" && len(cf.LastJumps) > 0 {

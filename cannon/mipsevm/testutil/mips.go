@@ -27,7 +27,7 @@ import (
 const maxStepGas = 20_000_000
 
 type MIPSEVM struct {
-	sender      vm.AccountRef
+	sender      common.Address
 	startingGas uint64
 	env         *vm.EVM
 	evmState    *state.StateDB
@@ -42,7 +42,7 @@ type MIPSEVM struct {
 
 func newMIPSEVM(contracts *ContractMetadata, opts ...evmOption) *MIPSEVM {
 	env, evmState := NewEVMEnv(contracts)
-	sender := vm.AccountRef{0x13, 0x37}
+	sender := common.Address{0x13, 0x37}
 	startingGas := uint64(maxStepGas)
 	evm := &MIPSEVM{sender, startingGas, env, evmState, contracts.Addresses, nil, contracts.Artifacts, math.MaxUint64, nil, nil}
 	for _, opt := range opts {
@@ -264,7 +264,7 @@ func AssertEVMReverts(t *testing.T, state mipsevm.FPVMState, contracts *Contract
 	env, evmState := NewEVMEnv(contracts)
 	env.Config.Tracer = tracer
 	sender := common.Address{0x13, 0x37}
-	ret, _, err := env.Call(vm.AccountRef(sender), contracts.Addresses.MIPS, input, startingGas, common.U2560)
+	ret, _, err := env.Call(sender, contracts.Addresses.MIPS, input, startingGas, common.U2560)
 
 	require.EqualValues(t, err, vm.ErrExecutionReverted)
 	matcher(t, ret)
