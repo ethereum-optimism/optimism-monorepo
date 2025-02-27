@@ -11,11 +11,14 @@ import (
 	"path/filepath"
 )
 
+// These constants should be in sync with op-program/chainconfig/chaincfg.go
 const (
-	InteropDepSetName = "depsets.json"
+	interopDepSetName    = "depsets.json"
+	rollupConfigSuffix   = "-rollup.json"
+	genensisConfigSuffix = "-genesis-l2.json"
 )
 
-// PrestateManifest maps prestate identifiers to their hashes
+// PrestateManifest maps	 prestate identifiers to their hashes
 type PrestateManifest map[string]string
 
 // PrestateBuilderClient is a client for the prestate builder service
@@ -53,7 +56,7 @@ type PrestateBuilderOption func(*buildContext)
 func WithInteropDepSet(content io.Reader) PrestateBuilderOption {
 	return func(c *buildContext) {
 		c.files = append(c.files, FileInput{
-			Name:    InteropDepSetName,
+			Name:    interopDepSetName,
 			Content: content,
 			Type:    "interop",
 		})
@@ -102,12 +105,12 @@ func WithChainConfig(chainId string, rollupContent io.Reader, genesisContent io.
 		c.chains = append(c.chains, chainId)
 		c.files = append(c.files,
 			FileInput{
-				Name:    chainId + "-rollup.json",
+				Name:    chainId + rollupConfigSuffix,
 				Content: rollupContent,
 				Type:    "rollup-config",
 			},
 			FileInput{
-				Name:    chainId + "-genesis.json",
+				Name:    chainId + genensisConfigSuffix,
 				Content: genesisContent,
 				Type:    "genesis-config",
 			},
@@ -134,7 +137,7 @@ func (c *PrestateBuilderClient) BuildPrestate(ctx context.Context, opts ...Prest
 			return nil, fmt.Errorf("failed to generate interop dependency set: %w", err)
 		}
 		bc.files = append(bc.files, FileInput{
-			Name:    InteropDepSetName,
+			Name:    interopDepSetName,
 			Content: bytes.NewReader(depSet),
 			Type:    "interop",
 		})
