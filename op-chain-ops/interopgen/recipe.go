@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/standard"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/params"
@@ -80,7 +78,7 @@ func (r *InteropDevRecipe) Build(addrs devkeys.Addresses) (*WorldConfig, error) 
 				MipsVersion:                     big.NewInt(1),
 			},
 			UseInterop:           true,
-			StandardVersionsToml: standard.VersionsMainnetData,
+			StandardVersionsToml: "",
 		},
 		SuperchainL1DeployConfig: genesis.SuperchainL1DeployConfig{
 			RequiredProtocolVersion:    params.OPStackSupport,
