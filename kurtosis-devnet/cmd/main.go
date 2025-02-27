@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -65,7 +64,6 @@ func writeEnvironment(path string, env *kurtosis.KurtosisEnvironment) error {
 }
 
 func mainAction(c *cli.Context) error {
-	ctx := context.Background()
 
 	cfg, err := newConfig(c)
 	if err != nil {
@@ -82,7 +80,7 @@ func mainAction(c *cli.Context) error {
 		deploy.WithBaseDir(cfg.baseDir),
 	)
 
-	env, err := deployer.Deploy(ctx, nil)
+	env, err := deployer.Deploy(c.Context, nil)
 	if err != nil {
 		return fmt.Errorf("error deploying environment: %w", err)
 	}
