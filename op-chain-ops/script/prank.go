@@ -33,41 +33,17 @@ type Prank struct {
 	Broadcast bool
 }
 
-// prankRef implements the vm.ContractRef interface, to mock a caller.
-type prankRef struct {
-	prank common.Address
-	ref   vm.ContractRef
-}
-
-var _ vm.ContractRef = (*prankRef)(nil)
-
-func (p *prankRef) Address() common.Address {
-	return p.prank
-}
-
-// Value returns the value send into this contract context.
-// The delegate call tracer implicitly relies on this being implemented on ContractRef
-func (p *prankRef) Value() *uint256.Int {
-	return p.ref.(interface{ Value() *uint256.Int }).Value()
-}
-
-func (h *Host) handleCaller(caller vm.ContractRef) vm.ContractRef {
+func (h *Host) handleCaller(caller common.Address) common.Address {
 	// apply prank, if top call-frame had set up a prank
 	if len(h.callStack) > 0 {
 		parentCallFrame := h.callStack[len(h.callStack)-1]
-		if parentCallFrame.Prank != nil && caller.Address() != addresses.VMAddr { // pranks do not apply to the cheatcode precompile
+		if parentCallFrame.Prank != nil && caller != addresses.VMAddr { // pranks do not apply to the cheatcode precompile
 			if parentCallFrame.Prank.Broadcast && parentCallFrame.LastOp == vm.CREATE2 && h.useCreate2Deployer {
-				return &prankRef{
-					prank: DeterministicDeployerAddress,
-					ref:   caller,
-				}
+				return caller
 			}
 
 			if parentCallFrame.Prank.Sender != nil {
-				return &prankRef{
-					prank: *parentCallFrame.Prank.Sender,
-					ref:   caller,
-				}
+				return caller
 			}
 			if parentCallFrame.Prank.Origin != nil {
 				h.env.TxContext.Origin = *parentCallFrame.Prank.Origin
