@@ -169,8 +169,6 @@ func (h *HazardSet) build(deps HazardDeps, logger log.Logger, chainID eth.ChainI
 			}
 		}
 	}
-
-	logger.Debug("Successfully built HazardSet", "chainID", chainID, "block", block, "hazards", len(h.entries))
 	return nil
 }
 
