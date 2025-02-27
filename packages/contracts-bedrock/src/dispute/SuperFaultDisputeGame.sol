@@ -252,7 +252,7 @@ contract SuperFaultDisputeGame is Clone, ISemver {
         // OptimismPortal respected game type trick.
         if (_params.gameType.raw() == type(uint32).max) revert ReservedGameType();
 
-        if (_params.l2ChainId == 0) revert NoChainIdNeeded();
+        if (_params.l2ChainId != 0) revert NoChainIdNeeded();
 
         // Set up initial game state.
         GAME_TYPE = _params.gameType;
