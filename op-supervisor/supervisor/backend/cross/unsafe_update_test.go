@@ -110,8 +110,8 @@ func TestCrossUnsafeUpdate(t *testing.T) {
 		}
 		usd.deps = mockDependencySet{}
 		count := 0
-		// make HazardUnsafeFrontierChecks return an error by failing the second ChainIDFromIndex call
-		// (the first one is in CrossSafeHazards)
+		// make HazardUnsafeFrontierChecks return an error by failing the third ChainIDFromIndex call
+		// (the first two are in CrossSafeHazards)
 		usd.deps.chainIDFromIndexfn = func() (eth.ChainID, error) {
 			defer func() { count++ }()
 			if count < 2 {

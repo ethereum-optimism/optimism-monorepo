@@ -368,7 +368,7 @@ func TestScopedCrossSafeUpdate(t *testing.T) {
 		count := 0
 		csd.deps = mockDependencySet{}
 		// cause CrossSafeHazards to return an error by making ChainIDFromIndex return an error
-		// but only on the second call (which will be used by HazardSafeFrontierChecks)
+		// but only on the third call (which will be used by HazardSafeFrontierChecks)
 		csd.deps.chainIDFromIndexfn = func() (eth.ChainID, error) {
 			defer func() { count++ }()
 			if count < 2 {
