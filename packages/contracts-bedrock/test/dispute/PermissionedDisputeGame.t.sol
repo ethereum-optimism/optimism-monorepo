@@ -82,7 +82,7 @@ contract PermissionedDisputeGame_Init is DisputeGameFactory_Init {
                                 vm: _vm,
                                 weth: _weth,
                                 anchorStateRegistry: anchorStateRegistry,
-                                l2ChainId: 10
+                                l2ChainId: 0
                             }),
                             PROPOSER,
                             CHALLENGER
