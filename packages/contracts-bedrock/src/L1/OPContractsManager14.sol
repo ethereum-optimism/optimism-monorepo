@@ -2,6 +2,19 @@
 pragma solidity 0.8.15;
 
 import { OPContractsManager } from "./OPContractsManager.sol";
+// Libraries
+import { Blueprint } from "src/libraries/Blueprint.sol";
+import { Claim, GameType, GameTypes } from "src/dispute/lib/Types.sol";
+// Interfaces
+import { IBigStepper } from "interfaces/dispute/IBigStepper.sol";
+import { IDisputeGame } from "interfaces/dispute/IDisputeGame.sol";
+import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
+import { IDisputeGameFactory } from "interfaces/dispute/IDisputeGameFactory.sol";
+import { IFaultDisputeGame } from "interfaces/dispute/IFaultDisputeGame.sol";
+import { IPermissionedDisputeGame } from "interfaces/dispute/IPermissionedDisputeGame.sol";
+import { IProtocolVersions } from "interfaces/L1/IProtocolVersions.sol";
+import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
+import { IProxyAdmin } from "interfaces/universal/IProxyAdmin.sol";
 
 ///  @title OPContractsManager14
 ///  @notice Represents the new OPContractsManager for Upgrade 14
@@ -11,10 +24,31 @@ contract OPContractsManager14 is OPContractsManager {
         return string.concat(super.version(), "+upgrade14.1");
     }
 
+    // TODO: Review required arguments
+    constructor(
+        ISuperchainConfig _superchainConfig,
+        IProtocolVersions _protocolVersions,
+        IProxyAdmin _superchainProxyAdmin,
+        string memory _l1ContractsRelease,
+        Blueprints memory _blueprints,
+        Implementations memory _implementations,
+        address _upgradeController
+    )
+    OPContractsManager(
+    _superchainConfig,
+    _protocolVersions,
+    _superchainProxyAdmin,
+    _l1ContractsRelease,
+    _blueprints,
+    _implementations,
+    _upgradeController
+    )
+    { }
+
     /// @notice Upgrades a set of chains to the latest implementation contracts
     /// @param _opChainConfigs Array of OpChain structs, one per chain to upgrade
     /// @dev This function is intended to be called via DELEGATECALL from the Upgrade Controller Safe
-    function upgrade(OpChainConfig[] memory _opChainConfigs) external virtual {
+    function upgrade(OpChainConfig[] memory _opChainConfigs) external override {
         if (address(this) == address(thisOPCM)) revert OnlyDelegatecall();
 
         // If this is delegatecalled by the upgrade controller, set isRC to false first, else, continue execution.
