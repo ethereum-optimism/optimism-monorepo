@@ -3,10 +3,11 @@ package state
 import (
 	"errors"
 	"fmt"
-	"github.com/ethereum-optimism/superchain-registry/validation"
 	"math/big"
 	"net/url"
 	"reflect"
+
+	"github.com/ethereum-optimism/superchain-registry/validation"
 
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/artifacts"
 
