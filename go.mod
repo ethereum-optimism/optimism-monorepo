@@ -1,8 +1,8 @@
 module github.com/ethereum-optimism/optimism
 
-go 1.22.0
+go 1.23.0
 
-toolchain go1.22.7
+toolchain go1.24.0
 
 require (
 	github.com/BurntSushi/toml v1.4.0
@@ -16,7 +16,7 @@ require (
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.3.0
 	github.com/ethereum-optimism/go-ethereum-hdwallet v0.1.3
 	github.com/ethereum-optimism/superchain-registry/validation v0.0.0-20250205201532-8ff62ada16e1
-	github.com/ethereum/go-ethereum v1.15.1
+	github.com/ethereum/go-ethereum v1.15.3
 	github.com/fatih/color v1.18.0
 	github.com/fsnotify/fsnotify v1.8.0
 	github.com/go-task/slim-sprig/v3 v3.0.0
@@ -256,9 +256,9 @@ require (
 	rsc.io/tmplfunc v0.0.3 // indirect
 )
 
-replace github.com/ethereum/go-ethereum => github.com/ethereum-optimism/op-geth v1.101500.2-rc.1
+replace github.com/ethereum/go-ethereum => github.com/ethereum-optimism/op-geth v1.101500.2-0.20250226170659-b3a3895bc4f7
 
-//replace github.com/ethereum/go-ethereum => ../op-geth
+// replace github.com/ethereum/go-ethereum => ../op-geth
 
 // replace github.com/ethereum-optimism/superchain-registry/superchain => ../superchain-registry/superchain
 
