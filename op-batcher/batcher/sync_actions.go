@@ -17,6 +17,11 @@ type channelStatuser interface {
 }
 
 type inclusiveBlockRange struct{ start, end uint64 }
+
+func (r *inclusiveBlockRange) TerminalString() string {
+	return fmt.Sprintf("[%d, %d]", r.start, r.end)
+}
+
 type syncActions struct {
 	clearState      *eth.BlockID
 	blocksToPrune   int
@@ -25,9 +30,22 @@ type syncActions struct {
 	// NOTE this range is inclusive on both ends, which is a change to previous behaviour.
 }
 
-func (s syncActions) String() string {
+func (s syncActions) TerminalString() string {
+	cs := "nil"
+	if s.clearState != nil {
+		cs = s.clearState.TerminalString()
+	}
+	btl := "nil"
+	if s.blocksToLoad != nil {
+		btl = s.blocksToLoad.TerminalString()
+	}
 	return fmt.Sprintf(
-		"SyncActions{blocksToPrune: %d, channelsToPrune: %d, clearState: %v, blocksToLoad: %v}", s.blocksToPrune, s.channelsToPrune, s.clearState, s.blocksToLoad)
+		"SyncActions{blocksToPrune: %d, channelsToPrune: %d, clearState: %v, blocksToLoad: %v}", s.blocksToPrune, s.channelsToPrune, cs, btl)
+}
+
+func summarizeSyncStatusNumbers(ss eth.SyncStatus) string {
+	return fmt.Sprintf("SyncStatus{HeadL1: %d, CurrentL1: %d, LocalSafeL2: %d, UnsafeL2: %d}",
+		ss.HeadL1.Number, ss.CurrentL1.Number, ss.LocalSafeL2.Number, ss.UnsafeL2.Number)
 }
 
 // computeSyncActions determines the actions that should be taken based on the inputs provided. The inputs are the current
@@ -36,15 +54,17 @@ func (s syncActions) String() string {
 // range to load into the local state, and whether to clear the state entirely. Returns an boolean indicating if the sequencer is out of sync.
 func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCurrentL1 eth.L1BlockRef, blocks queue.Queue[*types.Block], channels []T, l log.Logger) (syncActions, bool) {
 
+	m := l.With("newSyncStatus", summarizeSyncStatusNumbers(newSyncStatus))
+
 	// PART 1: Initial checks on the sync status
 	if newSyncStatus.HeadL1 == (eth.L1BlockRef{}) {
-		l.Warn("empty sync status")
+		m.Warn("empty sync status")
 		return syncActions{}, true
 	}
 
 	if newSyncStatus.CurrentL1.Number < prevCurrentL1.Number {
 		// This can happen when the sequencer restarts
-		l.Warn("sequencer currentL1 reversed")
+		m.Warn("sequencer currentL1 reversed", "prevCurrentL1", prevCurrentL1)
 		return syncActions{}, true
 	}
 
@@ -60,7 +80,7 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 		s := syncActions{
 			blocksToLoad: allUnsafeBlocks,
 		}
-		l.Info("no blocks in state", "syncActions", s)
+		m.Info("no blocks in state", "syncActions", s)
 		return s, false
 	}
 
@@ -77,10 +97,9 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 	nextSafeBlockNum := newSyncStatus.LocalSafeL2.Number + 1
 
 	if nextSafeBlockNum < oldestBlockInStateNum {
-		l.Warn("next safe block is below oldest block in state",
+		m.Warn("next safe block is below oldest block in state",
 			"syncActions", startAfresh,
-			"oldestBlockInState", oldestBlockInState,
-			"safeL2", newSyncStatus.LocalSafeL2)
+			"oldestBlockInStateNum", oldestBlockInStateNum)
 		return startAfresh, false
 	}
 
@@ -94,19 +113,17 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 		// This could happen if the batcher restarted.
 		// The sequencer may have derived the safe chain
 		// from channels sent by a previous batcher instance.
-		l.Warn("safe head above newest block in state, clearing channel manager state",
+		m.Warn("safe head above newest block in state, clearing channel manager state",
 			"syncActions", startAfresh,
-			"safeL2", newSyncStatus.LocalSafeL2,
 			"newestBlockInState", eth.ToBlockID(newestBlockInState),
 		)
 		return startAfresh, false
 	}
 
 	if numBlocksToDequeue > 0 && blocks[numBlocksToDequeue-1].Hash() != newSyncStatus.LocalSafeL2.Hash {
-		l.Warn("safe chain reorg, clearing channel manager state",
+		m.Warn("safe chain reorg, clearing channel manager state",
 			"syncActions", startAfresh,
-			"existingBlock", eth.ToBlockID(blocks[numBlocksToDequeue-1]),
-			"safeL2", newSyncStatus.LocalSafeL2)
+			"existingBlock", eth.ToBlockID(blocks[numBlocksToDequeue-1]))
 		return startAfresh, false
 	}
 
@@ -120,10 +137,9 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 			// for a fully submitted channel. This indicates
 			// that the derivation pipeline may have stalled
 			// e.g. because of Holocene strict ordering rules.
-			l.Warn("sequencer did not make expected progress",
+			m.Warn("sequencer did not make expected progress",
 				"syncActions", startAfresh,
-				"existingBlock", ch.LatestL2(),
-				"safeL2", newSyncStatus.LocalSafeL2)
+				"existingBlock", ch.LatestL2())
 			return startAfresh, false
 		}
 	}
@@ -144,9 +160,11 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 		allUnsafeBlocksAboveState = &inclusiveBlockRange{newestBlockInStateNum + 1, newSyncStatus.UnsafeL2.Number}
 	}
 
-	return syncActions{
+	a := syncActions{
 		blocksToPrune:   int(numBlocksToDequeue),
 		channelsToPrune: numChannelsToPrune,
 		blocksToLoad:    allUnsafeBlocksAboveState,
-	}, false
+	}
+	m.Debug("computed sync actions", "syncActions", a)
+	return a, false
 }
