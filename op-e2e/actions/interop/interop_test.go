@@ -461,3 +461,53 @@ func TestInteropCrossSafeDependencyDelay(gt *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, chainBSubmittedIn.NumberU64(), source.Number)
 }
+
+func TestInteropCascadeInvalidBlock(gt *testing.T) {
+	t := helpers.NewDefaultTesting(gt)
+	system := dsl.NewInteropDSL(t)
+
+	actors := system.Actors
+	alice := system.CreateUser()
+	emitterContract := dsl.NewEmitterContract(t)
+	// Deploy emitter contract to both chains
+	system.AddL2Block(actors.ChainA, dsl.WithL2BlockTransactions(
+		emitterContract.Deploy(alice),
+	))
+	system.AddL2Block(actors.ChainB, dsl.WithL2BlockTransactions(
+		emitterContract.Deploy(alice),
+	))
+
+	// Initiating messages on chain A
+	system.AddL2Block(actors.ChainA, dsl.WithL2BlockTransactions(
+		emitterContract.EmitMessage(alice, "chainA message"),
+	))
+	chainAInitTx := emitterContract.LastEmittedMessage()
+	system.AddL2Block(actors.ChainB)
+
+	// Create a message with a conflicting payload on chain B, that also emits an initiating message
+	system.AddL2Block(actors.ChainB, dsl.WithL2BlockTransactions(
+		system.InboxContract.Execute(alice, chainAInitTx, dsl.WithPayload([]byte("this message was never emitted"))),
+		emitterContract.EmitMessage(alice, "chainB message"),
+	), dsl.WithL1BlockCrossUnsafe())
+	chainBExecTx := system.InboxContract.LastTransaction()
+	chainBExecTx.CheckIncluded()
+	chainBInitTx := emitterContract.LastEmittedMessage()
+
+	// Create a message with a valid message on chain A, pointing to the initiating message on B from the same block
+	// as an invalid message.
+	system.AddL2Block(actors.ChainA,
+		dsl.WithL2BlockTransactions(system.InboxContract.Execute(alice, chainBInitTx)),
+		func(opts *dsl.AddL2BlockOpts) {
+			opts.BlockIsNotCrossUnsafe = true
+		},
+	)
+	chainAExecTx := system.InboxContract.LastTransaction()
+	chainAExecTx.CheckIncluded()
+
+	system.SubmitBatchData()
+
+	// assert that the invalid message txs were reorged out
+	chainBExecTx.CheckNotIncluded()
+	chainBInitTx.CheckNotIncluded() // Should have been reorged out with chainBExecTx
+	chainAExecTx.CheckNotIncluded() // Reorged out because chainBInitTx was reorged out
+}

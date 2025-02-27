@@ -453,35 +453,48 @@ func TestInteropFaultProofs_CascadeInvalidBlock(gt *testing.T) {
 		emitterContract.Deploy(alice),
 	))
 
-	// Initiating messages on chain A
-	system.AddL2Block(actors.ChainA, dsl.WithL2BlockTransactions(
-		emitterContract.EmitMessage(alice, "chainA message"),
-	))
-	chainAInitTx := emitterContract.LastEmittedMessage()
-	system.AddL2Block(actors.ChainB)
-	system.SubmitBatchData()
+	assertHeads(t, actors.ChainA, 1, 0, 1, 0)
+	assertHeads(t, actors.ChainB, 1, 0, 1, 0)
 
-	// Create a message with a conflicting payload on chain B, that also emits an initiating message
-	system.AddL2Block(actors.ChainB, dsl.WithL2BlockTransactions(
-		system.InboxContract.Execute(alice, chainAInitTx, dsl.WithPayload([]byte("this message was never emitted"))),
-		emitterContract.EmitMessage(alice, "chainB message"),
-	), dsl.WithL1BlockCrossUnsafe())
-	chainBExecTx := system.InboxContract.LastTransaction()
-	chainBExecTx.CheckIncluded()
-	chainBInitTx := emitterContract.LastEmittedMessage()
+	// Create initiating and executing messages within the same block
+	actors.ChainA.Sequencer.ActL2StartBlock(t)
+	actors.ChainB.Sequencer.ActL2StartBlock(t)
+
+	chainAInitTx := emitterContract.EmitMessage(alice, "chainA message")(actors.ChainA)
+	chainAInitTx.Include()
+
+	// Create messages with a conflicting payload on chain B, while also emitting an initiating message
+	chainBExecTx := system.InboxContract.Execute(alice, chainAInitTx,
+		dsl.WithPayload([]byte("this message waws never emitted")))(actors.ChainB)
+	chainBExecTx.Include()
+	chainBInitTx := emitterContract.EmitMessage(alice, "chainB message")(actors.ChainB)
+	chainBInitTx.Include()
 
 	// Create a message with a valid message on chain A, pointing to the initiating message on B from the same block
 	// as an invalid message.
-	system.AddL2Block(actors.ChainA,
-		dsl.WithL2BlockTransactions(system.InboxContract.Execute(alice, chainBInitTx)),
-		dsl.WithL1BlockCrossUnsafe(),
-	)
-	chainAExecTx := system.InboxContract.LastTransaction()
-	chainAExecTx.CheckIncluded()
+	chainAExecTx := system.InboxContract.Execute(alice, chainBInitTx)(actors.ChainA)
+	chainAExecTx.Include()
+
+	actors.ChainA.Sequencer.ActL2EndBlock(t)
+	actors.ChainB.Sequencer.ActL2EndBlock(t)
+
+	assertHeads(t, actors.ChainA, 2, 0, 1, 0)
+	assertHeads(t, actors.ChainB, 2, 0, 1, 0)
+
+	/*
+		actors.ChainA.Sequencer.SyncSupervisor(t)
+		actors.ChainB.Sequencer.SyncSupervisor(t)
+		actors.Supervisor.ProcessFull(t)
+		actors.ChainA.Sequencer.ActL2PipelineFull(t)
+		actors.ChainB.Sequencer.ActL2PipelineFull(t)
+	*/
 
 	system.SubmitBatchData(func(opts *dsl.SubmitBatchDataOpts) {
 		opts.SkipCrossSafeUpdate = true
 	})
+
+	assertHeads(t, actors.ChainA, 2, 2, 1, 0)
+	assertHeads(t, actors.ChainB, 2, 2, 1, 0)
 
 	endTimestamp := actors.ChainB.Sequencer.L2Unsafe().Time
 	startTimestamp := endTimestamp - 1
@@ -508,9 +521,6 @@ func TestInteropFaultProofs_CascadeInvalidBlock(gt *testing.T) {
 			disputedClaim:      optimisticEnd.Marshal(),
 			disputedTraceIndex: 1023,
 			expectValid:        false,
-			// TODO(#14306): Support cascading re-orgs in op-program
-			skipProgram:    true,
-			skipChallenger: true,
 		},
 		{
 			name:               "Consolidate-ReplaceInvalidBlocks",
@@ -518,9 +528,6 @@ func TestInteropFaultProofs_CascadeInvalidBlock(gt *testing.T) {
 			disputedClaim:      crossSafeEnd.Marshal(),
 			disputedTraceIndex: 1023,
 			expectValid:        true,
-			// TODO(#14306): Support cascading re-orgs in op-program
-			skipProgram:    true,
-			skipChallenger: true,
 		},
 	}
 	runFppAndChallengerTests(gt, system, tests)
