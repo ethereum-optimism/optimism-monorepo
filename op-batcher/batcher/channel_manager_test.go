@@ -397,7 +397,7 @@ func TestChannelManager_TxData(t *testing.T) {
 // and then calls handleChannelInvalidated. It asserts on the final state of
 // the channel manager.
 func TestChannelManager_handleChannelInvalidated(t *testing.T) {
-	l := testlog.Logger(t, log.LevelCrit)
+	l := testlog.Logger(t, log.LevelDebug)
 	cfg := channelManagerTestConfig(100, derive.SingularBatchType)
 	metrics := new(metrics.TestMetrics)
 	m := NewChannelManager(l, metrics, cfg, defaultTestRollupConfig)
@@ -433,7 +433,6 @@ func TestChannelManager_handleChannelInvalidated(t *testing.T) {
 	require.NoError(t, m.ensureChannelWithSpace(eth.BlockID{}))
 	require.Len(t, m.channelQueue, 2)
 	require.Equal(t, metrics.ChannelQueueLength, 2)
-
 	require.NoError(t, m.processBlocks())
 
 	// Assert that at least one block was processed into the channel
@@ -445,18 +444,29 @@ func TestChannelManager_handleChannelInvalidated(t *testing.T) {
 
 	l1OriginBefore := m.l1OriginLastSubmittedChannel
 
-	m.handleChannelInvalidated(m.currentChannel)
+	// Add another newer channel, this will be wiped when we invalidate
+	channelToInvalidate := m.currentChannel
+	m.currentChannel.Close()
+	require.NoError(t, m.ensureChannelWithSpace(eth.BlockID{}))
+	require.Len(t, m.channelQueue, 3)
+	require.Equal(t, metrics.ChannelQueueLength, 3)
+	require.NoError(t, m.processBlocks())
+	require.Equal(t, 2, m.blockCursor)
+
+	m.handleChannelInvalidated(channelToInvalidate)
 
 	// Ensure we got back to the state above
 	require.Equal(t, m.blocks, stateSnapshot)
 	require.Contains(t, m.channelQueue, oldChannel)
+	require.NotContains(t, m.channelQueue, channelToInvalidate)
+	require.NotContains(t, m.channelQueue, newChannel)
 	require.Len(t, m.channelQueue, 1)
 	require.Equal(t, metrics.ChannelQueueLength, 1)
 
 	// Check metric came back up to previous value
 	require.Equal(t, pendingBytesBefore, metrics.PendingBlocksBytesCurrent)
 
-	// Ensure the l1OridingLastSubmittedChannel was
+	// Ensure the l1OriginLastSubmittedChannel was
 	// not changed. This ensures the next channel
 	// has its duration timeout deadline computed
 	// properly.
