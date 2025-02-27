@@ -311,7 +311,7 @@ func TestInteropFaultProofs(gt *testing.T) {
 			agreedClaim:        interop.InvalidTransition,
 			disputedClaim:      interop.InvalidTransition,
 			proposalTimestamp:  endTimestamp + 100,
-			disputedTraceIndex: 4 * stepsPerTimestamp,
+			disputedTraceIndex: 4*stepsPerTimestamp - 1,
 			expectValid:        true,
 		},
 		{
