@@ -22,8 +22,7 @@ type SafeStartDeps interface {
 // CrossSafeHazards checks if the given messages all exist and pass invariants.
 // It returns a hazard-set: if any intra-block messaging happened,
 // these hazard blocks have to be verified.
-func CrossSafeHazards(d SafeStartDeps, logger log.Logger, chainID eth.ChainID, inL1Source eth.BlockID,
-	candidate types.BlockSeal) (*HazardSet, error) {
+func CrossSafeHazards(d SafeStartDeps, logger log.Logger, chainID eth.ChainID, inL1Source eth.BlockID, candidate types.BlockSeal) (*HazardSet, error) {
 	safeDeps := &SafeHazardDeps{SafeStartDeps: d, inL1Source: inL1Source}
 	return NewHazardSet(safeDeps, logger, chainID, candidate)
 }
