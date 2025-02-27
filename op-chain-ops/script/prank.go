@@ -39,11 +39,11 @@ func (h *Host) handleCaller(caller common.Address) common.Address {
 		parentCallFrame := h.callStack[len(h.callStack)-1]
 		if parentCallFrame.Prank != nil && caller != addresses.VMAddr { // pranks do not apply to the cheatcode precompile
 			if parentCallFrame.Prank.Broadcast && parentCallFrame.LastOp == vm.CREATE2 && h.useCreate2Deployer {
-				return caller
+				return DeterministicDeployerAddress
 			}
 
 			if parentCallFrame.Prank.Sender != nil {
-				return caller
+				return *parentCallFrame.Prank.Sender
 			}
 			if parentCallFrame.Prank.Origin != nil {
 				h.env.TxContext.Origin = *parentCallFrame.Prank.Origin
