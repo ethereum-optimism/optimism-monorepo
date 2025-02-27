@@ -21,8 +21,9 @@ type EnclaveSpec struct {
 
 // NetworkParams represents the network parameters section in the YAML
 type NetworkParams struct {
-	Name      string `yaml:"name"`
-	NetworkID string `yaml:"network_id"`
+	Name              string `yaml:"name"`
+	NetworkID         string `yaml:"network_id"`
+	IsthmusTimeOffset *int   `yaml:"isthmus_time_offset,omitempty"`
 }
 
 // ChainConfig represents a chain configuration in the YAML
@@ -62,10 +63,22 @@ type featureExtractor func(YAMLSpec, string) bool
 
 var featuresMap = map[string]featureExtractor{
 	"interop": interopExtractor,
+	"isthmus": isthmusExtractor,
 }
 
-func interopExtractor(yamlSpec YAMLSpec, chainName string) bool {
+func interopExtractor(yamlSpec YAMLSpec, feature string) bool {
 	return yamlSpec.OptimismPackage.Interop.Enabled
+}
+
+// Returns true if any configured L2 has Isthmus enabled
+func isthmusExtractor(yamlSpec YAMLSpec, feature string) bool {
+	for _, e := range yamlSpec.OptimismPackage.Chains {
+		isthmus := e.NetworkParams.IsthmusTimeOffset
+		if isthmus != nil && *isthmus == 0 {
+			return true
+		}
+	}
+	return false
 }
 
 // ExtractData parses a YAML document and returns the chain specifications

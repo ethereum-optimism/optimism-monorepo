@@ -14,6 +14,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	coreTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/params"
 )
 
 var (
@@ -61,22 +62,24 @@ type chain struct {
 	id     string
 	rpcUrl string
 
-	users    map[string]Wallet
-	clients  *clientManager
-	registry interfaces.ContractsRegistry
-	mu       sync.Mutex
+	users       map[string]Wallet
+	clients     *clientManager
+	registry    interfaces.ContractsRegistry
+	mu          sync.Mutex
+	chainConfig *params.ChainConfig
 }
 
 func (c *chain) Client() (*ethclient.Client, error) {
 	return c.clients.Client(c.rpcUrl)
 }
 
-func newChain(chainID string, rpcUrl string, users map[string]Wallet) *chain {
+func newChain(chainID string, rpcUrl string, users map[string]Wallet, chainConfig *params.ChainConfig) *chain {
 	return &chain{
-		id:      chainID,
-		rpcUrl:  rpcUrl,
-		users:   users,
-		clients: newClientManager(),
+		id:          chainID,
+		rpcUrl:      rpcUrl,
+		users:       users,
+		clients:     newClientManager(),
+		chainConfig: chainConfig,
 	}
 }
 
@@ -189,12 +192,43 @@ func (c *chain) SupportsEIP(ctx context.Context, eip uint64) bool {
 	return false
 }
 
+func (c *chain) ChainConfig() (*params.ChainConfig, error) {
+	if c.chainConfig == nil {
+		return nil, fmt.Errorf("chain config not configured on L1 chains yet")
+	}
+	return c.chainConfig, nil
+}
+
+func (c *chain) BlockByHash(ctx context.Context, hash common.Hash) (*coreTypes.Block, error) {
+	client, err := c.Client()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client: %w", err)
+	}
+	return client.BlockByHash(ctx, hash)
+}
+
+func (c *chain) BlockByNumber(ctx context.Context, number *big.Int) (*coreTypes.Block, error) {
+	client, err := c.Client()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client: %w", err)
+	}
+	return client.BlockByNumber(ctx, number)
+}
+
+func (c *chain) LatestBlock(ctx context.Context) (*coreTypes.Block, error) {
+	client, err := c.Client()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client: %w", err)
+	}
+	return client.BlockByNumber(ctx, nil) // nil means latest block in geth
+}
+
 func chainFromDescriptor(d *descriptors.Chain) (Chain, error) {
 	// TODO: handle incorrect descriptors better. We could panic here.
 	firstNodeRPC := d.Nodes[0].Services["el"].Endpoints["rpc"]
 	rpcURL := fmt.Sprintf("http://%s:%d", firstNodeRPC.Host, firstNodeRPC.Port)
 
-	c := newChain(d.ID, rpcURL, nil) // Create chain first
+	c := newChain(d.ID, rpcURL, nil, d.ChainConfig) // Create chain first
 
 	users := make(map[string]Wallet)
 	for key, w := range d.Wallets {

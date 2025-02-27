@@ -30,6 +30,17 @@ func (l *lowLevelSystemWrapper) L2s() []system.LowLevelChain {
 	return l.l2
 }
 
+// lowLevelSystemValidator creates a PreconditionValidator that ensures all chains in the system
+// implement the LowLevelChain interface. If successful, it stores a LowLevelSystem wrapper
+// in the context using the provided sysMarker as the key.
+//
+// The validator:
+// 1. Checks if the L1 chain implements LowLevelChain
+// 2. Checks if all L2 chains implement LowLevelChain
+// 3. Creates a lowLevelSystemWrapper containing all chains
+// 4. Stores the wrapper in the context with the provided marker
+//
+// Returns an error if any chain doesn't implement the LowLevelChain interface.
 func lowLevelSystemValidator(sysMarker interface{}) systest.PreconditionValidator {
 	return func(t systest.T, sys system.System) (context.Context, error) {
 		lowLevelSys := &lowLevelSystemWrapper{}

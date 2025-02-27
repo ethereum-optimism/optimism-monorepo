@@ -2,6 +2,7 @@ package system
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 	"testing"
 
@@ -12,6 +13,7 @@ import (
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -75,6 +77,8 @@ func newMockChain() *mockChain {
 	}
 }
 
+var _ Chain = (*mockChain)(nil)
+
 func (m *mockChain) ID() types.ChainID {
 	args := m.Called()
 	return args.Get(0).(types.ChainID)
@@ -117,6 +121,25 @@ func (m *mockChain) Client() (*ethclient.Client, error) {
 
 func (m *mockChain) Wallets(ctx context.Context) ([]Wallet, error) {
 	return nil, nil
+}
+
+func (m *mockChain) ChainConfig() (*params.ChainConfig, error) {
+	return nil, fmt.Errorf("not implemented for mock chain")
+}
+
+func (m *mockChain) BlockByHash(ctx context.Context, hash common.Hash) (*ethtypes.Block, error) {
+	args := m.Called(ctx, hash)
+	return args.Get(0).(*ethtypes.Block), args.Error(1)
+}
+
+func (m *mockChain) BlockByNumber(ctx context.Context, number *big.Int) (*ethtypes.Block, error) {
+	args := m.Called(ctx, number)
+	return args.Get(0).(*ethtypes.Block), args.Error(1)
+}
+
+func (m *mockChain) LatestBlock(ctx context.Context) (*ethtypes.Block, error) {
+	args := m.Called(ctx)
+	return args.Get(0).(*ethtypes.Block), args.Error(1)
 }
 
 func TestNewTxBuilder(t *testing.T) {

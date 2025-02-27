@@ -43,22 +43,30 @@ func NewEnclaveFSWithContext(ctx EnclaveContextIface) *EnclaveFS {
 }
 
 type Artifact struct {
-	reader *tar.Reader
+	reader      *tar.Reader
+	archiveData []byte
+	gzipReader  *gzip.Reader
 }
 
 func (fs *EnclaveFS) GetArtifact(ctx context.Context, name string) (*Artifact, error) {
-	artifact, err := fs.enclaveCtx.DownloadFilesArtifact(ctx, name)
+	archiveData, err := fs.enclaveCtx.DownloadFilesArtifact(ctx, name)
 	if err != nil {
 		return nil, err
 	}
 
-	buffer := bytes.NewBuffer(artifact)
-	zipReader, err := gzip.NewReader(buffer)
+	// Create a new reader for the archive data
+	buffer := bytes.NewBuffer(archiveData)
+	gzipReader, err := gzip.NewReader(buffer)
 	if err != nil {
 		return nil, err
 	}
-	tarReader := tar.NewReader(zipReader)
-	return &Artifact{reader: tarReader}, nil
+	tarReader := tar.NewReader(gzipReader)
+
+	return &Artifact{
+		reader:      tarReader,
+		archiveData: archiveData,
+		gzipReader:  gzipReader,
+	}, nil
 }
 
 type ArtifactFileWriter struct {
@@ -73,7 +81,33 @@ func NewArtifactFileWriter(path string, writer io.Writer) *ArtifactFileWriter {
 	}
 }
 
+// resetReader recreates the tar reader from the stored archive data
+func (a *Artifact) resetReader() error {
+	// Close the existing gzip reader if it exists
+	if a.gzipReader != nil {
+		a.gzipReader.Close()
+	}
+
+	// Create a new reader from the stored archive data
+	buffer := bytes.NewBuffer(a.archiveData)
+	gzipReader, err := gzip.NewReader(buffer)
+	if err != nil {
+		return err
+	}
+
+	a.gzipReader = gzipReader
+	a.reader = tar.NewReader(gzipReader)
+	return nil
+}
+
+// ExtractFiles extracts specific files from the artifact to the provided writers.
+// This function can be called multiple times on the same Artifact instance.
 func (a *Artifact) ExtractFiles(writers ...*ArtifactFileWriter) error {
+	// Reset the reader to the beginning of the archive
+	if err := a.resetReader(); err != nil {
+		return err
+	}
+
 	paths := make(map[string]io.Writer)
 	for _, writer := range writers {
 		canonicalPath := filepath.Clean(writer.path)
@@ -148,4 +182,12 @@ func NewArtifactFileReader(path string, reader io.Reader) *ArtifactFileReader {
 		path:   path,
 		reader: reader,
 	}
+}
+
+// Close closes the gzip reader and releases resources.
+func (a *Artifact) Close() error {
+	if a.gzipReader != nil {
+		return a.gzipReader.Close()
+	}
+	return nil
 }

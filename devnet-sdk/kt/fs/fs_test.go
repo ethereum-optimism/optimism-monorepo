@@ -153,6 +153,112 @@ func TestArtifactExtraction(t *testing.T) {
 	}
 }
 
+func TestMultipleExtractCalls(t *testing.T) {
+	// Create a test artifact with multiple files
+	files := map[string]string{
+		"file1.txt":     "content1",
+		"file2.txt":     "content2",
+		"dir/file3.txt": "content3",
+	}
+
+	// Create mock context with artifact
+	mockCtx := &mockEnclaveContext{
+		artifacts: map[string][]byte{
+			"test-artifact": createTarGzArtifact(t, files),
+		},
+	}
+
+	fs := NewEnclaveFSWithContext(mockCtx)
+	artifact, err := fs.GetArtifact(context.Background(), "test-artifact")
+	require.NoError(t, err)
+	defer artifact.Close()
+
+	// First extraction - extract file1.txt
+	buf1 := &bytes.Buffer{}
+	writer1 := NewArtifactFileWriter("file1.txt", buf1)
+	err = artifact.ExtractFiles(writer1)
+	require.NoError(t, err)
+	require.Equal(t, "content1", buf1.String(), "content mismatch for file1.txt on first extraction")
+
+	// Second extraction - extract file2.txt
+	buf2 := &bytes.Buffer{}
+	writer2 := NewArtifactFileWriter("file2.txt", buf2)
+	err = artifact.ExtractFiles(writer2)
+	require.NoError(t, err)
+	require.Equal(t, "content2", buf2.String(), "content mismatch for file2.txt on second extraction")
+
+	// Third extraction - extract multiple files at once
+	buf3 := &bytes.Buffer{}
+	buf4 := &bytes.Buffer{}
+	writer3 := NewArtifactFileWriter("file1.txt", buf3)
+	writer4 := NewArtifactFileWriter("dir/file3.txt", buf4)
+	err = artifact.ExtractFiles(writer3, writer4)
+	require.NoError(t, err)
+	require.Equal(t, "content1", buf3.String(), "content mismatch for file1.txt on third extraction")
+	require.Equal(t, "content3", buf4.String(), "content mismatch for dir/file3.txt on third extraction")
+}
+
+func TestComplexExtractionScenarios(t *testing.T) {
+	// Create a test artifact with files containing longer content
+	longContent1 := "This is a longer content that will be extracted in parts\nIt has multiple lines\nAnd should be extractable multiple times"
+	longContent2 := "Another file with content\nThat spans multiple lines\nAnd should be extractable"
+
+	files := map[string]string{
+		"config.json": `{"key1":"value1","key2":"value2","nested":{"inner":"value"}}`,
+		"data.txt":    longContent1,
+		"log.txt":     longContent2,
+	}
+
+	// Create mock context with artifact
+	mockCtx := &mockEnclaveContext{
+		artifacts: map[string][]byte{
+			"test-artifact": createTarGzArtifact(t, files),
+		},
+	}
+
+	fs := NewEnclaveFSWithContext(mockCtx)
+	artifact, err := fs.GetArtifact(context.Background(), "test-artifact")
+	require.NoError(t, err)
+	defer artifact.Close()
+
+	// Test case 1: Extract all files first
+	bufAll := make(map[string]*bytes.Buffer)
+	var writersAll []*ArtifactFileWriter
+
+	for path := range files {
+		bufAll[path] = &bytes.Buffer{}
+		writersAll = append(writersAll, NewArtifactFileWriter(path, bufAll[path]))
+	}
+
+	err = artifact.ExtractFiles(writersAll...)
+	require.NoError(t, err)
+
+	// Verify all contents
+	for path, content := range files {
+		require.Equal(t, content, bufAll[path].String(), "content mismatch for %s", path)
+	}
+
+	// Test case 2: Now extract each file individually and verify
+	for path, content := range files {
+		buf := &bytes.Buffer{}
+		writer := NewArtifactFileWriter(path, buf)
+
+		err = artifact.ExtractFiles(writer)
+		require.NoError(t, err)
+		require.Equal(t, content, buf.String(), "individual extraction failed for %s", path)
+	}
+
+	// Test case 3: Extract the same file multiple times
+	for i := 0; i < 3; i++ {
+		buf := &bytes.Buffer{}
+		writer := NewArtifactFileWriter("data.txt", buf)
+
+		err = artifact.ExtractFiles(writer)
+		require.NoError(t, err)
+		require.Equal(t, longContent1, buf.String(), "repeated extraction %d failed for data.txt", i)
+	}
+}
+
 func TestPutArtifact(t *testing.T) {
 	tests := []struct {
 		name    string

@@ -12,7 +12,9 @@ import (
 	"github.com/ethereum-optimism/optimism/devnet-sdk/system"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
+	coreTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/stretchr/testify/require"
 )
 
@@ -78,6 +80,8 @@ func (m *mockTBRecorder) Skipped() bool { return m.skipped }
 // mockChain implements a minimal system.Chain for testing
 type mockChain struct{}
 
+var _ system.Chain = (*mockChain)(nil)
+
 func (m *mockChain) RPCURL() string                                  { return "http://localhost:8545" }
 func (m *mockChain) Client() (*ethclient.Client, error)              { return ethclient.Dial(m.RPCURL()) }
 func (m *mockChain) ID() types.ChainID                               { return types.ChainID(big.NewInt(1)) }
@@ -96,6 +100,18 @@ func (m *mockChain) PendingNonceAt(ctx context.Context, address common.Address) 
 }
 func (m *mockChain) SupportsEIP(ctx context.Context, eip uint64) bool {
 	return true
+}
+func (m *mockChain) ChainConfig() (*params.ChainConfig, error) {
+	return nil, fmt.Errorf("not implemented on mockChain")
+}
+func (m *mockChain) BlockByHash(ctx context.Context, hash common.Hash) (*coreTypes.Block, error) {
+	return nil, fmt.Errorf("not implemented on mockChain")
+}
+func (m *mockChain) BlockByNumber(ctx context.Context, number *big.Int) (*coreTypes.Block, error) {
+	return nil, fmt.Errorf("not implemented on mockChain")
+}
+func (m *mockChain) LatestBlock(ctx context.Context) (*coreTypes.Block, error) {
+	return nil, fmt.Errorf("not implemented on mockChain")
 }
 
 // mockSystem implements a minimal system.System for testing

@@ -12,6 +12,21 @@ import (
 
 type WalletGetter = func(context.Context) system.Wallet
 
+// walletFundsValidator creates a PreconditionValidator that ensures a wallet with sufficient funds
+// is available on the specified L2 chain. If successful, it stores the wallet in the context
+// using the provided userMarker as the key.
+//
+// Parameters:
+//   - chainIdx: The index of the L2 chain to check for wallets
+//   - minFunds: The minimum balance required for a wallet to be selected
+//   - userMarker: A unique object to use as a key for storing the wallet in the context
+//
+// The validator:
+// 1. Retrieves all wallets from the specified L2 chain
+// 2. Checks each wallet to find one with at least the minimum required balance
+// 3. If found, stores the wallet in the context with the provided marker
+//
+// Returns an error if no wallet with sufficient funds is found.
 func walletFundsValidator(chainIdx uint64, minFunds types.Balance, userMarker interface{}) systest.PreconditionValidator {
 	constraint := constraints.WithBalance(minFunds)
 	return func(t systest.T, sys system.System) (context.Context, error) {

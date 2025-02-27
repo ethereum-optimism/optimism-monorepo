@@ -91,7 +91,7 @@ func TestChainWallet(t *testing.T) {
 
 	chain := newChain("1", "http://localhost:8545", map[string]Wallet{
 		"user1": wallet,
-	})
+	}, nil)
 
 	t.Run("finds wallet meeting constraints", func(t *testing.T) {
 		constraint := &addressConstraint{addr: testAddr}
@@ -156,7 +156,7 @@ func TestChainID(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			chain := newChain(tt.idString, "", nil)
+			chain := newChain(tt.idString, "", nil, nil)
 			got := chain.ID()
 			// Compare the underlying big.Int values
 			assert.Equal(t, 0, tt.want.Cmp(got))
@@ -166,7 +166,7 @@ func TestChainID(t *testing.T) {
 
 func TestSupportsEIP(t *testing.T) {
 	ctx := context.Background()
-	chain := newChain("1", "http://localhost:8545", nil)
+	chain := newChain("1", "http://localhost:8545", nil, nil)
 
 	// Since we can't reliably test against a live node, we're just testing the error case
 	t.Run("returns false for connection error", func(t *testing.T) {
@@ -176,7 +176,7 @@ func TestSupportsEIP(t *testing.T) {
 }
 
 func TestContractsRegistry(t *testing.T) {
-	chain := newChain("1", "http://localhost:8545", nil)
+	chain := newChain("1", "http://localhost:8545", nil, nil)
 
 	t.Run("returns empty registry on error", func(t *testing.T) {
 		registry := chain.ContractsRegistry()
