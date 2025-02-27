@@ -4,6 +4,10 @@ import {OPContractsManager} from "./OPContractsManager.sol";
 ///  @notice Represents the new OPContractsManager for Upgrade 14
 contract OPContractsManager14 is OPContractsManager {
 
+    function version() public pure override returns (string memory) {
+        return string.concat(super.version(), "+upgrade14.1");
+    }
+
     /// @notice Upgrades a set of chains to the latest implementation contracts
     /// @param _opChainConfigs Array of OpChain structs, one per chain to upgrade
     /// @dev This function is intended to be called via DELEGATECALL from the Upgrade Controller Safe
