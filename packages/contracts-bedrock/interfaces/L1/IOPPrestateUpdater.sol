@@ -75,8 +75,23 @@ interface IOPPrestateUpdater {
     /// @notice Thrown when an invalid `l2ChainId` is provided to `deploy`.
     error InvalidChainId();
 
-    /// @notice Thrown when a role's address is not valid.
-    error InvalidRoleAddress(string role);
+    /// @notice Thrown when a role's address is not valid (opChainProxyAdminOwner).
+    error InvalidRoleAddressPAO();
+
+    /// @notice Thrown when a role's address is not valid (systemConfigOwner).
+    error InvalidRoleAddressSCO();
+
+    /// @notice Thrown when a role's address is not valid (batcher).
+    error InvalidRoleAddressBatcher();
+
+    /// @notice Thrown when a role's address is not valid (unsafeBlockSigner).
+    error InvalidRoleAddressUBS();
+
+    /// @notice Thrown when a role's address is not valid (proposer).
+    error InvalidRoleAddressProposer();
+
+    /// @notice Thrown when a role's address is not valid (challenger).
+    error InvalidRoleAddressChallenger();
 
     /// @notice Thrown when the latest release is not set upon initialization.
     error LatestReleaseNotSet();

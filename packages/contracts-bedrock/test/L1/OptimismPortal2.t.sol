@@ -1,11 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
-// Testing
+// Forge
 import { VmSafe } from "forge-std/Vm.sol";
+import { console2 as console } from "forge-std/console2.sol";
+
+// Testing
 import { CommonTest } from "test/setup/CommonTest.sol";
 import { NextImpl } from "test/mocks/NextImpl.sol";
 import { EIP1967Helper } from "test/mocks/EIP1967Helper.sol";
+
+// Scripts
+import { ForgeArtifacts, StorageSlot } from "scripts/libraries/ForgeArtifacts.sol";
 
 // Contracts
 import { SuperchainConfig } from "src/L1/SuperchainConfig.sol";
@@ -24,6 +30,7 @@ import { IOptimismPortal2 } from "interfaces/L1/IOptimismPortal2.sol";
 import { IDisputeGame } from "interfaces/dispute/IDisputeGame.sol";
 import { IFaultDisputeGame } from "interfaces/dispute/IFaultDisputeGame.sol";
 import { IProxy } from "interfaces/universal/IProxy.sol";
+import { IAnchorStateRegistry } from "interfaces/dispute/IAnchorStateRegistry.sol";
 
 contract OptimismPortal2_Test is CommonTest {
     address depositor;
@@ -507,6 +514,24 @@ contract OptimismPortal2_FinalizeWithdrawal_Test is CommonTest {
         assertFalse(optimismPortal2.finalizedWithdrawals(Hashing.hashWithdrawal(_defaultTx)));
     }
 
+    /// @notice Sets the supeRootsActive variable to the provided value.
+    /// @param _superRootsActive The value to set the superRootsActive variable to.
+    function setSuperRootsActive(bool _superRootsActive) public {
+        // Get the slot for superRootsActive.
+        StorageSlot memory slot = ForgeArtifacts.getSlot("OptimismPortal2", "superRootsActive");
+
+        // Load the existing storage slot value.
+        bytes32 existingValue = vm.load(address(optimismPortal2), bytes32(slot.slot));
+
+        // Inject the bool into the existing storage slot value with a bitwise OR.
+        // Shift the bool left by the offset of the storage slot and OR with existing value.
+        bytes32 newValue =
+            bytes32(uint256(uint8(_superRootsActive ? 1 : 0)) << slot.offset * 8 | uint256(existingValue));
+
+        // Store the new value at the correct slot/offset.
+        vm.store(address(optimismPortal2), bytes32(slot.slot), newValue);
+    }
+
     /// @dev Tests that `proveWithdrawalTransaction` reverts when paused.
     function test_proveWithdrawalTransaction_paused_reverts() external {
         vm.prank(optimismPortal2.guardian());
@@ -743,6 +768,216 @@ contract OptimismPortal2_FinalizeWithdrawal_Test is CommonTest {
         optimismPortal2.proveWithdrawalTransaction({
             _tx: _defaultTx,
             _disputeGameIndex: _proposedGameIndex + 1,
+            _outputRootProof: _outputRootProof,
+            _withdrawalProof: _withdrawalProof
+        });
+    }
+
+    /// @dev Tests that `proveWithdrawalTransaction` reverts when using the Output Roots version of
+    ///      `proveWithdrawalTransaction` when `superRootsActive` is true.
+    function test_proveWithdrawalTransaction_outputRootVersionWhenSuperRootsActive_reverts() external {
+        // Set superRootsActive to true.
+        setSuperRootsActive(true);
+
+        // Should revert.
+        vm.expectRevert(IOptimismPortal2.OptimismPortal_WrongProofMethod.selector);
+        optimismPortal2.proveWithdrawalTransaction({
+            _tx: _defaultTx,
+            _disputeGameIndex: _proposedGameIndex,
+            _outputRootProof: _outputRootProof,
+            _withdrawalProof: _withdrawalProof
+        });
+    }
+
+    /// @dev Tests that `proveWithdrawalTransaction` reverts when using the Super Roots version of
+    ///      `proveWithdrawalTransaction` when `superRootsActive` is false.
+    function test_proveWithdrawalTransaction_superRootsVersionWhenSuperRootsInactive_reverts() external {
+        // Set up a dummy super root proof.
+        Types.OutputRootWithChainId[] memory outputRootWithChainIdArr = new Types.OutputRootWithChainId[](1);
+        outputRootWithChainIdArr[0] =
+            Types.OutputRootWithChainId({ root: _outputRoot, chainId: systemConfig.l2ChainId() });
+        Types.SuperRootProof memory superRootProof = Types.SuperRootProof({
+            version: 0x01,
+            timestamp: uint64(block.timestamp),
+            outputRoots: outputRootWithChainIdArr
+        });
+
+        // Should revert.
+        vm.expectRevert(IOptimismPortal2.OptimismPortal_WrongProofMethod.selector);
+        optimismPortal2.proveWithdrawalTransaction({
+            _tx: _defaultTx,
+            _disputeGameProxy: game,
+            _outputRootIndex: 0,
+            _superRootProof: superRootProof,
+            _outputRootProof: _outputRootProof,
+            _withdrawalProof: _withdrawalProof
+        });
+    }
+
+    /// @dev Tests that `proveWithdrawalTransaction` reverts when using the Super Roots version of
+    ///      `proveWithdrawalTransaction` when the provided proof is invalid.
+    function test_proveWithdrawalTransaction_superRootsVersionBadProof_reverts() external {
+        // Enable super roots.
+        setSuperRootsActive(true);
+
+        // Set up a dummy super root proof.
+        Types.OutputRootWithChainId[] memory outputRootWithChainIdArr = new Types.OutputRootWithChainId[](1);
+        outputRootWithChainIdArr[0] =
+            Types.OutputRootWithChainId({ root: _outputRoot, chainId: systemConfig.l2ChainId() });
+        Types.SuperRootProof memory superRootProof = Types.SuperRootProof({
+            version: 0x01,
+            timestamp: uint64(block.timestamp),
+            outputRoots: outputRootWithChainIdArr
+        });
+
+        // Should revert because the proof is wrong.
+        vm.expectRevert(IOptimismPortal2.OptimismPortal_InvalidSuperRootProof.selector);
+        optimismPortal2.proveWithdrawalTransaction({
+            _tx: _defaultTx,
+            _disputeGameProxy: game,
+            _outputRootIndex: 0,
+            _superRootProof: superRootProof,
+            _outputRootProof: _outputRootProof,
+            _withdrawalProof: _withdrawalProof
+        });
+    }
+
+    /// @dev Tests that `proveWithdrawalTransaction` reverts when using the Super Roots version of
+    ///      `proveWithdrawalTransaction` when the provided proof is valid but the index is out of
+    ///      bounds.
+    function test_proveWithdrawalTransaction_superRootsVersionBadIndex_reverts() external {
+        // Enable super roots.
+        setSuperRootsActive(true);
+
+        // Set up a dummy super root proof.
+        Types.OutputRootWithChainId[] memory outputRootWithChainIdArr = new Types.OutputRootWithChainId[](1);
+        outputRootWithChainIdArr[0] =
+            Types.OutputRootWithChainId({ root: _outputRoot, chainId: systemConfig.l2ChainId() });
+        Types.SuperRootProof memory superRootProof = Types.SuperRootProof({
+            version: 0x01,
+            timestamp: uint64(block.timestamp),
+            outputRoots: outputRootWithChainIdArr
+        });
+
+        // Figure out what the right hash would be.
+        bytes32 expectedSuperRoot = Hashing.hashSuperRootProof(superRootProof);
+
+        // Mock the game to return the expected super root.
+        vm.mockCall(address(game), abi.encodeCall(game.rootClaim, ()), abi.encode(expectedSuperRoot));
+
+        // Should revert because the proof is wrong.
+        vm.expectRevert(IOptimismPortal2.OptimismPortal_InvalidOutputRootIndex.selector);
+        optimismPortal2.proveWithdrawalTransaction({
+            _tx: _defaultTx,
+            _disputeGameProxy: game,
+            _outputRootIndex: outputRootWithChainIdArr.length, // out of bounds
+            _superRootProof: superRootProof,
+            _outputRootProof: _outputRootProof,
+            _withdrawalProof: _withdrawalProof
+        });
+    }
+
+    /// @dev Tests that `proveWithdrawalTransaction` reverts when using the Super Roots version of
+    ///      `proveWithdrawalTransaction` when the provided proof is valid, index is correct, but
+    ///      the output root has the wrong chain id.
+    function test_proveWithdrawalTransaction_superRootsVersionBadChainId_reverts() external {
+        // Enable super roots.
+        setSuperRootsActive(true);
+
+        // Set up a dummy super root proof.
+        Types.OutputRootWithChainId[] memory outputRootWithChainIdArr = new Types.OutputRootWithChainId[](1);
+        outputRootWithChainIdArr[0] = Types.OutputRootWithChainId({
+            root: _outputRoot,
+            chainId: systemConfig.l2ChainId() + 1 // wrong chain id
+         });
+        Types.SuperRootProof memory superRootProof = Types.SuperRootProof({
+            version: 0x01,
+            timestamp: uint64(block.timestamp),
+            outputRoots: outputRootWithChainIdArr
+        });
+
+        // Figure out what the right hash would be.
+        bytes32 expectedSuperRoot = Hashing.hashSuperRootProof(superRootProof);
+
+        // Mock the game to return the expected super root.
+        vm.mockCall(address(game), abi.encodeCall(game.rootClaim, ()), abi.encode(expectedSuperRoot));
+
+        // Should revert because the proof is wrong.
+        vm.expectRevert(IOptimismPortal2.OptimismPortal_InvalidOutputRootChainId.selector);
+        optimismPortal2.proveWithdrawalTransaction({
+            _tx: _defaultTx,
+            _disputeGameProxy: game,
+            _outputRootIndex: 0,
+            _superRootProof: superRootProof,
+            _outputRootProof: _outputRootProof,
+            _withdrawalProof: _withdrawalProof
+        });
+    }
+
+    /// @dev Tests that `proveWithdrawalTransaction` reverts when using the Super Roots version of
+    ///      `proveWithdrawalTransaction` when the provided proof is valid, index is correct, chain
+    ///      id is correct, but the output root proof is invalid.
+    function test_proveWithdrawalTransaction_superRootsVersionBadOutputRootProof_reverts() external {
+        // Enable super roots.
+        setSuperRootsActive(true);
+
+        // Set up a dummy super root proof.
+        Types.OutputRootWithChainId[] memory outputRootWithChainIdArr = new Types.OutputRootWithChainId[](1);
+        outputRootWithChainIdArr[0] = Types.OutputRootWithChainId({
+            root: keccak256(abi.encode(_outputRoot)), // random root so the proof is wrong
+            chainId: systemConfig.l2ChainId()
+        });
+        Types.SuperRootProof memory superRootProof = Types.SuperRootProof({
+            version: 0x01,
+            timestamp: uint64(block.timestamp),
+            outputRoots: outputRootWithChainIdArr
+        });
+
+        // Figure out what the right hash would be.
+        bytes32 expectedSuperRoot = Hashing.hashSuperRootProof(superRootProof);
+
+        // Mock the game to return the expected super root.
+        vm.mockCall(address(game), abi.encodeCall(game.rootClaim, ()), abi.encode(expectedSuperRoot));
+
+        // Should revert because the proof is wrong.
+        vm.expectRevert(IOptimismPortal2.OptimismPortal_InvalidOutputRootProof.selector);
+        optimismPortal2.proveWithdrawalTransaction({
+            _tx: _defaultTx,
+            _disputeGameProxy: game,
+            _outputRootIndex: 0,
+            _superRootProof: superRootProof,
+            _outputRootProof: _outputRootProof,
+            _withdrawalProof: _withdrawalProof
+        });
+    }
+
+    /// @dev Tests that `proveWithdrawalTransaction` succeeds when all parameters are valid.
+    function test_proveWithdrawalTransaction_superRootsVersion_succeeds() external {
+        // Enable super roots.
+        setSuperRootsActive(true);
+
+        // Set up a dummy super root proof.
+        Types.OutputRootWithChainId[] memory outputRootWithChainIdArr = new Types.OutputRootWithChainId[](1);
+        outputRootWithChainIdArr[0] =
+            Types.OutputRootWithChainId({ root: _outputRoot, chainId: systemConfig.l2ChainId() });
+        Types.SuperRootProof memory superRootProof = Types.SuperRootProof({
+            version: 0x01,
+            timestamp: uint64(block.timestamp),
+            outputRoots: outputRootWithChainIdArr
+        });
+
+        // Figure out what the right hash would be.
+        bytes32 expectedSuperRoot = Hashing.hashSuperRootProof(superRootProof);
+
+        // Mock the game to return the expected super root.
+        vm.mockCall(address(game), abi.encodeCall(game.rootClaim, ()), abi.encode(expectedSuperRoot));
+
+        // Should succeed.
+        optimismPortal2.proveWithdrawalTransaction({
+            _tx: _defaultTx,
+            _disputeGameProxy: game,
+            _outputRootIndex: 0,
+            _superRootProof: superRootProof,
             _outputRootProof: _outputRootProof,
             _withdrawalProof: _withdrawalProof
         });
@@ -1755,6 +1990,73 @@ contract OptimismPortal2_Upgradeable_Test is CommonTest {
         bytes32 slot21After = vm.load(address(optimismPortal2), bytes32(uint256(21)));
         bytes32 slot21Expected = NextImpl(address(optimismPortal2)).slot21Init();
         assertEq(slot21Expected, slot21After);
+    }
+}
+
+/// @title OptimismPortal2_upgrade_Test
+/// @notice Reusable test for the current upgrade() function in the OptimismPortal2 contract. If
+///         the upgrade() function is changed, tests inside of this contract should be updated to
+///         reflect the new function. If the upgrade() function is removed, remove the
+///         corresponding tests but leave this contract in place so it's easy to add tests back
+///         in the future.
+contract OptimismPortal2_upgrade_Test is CommonTest {
+    function setUp() public override {
+        super.setUp();
+    }
+
+    /// @notice Tests that the upgrade() function succeeds.
+    function test_upgrade_succeeds() external {
+        // Get the slot for _initialized.
+        StorageSlot memory slot = ForgeArtifacts.getSlot("OptimismPortal2", "_initialized");
+
+        // Set the initialized slot to 0.
+        vm.store(address(optimismPortal2), bytes32(slot.slot), bytes32(0));
+
+        // Trigger upgrade().
+        optimismPortal2.upgrade(IAnchorStateRegistry(address(0xdeadbeef)), true);
+
+        // Verify that the initialized slot was updated.
+        bytes32 initializedSlotAfter = vm.load(address(optimismPortal2), bytes32(slot.slot));
+        assertEq(initializedSlotAfter, bytes32(uint256(2)));
+
+        // Verify that superRootsActive was set to true.
+        assertEq(optimismPortal2.superRootsActive(), true);
+
+        // Verify that the AnchorStateRegistry was set.
+        assertEq(address(optimismPortal2.anchorStateRegistry()), address(0xdeadbeef));
+    }
+
+    /// @notice Tests that the upgrade() function reverts if called a second time.
+    function test_upgrade_upgradeTwice_reverts() external {
+        // Get the slot for _initialized.
+        StorageSlot memory slot = ForgeArtifacts.getSlot("OptimismPortal2", "_initialized");
+
+        // Set the initialized slot to 0.
+        vm.store(address(optimismPortal2), bytes32(slot.slot), bytes32(0));
+
+        // Trigger first upgrade.
+        optimismPortal2.upgrade(IAnchorStateRegistry(address(0xdeadbeef)), true);
+
+        // Try to trigger second upgrade.
+        vm.expectRevert("Initializable: contract is already initialized");
+        optimismPortal2.upgrade(IAnchorStateRegistry(address(0xdeadbeef)), true);
+    }
+
+    /// @notice Tests that the upgrade() function reverts if called after initialization.
+    function test_upgrade_afterInitialization_reverts() external {
+        // Get the slot for _initialized.
+        StorageSlot memory slot = ForgeArtifacts.getSlot("OptimismPortal2", "_initialized");
+
+        // Slot value should be set to 2 (already initialized).
+        bytes32 initializedSlotBefore = vm.load(address(optimismPortal2), bytes32(slot.slot));
+        assertEq(initializedSlotBefore, bytes32(uint256(2)));
+
+        // AnchorStateRegistry address should be non-zero.
+        assertNotEq(address(optimismPortal2.anchorStateRegistry()), address(0));
+
+        // Try to trigger upgrade().
+        vm.expectRevert("Initializable: contract is already initialized");
+        optimismPortal2.upgrade(IAnchorStateRegistry(address(0xdeadbeef)), true);
     }
 }
 

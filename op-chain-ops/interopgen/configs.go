@@ -76,15 +76,16 @@ type L2Config struct {
 	Challenger        common.Address
 	SystemConfigOwner common.Address
 	genesis.L2InitializationConfig
-	Prefund                 map[common.Address]*big.Int
-	SaltMixer               string
-	GasLimit                uint64
-	DisputeGameType         uint32
-	DisputeAbsolutePrestate common.Hash
-	DisputeMaxGameDepth     uint64
-	DisputeSplitDepth       uint64
-	DisputeClockExtension   uint64
-	DisputeMaxClockDuration uint64
+	Prefund                   map[common.Address]*big.Int
+	SaltMixer                 string
+	GasLimit                  uint64
+	DisputeGameUsesSuperRoots bool
+	DisputeGameType           uint32
+	DisputeAbsolutePrestate   common.Hash
+	DisputeMaxGameDepth       uint64
+	DisputeSplitDepth         uint64
+	DisputeClockExtension     uint64
+	DisputeMaxClockDuration   uint64
 }
 
 func (c *L2Config) Check(log log.Logger) error {

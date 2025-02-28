@@ -17,6 +17,7 @@ import { IProxy } from "interfaces/universal/IProxy.sol";
 import { IAddressManager } from "interfaces/legacy/IAddressManager.sol";
 import { IL1ChugSplashProxy, IStaticL1ChugSplashProxy } from "interfaces/legacy/IL1ChugSplashProxy.sol";
 import { IResolvedDelegateProxy } from "interfaces/legacy/IResolvedDelegateProxy.sol";
+import { IReinitializableBase } from "interfaces/universal/IReinitializableBase.sol";
 
 library DeployUtils {
     Vm internal constant vm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
@@ -360,7 +361,19 @@ library DeployUtils {
         bytes32 slotVal = vm.load(_contractAddress, bytes32(_slot));
         uint8 val = uint8((uint256(slotVal) >> (_offset * 8)) & 0xFF);
         if (_isProxy) {
-            require(val == 1, "DeployUtils: storage value is not 1 at the given slot and offset");
+            // Using a try/catch here to check if the contract has an initVersion() defined.
+            // EIP-150 safe because we require that we have at least 200k gas before the call which
+            // is more than enough to avoid running out of gas when 63/64 of the gas is provided to
+            // the initVersion() call (which simply reads an immutable variable). Since this is
+            // only ever triggered as part of a script, we can safely assume we'll have the gas.
+            require(gasleft() > 200_000, "DeployUtils: insufficient gas for initVersion() call");
+
+            // eip150-safe
+            try IReinitializableBase(_contractAddress).initVersion() returns (uint8 initVersion_) {
+                require(val == initVersion_, "DeployUtils: storage value is incorrect at the given slot and offset");
+            } catch {
+                require(val == 1, "DeployUtils: storage value is not set at the given slot and offset");
+            }
         } else {
             require(val == type(uint8).max, "DeployUtils: storage value is not 0xff at the given slot and offset");
         }

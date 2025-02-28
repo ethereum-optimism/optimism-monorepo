@@ -262,6 +262,8 @@ type Expression struct {
 	ReferencedDeclaration  int                   `json:"referencedDeclaration,omitempty"`
 	ArgumentTypes          []AstTypeDescriptions `json:"argumentTypes,omitempty"`
 	Value                  interface{}           `json:"value,omitempty"`
+	Kind                   string                `json:"kind,omitempty"`
+	Expression             *Expression           `json:"expression,omitempty"`
 }
 
 type ForgeArtifact struct {

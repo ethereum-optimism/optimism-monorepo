@@ -15,6 +15,7 @@ interface IOptimismPortalInterop {
     error EmptyItem();
     error InvalidDataRemainder();
     error InvalidHeader();
+    error ReinitializableBase_ZeroInitVersion();
     error OptimismPortal_AlreadyFinalized();
     error OptimismPortal_BadTarget();
     error OptimismPortal_CallPaused();
@@ -31,6 +32,12 @@ interface IOptimismPortalInterop {
     error OptimismPortal_ProofNotOldEnough();
     error OptimismPortal_Unauthorized();
     error OptimismPortal_Unproven();
+    error OptimismPortal_InvalidOutputRootIndex();
+    error OptimismPortal_InvalidSuperRootProof();
+    error OptimismPortal_InvalidOutputRootChainId();
+    error OptimismPortal_WrongProofMethod();
+    error Encoding_EmptySuperRoot();
+    error Encoding_InvalidSuperRootVersion();
     error OutOfGas();
     error UnexpectedList();
     error UnexpectedString();
@@ -68,9 +75,11 @@ interface IOptimismPortalInterop {
     function initialize(
         ISystemConfig _systemConfig,
         ISuperchainConfig _superchainConfig,
-        IAnchorStateRegistry _anchorStateRegistry
+        IAnchorStateRegistry _anchorStateRegistry,
+        bool _superRootsActive
     )
         external;
+    function initVersion() external view returns (uint8);
     function l2Sender() external view returns (address);
     function minimumGasLimit(uint64 _byteCount) external pure returns (uint64);
     function numProofSubmitters(bytes32 _withdrawalHash) external view returns (uint256);
@@ -81,6 +90,15 @@ interface IOptimismPortalInterop {
     function proveWithdrawalTransaction(
         Types.WithdrawalTransaction memory _tx,
         uint256 _disputeGameIndex,
+        Types.OutputRootProof memory _outputRootProof,
+        bytes[] memory _withdrawalProof
+    )
+        external;
+    function proveWithdrawalTransaction(
+        Types.WithdrawalTransaction memory _tx,
+        IDisputeGame _disputeGameProxy,
+        uint256 _outputRootIndex,
+        Types.SuperRootProof memory _superRootProof,
         Types.OutputRootProof memory _outputRootProof,
         bytes[] memory _withdrawalProof
     )
@@ -96,8 +114,9 @@ interface IOptimismPortalInterop {
     function respectedGameTypeUpdatedAt() external view returns (uint64);
     function setConfig(ConfigType _type, bytes memory _value) external;
     function superchainConfig() external view returns (ISuperchainConfig);
+    function superRootsActive() external view returns (bool);
     function systemConfig() external view returns (ISystemConfig);
-    function upgrade(IAnchorStateRegistry _anchorStateRegistry) external;
+    function upgrade(IAnchorStateRegistry _anchorStateRegistry, bool _superRootsActive) external;
     function version() external pure returns (string memory);
 
     function __constructor__(uint256 _proofMaturityDelaySeconds) external;

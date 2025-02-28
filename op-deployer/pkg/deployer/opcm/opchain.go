@@ -33,6 +33,7 @@ type DeployOPChainInput struct {
 	SaltMixer         string
 	GasLimit          uint64
 
+	DisputeGameUsesSuperRoots    bool
 	DisputeGameType              uint32
 	DisputeAbsolutePrestate      common.Hash
 	DisputeMaxGameDepth          uint64

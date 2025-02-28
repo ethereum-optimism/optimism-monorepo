@@ -284,6 +284,19 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "initVersion",
+    "outputs": [
+      {
+        "internalType": "uint8",
+        "name": "",
+        "type": "uint8"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "address",
@@ -393,6 +406,11 @@
         "internalType": "struct SystemConfig.Addresses",
         "name": "_addresses",
         "type": "tuple"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_l2ChainId",
+        "type": "uint256"
       }
     ],
     "name": "initialize",
@@ -434,6 +452,19 @@
         "internalType": "address",
         "name": "addr_",
         "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "l2ChainId",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
       }
     ],
     "stateMutability": "view",
@@ -715,6 +746,19 @@
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_l2ChainId",
+        "type": "uint256"
+      }
+    ],
+    "name": "upgrade",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "version",
     "outputs": [
@@ -783,5 +827,10 @@
     ],
     "name": "OwnershipTransferred",
     "type": "event"
+  },
+  {
+    "inputs": [],
+    "name": "ReinitializableBase_ZeroInitVersion",
+    "type": "error"
   }
 ]

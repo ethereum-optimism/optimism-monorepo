@@ -136,3 +136,39 @@ contract Hashing_hashDepositTransaction_Test is CommonTest {
         );
     }
 }
+
+contract Hashing_hashSuperRootProof_Test is CommonTest {
+    /// @notice Tests that the Solidity impl of hashSuperRootProof matches the FFI impl
+    /// @param _timestamp The timestamp of the super root proof
+    /// @param _length The number of output roots in the super root proof
+    /// @param _seed The seed used to generate the output roots
+    function testDiff_hashSuperRootProof_succeeds(uint64 _timestamp, uint256 _length, uint256 _seed) external {
+        // Ensure at least 1 element and cap at a reasonable maximum to avoid gas issues
+        _length = uint256(bound(_length, 1, 50));
+
+        // Create output roots array
+        Types.OutputRootWithChainId[] memory outputRoots = new Types.OutputRootWithChainId[](_length);
+
+        // Generate deterministic chain IDs and roots based on the seed
+        for (uint256 i = 0; i < _length; i++) {
+            // Use different derivations of the seed for each value
+            uint256 chainId = uint256(keccak256(abi.encode(_seed, "chainId", i)));
+            bytes32 root = keccak256(abi.encode(_seed, "root", i));
+
+            outputRoots[i] = Types.OutputRootWithChainId({ chainId: chainId, root: root });
+        }
+
+        // Create the super root proof
+        Types.SuperRootProof memory proof =
+            Types.SuperRootProof({ version: 0x01, timestamp: _timestamp, outputRoots: outputRoots });
+
+        // Encode using the Solidity implementation
+        bytes32 hash1 = Hashing.hashSuperRootProof(proof);
+
+        // Encode using the FFI implementation
+        bytes32 hash2 = ffi.hashSuperRootProof(proof);
+
+        // Compare the results
+        assertEq(hash1, hash2, "Solidity and FFI implementations should match");
+    }
+}

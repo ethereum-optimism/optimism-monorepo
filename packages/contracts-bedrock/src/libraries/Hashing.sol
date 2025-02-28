@@ -146,4 +146,11 @@ library Hashing {
     {
         return keccak256(abi.encode(_destination, _source, _nonce, _sender, _target, _message));
     }
+
+    /// @notice Hashes a Super Root proof into a Super Root.
+    /// @param _superRootProof Super Root proof to hash.
+    /// @return Hashed super root proof.
+    function hashSuperRootProof(Types.SuperRootProof memory _superRootProof) internal pure returns (bytes32) {
+        return keccak256(Encoding.encodeSuperRootProof(_superRootProof));
+    }
 }
