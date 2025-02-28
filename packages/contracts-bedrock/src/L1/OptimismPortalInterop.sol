@@ -17,9 +17,6 @@ import { IL1BlockInterop, ConfigType } from "interfaces/L2/IL1BlockInterop.sol";
 ///         and L2. Messages sent directly to the OptimismPortal have no form of replayability.
 ///         Users are encouraged to use the L1CrossDomainMessenger for a higher-level interface.
 contract OptimismPortalInterop is OptimismPortal2 {
-    /// @notice Thrown when the caller is not the system config.
-    error OptimismPortal_Unauthorized();
-
     /// @param _proofMaturityDelaySeconds The proof maturity delay in seconds.
     constructor(uint256 _proofMaturityDelaySeconds) OptimismPortal2(_proofMaturityDelaySeconds) { }
 

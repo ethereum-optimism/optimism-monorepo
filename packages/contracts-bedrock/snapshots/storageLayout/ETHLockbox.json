@@ -1,0 +1,37 @@
+[
+  {
+    "bytes": "1",
+    "label": "_initialized",
+    "offset": 0,
+    "slot": "0",
+    "type": "uint8"
+  },
+  {
+    "bytes": "1",
+    "label": "_initializing",
+    "offset": 1,
+    "slot": "0",
+    "type": "bool"
+  },
+  {
+    "bytes": "20",
+    "label": "superchainConfig",
+    "offset": 2,
+    "slot": "0",
+    "type": "contract ISuperchainConfig"
+  },
+  {
+    "bytes": "32",
+    "label": "authorizedPortals",
+    "offset": 0,
+    "slot": "1",
+    "type": "mapping(address => bool)"
+  },
+  {
+    "bytes": "32",
+    "label": "authorizedLockboxes",
+    "offset": 0,
+    "slot": "2",
+    "type": "mapping(address => bool)"
+  }
+]

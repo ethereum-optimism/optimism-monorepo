@@ -16,6 +16,19 @@
   },
   {
     "inputs": [],
+    "name": "PAO",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "anchorStateRegistry",
     "outputs": [
       {
@@ -109,6 +122,19 @@
     "name": "donateETH",
     "outputs": [],
     "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "ethLockbox",
+    "outputs": [
+      {
+        "internalType": "contract IETHLockbox",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -254,6 +280,11 @@
         "internalType": "contract IAnchorStateRegistry",
         "name": "_anchorStateRegistry",
         "type": "address"
+      },
+      {
+        "internalType": "contract IETHLockbox",
+        "name": "_ethLockbox",
+        "type": "address"
       }
     ],
     "name": "initialize",
@@ -272,6 +303,13 @@
       }
     ],
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "migrateLiquidity",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -569,8 +607,26 @@
   {
     "inputs": [
       {
+        "internalType": "address",
+        "name": "_newLockbox",
+        "type": "address"
+      }
+    ],
+    "name": "updateLockbox",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "contract IAnchorStateRegistry",
         "name": "_anchorStateRegistry",
+        "type": "address"
+      },
+      {
+        "internalType": "contract IETHLockbox",
+        "name": "_ethLockbox",
         "type": "address"
       }
     ],
@@ -597,12 +653,44 @@
     "inputs": [
       {
         "indexed": false,
+        "internalType": "uint256",
+        "name": "ethBalance",
+        "type": "uint256"
+      }
+    ],
+    "name": "ETHMigrated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
         "internalType": "uint8",
         "name": "version",
         "type": "uint8"
       }
     ],
     "name": "Initialized",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "oldLockbox",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "newLockbox",
+        "type": "address"
+      }
+    ],
+    "name": "LockboxUpdated",
     "type": "event"
   },
   {

@@ -366,6 +366,21 @@ library DeployUtils {
         }
     }
 
+    function assertInitializedOZv5(address _contractAddress, bool _isProxy) internal view {
+        // keccak256(abi.encode(uint256(keccak256("openzeppelin.storage.Initializable")) - 1)) & ~bytes32(uint256(0xff))
+        bytes32 INITIALIZABLE_STORAGE = 0xf0c57e16840df040f15088dc2f81fe391c3923bec73e23a9662efc9c229c6a00;
+
+        bytes32 slotVal = vm.load(_contractAddress, INITIALIZABLE_STORAGE);
+        uint64 initialized = uint64(uint256(slotVal) & 0xFFFFFFFFFFFFFFFF);
+        if (_isProxy) {
+            require(initialized == 1, "DeployUtils: storage value is not 1 at the given slot and offset");
+        } else {
+            require(
+                initialized == type(uint64).max, "DeployUtils: storage value is not 0xff at the given slot and offset"
+            );
+        }
+    }
+
     /// @notice Etches a contract, labels it, and allows cheatcodes for it.
     /// @param _etchTo Address of the contract to etch.
     /// @param _cname The contract name (also used to label the contract).

@@ -163,7 +163,8 @@ contract L1StandardBridge_Initialize_TestFail is CommonTest { }
 contract L1StandardBridge_Receive_Test is CommonTest {
     /// @dev Tests receive bridges ETH successfully.
     function test_receive_succeeds() external {
-        uint256 balanceBefore = address(optimismPortal2).balance;
+        uint256 portalBalanceBefore = address(optimismPortal2).balance;
+        uint256 ethLockboxBalanceBefore = address(ethLockbox).balance;
 
         // The legacy event must be emitted for backwards compatibility
         vm.expectEmit(address(l1StandardBridge));
@@ -187,7 +188,8 @@ contract L1StandardBridge_Receive_Test is CommonTest {
         vm.prank(alice, alice);
         (bool success,) = address(l1StandardBridge).call{ value: 100 }(hex"");
         assertEq(success, true);
-        assertEq(address(optimismPortal2).balance, balanceBefore + 100);
+        assertEq(address(optimismPortal2).balance, portalBalanceBefore);
+        assertEq(address(ethLockbox).balance, ethLockboxBalanceBefore + 100);
     }
 }
 
@@ -196,7 +198,7 @@ contract PreBridgeETH is CommonTest {
     ///      on whether the bridge call is legacy or not.
     function _preBridgeETH(bool isLegacy, uint256 value) internal {
         if (!isForkTest()) {
-            assertEq(address(optimismPortal2).balance, 0);
+            assertEq(address(optimismPortal2).balance, 0, "OptimismPortal2 balance should be 0");
         }
         uint256 nonce = l1CrossDomainMessenger.messageNonce();
         uint256 version = 0; // Internal constant in the OptimismPortal: DEPOSIT_VERSION
@@ -266,9 +268,11 @@ contract L1StandardBridge_DepositETH_Test is PreBridgeETH {
     ///      ETH ends up in the optimismPortal.
     function test_depositETH_fromEOA_succeeds() external {
         _preBridgeETH({ isLegacy: true, value: 500 });
-        uint256 balanceBefore = address(optimismPortal2).balance;
+        uint256 portalBalanceBefore = address(optimismPortal2).balance;
+        uint256 ethLockboxBalanceBefore = address(ethLockbox).balance;
         l1StandardBridge.depositETH{ value: 500 }(50000, hex"dead");
-        assertEq(address(optimismPortal2).balance, balanceBefore + 500);
+        assertEq(address(optimismPortal2).balance, portalBalanceBefore);
+        assertEq(address(ethLockbox).balance, ethLockboxBalanceBefore + 500);
     }
 
     /// @dev Tests that depositing ETH succeeds for an EOA using 7702 delegation.
@@ -277,9 +281,11 @@ contract L1StandardBridge_DepositETH_Test is PreBridgeETH {
         vm.etch(alice, abi.encodePacked(hex"EF0100", address(0)));
 
         _preBridgeETH({ isLegacy: true, value: 500 });
-        uint256 balanceBefore = address(optimismPortal2).balance;
+        uint256 portalBalanceBefore = address(optimismPortal2).balance;
+        uint256 ethLockboxBalanceBefore = address(ethLockbox).balance;
         l1StandardBridge.depositETH{ value: 500 }(50000, hex"dead");
-        assertEq(address(optimismPortal2).balance, balanceBefore + 500);
+        assertEq(address(optimismPortal2).balance, portalBalanceBefore);
+        assertEq(address(ethLockbox).balance, ethLockboxBalanceBefore + 500);
     }
 }
 
@@ -301,9 +307,11 @@ contract L1StandardBridge_BridgeETH_Test is PreBridgeETH {
     ///      ETH ends up in the optimismPortal.
     function test_bridgeETH_succeeds() external {
         _preBridgeETH({ isLegacy: false, value: 500 });
-        uint256 balanceBefore = address(optimismPortal2).balance;
+        uint256 portalBalanceBefore = address(optimismPortal2).balance;
+        uint256 ethLockboxBalanceBefore = address(ethLockbox).balance;
         l1StandardBridge.bridgeETH{ value: 500 }(50000, hex"dead");
-        assertEq(address(optimismPortal2).balance, balanceBefore + 500);
+        assertEq(address(optimismPortal2).balance, portalBalanceBefore);
+        assertEq(address(ethLockbox).balance, ethLockboxBalanceBefore + 500);
     }
 }
 
@@ -381,9 +389,11 @@ contract L1StandardBridge_DepositETHTo_Test is PreBridgeETHTo {
     ///      ETH ends up in the optimismPortal.
     function test_depositETHTo_succeeds() external {
         _preBridgeETHTo({ isLegacy: true, value: 600 });
-        uint256 balanceBefore = address(optimismPortal2).balance;
+        uint256 portalBalanceBefore = address(optimismPortal2).balance;
+        uint256 ethLockboxBalanceBefore = address(ethLockbox).balance;
         l1StandardBridge.depositETHTo{ value: 600 }(bob, 60000, hex"dead");
-        assertEq(address(optimismPortal2).balance, balanceBefore + 600);
+        assertEq(address(optimismPortal2).balance, portalBalanceBefore);
+        assertEq(address(ethLockbox).balance, ethLockboxBalanceBefore + 600);
     }
 }
 
@@ -395,9 +405,11 @@ contract L1StandardBridge_BridgeETHTo_Test is PreBridgeETHTo {
     ///      ETH ends up in the optimismPortal.
     function test_bridgeETHTo_succeeds() external {
         _preBridgeETHTo({ isLegacy: false, value: 600 });
-        uint256 balanceBefore = address(optimismPortal2).balance;
+        uint256 portalBalanceBefore = address(optimismPortal2).balance;
+        uint256 ethLockboxBalanceBefore = address(ethLockbox).balance;
         l1StandardBridge.bridgeETHTo{ value: 600 }(bob, 60000, hex"dead");
-        assertEq(address(optimismPortal2).balance, balanceBefore + 600);
+        assertEq(address(optimismPortal2).balance, portalBalanceBefore);
+        assertEq(address(ethLockbox).balance, ethLockboxBalanceBefore + 600);
     }
 }
 

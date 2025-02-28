@@ -9,12 +9,15 @@ import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 import { ConfigType } from "interfaces/L2/IL1BlockInterop.sol";
 import { IAnchorStateRegistry } from "interfaces/dispute/IAnchorStateRegistry.sol";
+import { IETHLockbox } from "interfaces/L1/IETHLockbox.sol";
+import { IPAOBase } from "interfaces/L1/IPAOBase.sol";
 
-interface IOptimismPortalInterop {
+interface IOptimismPortalInterop is IPAOBase {
     error ContentLengthMismatch();
     error EmptyItem();
     error InvalidDataRemainder();
     error InvalidHeader();
+    error OptimismPortal_Unauthorized();
     error OptimismPortal_AlreadyFinalized();
     error OptimismPortal_BadTarget();
     error OptimismPortal_CallPaused();
@@ -29,7 +32,6 @@ interface IOptimismPortalInterop {
     error OptimismPortal_InvalidRootClaim();
     error OptimismPortal_NoReentrancy();
     error OptimismPortal_ProofNotOldEnough();
-    error OptimismPortal_Unauthorized();
     error OptimismPortal_Unproven();
     error OutOfGas();
     error UnexpectedList();
@@ -40,10 +42,13 @@ interface IOptimismPortalInterop {
     event WithdrawalFinalized(bytes32 indexed withdrawalHash, bool success);
     event WithdrawalProven(bytes32 indexed withdrawalHash, address indexed from, address indexed to);
     event WithdrawalProvenExtension1(bytes32 indexed withdrawalHash, address indexed proofSubmitter);
+    event ETHMigrated(uint256 ethBalance);
+    event LockboxUpdated(address oldLockbox, address newLockbox);
 
     receive() external payable;
 
     function anchorStateRegistry() external view returns (IAnchorStateRegistry);
+    function ethLockbox() external view returns (IETHLockbox);
     function checkWithdrawal(bytes32 _withdrawalHash, address _proofSubmitter) external view;
     function depositTransaction(
         address _to,
@@ -57,18 +62,21 @@ interface IOptimismPortalInterop {
     function disputeGameFactory() external view returns (IDisputeGameFactory);
     function disputeGameFinalityDelaySeconds() external view returns (uint256);
     function donateETH() external payable;
+    function updateLockbox(address _newLockbox) external;
     function finalizeWithdrawalTransaction(Types.WithdrawalTransaction memory _tx) external;
     function finalizeWithdrawalTransactionExternalProof(
         Types.WithdrawalTransaction memory _tx,
         address _proofSubmitter
     )
         external;
+    function migrateLiquidity() external;
     function finalizedWithdrawals(bytes32) external view returns (bool);
     function guardian() external view returns (address);
     function initialize(
         ISystemConfig _systemConfig,
         ISuperchainConfig _superchainConfig,
-        IAnchorStateRegistry _anchorStateRegistry
+        IAnchorStateRegistry _anchorStateRegistry,
+        IETHLockbox _ethLockbox
     )
         external;
     function l2Sender() external view returns (address);
@@ -97,7 +105,7 @@ interface IOptimismPortalInterop {
     function setConfig(ConfigType _type, bytes memory _value) external;
     function superchainConfig() external view returns (ISuperchainConfig);
     function systemConfig() external view returns (ISystemConfig);
-    function upgrade(IAnchorStateRegistry _anchorStateRegistry) external;
+    function upgrade(IAnchorStateRegistry _anchorStateRegistry, IETHLockbox _ethLockbox) external;
     function version() external pure returns (string memory);
 
     function __constructor__(uint256 _proofMaturityDelaySeconds) external;

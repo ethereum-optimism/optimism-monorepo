@@ -139,7 +139,7 @@ contract OptimismPortal2_Invariant_Harness is CommonTest {
         game.resolve();
 
         // Fund the portal so that we can withdraw ETH.
-        vm.deal(address(optimismPortal2), 0xFFFFFFFF);
+        vm.deal(address(ethLockbox), 0xFFFFFFFF);
     }
 }
 

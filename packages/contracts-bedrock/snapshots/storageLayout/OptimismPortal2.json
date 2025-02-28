@@ -131,5 +131,12 @@
     "offset": 0,
     "slot": "62",
     "type": "contract IAnchorStateRegistry"
+  },
+  {
+    "bytes": "20",
+    "label": "ethLockbox",
+    "offset": 0,
+    "slot": "63",
+    "type": "contract IETHLockbox"
   }
 ]

@@ -29,6 +29,7 @@ import { IOPContractsManager } from "interfaces/L1/IOPContractsManager.sol";
 import { IDisputeGameFactory } from "interfaces/dispute/IDisputeGameFactory.sol";
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 import { IOPPrestateUpdater } from "interfaces/L1/IOPPrestateUpdater.sol";
+import { IETHLockbox } from "interfaces/L1/IETHLockbox.sol";
 
 // Contracts
 import { OPContractsManager } from "src/L1/OPContractsManager.sol";
@@ -87,6 +88,10 @@ contract OPPrestateUpdater_Test is Test {
             optimismPortalImpl: DeployUtils.create1({
                 _name: "OptimismPortal2",
                 _args: DeployUtils.encodeConstructor(abi.encodeCall(IOptimismPortal2.__constructor__, (1)))
+            }),
+            ethLockboxImpl: DeployUtils.create1({
+                _name: "ETHLockbox",
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(IETHLockbox.__constructor__, ()))
             }),
             systemConfigImpl: DeployUtils.create1({
                 _name: "SystemConfig",

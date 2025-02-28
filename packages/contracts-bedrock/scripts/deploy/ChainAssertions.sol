@@ -32,6 +32,7 @@ import { IOptimismMintableERC20Factory } from "interfaces/universal/IOptimismMin
 import { IPreimageOracle } from "interfaces/cannon/IPreimageOracle.sol";
 import { IMIPS } from "interfaces/cannon/IMIPS.sol";
 import { IProxyAdmin } from "interfaces/universal/IProxyAdmin.sol";
+import { IETHLockbox } from "interfaces/L1/IETHLockbox.sol";
 
 library ChainAssertions {
     Vm internal constant vm = Vm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
@@ -391,15 +392,43 @@ library ChainAssertions {
             require(address(portal.superchainConfig()) == address(_contracts.SuperchainConfig), "CHECK-OP2-50");
             require(portal.paused() == ISuperchainConfig(_contracts.SuperchainConfig).paused(), "CHECK-OP2-60");
             require(portal.l2Sender() == Constants.DEFAULT_L2_SENDER, "CHECK-OP2-70");
+            require(address(portal.ethLockbox()) == _contracts.ETHLockbox, "CHECK-OP2-80");
         } else {
             require(address(portal.anchorStateRegistry()) == address(0), "CHECK-OP2-80");
             require(address(portal.systemConfig()) == address(0), "CHECK-OP2-90");
             require(address(portal.superchainConfig()) == address(0), "CHECK-OP2-100");
             require(portal.l2Sender() == address(0), "CHECK-OP2-110");
+            require(address(portal.ethLockbox()) == address(0), "CHECK-OP2-120");
         }
         // This slot is the custom gas token _balance and this check ensures
         // that it stays unset for forwards compatibility with custom gas token.
-        require(vm.load(address(portal), bytes32(uint256(61))) == bytes32(0), "CHECK-OP2-120");
+        require(vm.load(address(portal), bytes32(uint256(61))) == bytes32(0), "CHECK-OP2-130");
+    }
+
+    /// @notice Asserts that the ETHLockbox is setup correctly
+    function checkETHLockbox(Types.ContractSet memory _contracts, DeployConfig _cfg, bool _isProxy) internal view {
+        IETHLockbox ethLockbox = IETHLockbox(_contracts.ETHLockbox);
+        ISuperchainConfig superchainConfig = ISuperchainConfig(_contracts.SuperchainConfig);
+
+        console.log(
+            "Running chain assertions on the ETHLockbox %s at %s",
+            _isProxy ? "proxy" : "implementation",
+            address(ethLockbox)
+        );
+
+        require(address(ethLockbox) != address(0), "CHECK-ELB-10");
+
+        // Check that the contract is initialized
+        DeployUtils.assertInitialized({ _contractAddress: address(ethLockbox), _isProxy: _isProxy, _slot: 0, _offset: 0 });
+
+        if (_isProxy) {
+            require(ethLockbox.superchainConfig() == superchainConfig, "CHECK-ELB-20");
+            require(ethLockbox.authorizedPortals(_contracts.OptimismPortal), "CHECK-ELB-30");
+            require(ethLockbox.PAO() == _cfg.finalSystemOwner(), "CHECK-ELB-40");
+        } else {
+            require(address(ethLockbox.superchainConfig()) == address(0), "CHECK-ELB-50");
+            require(ethLockbox.authorizedPortals(_contracts.OptimismPortal) == false, "CHECK-ELB-60");
+        }
     }
 
     /// @notice Asserts that the ProtocolVersions is setup correctly
