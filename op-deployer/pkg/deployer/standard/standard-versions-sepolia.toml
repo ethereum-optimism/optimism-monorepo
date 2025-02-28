@@ -3,6 +3,45 @@
 #   * proxied             : specify a standard "implementation_address"
 #   * neither             : specify neither a standard "address" nor "implementation_address"
 
+# OPCM https://github.com/ethereum-optimism/optimism/releases/tag/op-contracts%2Fv2.0.0-rc.1
+["op-contracts/v2.0.0-rc.1"]
+system_config = { version = "2.4.0", implementation_address = "0x760C48C62A85045A6B69f07F4a9f22868659CbCc" }
+fault_dispute_game = { version = "1.4.1" }
+permissioned_dispute_game = { version = "1.4.1" }
+mips = { version = "1.3.0", address = "0xaa59a0777648bc75cd10364083e878c1ccd6112a" }
+optimism_portal = { version = "3.13.0", implementation_address = "0x2D7e764a0D9919e16983a46595CfA81fc34fa7Cd" }
+anchor_state_registry = { version = "2.2.2", implementation_address = "0x7b465370BB7A333f99edd19599EB7Fb1c2D3F8D2" }
+delayed_weth = { version = "1.3.0", implementation_address = "0x5e40B9231B86984b5150507046e354dbFbeD3d9e" }
+dispute_game_factory = { version = "1.0.1", implementation_address = "0x4bbA758F006Ef09402eF31724203F316ab74e4a0" }
+preimage_oracle = { version = "1.1.4", address = "0x1fb8cdfc6831fc866ed9c51af8817da5c287add3" }
+l1_cross_domain_messenger = { version = "2.5.0", implementation_address = "0x3eA6084748ED1b2A9B5D4426181F1ad8C93F6231" }
+l1_erc721_bridge = { version = "2.3.1", implementation_address = "0x276d3730f219f7ec22274f7263180b8452b46d47" }
+l1_standard_bridge = { version = "2.2.2", implementation_address = "0x78972E88Ab8BBB517a36cAea23b931BAB58AD3c6" }
+optimism_mintable_erc20_factory = { version = "1.10.1", implementation_address = "0x5493f4677A186f64805fe7317D6993ba4863988F" }
+op_contracts_manager = { version = "1.6.0", address = "0x1b25f566336f47bc5e0036d66e142237dcf4640b" }
+superchain_config = { version = "1.2.0", implementation_address = "0x4da82a327773965b8d4D85Fa3dB8249b387458E7" }
+protocol_versions = { version = "1.1.0", implementation_address = "0x37E15e4d6DFFa9e5E320Ee1eC036922E563CB76C" }
+
+# Holocene https://github.com/ethereum-optimism/optimism/releases/tag/op-contracts%2Fv1.8.0
+["op-contracts/v1.8.0"]
+# Updated in this release
+system_config = { version = "2.3.0", implementation_address = "0x33b83E4C305c908B2Fc181dDa36e230213058d7d" } # UPDATED IN THIS RELEASE
+fault_dispute_game = { version = "1.3.1" }                                                                   # UPDATED IN THIS RELEASE
+permissioned_dispute_game = { version = "1.3.1" }                                                            # UPDATED IN THIS RELEASE
+mips = { version = "1.2.1", address = "0x69470D6970Cd2A006b84B1d4d70179c892cFCE01" }                         # UPDATED IN THIS RELEASE
+# Unchanged in this release
+optimism_portal = { version = "3.10.0", implementation_address = "0x35028bae87d71cbc192d545d38f960ba30b4b233" }
+anchor_state_registry = { version = "2.0.0" }
+delayed_weth = { version = "1.1.0", implementation_address = "0x07f69b19532476c6cd03056d6bc3f1b110ab7538" }
+dispute_game_factory = { version = "1.0.0", implementation_address = "0xa51bea7e4d34206c0bcb04a776292f2f19f0beec" }
+preimage_oracle = { version = "1.1.2", address = "0x92240135b46fc1142dA181f550aE8f595B858854" }
+l1_cross_domain_messenger = { version = "2.3.0", implementation_address = "0xD3494713A5cfaD3F5359379DfA074E2Ac8C6Fd65" }
+l1_erc721_bridge = { version = "2.1.0", implementation_address = "0xae2af01232a6c4a4d3012c5ec5b1b35059caf10d" }
+l1_standard_bridge = { version = "2.1.0", implementation_address = "0x64b5a5ed26dcb17370ff4d33a8d503f0fbd06cff" }
+# l2_output_oracle -- This contract not used in fault proofs
+optimism_mintable_erc20_factory = { version = "1.9.0", implementation_address = "0xe01efbeb1089d1d1db9c6c8b135c934c0734c846" }
+op_contracts_manager = { version = "1.0.0-beta.21", address = "0xefb0779120d9cc3582747e5eb787d859e3a53a5c" }
+
 # Holocene https://github.com/ethereum-optimism/optimism/releases/tag/op-contracts%2Fv1.8.0-rc.4
 ["op-contracts/v1.8.0-rc.4"]
 # Updated in this release
@@ -21,6 +60,7 @@ l1_erc721_bridge = { version = "2.1.0", implementation_address = "0xae2af01232a6
 l1_standard_bridge = { version = "2.1.0", implementation_address = "0x64b5a5ed26dcb17370ff4d33a8d503f0fbd06cff" }
 # l2_output_oracle -- This contract not used in fault proofs
 optimism_mintable_erc20_factory = { version = "1.9.0", implementation_address = "0xe01efbeb1089d1d1db9c6c8b135c934c0734c846" }
+op_contracts_manager = { version = "1.0.0-beta.21", implementation_address = "0xefb0779120d9cc3582747e5eb787d859e3a53a5c" }
 
 # Fault Proofs https://github.com/ethereum-optimism/optimism/releases/tag/op-contracts%2Fv1.6.0
 ["op-contracts/v1.6.0"]
@@ -38,3 +78,4 @@ l1_erc721_bridge = { version = "2.1.0", implementation_address = "0xae2af01232a6
 l1_standard_bridge = { version = "2.1.0", implementation_address = "0x64b5a5ed26dcb17370ff4d33a8d503f0fbd06cff" }
 # l2_output_oracle -- This contract not used in fault proofs
 optimism_mintable_erc20_factory = { version = "1.9.0", implementation_address = "0xe01efbeb1089d1d1db9c6c8b135c934c0734c846" }
+op_contracts_manager = { version = "1.0.0-beta.21", address = "0x760B1d2Dc68DC51fb6E8B2b8722B8ed08903540c" }
