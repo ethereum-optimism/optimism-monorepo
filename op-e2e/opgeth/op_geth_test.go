@@ -1105,13 +1105,16 @@ func TestIsthmus(t *testing.T) {
 		name            string
 		isthmusTime     hexutil.Uint64
 		activateIsthmus func(ctx context.Context, t *testing.T, opGeth *OpGeth)
+		// expectEmpty is true if calling the precompiles should result in an 0x1 success (default for empty contract)
+		expectEmpty bool
 	}{
-		{name: "ActivateAtGenesis", isthmusTime: 0, activateIsthmus: func(ctx context.Context, t *testing.T, opGeth *OpGeth) {}},
+		{name: "BeforeActivation", isthmusTime: 2, activateIsthmus: func(ctx context.Context, t *testing.T, opGeth *OpGeth) {}, expectEmpty: true},
+		{name: "ActivateAtGenesis", isthmusTime: 0, activateIsthmus: func(ctx context.Context, t *testing.T, opGeth *OpGeth) {}, expectEmpty: false},
 		{name: "ActivateAfterGenesis", isthmusTime: 2, activateIsthmus: func(ctx context.Context, t *testing.T, opGeth *OpGeth) {
 			//	Adding this block advances us to the fork time.
 			_, err := opGeth.AddL2Block(ctx)
 			require.NoError(t, err)
-		}},
+		}, expectEmpty: false},
 	}
 
 	// Taken from https://eips.ethereum.org/assets/eip-2537/test-vectors
@@ -1204,9 +1207,15 @@ func TestIsthmus(t *testing.T) {
 					Data: precompileToTest.successInput,
 				}, nil)
 
+				if test.expectEmpty {
+					require.NoError(t, err)
+					require.Equal(t, []byte{}, response, "should return proper result")
+					return
+				}
+
 				require.NoError(t, err)
 
-				require.Equal(t, precompileToTest.expectedResult, response, "should return proper add result")
+				require.Equal(t, precompileToTest.expectedResult, response, "should return proper result")
 
 				// invalid request reverts with an error
 				_, err = opGeth.L2Client.CallContract(ctx, ethereum.CallMsg{
