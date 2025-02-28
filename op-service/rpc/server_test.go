@@ -114,6 +114,57 @@ func testServer(t *testing.T, endpoint string, appVersion string, namespace stri
 	})
 }
 
+// TestUserMiddlewareBeforeHealth tests that the health endpoint is always available, in front of user-middleware.
+func TestUserMiddlewareBeforeHealth(t *testing.T) {
+	appVersion := "test"
+	logger := testlog.Logger(t, log.LevelTrace)
+	server := ServerFromConfig(&ServerConfig{
+		HttpOptions: nil,
+		RpcOptions: []Option{
+			WithLogger(logger),
+			WithWebsocketEnabled(),
+			WithMiddleware(func(next http.Handler) http.Handler {
+				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					w.WriteHeader(http.StatusTeapot)
+				})
+			}),
+		},
+		Host:       "127.0.0.1",
+		Port:       0,
+		AppVersion: appVersion,
+	})
+	server.AddAPI(rpc.API{
+		Namespace: "test",
+		Service:   new(testAPI),
+	})
+	require.NoError(t, server.Start(), "must start")
+
+	t.Cleanup(func() {
+		err := server.Stop()
+		if err != nil {
+			panic(err)
+		}
+	})
+
+	t.Run("does not support other GET /foobar", func(t *testing.T) {
+		res, err := http.Get(server.httpServer.HTTPEndpoint() + "/foobar")
+		require.NoError(t, err)
+		defer res.Body.Close()
+		require.Equal(t, http.StatusTeapot, res.StatusCode)
+	})
+
+	t.Run("supports GET /healthz", func(t *testing.T) {
+		res, err := http.Get(server.httpServer.HTTPEndpoint() + "/healthz")
+		require.NoError(t, err)
+		defer res.Body.Close()
+		require.Equal(t, http.StatusOK, res.StatusCode)
+		body, err := io.ReadAll(res.Body)
+		require.NoError(t, err)
+		require.EqualValues(t, fmt.Sprintf("{\"version\":\"%s\"}\n", appVersion), string(body))
+	})
+
+}
+
 func TestAuthServer(t *testing.T) {
 	secret := [32]byte{0: 4}
 	badSecret := [32]byte{0: 5}
