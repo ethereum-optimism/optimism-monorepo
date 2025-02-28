@@ -72,6 +72,10 @@ func NewHandler(appVersion string, opts ...Option) *Handler {
 
 	var handler http.Handler
 	handler = bs.mux
+	// Apply user middlewares globally
+	for _, middleware := range bs.middlewares {
+		handler = middleware(handler)
+	}
 	// Outer-most middlewares: logging, metrics, TLS
 	handler = optls.NewPeerTLSMiddleware(handler)
 	handler = opmetrics.NewHTTPRecordingMiddleware(bs.httpRecorder, handler)
@@ -163,10 +167,6 @@ func (b *Handler) AddRPC(route string) error {
 		handler = b.newWsMiddleWare(srv, handler)
 	}
 
-	// Apply user middlewares
-	for _, middleware := range b.middlewares {
-		handler = middleware(handler)
-	}
 	b.rpcRoutes[route] = srv
 
 	b.mux.Handle(route+"/", http.StripPrefix(route+"/", handler))
