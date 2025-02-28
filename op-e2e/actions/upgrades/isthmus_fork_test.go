@@ -492,6 +492,11 @@ func TestIsthmusExcludedPredeploys(gt *testing.T) {
 
 	sequencer.ActL2EndBlock(t)
 
+	// ensure requests hash is still empty
+	latestBlock, err := ethCl.BlockByNumber(t.Ctx(), nil)
+	require.NoError(t, err, "error fetching latest block")
+	require.Equal(t, types.EmptyRequestsHash, *latestBlock.RequestsHash())
+
 	// get receipt
 	receipt, err := ethCl.TransactionReceipt(context.Background(), tx.Hash())
 	require.NoError(t, err)
