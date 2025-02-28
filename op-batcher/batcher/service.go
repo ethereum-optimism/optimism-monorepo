@@ -48,6 +48,8 @@ type BatcherConfig struct {
 	// For throttling DA. See CLIConfig in config.go for details on these parameters.
 	ThrottleThreshold, ThrottleTxSize          uint64
 	ThrottleBlockSize, ThrottleAlwaysBlockSize uint64
+
+	PreferLocalSafeL2 bool
 }
 
 // BatcherService represents a full batch-submitter instance and its resources,
@@ -110,6 +112,8 @@ func (bs *BatcherService) initFromCLIConfig(ctx context.Context, version string,
 	bs.ThrottleTxSize = cfg.ThrottleTxSize
 	bs.ThrottleBlockSize = cfg.ThrottleBlockSize
 	bs.ThrottleAlwaysBlockSize = cfg.ThrottleAlwaysBlockSize
+
+	bs.PreferLocalSafeL2 = cfg.PreferLocalSafeL2
 
 	optsFromRPC, err := bs.initRPCClients(ctx, cfg)
 	if err != nil {
