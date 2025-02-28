@@ -224,6 +224,7 @@ func (e *EngineController) logSyncProgressMaybe() func() {
 			e.log.Info("Sync progress",
 				"reason", reason,
 				"l2_finalized", e.finalizedHead,
+				"l2_local_safe", e.localSafeHead,
 				"l2_safe", e.safeHead,
 				"l2_pending_safe", e.pendingSafeHead,
 				"l2_unsafe", e.unsafeHead,
