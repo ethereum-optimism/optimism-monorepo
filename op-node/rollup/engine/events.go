@@ -145,6 +145,15 @@ func (ev CrossSafeUpdateEvent) String() string {
 	return "cross-safe-update"
 }
 
+// LocalSafeStatusEvent signals what block is local-safe.
+type LocalSafeStatusEvent struct {
+	LocalSafeL2 eth.L2BlockRef
+}
+
+func (ev LocalSafeStatusEvent) String() string {
+	return "local-safe-status"
+}
+
 // LocalSafeUpdateEvent signals that a block is now considered to be local-safe.
 type LocalSafeUpdateEvent struct {
 	Ref    eth.L2BlockRef
@@ -427,6 +436,9 @@ func (d *EngDeriver) OnEvent(ev event.Event) bool {
 			UnsafeL2Head:    d.ec.UnsafeL2Head(),
 			SafeL2Head:      d.ec.SafeL2Head(),
 			FinalizedL2Head: d.ec.Finalized(),
+		})
+		d.emitter.Emit(LocalSafeStatusEvent{
+			LocalSafeL2: d.ec.LocalSafeL2Head(),
 		})
 	case rollup.ForceResetEvent:
 		ForceEngineReset(d.ec, x)

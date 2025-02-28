@@ -67,6 +67,8 @@ func (st *StatusTracker) OnEvent(ev event.Event) bool {
 		st.data.UnsafeL2 = x.UnsafeL2Head
 		st.data.SafeL2 = x.SafeL2Head
 		st.data.FinalizedL2 = x.FinalizedL2Head
+	case engine.LocalSafeStatusEvent:
+		st.data.LocalSafeL2 = x.LocalSafeL2
 	case engine.PendingSafeUpdateEvent:
 		st.data.UnsafeL2 = x.Unsafe
 		st.data.PendingSafeL2 = x.PendingSafe
