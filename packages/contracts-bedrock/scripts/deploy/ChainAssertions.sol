@@ -402,11 +402,11 @@ library ChainAssertions {
         }
         // This slot is the custom gas token _balance and this check ensures
         // that it stays unset for forwards compatibility with custom gas token.
-        require(vm.load(address(portal), bytes32(uint256(61))) == bytes32(0), "CHECK-OP2-140");
+        require(vm.load(address(portal), bytes32(uint256(61))) == bytes32(0), "CHECK-OP2-130");
     }
 
     /// @notice Asserts that the ETHLockbox is setup correctly
-    function checkETHLockbox(Types.ContractSet memory _contracts, bool _isProxy) internal view {
+    function checkETHLockbox(Types.ContractSet memory _contracts, DeployConfig _cfg, bool _isProxy) internal view {
         IETHLockbox ethLockbox = IETHLockbox(_contracts.ETHLockbox);
         ISuperchainConfig superchainConfig = ISuperchainConfig(_contracts.SuperchainConfig);
 
@@ -424,9 +424,10 @@ library ChainAssertions {
         if (_isProxy) {
             require(ethLockbox.superchainConfig() == superchainConfig, "CHECK-ELB-20");
             require(ethLockbox.authorizedPortals(_contracts.OptimismPortal), "CHECK-ELB-30");
+            require(ethLockbox.PAO() == _cfg.finalSystemOwner(), "CHECK-ELB-40");
         } else {
-            require(address(ethLockbox.superchainConfig()) == address(0), "CHECK-ELB-40");
-            require(ethLockbox.authorizedPortals(_contracts.OptimismPortal) == false, "CHECK-ELB-50");
+            require(address(ethLockbox.superchainConfig()) == address(0), "CHECK-ELB-50");
+            require(ethLockbox.authorizedPortals(_contracts.OptimismPortal) == false, "CHECK-ELB-60");
         }
     }
 
