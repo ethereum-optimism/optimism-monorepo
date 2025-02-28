@@ -10,7 +10,7 @@ import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 import { ConfigType } from "interfaces/L2/IL1BlockInterop.sol";
 import { IAnchorStateRegistry } from "interfaces/dispute/IAnchorStateRegistry.sol";
 import { IETHLockbox } from "interfaces/L1/IETHLockbox.sol";
-import { IPAOBase } from "interfaces/l1/IPAOBase.sol";
+import { IPAOBase } from "interfaces/L1/IPAOBase.sol";
 
 interface IOptimismPortalInterop is IPAOBase {
     error ContentLengthMismatch();
