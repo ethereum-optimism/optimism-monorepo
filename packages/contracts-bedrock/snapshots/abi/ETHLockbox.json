@@ -6,7 +6,7 @@
   },
   {
     "inputs": [],
-    "name": "adminOwner",
+    "name": "PAO",
     "outputs": [
       {
         "internalType": "address",
@@ -87,6 +87,11 @@
         "internalType": "address",
         "name": "_superchainConfig",
         "type": "address"
+      },
+      {
+        "internalType": "address[]",
+        "name": "_portals",
+        "type": "address[]"
       }
     ],
     "name": "initialize",
@@ -140,7 +145,7 @@
     "outputs": [
       {
         "internalType": "contract ISuperchainConfig",
-        "name": "superchainConfig_",
+        "name": "",
         "type": "address"
       }
     ],
@@ -216,9 +221,9 @@
     "inputs": [
       {
         "indexed": false,
-        "internalType": "uint64",
+        "internalType": "uint8",
         "name": "version",
-        "type": "uint64"
+        "type": "uint8"
       }
     ],
     "name": "Initialized",
@@ -283,7 +288,7 @@
   },
   {
     "inputs": [],
-    "name": "ETHLockbox_DifferentAdminOwner",
+    "name": "ETHLockbox_DifferentPAO",
     "type": "error"
   },
   {
@@ -299,16 +304,6 @@
   {
     "inputs": [],
     "name": "ETHLockbox_Unauthorized",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "InvalidInitialization",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "NotInitializing",
     "type": "error"
   }
 ]

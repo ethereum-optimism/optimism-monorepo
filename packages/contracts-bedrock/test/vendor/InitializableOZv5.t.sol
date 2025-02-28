@@ -2,10 +2,8 @@
 pragma solidity 0.8.15;
 
 import { CommonTest } from "test/setup/CommonTest.sol";
-import { EIP1967Helper } from "test/mocks/EIP1967Helper.sol";
 import { IOptimismSuperchainERC20 } from "interfaces/L2/IOptimismSuperchainERC20.sol";
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
-import { IETHLockbox } from "interfaces/L1/IETHLockbox.sol";
 
 /// @title InitializerOZv5_Test
 /// @dev Ensures that the `initialize()` function on contracts cannot be called more than
@@ -49,24 +47,6 @@ contract InitializerOZv5_Test is CommonTest {
                     })
                 ),
                 initCalldata: abi.encodeCall(IOptimismSuperchainERC20.initialize, (address(0), "", "", 18))
-            })
-        );
-
-        // ETHLockboxImpl
-        contracts.push(
-            InitializeableContract({
-                name: "ETHLockboxImpl",
-                target: EIP1967Helper.getImplementation(address(ethLockbox)),
-                initCalldata: abi.encodeCall(IETHLockbox.initialize, (address(0)))
-            })
-        );
-
-        // ETHLockboxProxy
-        contracts.push(
-            InitializeableContract({
-                name: "ETHLockboxProxy",
-                target: address(ethLockbox),
-                initCalldata: abi.encodeCall(IETHLockbox.initialize, (address(0)))
             })
         );
     }

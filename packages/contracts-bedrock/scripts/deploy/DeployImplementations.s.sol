@@ -328,14 +328,17 @@ contract DeployImplementationsOutput is BaseDeployIO {
         // This slot is the custom gas token _balance and this check ensures
         // that it stays unset for forwards compatibility with custom gas token.
         require(vm.load(address(portal), bytes32(uint256(61))) == bytes32(0), "PORTAL-50");
+
+        require(address(portal.ethLockbox()) == address(0), "PORTAL-60");
     }
 
     function assertValidETHLockboxImpl(DeployImplementationsInput) internal view {
         IETHLockbox lockbox = ethLockboxImpl();
 
-        DeployUtils.assertInitializedOZv5({ _contractAddress: address(lockbox), _isProxy: false });
+        DeployUtils.assertInitialized({ _contractAddress: address(lockbox), _isProxy: false, _slot: 0, _offset: 0 });
 
         require(address(lockbox.superchainConfig()) == address(0), "ELB-10");
+        require(lockbox.authorizedPortals(address(optimismPortalImpl())) == false, "ELB-20");
     }
 
     function assertValidDelayedWETHImpl(DeployImplementationsInput _dii) internal view {

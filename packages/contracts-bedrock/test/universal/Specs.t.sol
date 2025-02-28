@@ -214,27 +214,27 @@ contract Specification_Test is CommonTest {
             _sel: _getSel("depositTransaction(address,uint256,uint64,bool,bytes)")
         });
         _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("donateETH()") });
+        _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("updateLockbox(address)") });
         _addSpec({
             _name: "OptimismPortalInterop",
-            _sel: IOptimismPortal2.finalizeWithdrawalTransaction.selector,
+            _sel: IOptimismPortalInterop.finalizeWithdrawalTransaction.selector,
             _pausable: true
         });
         _addSpec({
             _name: "OptimismPortalInterop",
-            _sel: IOptimismPortal2.finalizeWithdrawalTransactionExternalProof.selector,
+            _sel: IOptimismPortalInterop.finalizeWithdrawalTransactionExternalProof.selector,
             _pausable: true
         });
         _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("finalizedWithdrawals(bytes32)") });
         _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("guardian()") });
-        _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("adminOwner()") });
-        _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("initialize(address,address,address,address)") });
+        _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("initialize(address,address,address,address,address)") });
         _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("l2Sender()") });
         _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("minimumGasLimit(uint64)") });
         _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("params()") });
         _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("paused()") });
         _addSpec({
             _name: "OptimismPortalInterop",
-            _sel: IOptimismPortal2.proveWithdrawalTransaction.selector,
+            _sel: IOptimismPortalInterop.proveWithdrawalTransaction.selector,
             _pausable: true
         });
         _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("provenWithdrawals(bytes32,address)") });
@@ -248,18 +248,18 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("respectedGameTypeUpdatedAt()") });
         _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("proofSubmitters(bytes32,uint256)") });
         _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("numProofSubmitters(bytes32)") });
-        _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("upgrade(address)") });
-        _addSpec({
-            _name: "OptimismPortalInterop",
-            _sel: IOptimismPortalInterop.setConfig.selector,
-            _auth: Role.SYSTEMCONFIGOWNER
-        });
+        _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("upgrade(address,address)") });
+        _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("ethLockbox()") });
+        _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("migrateLiquidity()") });
+        _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("PAO()") });
+        _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("setConfig(uint8,bytes)") });
 
         // OptimismPortal2
         _addSpec({ _name: "OptimismPortal2", _sel: _getSel("anchorStateRegistry()") });
         _addSpec({ _name: "OptimismPortal2", _sel: _getSel("checkWithdrawal(bytes32,address)") });
         _addSpec({ _name: "OptimismPortal2", _sel: _getSel("depositTransaction(address,uint256,uint64,bool,bytes)") });
         _addSpec({ _name: "OptimismPortal2", _sel: _getSel("donateETH()") });
+        _addSpec({ _name: "OptimismPortal2", _sel: _getSel("updateLockbox(address)") });
         _addSpec({
             _name: "OptimismPortal2",
             _sel: IOptimismPortal2.finalizeWithdrawalTransaction.selector,
@@ -272,8 +272,7 @@ contract Specification_Test is CommonTest {
         });
         _addSpec({ _name: "OptimismPortal2", _sel: _getSel("finalizedWithdrawals(bytes32)") });
         _addSpec({ _name: "OptimismPortal2", _sel: _getSel("guardian()") });
-        _addSpec({ _name: "OptimismPortal2", _sel: _getSel("adminOwner()") });
-        _addSpec({ _name: "OptimismPortal2", _sel: _getSel("initialize(address,address,address,address)") });
+        _addSpec({ _name: "OptimismPortal2", _sel: _getSel("initialize(address,address,address,address,address)") });
         _addSpec({ _name: "OptimismPortal2", _sel: _getSel("l2Sender()") });
         _addSpec({ _name: "OptimismPortal2", _sel: _getSel("minimumGasLimit(uint64)") });
         _addSpec({ _name: "OptimismPortal2", _sel: _getSel("params()") });
@@ -294,7 +293,13 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "OptimismPortal2", _sel: _getSel("respectedGameTypeUpdatedAt()") });
         _addSpec({ _name: "OptimismPortal2", _sel: _getSel("proofSubmitters(bytes32,uint256)") });
         _addSpec({ _name: "OptimismPortal2", _sel: _getSel("numProofSubmitters(bytes32)") });
-        _addSpec({ _name: "OptimismPortal2", _sel: _getSel("upgrade(address)") });
+        _addSpec({ _name: "OptimismPortal2", _sel: _getSel("upgrade(address,address)") });
+        _addSpec({ _name: "OptimismPortal2", _sel: _getSel("ethLockbox()") });
+        _addSpec({ _name: "OptimismPortal2", _sel: _getSel("migrateLiquidity()") });
+        _addSpec({ _name: "OptimismPortal2", _sel: _getSel("PAO()") });
+
+        // PAOBase
+        _addSpec({ _name: "PAOBase", _sel: _getSel("PAO()") });
 
         // ProtocolVersions
         _addSpec({ _name: "ProtocolVersions", _sel: _getSel("RECOMMENDED_SLOT()") });
@@ -320,9 +325,8 @@ contract Specification_Test is CommonTest {
 
         // ETHLockbox
         _addSpec({ _name: "ETHLockbox", _sel: _getSel("version()") });
-        _addSpec({ _name: "ETHLockbox", _sel: _getSel("initialize(address)") });
+        _addSpec({ _name: "ETHLockbox", _sel: _getSel("initialize(address,address[])") });
         _addSpec({ _name: "ETHLockbox", _sel: _getSel("superchainConfig()") });
-        _addSpec({ _name: "ETHLockbox", _sel: _getSel("adminOwner()") });
         _addSpec({ _name: "ETHLockbox", _sel: _getSel("paused()") });
         _addSpec({ _name: "ETHLockbox", _sel: _getSel("authorizedPortals(address)") });
         _addSpec({ _name: "ETHLockbox", _sel: _getSel("authorizedLockboxes(address)") });
@@ -332,6 +336,7 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "ETHLockbox", _sel: _getSel("authorizePortal(address)") });
         _addSpec({ _name: "ETHLockbox", _sel: _getSel("authorizeLockbox(address)") });
         _addSpec({ _name: "ETHLockbox", _sel: _getSel("migrateLiquidity(address)") });
+        _addSpec({ _name: "ETHLockbox", _sel: _getSel("PAO()") });
 
         // ResourceMetering
         _addSpec({ _name: "ResourceMetering", _sel: _getSel("params()") });

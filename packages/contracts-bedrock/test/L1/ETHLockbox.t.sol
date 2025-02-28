@@ -10,7 +10,7 @@ import { IOptimismPortal2 as IOptimismPortal } from "interfaces/L1/IOptimismPort
 import { IETHLockbox } from "interfaces/L1/IETHLockbox.sol";
 
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
-import { IProxyAdminOwnable } from "interfaces/L1/IProxyAdminOwnable.sol";
+import { IPAOBase } from "interfaces/L1/IPAOBase.sol";
 
 // Test
 import { CommonTest } from "test/setup/CommonTest.sol";
@@ -29,27 +29,29 @@ contract ETHLockboxTest is CommonTest {
     event LiquidityReceived(address indexed lockbox);
 
     ProxyAdmin public proxyAdmin = ProxyAdmin(Predeploys.PROXY_ADMIN);
-    address public adminOwner;
+    address public PAO;
 
     function setUp() public virtual override {
         super.setUp();
-        adminOwner = proxyAdmin.owner();
+        PAO = proxyAdmin.owner();
     }
 
     /// @notice Tests the superchain config was correctly set during initialization.
     function test_initialization_succeeds() public view {
         assertEq(address(ethLockbox.superchainConfig()), address(superchainConfig));
+        assertEq(ethLockbox.authorizedPortals(address(optimismPortal2)), true);
     }
 
     /// @notice Tests it reverts when the contract is already initialized.
     function test_initialize_alreadyInitialized_reverts() public {
-        vm.expectRevert(InvalidInitialization.selector);
-        ethLockbox.initialize(address(superchainConfig));
+        vm.expectRevert("Initializable: contract is already initialized");
+        address[] memory _portals = new address[](1);
+        ethLockbox.initialize(address(superchainConfig), _portals);
     }
 
     /// @notice Tests the proxy admin owner is correctly returned.
-    function test_proxyAdminOwner_succeeds() public view {
-        assertEq(ethLockbox.adminOwner(), adminOwner);
+    function test_proxyPAO_succeeds() public view {
+        assertEq(ethLockbox.PAO(), PAO);
     }
 
     /// @notice Tests the paused status is correctly returned.
@@ -72,12 +74,10 @@ contract ETHLockboxTest is CommonTest {
         deal(address(_lockbox), _value);
 
         // Mock the admin owner of the lockbox to be the same as the current lockbox proxy admin owner
-        vm.mockCall(
-            address(_lockbox), abi.encodeCall(IProxyAdminOwnable.adminOwner, ()), abi.encode(proxyAdmin.owner())
-        );
+        vm.mockCall(address(_lockbox), abi.encodeCall(IPAOBase.PAO, ()), abi.encode(proxyAdmin.owner()));
 
         // Authorize the lockbox
-        vm.prank(adminOwner);
+        vm.prank(PAO);
         ethLockbox.authorizeLockbox(_lockbox);
 
         // Get the balance of the lockbox before the receive
@@ -134,10 +134,10 @@ contract ETHLockboxTest is CommonTest {
         vm.assume(_portal != address(ethLockbox));
 
         // Mock the admin owner of the portal to be the same as the current lockbox proxy admin owner
-        vm.mockCall(address(_portal), abi.encodeCall(IProxyAdminOwnable.adminOwner, ()), abi.encode(proxyAdmin.owner()));
+        vm.mockCall(address(_portal), abi.encodeCall(IPAOBase.PAO, ()), abi.encode(proxyAdmin.owner()));
 
         // Set the portal as an authorized portal
-        vm.prank(adminOwner);
+        vm.prank(PAO);
         ethLockbox.authorizePortal(_portal);
 
         // Deal the ETH amount to the portal
@@ -231,10 +231,10 @@ contract ETHLockboxTest is CommonTest {
         vm.assume(_portal != address(ethLockbox));
 
         // Mock the admin owner of the portal to be the same as the current lockbox proxy admin owner
-        vm.mockCall(address(_portal), abi.encodeCall(IProxyAdminOwnable.adminOwner, ()), abi.encode(proxyAdmin.owner()));
+        vm.mockCall(address(_portal), abi.encodeCall(IPAOBase.PAO, ()), abi.encode(proxyAdmin.owner()));
 
         // Set the portal as an authorized portal
-        vm.prank(adminOwner);
+        vm.prank(PAO);
         ethLockbox.authorizePortal(_portal);
 
         // Deal the ETH amount to the lockbox
@@ -277,12 +277,10 @@ contract ETHLockboxTest is CommonTest {
         // Authorize the portal
         if (!ethLockbox.authorizedPortals(_portal)) {
             // Mock the admin owner of the portal to be the same as the current lockbox proxy admin owner
-            vm.mockCall(
-                address(_portal), abi.encodeCall(IProxyAdminOwnable.adminOwner, ()), abi.encode(proxyAdmin.owner())
-            );
+            vm.mockCall(address(_portal), abi.encodeCall(IPAOBase.PAO, ()), abi.encode(proxyAdmin.owner()));
 
             // Authorize the portal
-            vm.prank(adminOwner);
+            vm.prank(PAO);
             ethLockbox.authorizePortal(_portal);
         }
 
@@ -290,27 +288,27 @@ contract ETHLockboxTest is CommonTest {
         vm.expectRevert(IETHLockbox.ETHLockbox_AlreadyAuthorized.selector);
 
         // Call the `authorizePortal` function with the portal
-        vm.prank(adminOwner);
+        vm.prank(PAO);
         ethLockbox.authorizePortal(_portal);
     }
 
-    /// @notice Tests the `authorizePortal` function reverts when the admin owner of the portal is not the same as the
-    ///         admin owner of the lockbox.
-    function testFuzz_authorizePortal_differentAdminOwner_reverts(address _portal) public {
-        vm.mockCall(address(_portal), abi.encodeCall(IProxyAdminOwnable.adminOwner, ()), abi.encode(address(0)));
+    /// @notice Tests the `authorizePortal` function reverts when the PAO of the portal is not the same as the PAO of
+    ///         the lockbox.
+    function testFuzz_authorizePortal_differentPAO_reverts(address _portal) public {
+        vm.mockCall(address(_portal), abi.encodeCall(IPAOBase.PAO, ()), abi.encode(address(0)));
 
         // Expect the revert with `DifferentOwner` selector
-        vm.expectRevert(IETHLockbox.ETHLockbox_DifferentAdminOwner.selector);
+        vm.expectRevert(IETHLockbox.ETHLockbox_DifferentPAO.selector);
 
         // Call the `authorizePortal` function
-        vm.prank(adminOwner);
+        vm.prank(PAO);
         ethLockbox.authorizePortal(_portal);
     }
 
     /// @notice Tests the `authorizeLockbox` function succeeds using the `optimismPortal2` address as the portal.
     function test_authorizePortal_succeeds() public {
         // Calculate the correct storage slot for the mapping value
-        bytes32 mappingSlot = bytes32(uint256(0)); // position on the layout
+        bytes32 mappingSlot = bytes32(uint256(1)); // position on the layout
         address key = address(optimismPortal2);
         bytes32 slot = keccak256(abi.encode(key, mappingSlot));
 
@@ -322,7 +320,7 @@ contract ETHLockboxTest is CommonTest {
         emit PortalAuthorized(address(optimismPortal2));
 
         // Call the `authorizePortal` function with the portal
-        vm.prank(adminOwner);
+        vm.prank(PAO);
         ethLockbox.authorizePortal(address(optimismPortal2));
 
         // Assert the portal is authorized
@@ -334,14 +332,14 @@ contract ETHLockboxTest is CommonTest {
         vm.assume(!ethLockbox.authorizedPortals(_portal));
 
         // Mock the admin owner of the portal to be the same as the current lockbox proxy admin owner
-        vm.mockCall(address(_portal), abi.encodeCall(IProxyAdminOwnable.adminOwner, ()), abi.encode(proxyAdmin.owner()));
+        vm.mockCall(address(_portal), abi.encodeCall(IPAOBase.PAO, ()), abi.encode(proxyAdmin.owner()));
 
         // Expect the `PortalAuthorized` event to be emitted
         vm.expectEmit(address(ethLockbox));
         emit PortalAuthorized(_portal);
 
         // Call the `authorizePortal` function with the portal
-        vm.prank(adminOwner);
+        vm.prank(PAO);
         ethLockbox.authorizePortal(_portal);
 
         // Assert the portal is authorized
@@ -364,11 +362,9 @@ contract ETHLockboxTest is CommonTest {
     function testFuzz_authorizeLockbox_alreadyAuthorized_reverts(address _lockbox) public {
         // Authorize the lockbox
         if (!ethLockbox.authorizedLockboxes(_lockbox)) {
-            vm.mockCall(
-                address(_lockbox), abi.encodeCall(IProxyAdminOwnable.adminOwner, ()), abi.encode(proxyAdmin.owner())
-            );
+            vm.mockCall(address(_lockbox), abi.encodeCall(IPAOBase.PAO, ()), abi.encode(proxyAdmin.owner()));
 
-            vm.prank(adminOwner);
+            vm.prank(PAO);
             ethLockbox.authorizeLockbox(_lockbox);
         }
 
@@ -376,20 +372,20 @@ contract ETHLockboxTest is CommonTest {
         vm.expectRevert(IETHLockbox.ETHLockbox_AlreadyAuthorized.selector);
 
         // Call the `authorizeLockbox` function with the lockbox
-        vm.prank(adminOwner);
+        vm.prank(PAO);
         ethLockbox.authorizeLockbox(_lockbox);
     }
 
-    /// @notice Tests the `authorizeLockbox` function reverts when the admin owner of the lockbox is not the same as the
-    ///         admin owner of the proxy admin.
-    function testFuzz_authorizeLockbox_differentAdminOwner_reverts(address _lockbox) public {
-        vm.mockCall(address(_lockbox), abi.encodeCall(IProxyAdminOwnable.adminOwner, ()), abi.encode(address(0)));
+    /// @notice Tests the `authorizeLockbox` function reverts when the PAO of the lockbox is not the same as the PAO of
+    ///         the proxy admin.
+    function testFuzz_authorizeLockbox_differentPAO_reverts(address _lockbox) public {
+        vm.mockCall(address(_lockbox), abi.encodeCall(IPAOBase.PAO, ()), abi.encode(address(0)));
 
-        // Expect the revert with `ETHLockbox_DifferentAdminOwner` selector
-        vm.expectRevert(IETHLockbox.ETHLockbox_DifferentAdminOwner.selector);
+        // Expect the revert with `ETHLockbox_DifferentPAO` selector
+        vm.expectRevert(IETHLockbox.ETHLockbox_DifferentPAO.selector);
 
         // Call the `authorizeLockbox` function with the lockbox
-        vm.prank(adminOwner);
+        vm.prank(PAO);
         ethLockbox.authorizeLockbox(_lockbox);
     }
 
@@ -398,16 +394,14 @@ contract ETHLockboxTest is CommonTest {
         vm.assume(!ethLockbox.authorizedLockboxes(_lockbox));
 
         // Mock the admin owner of the lockbox to be the same as the current lockbox proxy admin owner
-        vm.mockCall(
-            address(_lockbox), abi.encodeCall(IProxyAdminOwnable.adminOwner, ()), abi.encode(proxyAdmin.owner())
-        );
+        vm.mockCall(address(_lockbox), abi.encodeCall(IPAOBase.PAO, ()), abi.encode(proxyAdmin.owner()));
 
         // Expect the `LockboxAuthorized` event to be emitted
         vm.expectEmit(address(ethLockbox));
         emit LockboxAuthorized(_lockbox);
 
         // Authorize the lockbox
-        vm.prank(adminOwner);
+        vm.prank(PAO);
         ethLockbox.authorizeLockbox(_lockbox);
 
         // Assert the lockbox is authorized
@@ -426,25 +420,23 @@ contract ETHLockboxTest is CommonTest {
         ethLockbox.migrateLiquidity(address(optimismPortal2));
     }
 
-    /// @notice Tests the `migrateLiquidity` function reverts when the admin owner of the lockbox is not the same as the
-    ///         admin owner of the proxy admin.
-    function testFuzz_migrateLiquidity_differentAdminOwner_reverts(address _lockbox) public {
-        vm.mockCall(address(_lockbox), abi.encodeCall(IProxyAdminOwnable.adminOwner, ()), abi.encode(address(0)));
+    /// @notice Tests the `migrateLiquidity` function reverts when the PAO of the lockbox is not the same as the PAO of
+    ///         the proxy admin.
+    function testFuzz_migrateLiquidity_differentPAO_reverts(address _lockbox) public {
+        vm.mockCall(address(_lockbox), abi.encodeCall(IPAOBase.PAO, ()), abi.encode(address(0)));
 
-        // Expect the revert with `ETHLockbox_DifferentAdminOwner` selector
-        vm.expectRevert(IETHLockbox.ETHLockbox_DifferentAdminOwner.selector);
+        // Expect the revert with `ETHLockbox_DifferentPAO` selector
+        vm.expectRevert(IETHLockbox.ETHLockbox_DifferentPAO.selector);
 
         // Call the `migrateLiquidity` function with the lockbox
-        vm.prank(adminOwner);
+        vm.prank(PAO);
         ethLockbox.migrateLiquidity(_lockbox);
     }
 
     /// @notice Tests the `migrateLiquidity` function succeeds
     function testFuzz_migrateLiquidity_succeeds(uint256 _balance, address _lockbox) public {
         // Mock on the lockbox that will receive the migration for it to succeed
-        vm.mockCall(
-            address(_lockbox), abi.encodeCall(IProxyAdminOwnable.adminOwner, ()), abi.encode(proxyAdmin.owner())
-        );
+        vm.mockCall(address(_lockbox), abi.encodeCall(IPAOBase.PAO, ()), abi.encode(proxyAdmin.owner()));
         vm.mockCall(
             address(_lockbox), abi.encodeCall(IETHLockbox.authorizedLockboxes, (address(ethLockbox))), abi.encode(true)
         );
@@ -462,7 +454,7 @@ contract ETHLockboxTest is CommonTest {
         uint256 newLockboxBalanceBefore = address(_lockbox).balance;
 
         // Call the `migrateLiquidity` function with the lockbox
-        vm.prank(adminOwner);
+        vm.prank(PAO);
         ethLockbox.migrateLiquidity(_lockbox);
 
         // Assert the liquidity was migrated
