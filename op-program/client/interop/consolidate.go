@@ -159,17 +159,6 @@ type ConsolidateCheckDeps interface {
 }
 
 func checkHazards(logger log.Logger, deps ConsolidateCheckDeps, candidate supervisortypes.BlockSeal, chainID eth.ChainID, execMsgs map[uint32]*supervisortypes.ExecutingMessage) error {
-	// TODO(#14234): remove this check once the supervisor is updated handle msg expiry
-	messageExpiryTimeSeconds := deps.DependencySet().MessageExpiryWindow()
-	for _, msg := range execMsgs {
-		if msg.Timestamp+messageExpiryTimeSeconds < candidate.Timestamp {
-			return fmt.Errorf(
-				"message timestamp is too old: %d < %d: %w",
-				msg.Timestamp+messageExpiryTimeSeconds, candidate.Timestamp, supervisortypes.ErrConflict,
-			)
-		}
-	}
-
 	hazards, err := cross.CrossUnsafeHazards(deps, logger, chainID, candidate)
 	if err != nil {
 		return err
