@@ -23,7 +23,7 @@ The blocks are processed by an execution layer client, like [op-geth].
 ## Quickstart
 
 ```bash
-make op-node
+just op-node
 
 # Network selection:
 # - Join any of the pre-configured networks with the `--network` flag.
