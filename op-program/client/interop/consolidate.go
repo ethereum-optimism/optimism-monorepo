@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum-optimism/optimism/op-program/client/boot"
 	"github.com/ethereum-optimism/optimism/op-program/client/interop/types"
 	"github.com/ethereum-optimism/optimism/op-program/client/l1"
@@ -102,11 +101,7 @@ func RunConsolidation(
 			Number:    optimisticBlock.NumberU64(),
 			Timestamp: optimisticBlock.Time(),
 		}
-		rollupCfg, err := bootInfo.Configs.RollupConfig(chain.ChainID)
-		if err != nil {
-			return eth.Bytes32{}, fmt.Errorf("no rollup config available for chain ID %v: %w", chain.ChainID, err)
-		}
-		if err := checkHazards(rollupCfg, deps, candidate, chain.ChainID, execMsgs); err != nil {
+		if err := checkHazards(deps, candidate, chain.ChainID, execMsgs); err != nil {
 			if !isInvalidMessageError(err) {
 				return eth.Bytes32{}, err
 			}
@@ -159,27 +154,15 @@ func isInvalidMessageError(err error) bool {
 type ConsolidateCheckDeps interface {
 	cross.UnsafeFrontierCheckDeps
 	cross.CycleCheckDeps
-	Contains(chain eth.ChainID, query supervisortypes.ContainsQuery) (includedIn supervisortypes.BlockSeal, err error)
+	cross.UnsafeStartDeps
 }
 
 func checkHazards(
-	rollupCfg *rollup.Config,
 	deps ConsolidateCheckDeps,
 	candidate supervisortypes.BlockSeal,
 	chainID eth.ChainID,
 	execMsgs []*supervisortypes.ExecutingMessage,
 ) error {
-	// TODO(#14234): remove this check once the supervisor is updated handle msg expiry
-	messageExpiryTimeSeconds := rollupCfg.GetMessageExpiryTimeInterop()
-	for _, msg := range execMsgs {
-		if msg.Timestamp+messageExpiryTimeSeconds < candidate.Timestamp {
-			return fmt.Errorf(
-				"message timestamp is too old: %d < %d: %w",
-				msg.Timestamp+messageExpiryTimeSeconds, candidate.Timestamp, supervisortypes.ErrConflict,
-			)
-		}
-	}
-
 	hazards, err := cross.CrossUnsafeHazards(deps, chainID, candidate, execMsgs)
 	if err != nil {
 		return err

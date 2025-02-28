@@ -3,7 +3,9 @@ package eth
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math"
+	"strings"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -130,4 +132,43 @@ func TestStorageKey(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, c.marshaled, []uint8(key)[:])
 	}
+}
+
+func TestBytes(t *testing.T) {
+	testBytesN(t, 8, &Bytes8{0: 1, 8 - 1: 2}, func() BytesN { return new(Bytes8) })
+	testBytesN(t, 32, &Bytes32{0: 1, 32 - 1: 2}, func() BytesN { return new(Bytes32) })
+	testBytesN(t, 65, &Bytes65{0: 1, 65 - 1: 2}, func() BytesN { return new(Bytes65) })
+	testBytesN(t, 96, &Bytes96{0: 1, 96 - 1: 2}, func() BytesN { return new(Bytes96) })
+	testBytesN(t, 256, &Bytes256{0: 1, 256 - 1: 2}, func() BytesN { return new(Bytes256) })
+}
+
+type BytesN interface {
+	String() string
+	TerminalString() string
+	UnmarshalJSON(text []byte) error
+	UnmarshalText(text []byte) error
+	MarshalText() ([]byte, error)
+}
+
+func testBytesN(t *testing.T, n int, x BytesN, alloc func() BytesN) {
+	t.Run(fmt.Sprintf("Bytes%d", n), func(t *testing.T) {
+		xStr := "0x01" + strings.Repeat("00", n-2) + "02"
+		require.Equal(t, xStr, x.String())
+		if n == 8 { // too short for dots
+			require.Equal(t, "0x0100000000000002", x.TerminalString())
+		} else {
+			require.Equal(t, "0x010000..000002", x.TerminalString())
+		}
+		out, err := x.MarshalText()
+		require.NoError(t, err)
+		require.Equal(t, xStr, string(out))
+
+		y := alloc()
+		require.NoError(t, y.UnmarshalText([]byte(xStr)))
+		require.Equal(t, x, y)
+
+		z := alloc()
+		require.NoError(t, z.UnmarshalJSON([]byte(fmt.Sprintf("%q", xStr))))
+		require.Equal(t, x, z)
+	})
 }

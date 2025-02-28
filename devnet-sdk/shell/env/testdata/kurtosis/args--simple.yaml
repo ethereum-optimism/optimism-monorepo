@@ -1,0 +1,5 @@
+optimism_package:
+  chains:
+    - whatakey:
+      - el_type: op-geth
+        cl_type: op-node

@@ -36,6 +36,9 @@ type DependencySet interface {
 
 	ChainIndexFromID(id eth.ChainID) (types.ChainIndex, error)
 
+	// MessageExpiryWindow returns the message expiry window to use for this dependency set.
+	MessageExpiryWindow() uint64
+
 	ChainIndexFromID
 	ChainIDFromIndex
 }

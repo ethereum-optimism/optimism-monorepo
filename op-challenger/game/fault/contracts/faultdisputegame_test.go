@@ -2,6 +2,7 @@ package contracts
 
 import (
 	"context"
+	_ "embed"
 	"errors"
 	"fmt"
 	"math"
@@ -27,6 +28,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+//go:embed abis/FaultDisputeGame-1.2.0.json
+var faultDisputeGameAbi120 []byte
+
 var (
 	fdgAddr    = common.HexToAddress("0x24112842371dFC380576ebb09Ae16Cb6B6caD7CB")
 	vmAddr     = common.HexToAddress("0x33332842371dFC380576ebb09Ae16Cb6B6c3333")
@@ -34,43 +38,78 @@ var (
 )
 
 type contractVersion struct {
-	version string
-	loadAbi func() *abi.ABI
+	version  string
+	gameType faultTypes.GameType
+	loadAbi  func() *abi.ABI
 }
 
 func (c contractVersion) Is(versions ...string) bool {
 	return slices.Contains(versions, c.version)
 }
 
+func (c contractVersion) String() string {
+	return fmt.Sprintf("%s (%s)", c.version, c.gameType)
+}
+
+func (c contractVersion) IsSuperCannon() bool {
+	return c.gameType == faultTypes.SuperCannonGameType || c.gameType == faultTypes.SuperPermissionedGameType
+}
+
 const (
-	vers080    = "0.8.0"
-	vers0180   = "0.18.0"
-	vers111    = "1.1.1"
-	versLatest = "1.2.0"
+	vers080        = "0.8.0"
+	vers0180       = "0.18.0"
+	vers111        = "1.1.1"
+	vers120        = "1.2.0"
+	vers131        = "1.3.1"
+	versLatest     = "1.4.0"
+	verSuperCannon = "0.1.0"
 )
 
 var versions = []contractVersion{
 	{
-		version: vers080,
+		version:  vers080,
+		gameType: faultTypes.CannonGameType,
 		loadAbi: func() *abi.ABI {
 			return mustParseAbi(faultDisputeGameAbi020)
 		},
 	},
 	{
-		version: vers0180,
+		version:  vers0180,
+		gameType: faultTypes.CannonGameType,
 		loadAbi: func() *abi.ABI {
 			return mustParseAbi(faultDisputeGameAbi0180)
 		},
 	},
 	{
-		version: vers111,
+		version:  vers111,
+		gameType: faultTypes.CannonGameType,
 		loadAbi: func() *abi.ABI {
 			return mustParseAbi(faultDisputeGameAbi111)
 		},
 	},
 	{
-		version: versLatest,
-		loadAbi: snapshots.LoadFaultDisputeGameABI,
+		version:  vers120,
+		gameType: faultTypes.CannonGameType,
+		loadAbi: func() *abi.ABI {
+			return mustParseAbi(faultDisputeGameAbi120)
+		},
+	},
+	{
+		version:  vers131,
+		gameType: faultTypes.CannonGameType,
+		loadAbi: func() *abi.ABI {
+			return mustParseAbi(faultDisputeGameAbi131)
+		},
+	},
+	{
+		version:  versLatest,
+		gameType: faultTypes.CannonGameType,
+		loadAbi:  snapshots.LoadFaultDisputeGameABI,
+	},
+	{
+		version:  verSuperCannon,
+		gameType: faultTypes.SuperCannonGameType,
+		loadAbi:  snapshots.LoadFaultDisputeGameABI,
 	},
 }
 
@@ -170,7 +209,7 @@ func TestSimpleGetters(t *testing.T) {
 	}
 	for _, version := range versions {
 		version := version
-		t.Run(version.version, func(t *testing.T) {
+		t.Run(version.String(), func(t *testing.T) {
 			for _, test := range tests {
 				test := test
 				t.Run(test.methodAlias, func(t *testing.T) {
@@ -187,6 +226,27 @@ func TestSimpleGetters(t *testing.T) {
 					}
 					require.Equal(t, expected, status)
 				})
+			}
+		})
+	}
+}
+
+func TestBondDistributionMode(t *testing.T) {
+	unsupportedVersions := []string{vers080, vers0180, vers111, vers120, vers131}
+	for _, version := range versions {
+		version := version
+		t.Run(version.String(), func(t *testing.T) {
+			supported := !slices.Contains(unsupportedVersions, version.version)
+			stubRpc, game := setupFaultDisputeGameTest(t, version)
+			if supported {
+				stubRpc.SetResponse(fdgAddr, methodBondDistributionMode, rpcblock.Latest, nil, []interface{}{faultTypes.RefundDistributionMode})
+			}
+			status, err := game.GetBondDistributionMode(context.Background(), rpcblock.Latest)
+			require.NoError(t, err)
+			if supported {
+				require.Equal(t, faultTypes.RefundDistributionMode, status)
+			} else {
+				require.Equal(t, faultTypes.LegacyDistributionMode, status)
 			}
 		})
 	}
@@ -233,7 +293,7 @@ func TestClock_EncodingDecoding(t *testing.T) {
 func TestGetOracleAddr(t *testing.T) {
 	for _, version := range versions {
 		version := version
-		t.Run(version.version, func(t *testing.T) {
+		t.Run(version.String(), func(t *testing.T) {
 			stubRpc, game := setupFaultDisputeGameTest(t, version)
 			stubRpc.SetResponse(fdgAddr, methodVM, rpcblock.Latest, nil, []interface{}{vmAddr})
 			stubRpc.SetResponse(vmAddr, methodOracle, rpcblock.Latest, nil, []interface{}{oracleAddr})
@@ -248,7 +308,7 @@ func TestGetOracleAddr(t *testing.T) {
 func TestGetClaim(t *testing.T) {
 	for _, version := range versions {
 		version := version
-		t.Run(version.version, func(t *testing.T) {
+		t.Run(version.String(), func(t *testing.T) {
 			stubRpc, game := setupFaultDisputeGameTest(t, version)
 			idx := big.NewInt(2)
 			parentIndex := uint32(1)
@@ -280,7 +340,7 @@ func TestGetClaim(t *testing.T) {
 func TestGetAllClaims(t *testing.T) {
 	for _, version := range versions {
 		version := version
-		t.Run(version.version, func(t *testing.T) {
+		t.Run(version.String(), func(t *testing.T) {
 			stubRpc, game := setupFaultDisputeGameTest(t, version)
 			claim0 := faultTypes.Claim{
 				ClaimData: faultTypes.ClaimData{
@@ -333,7 +393,7 @@ func TestGetAllClaims(t *testing.T) {
 func TestGetBalance(t *testing.T) {
 	for _, version := range versions {
 		version := version
-		t.Run(version.version, func(t *testing.T) {
+		t.Run(version.String(), func(t *testing.T) {
 			wethAddr := common.Address{0x11, 0x55, 0x66}
 			balance := big.NewInt(9995877)
 			delaySeconds := big.NewInt(429829)
@@ -357,7 +417,7 @@ func TestGetBalance(t *testing.T) {
 func TestCallResolveClaim(t *testing.T) {
 	for _, version := range versions {
 		version := version
-		t.Run(version.version, func(t *testing.T) {
+		t.Run(version.String(), func(t *testing.T) {
 			stubRpc, game := setupFaultDisputeGameTest(t, version)
 			if version.version == vers080 {
 				stubRpc.SetResponse(fdgAddr, methodResolveClaim, rpcblock.Latest, []interface{}{big.NewInt(123)}, nil)
@@ -373,7 +433,7 @@ func TestCallResolveClaim(t *testing.T) {
 func TestResolveClaimTxTest(t *testing.T) {
 	for _, version := range versions {
 		version := version
-		t.Run(version.version, func(t *testing.T) {
+		t.Run(version.String(), func(t *testing.T) {
 			stubRpc, game := setupFaultDisputeGameTest(t, version)
 			if version.version == vers080 {
 				stubRpc.SetResponse(fdgAddr, methodResolveClaim, rpcblock.Latest, []interface{}{big.NewInt(123)}, nil)
@@ -390,7 +450,7 @@ func TestResolveClaimTxTest(t *testing.T) {
 func TestResolveTx(t *testing.T) {
 	for _, version := range versions {
 		version := version
-		t.Run(version.version, func(t *testing.T) {
+		t.Run(version.String(), func(t *testing.T) {
 			stubRpc, game := setupFaultDisputeGameTest(t, version)
 			stubRpc.SetResponse(fdgAddr, methodResolve, rpcblock.Latest, nil, nil)
 			tx, err := game.ResolveTx()
@@ -403,7 +463,7 @@ func TestResolveTx(t *testing.T) {
 func TestAttackTx(t *testing.T) {
 	for _, version := range versions {
 		version := version
-		t.Run(version.version, func(t *testing.T) {
+		t.Run(version.String(), func(t *testing.T) {
 			stubRpc, game := setupFaultDisputeGameTest(t, version)
 			bond := big.NewInt(1044)
 			value := common.Hash{0xaa}
@@ -425,7 +485,7 @@ func TestAttackTx(t *testing.T) {
 func TestDefendTx(t *testing.T) {
 	for _, version := range versions {
 		version := version
-		t.Run(version.version, func(t *testing.T) {
+		t.Run(version.String(), func(t *testing.T) {
 			stubRpc, game := setupFaultDisputeGameTest(t, version)
 			bond := big.NewInt(1044)
 			value := common.Hash{0xaa}
@@ -447,7 +507,7 @@ func TestDefendTx(t *testing.T) {
 func TestStepTx(t *testing.T) {
 	for _, version := range versions {
 		version := version
-		t.Run(version.version, func(t *testing.T) {
+		t.Run(version.String(), func(t *testing.T) {
 			stubRpc, game := setupFaultDisputeGameTest(t, version)
 			stateData := []byte{1, 2, 3}
 			proofData := []byte{4, 5, 6, 7, 8, 9}
@@ -479,7 +539,7 @@ func expectGetClaim(stubRpc *batchingTest.AbiBasedRpc, block rpcblock.Block, cla
 func TestGetBlockRange(t *testing.T) {
 	for _, version := range versions {
 		version := version
-		t.Run(version.version, func(t *testing.T) {
+		t.Run(version.String(), func(t *testing.T) {
 			stubRpc, contract := setupFaultDisputeGameTest(t, version)
 			expectedStart := uint64(65)
 			expectedEnd := uint64(102)
@@ -496,7 +556,7 @@ func TestGetBlockRange(t *testing.T) {
 func TestGetSplitDepth(t *testing.T) {
 	for _, version := range versions {
 		version := version
-		t.Run(version.version, func(t *testing.T) {
+		t.Run(version.String(), func(t *testing.T) {
 			stubRpc, contract := setupFaultDisputeGameTest(t, version)
 			expectedSplitDepth := faultTypes.Depth(15)
 			stubRpc.SetResponse(fdgAddr, methodSplitDepth, rpcblock.Latest, nil, []interface{}{new(big.Int).SetUint64(uint64(expectedSplitDepth))})
@@ -510,7 +570,7 @@ func TestGetSplitDepth(t *testing.T) {
 func TestGetGameMetadata(t *testing.T) {
 	for _, version := range versions {
 		version := version
-		t.Run(version.version, func(t *testing.T) {
+		t.Run(version.String(), func(t *testing.T) {
 			stubRpc, contract := setupFaultDisputeGameTest(t, version)
 			expectedL1Head := common.Hash{0x0a, 0x0b}
 			expectedL2BlockNumber := uint64(123)
@@ -524,18 +584,13 @@ func TestGetGameMetadata(t *testing.T) {
 			stubRpc.SetResponse(fdgAddr, methodL2BlockNumber, block, nil, []interface{}{new(big.Int).SetUint64(expectedL2BlockNumber)})
 			stubRpc.SetResponse(fdgAddr, methodRootClaim, block, nil, []interface{}{expectedRootClaim})
 			stubRpc.SetResponse(fdgAddr, methodStatus, block, nil, []interface{}{expectedStatus})
-			if version.version == vers080 {
-				expectedL2BlockNumberChallenged = false
-				expectedL2BlockNumberChallenger = common.Address{}
-				stubRpc.SetResponse(fdgAddr, methodGameDuration, block, nil, []interface{}{expectedMaxClockDuration * 2})
-			} else if version.version == vers0180 {
-				expectedL2BlockNumberChallenged = false
-				expectedL2BlockNumberChallenger = common.Address{}
-				stubRpc.SetResponse(fdgAddr, methodMaxClockDuration, block, nil, []interface{}{expectedMaxClockDuration})
-			} else {
+			supportsL2BlockNumChallenge := (version.version != vers080 && version.version != vers0180) && !version.IsSuperCannon()
+			if supportsL2BlockNumChallenge {
 				stubRpc.SetResponse(fdgAddr, methodMaxClockDuration, block, nil, []interface{}{expectedMaxClockDuration})
 				stubRpc.SetResponse(fdgAddr, methodL2BlockNumberChallenged, block, nil, []interface{}{expectedL2BlockNumberChallenged})
 				stubRpc.SetResponse(fdgAddr, methodL2BlockNumberChallenger, block, nil, []interface{}{expectedL2BlockNumberChallenger})
+			} else if expectedL2BlockNumberChallenged {
+				t.Skip("Can't have challenged L2 block number on this contract version")
 			}
 			actual, err := contract.GetGameMetadata(context.Background(), block)
 			expected := GameMetadata{
@@ -556,7 +611,7 @@ func TestGetGameMetadata(t *testing.T) {
 func TestGetStartingRootHash(t *testing.T) {
 	for _, version := range versions {
 		version := version
-		t.Run(version.version, func(t *testing.T) {
+		t.Run(version.String(), func(t *testing.T) {
 			stubRpc, contract := setupFaultDisputeGameTest(t, version)
 			expectedOutputRoot := common.HexToHash("0x1234")
 			stubRpc.SetResponse(fdgAddr, methodStartingRootHash, rpcblock.Latest, nil, []interface{}{expectedOutputRoot})
@@ -570,7 +625,7 @@ func TestGetStartingRootHash(t *testing.T) {
 func TestFaultDisputeGame_UpdateOracleTx(t *testing.T) {
 	for _, version := range versions {
 		version := version
-		t.Run(version.version, func(t *testing.T) {
+		t.Run(version.String(), func(t *testing.T) {
 			t.Run("Local", func(t *testing.T) {
 				stubRpc, game := setupFaultDisputeGameTest(t, version)
 				data := faultTypes.NewPreimageOracleData(common.Hash{0x01, 0xbc}.Bytes(), []byte{1, 2, 3, 4, 5, 6, 7}, 16)
@@ -606,7 +661,7 @@ func TestFaultDisputeGame_UpdateOracleTx(t *testing.T) {
 func TestFaultDisputeGame_GetCredit(t *testing.T) {
 	for _, version := range versions {
 		version := version
-		t.Run(version.version, func(t *testing.T) {
+		t.Run(version.String(), func(t *testing.T) {
 			stubRpc, game := setupFaultDisputeGameTest(t, version)
 			addr := common.Address{0x01}
 			expectedCredit := big.NewInt(4284)
@@ -625,7 +680,7 @@ func TestFaultDisputeGame_GetCredit(t *testing.T) {
 func TestFaultDisputeGame_GetCredits(t *testing.T) {
 	for _, version := range versions {
 		version := version
-		t.Run(version.version, func(t *testing.T) {
+		t.Run(version.String(), func(t *testing.T) {
 			stubRpc, game := setupFaultDisputeGameTest(t, version)
 
 			block := rpcblock.ByNumber(482)
@@ -650,7 +705,7 @@ func TestFaultDisputeGame_GetCredits(t *testing.T) {
 func TestFaultDisputeGame_ClaimCreditTx(t *testing.T) {
 	for _, version := range versions {
 		version := version
-		t.Run(version.version, func(t *testing.T) {
+		t.Run(version.String(), func(t *testing.T) {
 			t.Run("Success", func(t *testing.T) {
 				stubRpc, game := setupFaultDisputeGameTest(t, version)
 				addr := common.Address{0xaa}
@@ -677,7 +732,7 @@ func TestFaultDisputeGame_ClaimCreditTx(t *testing.T) {
 func TestFaultDisputeGame_IsResolved(t *testing.T) {
 	for _, version := range versions {
 		version := version
-		t.Run(version.version, func(t *testing.T) {
+		t.Run(version.String(), func(t *testing.T) {
 			stubRpc, game := setupFaultDisputeGameTest(t, version)
 
 			block := rpcblock.ByNumber(482)
@@ -724,12 +779,16 @@ func TestFaultDisputeGame_IsResolved(t *testing.T) {
 func TestFaultDisputeGameContractLatest_IsL2BlockNumberChallenged(t *testing.T) {
 	for _, version := range versions {
 		version := version
-		for _, expected := range []bool{true, false} {
+		var expectations = []bool{true, false}
+		if version.IsSuperCannon() {
+			expectations = []bool{false}
+		}
+		for _, expected := range expectations {
 			expected := expected
-			t.Run(fmt.Sprintf("%v-%v", version.version, expected), func(t *testing.T) {
+			t.Run(fmt.Sprintf("%v-%v", version.String(), expected), func(t *testing.T) {
 				block := rpcblock.ByHash(common.Hash{0x43})
 				stubRpc, game := setupFaultDisputeGameTest(t, version)
-				supportsL2BlockNumChallenge := version.version != vers080 && version.version != vers0180
+				supportsL2BlockNumChallenge := (version.version != vers080 && version.version != vers0180) && !version.IsSuperCannon()
 				if supportsL2BlockNumChallenge {
 					stubRpc.SetResponse(fdgAddr, methodL2BlockNumberChallenged, block, nil, []interface{}{expected})
 				} else if expected {
@@ -746,7 +805,7 @@ func TestFaultDisputeGameContractLatest_IsL2BlockNumberChallenged(t *testing.T) 
 func TestFaultDisputeGameContractLatest_ChallengeL2BlockNumberTx(t *testing.T) {
 	for _, version := range versions {
 		version := version
-		t.Run(version.version, func(t *testing.T) {
+		t.Run(version.String(), func(t *testing.T) {
 			rng := rand.New(rand.NewSource(0))
 			stubRpc, game := setupFaultDisputeGameTest(t, version)
 			challenge := &faultTypes.InvalidL2BlockNumberChallenge{
@@ -759,7 +818,7 @@ func TestFaultDisputeGameContractLatest_ChallengeL2BlockNumberTx(t *testing.T) {
 				},
 				Header: testutils.RandomHeader(rng),
 			}
-			supportsL2BlockNumChallenge := version.version != vers080 && version.version != vers0180
+			supportsL2BlockNumChallenge := (version.version != vers080 && version.version != vers0180) && !version.IsSuperCannon()
 			if supportsL2BlockNumChallenge {
 				headerRlp, err := rlp.EncodeToBytes(challenge.Header)
 				require.NoError(t, err)
@@ -796,6 +855,7 @@ func setupFaultDisputeGameTest(t *testing.T, version contractVersion) (*batching
 	stubRpc.AddContract(oracleAddr, oracleAbi)
 	caller := batching.NewMultiCaller(stubRpc, batching.DefaultBatchSize)
 
+	stubRpc.SetResponse(fdgAddr, methodGameType, rpcblock.Latest, nil, []interface{}{uint32(version.gameType)})
 	stubRpc.SetResponse(fdgAddr, methodVersion, rpcblock.Latest, nil, []interface{}{version.version})
 	stubRpc.SetResponse(oracleAddr, methodVersion, rpcblock.Latest, nil, []interface{}{oracleLatest})
 	game, err := NewFaultDisputeGameContract(context.Background(), contractMetrics.NoopContractMetrics, fdgAddr, caller)

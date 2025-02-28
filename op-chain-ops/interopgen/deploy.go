@@ -329,9 +329,6 @@ func CompleteL2(l2Host *script.Host, cfg *L2Config, l1Block *types.Block, deploy
 	if err != nil {
 		return nil, fmt.Errorf("failed to build L2 rollup config: %w", err)
 	}
-	if cfg.OverrideMessageExpiryTime != 0 {
-		rollupCfg.OverrideMessageExpiryTimeInterop = cfg.OverrideMessageExpiryTime
-	}
 	return &L2Output{
 		Genesis:   l2Genesis,
 		RollupCfg: rollupCfg,

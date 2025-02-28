@@ -249,7 +249,7 @@ rules:
   - id: sol-safety-proper-initializer
     languages: [solidity]
     severity: ERROR
-    message: Proxied contracts must have an initialize function with the initializer modifier and external visibility
+    message: Proxied contracts must have an initialize function with the initializer or reinitializer modifier and external or public visibility
     patterns:
       - pattern-regex: "///\\s*@custom:proxied\\s+true(?P<CONTRACT>[\\s\\S]*)"
       - focus-metavariable: $CONTRACT
@@ -261,7 +261,34 @@ rules:
           function initialize(...) external initializer {
             ...
           }
+      - pattern-not: |
+          function initialize(...) public initializer {
+            ...
+          }
+      - pattern-not: |
+          function initialize(...) external reinitializer(...) {
+            ...
+          }
+      - pattern-not: |
+          function initialize(...) public reinitializer(...) {
+            ...
+          }
     paths:
       exclude:
-        - packages/contracts-bedrock/src/L1/SystemConfig.sol
         - packages/contracts-bedrock/src/L1/SystemConfigInterop.sol
+
+  - id: sol-safety-proper-upgrade-function
+    languages: [solidity]
+    severity: ERROR
+    message: Upgrade functions must be external and have the reinitializer modifier
+    patterns:
+      - pattern-regex: "///\\s*@custom:proxied\\s+true(?P<CONTRACT>[\\s\\S]*)"
+      - focus-metavariable: $CONTRACT
+      - pattern: |
+          function upgrade(...) {
+            ...
+          }
+      - pattern-not: |
+          function upgrade(...) external reinitializer(...) {
+            ...
+          }

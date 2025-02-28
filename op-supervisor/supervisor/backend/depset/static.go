@@ -7,6 +7,7 @@ import (
 	"slices"
 	"sort"
 
+	"github.com/ethereum-optimism/optimism/op-node/params"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 )
@@ -34,6 +35,8 @@ type StaticConfigDependencySet struct {
 	indexToID map[types.ChainIndex]eth.ChainID
 	// cached list of chain IDs, sorted by ID value
 	chainIDs []eth.ChainID
+	// overrideMessageExpiryWindow is the message expiry window to use for this dependency set
+	overrideMessageExpiryWindow uint64
 }
 
 func NewStaticConfigDependencySet(dependencies map[eth.ChainID]*StaticConfigDependency) (*StaticConfigDependencySet, error) {
@@ -44,16 +47,28 @@ func NewStaticConfigDependencySet(dependencies map[eth.ChainID]*StaticConfigDepe
 	return out, nil
 }
 
+// NewStaticConfigDependencySetWithMessageExpiryOverride creates a new StaticConfigDependencySet with a message expiry window override.
+// To be used only for testing.
+func NewStaticConfigDependencySetWithMessageExpiryOverride(dependencies map[eth.ChainID]*StaticConfigDependency, overrideMessageExpiryWindow uint64) (*StaticConfigDependencySet, error) {
+	out := &StaticConfigDependencySet{dependencies: dependencies, overrideMessageExpiryWindow: overrideMessageExpiryWindow}
+	if err := out.hydrate(); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // jsonStaticConfigDependencySet is a util for JSON encoding/decoding,
 // to encode/decode just the attributes that matter,
 // while wrapping the decoding functionality with additional hydration step.
 type jsonStaticConfigDependencySet struct {
-	Dependencies map[eth.ChainID]*StaticConfigDependency `json:"dependencies"`
+	Dependencies                map[eth.ChainID]*StaticConfigDependency `json:"dependencies"`
+	OverrideMessageExpiryWindow uint64                                  `json:"overrideMessageExpiryWindow,omitempty"`
 }
 
 func (ds *StaticConfigDependencySet) MarshalJSON() ([]byte, error) {
 	out := &jsonStaticConfigDependencySet{
-		Dependencies: ds.dependencies,
+		Dependencies:                ds.dependencies,
+		OverrideMessageExpiryWindow: ds.overrideMessageExpiryWindow,
 	}
 	return json.Marshal(out)
 }
@@ -64,6 +79,7 @@ func (ds *StaticConfigDependencySet) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	ds.dependencies = v.Dependencies
+	ds.overrideMessageExpiryWindow = v.OverrideMessageExpiryWindow
 	return ds.hydrate()
 }
 
@@ -131,4 +147,11 @@ func (ds *StaticConfigDependencySet) ChainIDFromIndex(index types.ChainIndex) (e
 		return eth.ChainID{}, fmt.Errorf("failed to translate chain index %s to chain ID: %w", index, types.ErrUnknownChain)
 	}
 	return id, nil
+}
+
+func (ds *StaticConfigDependencySet) MessageExpiryWindow() uint64 {
+	if ds.overrideMessageExpiryWindow == 0 {
+		return params.MessageExpiryTimeSecondsInterop
+	}
+	return ds.overrideMessageExpiryWindow
 }

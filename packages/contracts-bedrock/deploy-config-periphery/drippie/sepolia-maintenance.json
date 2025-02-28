@@ -1,0 +1,62 @@
+{
+  "__comment": "Main contract addresses",
+  "drippie": "0x41d918d94fDF4A354AB515ea646ce73b36A17c7b",
+
+  "__comment": "Addresses of dripcheck contracts to be used in drips",
+  "dripchecks": [
+    {
+      "00__name": "CheckBalanceLow",
+      "01__address": "0xaF8C77CfeB57620c4D9dCC81df75a1F0Da7064Af"
+    },
+    {
+      "00__name": "CheckSecrets",
+      "01__address": "0x32c1e36E733913388076D7c3055300072814bF2A"
+    },
+    {
+      "00__name": "CheckTrue",
+      "01__address": "0xcBCb3896Ddec35d91901768733C5d3738e10509F"
+    }
+  ],
+  "__comment": "Prefix is used to namespace drips so that drip management can be handled modularly",
+  "prefix": "maintenance",
+
+  "__comment": "Object attributes below are prefixed with numbers because of how foundry parses JSON into structs in alphabetical order",
+  "drips": [
+    {
+      "00__name": "proposer_v1",
+      "01__dripcheck": "CheckBalanceLow",
+      "02__checkparams": {
+        "01__target": "0x49277EE36A024120Ee218127354c4a3591dc90A9",
+        "02__threshold": 20000000000000000000
+      },
+      "03__recipient": "0x49277EE36A024120Ee218127354c4a3591dc90A9",
+      "04__value": 10000000000000000000,
+      "05__interval": 86400,
+      "06__data": ""
+    },
+    {
+      "00__name": "challenger_v1",
+      "01__dripcheck": "CheckBalanceLow",
+      "02__checkparams": {
+        "01__target": "0xfd1D2e729aE8eEe2E146c033bf4400fE75284301",
+        "02__threshold": 50000000000000000000
+      },
+      "03__recipient": "0xfd1D2e729aE8eEe2E146c033bf4400fE75284301",
+      "04__value": 10000000000000000000,
+      "05__interval": 86400,
+      "06__data": ""
+    },
+    {
+      "00__name": "batcher_v1",
+      "01__dripcheck": "CheckBalanceLow",
+      "02__checkparams": {
+        "01__target": "0x8F23BB38F531600e5d8FDDaAEC41F13FaB46E98c",
+        "02__threshold": 100000000000000000000
+      },
+      "03__recipient": "0x8F23BB38F531600e5d8FDDaAEC41F13FaB46E98c",
+      "04__value": 10000000000000000000,
+      "05__interval": 86400,
+      "06__data": ""
+    },
+  ],
+}

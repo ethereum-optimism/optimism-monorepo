@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/consensus/misc/eip4844"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -343,8 +342,8 @@ func (s *L2Batcher) ActL2BatchSubmitRaw(t Testing, payload []byte, txOpts ...fun
 			opt(rawTx)
 		}
 
-		gas, err := core.IntrinsicGas(rawTx.Data, nil, nil, false, true, true, false)
-		require.NoError(t, err, "need to compute intrinsic gas")
+		gas, err := core.FloorDataGas(rawTx.Data)
+		require.NoError(t, err, "need to compute floor data gas")
 		rawTx.Gas = gas
 		txData = rawTx
 	} else if s.l2BatcherCfg.DataAvailabilityType == batcherFlags.BlobsType {
@@ -353,7 +352,7 @@ func (s *L2Batcher) ActL2BatchSubmitRaw(t Testing, payload []byte, txOpts ...fun
 		sidecar, blobHashes, err := txmgr.MakeSidecar([]*eth.Blob{&b})
 		require.NoError(t, err)
 		require.NotNil(t, pendingHeader.ExcessBlobGas, "need L1 header with 4844 properties")
-		blobBaseFee := eip4844.CalcBlobFee(*pendingHeader.ExcessBlobGas)
+		blobBaseFee := eth.CalcBlobFeeDefault(pendingHeader)
 		blobFeeCap := new(uint256.Int).Mul(uint256.NewInt(2), uint256.MustFromBig(blobBaseFee))
 		if blobFeeCap.Lt(uint256.NewInt(params.GWei)) { // ensure we meet 1 gwei geth tx-pool minimum
 			blobFeeCap = uint256.NewInt(params.GWei)
@@ -384,11 +383,13 @@ func (s *L2Batcher) ActL2BatchSubmitRaw(t Testing, payload []byte, txOpts ...fun
 }
 
 func (s *L2Batcher) ActL2BatchSubmitMultiBlob(t Testing, numBlobs int) {
+	// Update to Prague if L1 changes to Prague and we need more blobs in multi-blob tests.
+	maxBlobsPerBlock := params.DefaultCancunBlobConfig.Max
 	if s.l2BatcherCfg.DataAvailabilityType != batcherFlags.BlobsType {
 		t.InvalidAction("ActL2BatchSubmitMultiBlob only available for Blobs DA type")
 		return
-	} else if numBlobs > eth.MaxBlobsPerBlobTx || numBlobs < 1 {
-		t.InvalidAction("invalid number of blobs %d, must be within [1,%d]", numBlobs, eth.MaxBlobsPerBlobTx)
+	} else if numBlobs > maxBlobsPerBlock || numBlobs < 1 {
+		t.InvalidAction("invalid number of blobs %d, must be within [1,%d]", numBlobs, maxBlobsPerBlock)
 	}
 
 	// Don't run this action if there's no data to submit
@@ -435,7 +436,7 @@ func (s *L2Batcher) ActL2BatchSubmitMultiBlob(t Testing, numBlobs int) {
 	sidecar, blobHashes, err := txmgr.MakeSidecar(blobs)
 	require.NoError(t, err)
 	require.NotNil(t, pendingHeader.ExcessBlobGas, "need L1 header with 4844 properties")
-	blobBaseFee := eip4844.CalcBlobFee(*pendingHeader.ExcessBlobGas)
+	blobBaseFee := eth.CalcBlobFeeDefault(pendingHeader)
 	blobFeeCap := new(uint256.Int).Mul(uint256.NewInt(2), uint256.MustFromBig(blobBaseFee))
 	if blobFeeCap.Lt(uint256.NewInt(params.GWei)) { // ensure we meet 1 gwei geth tx-pool minimum
 		blobFeeCap = uint256.NewInt(params.GWei)

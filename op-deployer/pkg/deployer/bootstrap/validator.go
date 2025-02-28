@@ -32,6 +32,7 @@ type ValidatorConfig struct {
 	Logger           log.Logger
 	ArtifactsLocator *artifacts.Locator
 	Input            ValidatorInput
+	CacheDir         string
 
 	privateKeyECDSA *ecdsa.PrivateKey
 }
@@ -39,7 +40,6 @@ type ValidatorConfig struct {
 type ValidatorInput struct {
 	Release                          string         `json:"release"`
 	SuperchainConfig                 common.Address `json:"superchainConfig"`
-	ProtocolVersions                 common.Address `json:"protocolVersions"`
 	L1PAOMultisig                    common.Address `json:"l1PAOMultisig"`
 	MIPS                             common.Address `json:"mips" evm:"mips"`
 	Challenger                       common.Address `json:"challenger"`
@@ -97,6 +97,7 @@ func ValidatorCLI(cliCtx *cli.Context) error {
 	outfile := cliCtx.String(OutfileFlagName)
 	artifactsURLStr := cliCtx.String(ArtifactsLocatorFlagName)
 	configFile := cliCtx.String(ConfigFileFlag.Name)
+	cacheDir := cliCtx.String(deployer.CacheDirFlag.Name)
 
 	artifactsLocator := new(artifacts.Locator)
 	if err := artifactsLocator.UnmarshalText([]byte(artifactsURLStr)); err != nil {
@@ -122,6 +123,7 @@ func ValidatorCLI(cliCtx *cli.Context) error {
 		Logger:           l,
 		ArtifactsLocator: artifactsLocator,
 		Input:            input,
+		CacheDir:         cacheDir,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to deploy Validator: %w", err)
@@ -141,7 +143,7 @@ func Validator(ctx context.Context, cfg ValidatorConfig) (ValidatorOutput, error
 
 	lgr := cfg.Logger
 
-	artifactsFS, err := artifacts.Download(ctx, cfg.ArtifactsLocator, artifacts.BarProgressor())
+	artifactsFS, err := artifacts.Download(ctx, cfg.ArtifactsLocator, artifacts.BarProgressor(), cfg.CacheDir)
 	if err != nil {
 		return output, fmt.Errorf("failed to download artifacts: %w", err)
 	}

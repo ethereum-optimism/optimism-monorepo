@@ -2,7 +2,6 @@ package syncnode
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -11,8 +10,8 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/superevents"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
-	gethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/stretchr/testify/require"
 )
 
@@ -93,97 +92,95 @@ func TestEventResponse(t *testing.T) {
 	}, 4*time.Second, 250*time.Millisecond)
 }
 
-func TestResetConflict(t *testing.T) {
+func TestPrepareReset(t *testing.T) {
 	chainID := eth.ChainIDFromUInt64(1)
-	logger := testlog.Logger(t, log.LvlDebug)
+	logger := testlog.Logger(t, log.LvlInfo)
+	syncCtrl := &mockSyncControl{}
+	backend := &mockBackend{}
 
-	tests := []struct {
-		name           string
-		resetErrors    []error
-		expectAttempts int
-		expectError    bool
-		l1RefNum       uint64
-		finalizedNum   uint64
-	}{
-		{
-			name:           "succeeds_first_try",
-			resetErrors:    []error{nil},
-			expectAttempts: 1,
-			expectError:    false,
-			l1RefNum:       100,
-			finalizedNum:   50,
-		},
-		{
-			name: "walks_back_on_block_not_found",
-			resetErrors: []error{
-				&gethrpc.JsonError{Code: blockNotFoundRPCErrCode},
-				&gethrpc.JsonError{Code: blockNotFoundRPCErrCode},
-				nil,
-			},
-			expectAttempts: 3,
-			expectError:    false,
-			l1RefNum:       100,
-			finalizedNum:   50,
-		},
-		{
-			name: "handles_finalized_boundary",
-			resetErrors: []error{
-				&gethrpc.JsonError{Code: blockNotFoundRPCErrCode},
-			},
-			expectAttempts: 1,
-			expectError:    true,
-			l1RefNum:       100,
-			finalizedNum:   99,
-		},
-		{
-			name: "stops_after_max_attempts_exceeded",
-			resetErrors: func() []error {
-				// Generate more errors than we allow attempts for
-				errors := make([]error, maxWalkBackAttempts+100)
-				for i := range errors {
-					errors[i] = &gethrpc.JsonError{Code: blockNotFoundRPCErrCode}
-				}
-				return errors
-			}(),
-			// We expect the max number of attempts to be made, plus one for the initial attempt
-			expectAttempts: maxWalkBackAttempts + 1,
-			expectError:    true,
-			l1RefNum:       1000,
-			finalizedNum:   1,
-		},
+	ex := event.NewGlobalSynchronous(context.Background())
+	eventSys := event.NewSystem(logger, ex)
+
+	mon := &eventMonitor{}
+	eventSys.Register("monitor", mon, event.DefaultRegisterOpts())
+
+	node := NewManagedNode(logger, chainID, syncCtrl, backend, false)
+	eventSys.Register("node", node, event.DefaultRegisterOpts())
+
+	// mock: return a block of the same number as requested
+	syncCtrl.blockRefByNumFn = func(ctx context.Context, number uint64) (eth.BlockRef, error) {
+		return eth.BlockRef{Number: number, Hash: common.Hash{0xaa}}, nil
 	}
 
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			resetAttempts := 0
-			ctrl := &mockSyncControl{
-				resetFn: func(ctx context.Context, unsafe, safe, finalized eth.BlockID) error {
-					resetAttempts++
-					if resetAttempts > len(tc.resetErrors) {
-						return fmt.Errorf("unexpected reset attempt %d", resetAttempts)
-					}
-					return tc.resetErrors[resetAttempts-1]
-				},
-			}
-			backend := &mockBackend{
-				safeDerivedAtFn: func(ctx context.Context, chainID eth.ChainID, source eth.BlockID) (eth.BlockID, error) {
-					return eth.BlockID{Number: source.Number}, nil
-				},
-			}
-
-			node := NewManagedNode(logger, chainID, ctrl, backend, true)
-			l1Ref := eth.BlockRef{Number: tc.l1RefNum}
-			unsafe := eth.BlockID{Number: tc.l1RefNum + 100}
-			finalized := eth.BlockID{Number: tc.finalizedNum}
-
-			err := node.resolveConflict(context.Background(), l1Ref, unsafe, finalized)
-
-			require.Equal(t, tc.expectAttempts, resetAttempts, "incorrect number of reset attempts")
-			if tc.expectError {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-			}
-		})
+	// mock: control whether the blocks appear valid or not
+	var pivot uint64
+	backend.isLocalUnsafeFn = func(ctx context.Context, chainID eth.ChainID, id eth.BlockID) error {
+		if id.Number > uint64(pivot) {
+			return types.ErrConflict
+		}
+		return nil
 	}
+
+	// mock: record the reset signal given to the node
+	var unsafe, safe, finalized eth.BlockID
+	var resetCalled int
+	syncCtrl.resetFn = func(ctx context.Context, u, s, f eth.BlockID) error {
+		unsafe = u
+		safe = s
+		finalized = f
+		resetCalled++
+		return nil
+	}
+
+	// test that the bisection finds the correct block,
+	// anywhere inside the min-max range
+	min, max := uint64(1), uint64(235)
+	for i := min; i < max; i++ {
+		node.resetTracker.a = eth.BlockID{Number: min, Hash: common.Hash{0xaa}}
+		node.resetTracker.z = eth.BlockID{Number: max}
+		pivot = i
+		node.resetTracker.bisectToTarget()
+		require.Equal(t, i, unsafe.Number)
+		require.Equal(t, uint64(0), safe.Number)
+		require.Equal(t, uint64(0), finalized.Number)
+	}
+
+	// test that when the end of range (z) is known to the node,
+	// the reset request is made with the end of the range as the safe block
+	for i := min; i < max; i++ {
+		node.resetTracker.a = eth.BlockID{Number: min}
+		node.resetTracker.z = eth.BlockID{Number: max, Hash: common.Hash{0xaa}}
+		pivot = 0
+		node.resetTracker.bisectToTarget()
+		require.Equal(t, max, unsafe.Number)
+	}
+
+	// mock: return local safe and finalized blocks which are *ahead* of the pivot
+	backend.localSafeFn = func(ctx context.Context, chainID eth.ChainID) (types.DerivedIDPair, error) {
+		return types.DerivedIDPair{
+			Derived: eth.BlockID{Number: pivot + 1},
+		}, nil
+	}
+	backend.finalizedFn = func(ctx context.Context, chainID eth.ChainID) (eth.BlockID, error) {
+		return eth.BlockID{Number: pivot + 1}, nil
+	}
+	// test that the bisection finds the correct block,
+	// AND that the safe and finalized blocks are updated to match the unsafe block
+	for i := min; i < max; i++ {
+		node.resetTracker.a = eth.BlockID{Number: min, Hash: common.Hash{0xaa}}
+		node.resetTracker.z = eth.BlockID{Number: max}
+		pivot = i
+		node.resetTracker.bisectToTarget()
+		require.Equal(t, i, unsafe.Number)
+		require.Equal(t, i, safe.Number)
+		require.Equal(t, i, finalized.Number)
+	}
+
+	// test that the reset function is not called if start of the range (a) is unknown
+	resetCount := resetCalled
+	node.resetTracker.a = eth.BlockID{Number: 0, Hash: common.Hash{0xbb}}
+	node.resetTracker.z = eth.BlockID{Number: max}
+	pivot = 40
+	node.resetTracker.bisectToTarget()
+	require.Equal(t, resetCount, resetCalled)
 }

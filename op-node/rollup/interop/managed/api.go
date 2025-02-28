@@ -43,8 +43,8 @@ func (ib *InteropAPI) AnchorPoint(ctx context.Context) (supervisortypes.DerivedB
 	return ib.backend.AnchorPoint(ctx)
 }
 
-func (ib *InteropAPI) Reset(ctx context.Context, unsafe, safe, finalized eth.BlockID) error {
-	return ib.backend.Reset(ctx, unsafe, safe, finalized)
+func (ib *InteropAPI) Reset(ctx context.Context, lUnsafe, xUnsafe, lSafe, xSafe, finalized eth.BlockID) error {
+	return ib.backend.Reset(ctx, lUnsafe, xUnsafe, lSafe, xSafe, finalized)
 }
 
 func (ib *InteropAPI) FetchReceipts(ctx context.Context, blockHash common.Hash) (types.Receipts, error) {

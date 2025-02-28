@@ -71,6 +71,32 @@ func (ie InputError) Is(target error) bool {
 	return ok // we implement Unwrap, so we do not have to check the inner type now
 }
 
+// Bytes65 is a 65-byte long byte string, and encoded with 0x-prefix in hex.
+// This can be used to represent encoded secp256k ethereum signatures.
+type Bytes65 [65]byte
+
+func (b *Bytes65) UnmarshalJSON(text []byte) error {
+	return hexutil.UnmarshalFixedJSON(reflect.TypeOf(b), text, b[:])
+}
+
+func (b *Bytes65) UnmarshalText(text []byte) error {
+	return hexutil.UnmarshalFixedText("Bytes65", text, b[:])
+}
+
+func (b Bytes65) MarshalText() ([]byte, error) {
+	return hexutil.Bytes(b[:]).MarshalText()
+}
+
+func (b Bytes65) String() string {
+	return hexutil.Encode(b[:])
+}
+
+// TerminalString implements log.TerminalStringer, formatting a string for console
+// output during logging.
+func (b Bytes65) TerminalString() string {
+	return fmt.Sprintf("0x%x..%x", b[:3], b[65-3:])
+}
+
 type Bytes32 [32]byte
 
 func (b *Bytes32) UnmarshalJSON(text []byte) error {
@@ -92,7 +118,7 @@ func (b Bytes32) String() string {
 // TerminalString implements log.TerminalStringer, formatting a string for console
 // output during logging.
 func (b Bytes32) TerminalString() string {
-	return fmt.Sprintf("%x..%x", b[:3], b[29:])
+	return fmt.Sprintf("0x%x..%x", b[:3], b[29:])
 }
 
 type Bytes8 [8]byte
@@ -116,7 +142,7 @@ func (b Bytes8) String() string {
 // TerminalString implements log.TerminalStringer, formatting a string for console
 // output during logging.
 func (b Bytes8) TerminalString() string {
-	return fmt.Sprintf("%x", b[:])
+	return fmt.Sprintf("0x%x", b[:])
 }
 
 type Bytes96 [96]byte
@@ -140,7 +166,7 @@ func (b Bytes96) String() string {
 // TerminalString implements log.TerminalStringer, formatting a string for console
 // output during logging.
 func (b Bytes96) TerminalString() string {
-	return fmt.Sprintf("%x..%x", b[:3], b[93:])
+	return fmt.Sprintf("0x%x..%x", b[:3], b[93:])
 }
 
 type Bytes256 [256]byte
@@ -164,7 +190,7 @@ func (b Bytes256) String() string {
 // TerminalString implements log.TerminalStringer, formatting a string for console
 // output during logging.
 func (b Bytes256) TerminalString() string {
-	return fmt.Sprintf("%x..%x", b[:3], b[253:])
+	return fmt.Sprintf("0x%x..%x", b[:3], b[253:])
 }
 
 type Uint64Quantity = hexutil.Uint64
@@ -211,6 +237,14 @@ type ExecutionPayloadEnvelope struct {
 	RequestsHash          *common.Hash      `json:"requestsHash,omitempty"`
 }
 
+func (env *ExecutionPayloadEnvelope) ID() BlockID {
+	return env.ExecutionPayload.ID()
+}
+
+func (env *ExecutionPayloadEnvelope) String() string {
+	return fmt.Sprintf("envelope(%s)", env.ID())
+}
+
 type ExecutionPayload struct {
 	ParentHash    common.Hash     `json:"parentHash"`
 	FeeRecipient  common.Address  `json:"feeRecipient"`
@@ -240,6 +274,10 @@ type ExecutionPayload struct {
 
 func (payload *ExecutionPayload) ID() BlockID {
 	return BlockID{Hash: payload.BlockHash, Number: uint64(payload.BlockNumber)}
+}
+
+func (payload *ExecutionPayload) String() string {
+	return fmt.Sprintf("payload(%s)", payload.ID())
 }
 
 func (payload *ExecutionPayload) ParentID() BlockID {

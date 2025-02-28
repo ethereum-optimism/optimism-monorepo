@@ -253,6 +253,40 @@ func TestCrossUnsafeHazards(t *testing.T) {
 		require.NoError(t, err)
 		require.Empty(t, hazards)
 	})
+	t.Run("message expiry", func(t *testing.T) {
+		usd := &mockUnsafeStartDeps{}
+		usd.deps.messageExpiryWindow = 10
+		sampleBlockSeal := types.BlockSeal{Timestamp: 1}
+		usd.checkFn = func() (includedIn types.BlockSeal, err error) {
+			return sampleBlockSeal, nil
+		}
+		chainID := eth.ChainIDFromUInt64(0)
+		candidate := types.BlockSeal{Timestamp: 12}
+		em1 := &types.ExecutingMessage{Chain: types.ChainIndex(0), Timestamp: 1}
+		execMsgs := []*types.ExecutingMessage{em1}
+		// when there is one execMsg that has just expired,
+		// ErrExpired is returned
+		hazards, err := CrossUnsafeHazards(usd, chainID, candidate, execMsgs)
+		require.ErrorIs(t, err, types.ErrConflict)
+		require.ErrorContains(t, err, "has expired")
+		require.Empty(t, hazards)
+	})
+	t.Run("message near expiry", func(t *testing.T) {
+		usd := &mockUnsafeStartDeps{}
+		usd.deps.messageExpiryWindow = 10
+		sampleBlockSeal := types.BlockSeal{Timestamp: 1}
+		usd.checkFn = func() (includedIn types.BlockSeal, err error) {
+			return sampleBlockSeal, nil
+		}
+		chainID := eth.ChainIDFromUInt64(0)
+		candidate := types.BlockSeal{Timestamp: 11}
+		em1 := &types.ExecutingMessage{Chain: types.ChainIndex(0), Timestamp: 1}
+		execMsgs := []*types.ExecutingMessage{em1}
+		// when there is one execMsg that is near expiry, then no error is returned
+		hazards, err := CrossUnsafeHazards(usd, chainID, candidate, execMsgs)
+		require.NoError(t, err)
+		require.Empty(t, hazards)
+	})
 }
 
 type mockUnsafeStartDeps struct {

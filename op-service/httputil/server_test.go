@@ -27,12 +27,12 @@ func TestStartHTTPServer(t *testing.T) {
 			}
 		})
 
-		srv, err := StartHTTPServer("localhost:0", h, WithTimeouts(HTTPTimeouts{
+		srv, err := StartHTTPServer("localhost:0", h, WithHTTPOptions(WithTimeouts(HTTPTimeouts{
 			ReadTimeout:       time.Minute,
 			ReadHeaderTimeout: time.Minute,
 			WriteTimeout:      time.Minute,
 			IdleTimeout:       time.Minute,
-		}))
+		})))
 		require.NoError(t, err)
 		require.False(t, srv.Closed())
 		return srv, reqRespBlock
@@ -95,6 +95,35 @@ func TestStartHTTPServer(t *testing.T) {
 		<-reqRespBlock
 		assert.NoError(t, srv.Shutdown(context.Background()))
 		wg.Wait()
+		require.True(t, srv.Closed())
+	})
+
+	t.Run("restart", func(t *testing.T) {
+		srv, reqRespBlock := testSetup(t)
+
+		request := func() {
+			t.Log("making request")
+			// test basics
+			go func() {
+				req := <-reqRespBlock // take request
+				block := make(chan struct{})
+				req <- block // start response
+				<-block      // unblock response
+			}()
+			resp, err := http.Get("http://" + srv.Addr().String() + "/")
+			require.NoError(t, err)
+			require.NoError(t, resp.Body.Close())
+			require.Equal(t, http.StatusTeapot, resp.StatusCode, "I am a teapot")
+		}
+		request()
+		t.Log("closing 1")
+		require.NoError(t, srv.Close())
+		require.True(t, srv.Closed())
+		t.Log("starting back up")
+		require.NoError(t, srv.Start())
+		request()
+		t.Log("closing 2")
+		require.NoError(t, srv.Close())
 		require.True(t, srv.Closed())
 	})
 }

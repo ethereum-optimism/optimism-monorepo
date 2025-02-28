@@ -109,3 +109,38 @@ func TestStoreSubWord_64bits(t *testing.T) {
 		})
 	}
 }
+
+func TestSignExtend_64bit(t *testing.T) {
+	cases := []struct {
+		name     string
+		data     Word
+		index    Word
+		expected Word
+	}{
+		{name: "idx 32, signed", data: 0x0000_0000_8123_4567, index: 32, expected: 0xFFFF_FFFF_8123_4567},
+		{name: "idx 32, unsigned", data: 0x0000_0000_7123_4567, index: 32, expected: 0x0000_0000_7123_4567},
+		{name: "idx 32, signed, non-zero upper bits", data: 0x1234_4321_8123_4567, index: 32, expected: 0xFFFF_FFFF_8123_4567},
+		{name: "idx 32, unsigned, non-zero upper bits", data: 0xFFFF_FFFF_7123_4567, index: 32, expected: 0x0000_0000_7123_4567},
+		{name: "idx 33, signed", data: 0x0000_0001_2345_4321, index: 33, expected: 0xFFFF_FFFF_2345_4321},
+		{name: "idx 33, unsigned", data: 0x0000_0000_2345_4321, index: 33, expected: 0x0000_0000_2345_4321},
+		{name: "idx 33, signed, non-zero upper bits", data: 0xABCD_4321_2345_4321, index: 33, expected: 0xFFFF_FFFF_2345_4321},
+		{name: "idx 33, unsigned, non-zero upper bits", data: 0xFFFF_FFFE_2345_4321, index: 33, expected: 0x0000_0000_2345_4321},
+		{name: "idx 48, signed", data: 0x0000_A123_0123_4567, index: 48, expected: 0xFFFF_A123_0123_4567},
+		{name: "idx 48, unsigned", data: 0x0000_0123_0123_4567, index: 48, expected: 0x0000_0123_0123_4567},
+		{name: "idx 48, signed, non-zero upper bits", data: 0xABCD_A123_0123_4567, index: 48, expected: 0xFFFF_A123_0123_4567},
+		{name: "idx 48, unsigned, non-zero upper bits", data: 0xABCD_0123_0123_4567, index: 48, expected: 0x0000_0123_0123_4567},
+		{name: "idx 50, signed", data: 0x0002_A123_0123_4567, index: 50, expected: 0xFFFE_A123_0123_4567},
+		{name: "idx 50, unsigned", data: 0x0001_0123_0123_4567, index: 50, expected: 0x0001_0123_0123_4567},
+		{name: "idx 50, signed, non-zero upper bits", data: 0x1AB2_A123_0123_4567, index: 50, expected: 0xFFFE_A123_0123_4567},
+		{name: "idx 50, unsigned, non-zero upper bits", data: 0xFED1_0123_0123_4567, index: 50, expected: 0x0001_0123_0123_4567},
+		{name: "idx 64, signed", data: 0xABCD_0101_8123_4567, index: 64, expected: 0xABCD_0101_8123_4567},
+		{name: "idx 64, unsigned", data: 0x789A_0101_8123_4567, index: 64, expected: 0x789A_0101_8123_4567},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			actual := SignExtend(c.data, c.index)
+			require.Equal(t, c.expected, actual)
+		})
+	}
+}

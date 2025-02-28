@@ -1,6 +1,9 @@
 package httputil
 
-import "time"
+import (
+	"net/http"
+	"time"
+)
 
 // DefaultTimeouts for HTTP server, based on the RPC timeouts that geth uses.
 var DefaultTimeouts = HTTPTimeouts{
@@ -45,11 +48,11 @@ type HTTPTimeouts struct {
 }
 
 func WithTimeouts(timeouts HTTPTimeouts) HTTPOption {
-	return func(s *HTTPServer) error {
-		s.srv.ReadTimeout = timeouts.ReadTimeout
-		s.srv.ReadHeaderTimeout = timeouts.ReadHeaderTimeout
-		s.srv.WriteTimeout = timeouts.WriteTimeout
-		s.srv.IdleTimeout = timeouts.IdleTimeout
+	return func(s *http.Server) error {
+		s.ReadTimeout = timeouts.ReadTimeout
+		s.ReadHeaderTimeout = timeouts.ReadHeaderTimeout
+		s.WriteTimeout = timeouts.WriteTimeout
+		s.IdleTimeout = timeouts.IdleTimeout
 		return nil
 	}
 }

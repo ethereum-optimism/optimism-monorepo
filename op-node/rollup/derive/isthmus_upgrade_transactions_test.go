@@ -3,6 +3,7 @@ package derive
 import (
 	"testing"
 
+	"github.com/ethereum-optimism/optimism/op-service/predeploys"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -28,7 +29,7 @@ func TestIsthmusNetworkTransactions(t *testing.T) {
 	require.Len(t, upgradeTxns, 1)
 
 	deployBlockHashesSender, deployBlockHashesContract := toDepositTxn(t, upgradeTxns[0])
-	require.Equal(t, deployBlockHashesSender, common.HexToAddress("0xE9f0662359Bb2c8111840eFFD73B9AFA77CbDE10"))
+	require.Equal(t, deployBlockHashesSender, predeploys.EIP2935ContractDeployer)
 	require.Equal(t, blockHashDeployerSource.SourceHash(), deployBlockHashesContract.SourceHash())
 	require.Nil(t, deployBlockHashesContract.To())
 	require.Equal(t, uint64(250_000), deployBlockHashesContract.Gas())

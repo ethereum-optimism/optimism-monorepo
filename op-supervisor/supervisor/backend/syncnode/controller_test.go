@@ -25,6 +25,7 @@ type mockSyncControl struct {
 	updateCrossUnsafeFn func(ctx context.Context, derived eth.BlockID) error
 	updateFinalizedFn   func(ctx context.Context, id eth.BlockID) error
 	pullEventFn         func(ctx context.Context) (*types.ManagedEvent, error)
+	blockRefByNumFn     func(ctx context.Context, number uint64) (eth.BlockRef, error)
 
 	subscribeEvents gethevent.FeedOf[*types.ManagedEvent]
 }
@@ -47,9 +48,9 @@ func (m *mockSyncControl) ProvideL1(ctx context.Context, ref eth.BlockRef) error
 	return nil
 }
 
-func (m *mockSyncControl) Reset(ctx context.Context, unsafe, safe, finalized eth.BlockID) error {
+func (m *mockSyncControl) Reset(ctx context.Context, lUnsafe, xUnsafe, lSafe, xSafe, finalized eth.BlockID) error {
 	if m.resetFn != nil {
-		return m.resetFn(ctx, unsafe, safe, finalized)
+		return m.resetFn(ctx, lUnsafe, lSafe, finalized)
 	}
 	return nil
 }
@@ -86,6 +87,13 @@ func (m *mockSyncControl) UpdateFinalized(ctx context.Context, id eth.BlockID) e
 	return nil
 }
 
+func (m *mockSyncControl) BlockRefByNumber(ctx context.Context, number uint64) (eth.BlockRef, error) {
+	if m.blockRefByNumFn != nil {
+		return m.blockRefByNumFn(ctx, number)
+	}
+	return eth.BlockRef{}, nil
+}
+
 func (m *mockSyncControl) String() string {
 	return "mock"
 }
@@ -93,10 +101,26 @@ func (m *mockSyncControl) String() string {
 var _ SyncControl = (*mockSyncControl)(nil)
 
 type mockBackend struct {
-	safeDerivedAtFn func(ctx context.Context, chainID eth.ChainID, source eth.BlockID) (eth.BlockID, error)
+	localSafeFn       func(ctx context.Context, chainID eth.ChainID) (pair types.DerivedIDPair, err error)
+	finalizedFn       func(ctx context.Context, chainID eth.ChainID) (eth.BlockID, error)
+	safeDerivedAtFn   func(ctx context.Context, chainID eth.ChainID, source eth.BlockID) (eth.BlockID, error)
+	findSealedBlockFn func(ctx context.Context, chainID eth.ChainID, num uint64) (eth.BlockID, error)
+	isLocalSafeFn     func(ctx context.Context, chainID eth.ChainID, blockID eth.BlockID) error
+	isCrossSafeFn     func(ctx context.Context, chainID eth.ChainID, blockID eth.BlockID) error
+	isLocalUnsafeFn   func(ctx context.Context, chainID eth.ChainID, blockID eth.BlockID) error
+}
+
+func (m *mockBackend) FindSealedBlock(ctx context.Context, chainID eth.ChainID, num uint64) (eth.BlockID, error) {
+	if m.findSealedBlockFn != nil {
+		return m.findSealedBlockFn(ctx, chainID, num)
+	}
+	return eth.BlockID{}, nil
 }
 
 func (m *mockBackend) LocalSafe(ctx context.Context, chainID eth.ChainID) (pair types.DerivedIDPair, err error) {
+	if m.localSafeFn != nil {
+		return m.localSafeFn(ctx, chainID)
+	}
 	return types.DerivedIDPair{}, nil
 }
 
@@ -108,6 +132,27 @@ func (m *mockBackend) LocalUnsafe(ctx context.Context, chainID eth.ChainID) (eth
 	return eth.BlockID{}, nil
 }
 
+func (m *mockBackend) IsLocalSafe(ctx context.Context, chainID eth.ChainID, blockID eth.BlockID) error {
+	if m.isLocalSafeFn != nil {
+		return m.isLocalSafeFn(ctx, chainID, blockID)
+	}
+	return nil
+}
+
+func (m *mockBackend) IsCrossSafe(ctx context.Context, chainID eth.ChainID, blockID eth.BlockID) error {
+	if m.isCrossSafeFn != nil {
+		return m.isCrossSafeFn(ctx, chainID, blockID)
+	}
+	return nil
+}
+
+func (m *mockBackend) IsLocalUnsafe(ctx context.Context, chainID eth.ChainID, blockID eth.BlockID) error {
+	if m.isLocalUnsafeFn != nil {
+		return m.isLocalUnsafeFn(ctx, chainID, blockID)
+	}
+	return nil
+}
+
 func (m *mockBackend) SafeDerivedAt(ctx context.Context, chainID eth.ChainID, source eth.BlockID) (derived eth.BlockID, err error) {
 	if m.safeDerivedAtFn != nil {
 		return m.safeDerivedAtFn(ctx, chainID, source)
@@ -116,11 +161,18 @@ func (m *mockBackend) SafeDerivedAt(ctx context.Context, chainID eth.ChainID, so
 }
 
 func (m *mockBackend) Finalized(ctx context.Context, chainID eth.ChainID) (eth.BlockID, error) {
+	if m.finalizedFn != nil {
+		return m.finalizedFn(ctx, chainID)
+	}
 	return eth.BlockID{}, nil
 }
 
 func (m *mockBackend) L1BlockRefByNumber(ctx context.Context, number uint64) (eth.L1BlockRef, error) {
 	return eth.L1BlockRef{}, nil
+}
+
+func (m *mockBackend) CrossUnsafe(ctx context.Context, chainID eth.ChainID) (eth.BlockID, error) {
+	return eth.BlockID{}, nil
 }
 
 var _ backend = (*mockBackend)(nil)

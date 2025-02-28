@@ -901,6 +901,8 @@ jobs:
       - run-contracts-check:
           command: interfaces-check-no-build
       - run-contracts-check:
+          command: reinitializer-check-no-build
+      - run-contracts-check:
           command: size-check
       - run-contracts-check:
           command: unused-imports-check-no-build
@@ -1498,6 +1500,7 @@ workflows:
             op-service
             op-supervisor
             op-deployer
+            op-validator
             op-e2e/system
             op-e2e/e2eutils
             op-e2e/opgeth

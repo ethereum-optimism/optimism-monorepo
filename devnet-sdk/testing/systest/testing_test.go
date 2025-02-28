@@ -101,15 +101,15 @@ func (m *mockChain) SupportsEIP(ctx context.Context, eip uint64) bool {
 // mockSystem implements a minimal system.System for testing
 type mockSystem struct{}
 
-func (m *mockSystem) Identifier() string     { return "mock" }
-func (m *mockSystem) L1() system.Chain       { return &mockChain{} }
-func (m *mockSystem) L2(uint64) system.Chain { return &mockChain{} }
-func (m *mockSystem) Close() error           { return nil }
+func (m *mockSystem) Identifier() string  { return "mock" }
+func (m *mockSystem) L1() system.Chain    { return &mockChain{} }
+func (m *mockSystem) L2s() []system.Chain { return []system.Chain{&mockChain{}} }
+func (m *mockSystem) Close() error        { return nil }
 
 // mockInteropSet implements a minimal system.InteropSet for testing
 type mockInteropSet struct{}
 
-func (m *mockInteropSet) L2(uint64) system.Chain { return &mockChain{} }
+func (m *mockInteropSet) L2s() []system.Chain { return []system.Chain{&mockChain{}} }
 
 // mockInteropSystem implements a minimal system.InteropSystem for testing
 type mockInteropSystem struct {

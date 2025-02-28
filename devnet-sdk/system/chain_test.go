@@ -72,7 +72,9 @@ func TestChainFromDescriptor(t *testing.T) {
 	chain, err := chainFromDescriptor(descriptor)
 	assert.Nil(t, err)
 	assert.NotNil(t, chain)
-	assert.Equal(t, "http://localhost:8545", chain.RPCURL())
+	lowLevelChain, ok := chain.(LowLevelChain)
+	assert.True(t, ok)
+	assert.Equal(t, "http://localhost:8545", lowLevelChain.RPCURL())
 
 	// Compare the underlying big.Int values
 	chainID := chain.ID()

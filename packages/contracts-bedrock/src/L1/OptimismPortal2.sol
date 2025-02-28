@@ -7,6 +7,7 @@ import { ResourceMetering } from "src/L1/ResourceMetering.sol";
 
 // Libraries
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { EOA } from "src/libraries/EOA.sol";
 import { SafeCall } from "src/libraries/SafeCall.sol";
 import { Constants } from "src/libraries/Constants.sol";
 import { Types } from "src/libraries/Types.sol";
@@ -177,9 +178,9 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
     }
 
     /// @notice Semantic version.
-    /// @custom:semver 3.12.1
+    /// @custom:semver 3.13.0
     function version() public pure virtual returns (string memory) {
-        return "3.12.1";
+        return "3.13.0";
     }
 
     /// @notice Constructs the OptimismPortal contract.
@@ -469,7 +470,7 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
 
         // Transform the from-address to its alias if the caller is a contract.
         address from = msg.sender;
-        if (msg.sender != tx.origin) {
+        if (!EOA.isSenderEOA()) {
             from = AddressAliasHelper.applyL1ToL2Alias(msg.sender);
         }
 

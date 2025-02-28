@@ -5,25 +5,30 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"io"
-	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
+	"github.com/ethereum-optimism/optimism/op-service/eth"
 	opsigner "github.com/ethereum-optimism/optimism/op-service/signer"
 )
 
 var SigningDomainBlocksV1 = [32]byte{}
 
 type Signer interface {
-	Sign(ctx context.Context, domain [32]byte, chainID *big.Int, encodedMsg []byte) (sig *[65]byte, err error)
+	Sign(ctx context.Context, domain eth.Bytes32, chainID eth.ChainID, payloadHash common.Hash) (sig *[65]byte, err error)
 	io.Closer
 }
 
 func BlockSigningHash(cfg *rollup.Config, payloadBytes []byte) (common.Hash, error) {
-	return opsigner.NewBlockPayloadArgs(SigningDomainBlocksV1, cfg.L2ChainID, payloadBytes, nil).ToSigningHash()
+	msg := opsigner.BlockSigningMessage{
+		Domain:      SigningDomainBlocksV1,
+		ChainID:     eth.ChainIDFromBig(cfg.L2ChainID),
+		PayloadHash: opsigner.PayloadHash(payloadBytes),
+	}
+	return msg.ToSigningHash(), nil
 }
 
 // LocalSigner is suitable for testing
@@ -35,17 +40,16 @@ func NewLocalSigner(priv *ecdsa.PrivateKey) *LocalSigner {
 	return &LocalSigner{priv: priv}
 }
 
-func (s *LocalSigner) Sign(ctx context.Context, domain [32]byte, chainID *big.Int, encodedMsg []byte) (sig *[65]byte, err error) {
+func (s *LocalSigner) Sign(ctx context.Context, domain eth.Bytes32, chainID eth.ChainID, payloadHash common.Hash) (sig *[65]byte, err error) {
 	if s.priv == nil {
 		return nil, errors.New("signer is closed")
 	}
-
-	blockPayloadArgs := opsigner.NewBlockPayloadArgs(domain, chainID, encodedMsg, nil)
-	signingHash, err := blockPayloadArgs.ToSigningHash()
-
-	if err != nil {
-		return nil, err
+	msg := opsigner.BlockSigningMessage{
+		Domain:      domain,
+		ChainID:     chainID,
+		PayloadHash: payloadHash,
 	}
+	signingHash := msg.ToSigningHash()
 	signature, err := crypto.Sign(signingHash[:], s.priv)
 	if err != nil {
 		return nil, err
@@ -72,14 +76,19 @@ func NewRemoteSigner(logger log.Logger, config opsigner.CLIConfig) (*RemoteSigne
 	return &RemoteSigner{signerClient, &senderAddress}, nil
 }
 
-func (s *RemoteSigner) Sign(ctx context.Context, domain [32]byte, chainID *big.Int, encodedMsg []byte) (sig *[65]byte, err error) {
+func (s *RemoteSigner) Sign(ctx context.Context, domain eth.Bytes32, chainID eth.ChainID, payloadHash common.Hash) (sig *[65]byte, err error) {
 	if s.client == nil {
 		return nil, errors.New("signer is closed")
 	}
 
-	blockPayloadArgs := opsigner.NewBlockPayloadArgs(domain, chainID, encodedMsg, s.sender)
+	// We use V1 for now, since the server may not support V2 yet
+	blockPayloadArgs := &opsigner.BlockPayloadArgs{
+		Domain:        domain,
+		ChainID:       chainID.ToBig(),
+		PayloadHash:   payloadHash[:],
+		SenderAddress: s.sender,
+	}
 	signature, err := s.client.SignBlockPayload(ctx, blockPayloadArgs)
-
 	if err != nil {
 		return nil, err
 	}

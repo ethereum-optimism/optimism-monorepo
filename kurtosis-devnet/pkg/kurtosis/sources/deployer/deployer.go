@@ -9,8 +9,8 @@ import (
 	"math/big"
 	"strings"
 
+	ktfs "github.com/ethereum-optimism/optimism/devnet-sdk/kt/fs"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/types"
-	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/sources/artifact"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -252,7 +252,7 @@ func parseStateFile(r io.Reader) (*DeployerState, error) {
 
 // ExtractData downloads and parses the op-deployer state
 func (d *Deployer) ExtractData(ctx context.Context) (*DeployerData, error) {
-	fs, err := artifact.NewEnclaveFS(ctx, d.enclave)
+	fs, err := ktfs.NewEnclaveFS(ctx, d.enclave)
 	if err != nil {
 		return nil, err
 	}
@@ -265,8 +265,8 @@ func (d *Deployer) ExtractData(ctx context.Context) (*DeployerData, error) {
 	stateBuffer := bytes.NewBuffer(nil)
 	walletsBuffer := bytes.NewBuffer(nil)
 	if err := a.ExtractFiles(
-		artifact.NewArtifactFileWriter(d.stateName, stateBuffer),
-		artifact.NewArtifactFileWriter(d.walletsName, walletsBuffer),
+		ktfs.NewArtifactFileWriter(d.stateName, stateBuffer),
+		ktfs.NewArtifactFileWriter(d.walletsName, walletsBuffer),
 	); err != nil {
 		return nil, err
 	}

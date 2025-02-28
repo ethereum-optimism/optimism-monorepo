@@ -91,16 +91,6 @@ func (ev FinalizedL2UpdateEvent) String() string {
 	return "finalized-l2-update"
 }
 
-type LocalSafeOutOfSyncEvent struct {
-	ChainID eth.ChainID
-	L1Ref   eth.BlockRef
-	Err     error
-}
-
-func (ev LocalSafeOutOfSyncEvent) String() string {
-	return "local-safe-out-of-sync"
-}
-
 type LocalUnsafeReceivedEvent struct {
 	ChainID        eth.ChainID
 	NewLocalUnsafe eth.BlockRef
@@ -113,6 +103,7 @@ func (ev LocalUnsafeReceivedEvent) String() string {
 type LocalDerivedEvent struct {
 	ChainID eth.ChainID
 	Derived types.DerivedBlockRefPair
+	NodeID  string
 }
 
 func (ev LocalDerivedEvent) String() string {
@@ -169,4 +160,14 @@ type ChainRewoundEvent struct {
 
 func (ev ChainRewoundEvent) String() string {
 	return "chain-rewound"
+}
+
+type UpdateLocalSafeFailedEvent struct {
+	ChainID eth.ChainID
+	Err     error
+	NodeID  string
+}
+
+func (ev UpdateLocalSafeFailedEvent) String() string {
+	return "update-local-safe-failed"
 }

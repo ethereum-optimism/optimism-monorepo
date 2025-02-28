@@ -7,22 +7,26 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/deploy"
-	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/sources/artifact"
+	ktfs "github.com/ethereum-optimism/optimism/devnet-sdk/kt/fs"
+)
+
+const (
+	KurtosisDevnetEnvArtifactName = "devnet"
+	KurtosisDevnetEnvArtifactPath = "env.json"
 )
 
 // EnclaveFS is an interface that both our mock and the real implementation satisfy
 type EnclaveFS interface {
-	GetArtifact(ctx context.Context, name string) (*artifact.Artifact, error)
+	GetArtifact(ctx context.Context, name string) (*ktfs.Artifact, error)
 	Close() error
 }
 
 // enclaveFSWrapper wraps the artifact.EnclaveFS to implement our EnclaveFS interface
 type enclaveFSWrapper struct {
-	fs *artifact.EnclaveFS
+	fs *ktfs.EnclaveFS
 }
 
-func (w *enclaveFSWrapper) GetArtifact(ctx context.Context, name string) (*artifact.Artifact, error) {
+func (w *enclaveFSWrapper) GetArtifact(ctx context.Context, name string) (*ktfs.Artifact, error) {
 	return w.fs.GetArtifact(ctx, name)
 }
 
@@ -37,7 +41,7 @@ type NewEnclaveFSFunc func(ctx context.Context, enclave string) (EnclaveFS, erro
 // NewEnclaveFS is a variable that holds the function to create a new enclave filesystem
 // It can be replaced in tests
 var NewEnclaveFS NewEnclaveFSFunc = func(ctx context.Context, enclave string) (EnclaveFS, error) {
-	fs, err := artifact.NewEnclaveFS(ctx, enclave)
+	fs, err := ktfs.NewEnclaveFS(ctx, enclave)
 	if err != nil {
 		return nil, err
 	}
@@ -49,8 +53,8 @@ var NewEnclaveFS NewEnclaveFSFunc = func(ctx context.Context, enclave string) (E
 // If file is omitted, it defaults to "env.json"
 func parseKurtosisURL(u *url.URL) (enclave, artifactName, fileName string) {
 	enclave = u.Host
-	artifactName = deploy.DevnetEnvArtifactName
-	fileName = deploy.DevnetEnvArtifactPath
+	artifactName = KurtosisDevnetEnvArtifactName
+	fileName = KurtosisDevnetEnvArtifactPath
 
 	// Trim both prefix and suffix slashes before splitting
 	trimmedPath := strings.Trim(u.Path, "/")
@@ -80,7 +84,7 @@ func fetchKurtosisData(u *url.URL) (string, []byte, error) {
 	}
 
 	var buf bytes.Buffer
-	writer := artifact.NewArtifactFileWriter(fileName, &buf)
+	writer := ktfs.NewArtifactFileWriter(fileName, &buf)
 
 	if err := art.ExtractFiles(writer); err != nil {
 		return "", nil, fmt.Errorf("error extracting file from artifact: %w", err)

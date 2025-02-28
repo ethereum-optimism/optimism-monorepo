@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/ethereum-optimism/optimism/devnet-sdk/contracts/registry/empty"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/interfaces"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/system"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/testing/systest"
@@ -91,17 +92,53 @@ func (m *mockFailingWallet) Transactor() *bind.TransactOpts {
 	return nil
 }
 
+// mockContractsRegistry extends empty.EmptyRegistry to provide mock contract instances
+type mockContractsRegistry struct {
+	empty.EmptyRegistry
+}
+
+// mockSuperchainWETH implements a minimal SuperchainWETH interface for testing
+type mockSuperchainWETH struct {
+	addr types.Address
+}
+
+func (m *mockSuperchainWETH) BalanceOf(account types.Address) types.ReadInvocation[types.Balance] {
+	return &mockReadInvocation{balance: types.NewBalance(big.NewInt(0))}
+}
+
+// mockReadInvocation implements a read invocation that returns a fixed balance
+type mockReadInvocation struct {
+	balance types.Balance
+}
+
+func (m *mockReadInvocation) Call(ctx context.Context) (types.Balance, error) {
+	return m.balance, nil
+}
+
+func (r *mockContractsRegistry) SuperchainWETH(address types.Address) (interfaces.SuperchainWETH, error) {
+	return &mockSuperchainWETH{addr: address}, nil
+}
+
 // mockFailingChain implements system.Chain with a failing SendETH
 type mockFailingChain struct {
-	id  types.ChainID
-	reg interfaces.ContractsRegistry
+	id      types.ChainID
+	reg     interfaces.ContractsRegistry
+	wallets []system.Wallet
+}
+
+func newMockFailingChain(id types.ChainID, wallets []system.Wallet) *mockFailingChain {
+	return &mockFailingChain{
+		id:      id,
+		reg:     &mockContractsRegistry{},
+		wallets: wallets,
+	}
 }
 
 func (m *mockFailingChain) RPCURL() string                     { return "mock://failing" }
 func (m *mockFailingChain) Client() (*ethclient.Client, error) { return ethclient.Dial(m.RPCURL()) }
 func (m *mockFailingChain) ID() types.ChainID                  { return m.id }
 func (m *mockFailingChain) Wallets(ctx context.Context) ([]system.Wallet, error) {
-	return nil, nil
+	return m.wallets, nil
 }
 func (m *mockFailingChain) ContractsRegistry() interfaces.ContractsRegistry { return m.reg }
 func (m *mockFailingChain) GasPrice(ctx context.Context) (*big.Int, error) {
@@ -115,6 +152,27 @@ func (m *mockFailingChain) PendingNonceAt(ctx context.Context, address common.Ad
 }
 func (m *mockFailingChain) SupportsEIP(ctx context.Context, eip uint64) bool {
 	return true
+}
+
+// mockFailingSystem implements system.System
+type mockFailingSystem struct {
+	chain system.Chain
+}
+
+func (m *mockFailingSystem) Identifier() string {
+	return "mock-failing-system"
+}
+
+func (m *mockFailingSystem) L1() system.Chain {
+	return nil // We don't need L1 for this test
+}
+
+func (m *mockFailingSystem) L2s() []system.Chain {
+	return []system.Chain{m.chain}
+}
+
+func (m *mockFailingSystem) Close() error {
+	return nil
 }
 
 // recordingT implements systest.T and records failures

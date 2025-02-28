@@ -368,14 +368,14 @@ func (g *OutputGameHelper) Status(ctx context.Context) gameTypes.GameStatus {
 	return status
 }
 
-func (g *OutputGameHelper) WaitForBondModeSet(ctx context.Context) {
+func (g *OutputGameHelper) WaitForBondModeDecided(ctx context.Context) {
 	g.T.Logf("Waiting for game %v to have bond mode set", g.Addr)
 	timedCtx, cancel := context.WithTimeout(ctx, defaultTimeout)
 	defer cancel()
 	err := wait.For(timedCtx, time.Second, func() (bool, error) {
-		bondMode, err := g.Game.BondDistributionMode(ctx)
+		bondMode, err := g.Game.GetBondDistributionMode(ctx, rpcblock.Latest)
 		g.Require.NoError(err)
-		return bondMode != 0, nil
+		return bondMode != types.UndecidedDistributionMode, nil
 	})
 	g.Require.NoError(err, "Failed to wait for bond mode to be set")
 }

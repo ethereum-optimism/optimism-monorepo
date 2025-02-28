@@ -14,8 +14,8 @@ import (
 
 	"github.com/minio/sha256-simd"
 
+	"github.com/ethereum-optimism/optimism/op-service/testutils"
 	"github.com/ethereum/go-ethereum/common"
-
 	"github.com/stretchr/testify/require"
 )
 
@@ -44,8 +44,10 @@ func TestDownloadArtifacts_MockArtifacts(t *testing.T) {
 		URL: artifactsURL,
 	}
 
+	testCacheDir := testutils.IsolatedTestDirWithAutoCleanup(t)
+
 	t.Run("success", func(t *testing.T) {
-		fs, err := Download(ctx, loc, nil)
+		fs, err := Download(ctx, loc, nil, testCacheDir)
 		require.NoError(t, err)
 		require.NotNil(t, fs)
 
@@ -57,7 +59,7 @@ func TestDownloadArtifacts_MockArtifacts(t *testing.T) {
 	t.Run("bad integrity", func(t *testing.T) {
 		_, err := downloadHTTP(ctx, loc.URL, nil, &hashIntegrityChecker{
 			hash: common.Hash{'B', 'A', 'D'},
-		})
+		}, testCacheDir)
 		require.Error(t, err)
 		require.ErrorContains(t, err, "integrity check failed")
 	})
@@ -67,7 +69,7 @@ func TestDownloadArtifacts_MockArtifacts(t *testing.T) {
 	}
 
 	t.Run("ok integrity", func(t *testing.T) {
-		_, err := downloadHTTP(ctx, loc.URL, nil, correctIntegrity)
+		_, err := downloadHTTP(ctx, loc.URL, nil, correctIntegrity, testCacheDir)
 		require.NoError(t, err)
 	})
 
@@ -77,18 +79,12 @@ func TestDownloadArtifacts_MockArtifacts(t *testing.T) {
 		u.Path = fmt.Sprintf("/different-path-%d", time.Now().UnixNano())
 
 		startCalls := atomic.LoadInt32(&callCount)
-		_, err = downloadHTTP(ctx, u, nil, correctIntegrity)
+		_, err = downloadHTTP(ctx, u, nil, correctIntegrity, testCacheDir)
 		require.NoError(t, err)
 		startCalls++
 		require.Equal(t, startCalls, atomic.LoadInt32(&callCount))
 
-		t.Cleanup(func() {
-			require.NoError(t, os.Remove(
-				fmt.Sprintf("/tmp/op-deployer-cache/%x.tgz", sha256.Sum256([]byte(u.String()))),
-			))
-		})
-
-		_, err = downloadHTTP(ctx, u, nil, correctIntegrity)
+		_, err = downloadHTTP(ctx, u, nil, correctIntegrity, testCacheDir)
 		require.NoError(t, err)
 		require.Equal(t, startCalls, atomic.LoadInt32(&callCount))
 	})
@@ -97,11 +93,10 @@ func TestDownloadArtifacts_MockArtifacts(t *testing.T) {
 		u, err := url.Parse(loc.URL.String())
 		require.NoError(t, err)
 		u.Path = fmt.Sprintf("/different-path-%d", time.Now().UnixNano())
-
-		_, err = downloadHTTP(ctx, u, nil, correctIntegrity)
+		_, err = downloadHTTP(ctx, u, nil, correctIntegrity, testCacheDir)
 		require.NoError(t, err)
 
-		cacheFile := fmt.Sprintf("/tmp/op-deployer-cache/%x.tgz", sha256.Sum256([]byte(u.String())))
+		cacheFile := fmt.Sprintf("%s/%x.tgz", testCacheDir, sha256.Sum256([]byte(u.String())))
 		t.Cleanup(func() {
 			require.NoError(t, os.Remove(cacheFile))
 		})
@@ -112,7 +107,7 @@ func TestDownloadArtifacts_MockArtifacts(t *testing.T) {
 		require.NoError(t, err)
 		require.NoError(t, cacheF.Close())
 
-		_, err = downloadHTTP(ctx, u, nil, correctIntegrity)
+		_, err = downloadHTTP(ctx, u, nil, correctIntegrity, testCacheDir)
 		require.ErrorContains(t, err, "integrity check failed")
 	})
 }
@@ -122,11 +117,12 @@ func TestDownloadArtifacts_TaggedVersions(t *testing.T) {
 		"op-contracts/v1.6.0",
 		"op-contracts/v1.7.0-beta.1+l2-contracts",
 	}
+	testCacheDir := testutils.IsolatedTestDirWithAutoCleanup(t)
 	for _, tag := range tags {
 		t.Run(tag, func(t *testing.T) {
 			t.Parallel()
 			loc := MustNewLocatorFromTag(tag)
-			_, err := Download(context.Background(), loc, nil)
+			_, err := Download(context.Background(), loc, nil, testCacheDir)
 			require.NoError(t, err)
 		})
 	}

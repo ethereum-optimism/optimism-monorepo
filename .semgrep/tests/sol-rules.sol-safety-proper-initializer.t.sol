@@ -32,13 +32,28 @@ contract SemgrepTest__sol_safety_proper_initializer {
         // ...
     }
 
-    // ruleid: sol-safety-proper-initializer
-    function initialize() external {
+    // ok: sol-safety-proper-initializer
+    function initialize() public initializer {
+        // ...
+    }
+
+    // ok: sol-safety-proper-initializer
+    function initialize() external reinitializer(1) {
+        // ...
+    }
+
+    // ok: sol-safety-proper-initializer
+    function initialize() external reinitializer(1) {
+        // ...
+    }
+
+    // ok: sol-safety-proper-initializer
+    function initialize() public reinitializer(2) {
         // ...
     }
 
     // ruleid: sol-safety-proper-initializer
-    function initialize() public initializer {
+    function initialize() internal {
         // ...
     }
 

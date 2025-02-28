@@ -187,8 +187,7 @@ func InteropL2DevConfig(l1ChainID, l2ChainID uint64, addrs devkeys.Addresses, me
 		SystemConfigOwner: systemConfigOwner,
 		L2InitializationConfig: genesis.L2InitializationConfig{
 			DevDeployConfig: genesis.DevDeployConfig{
-				FundDevAccounts:           true,
-				OverrideMessageExpiryTime: messageExpiryTime,
+				FundDevAccounts: true,
 			},
 			L2GenesisBlockDeployConfig: genesis.L2GenesisBlockDeployConfig{
 				L2GenesisBlockGasLimit:      60_000_000,

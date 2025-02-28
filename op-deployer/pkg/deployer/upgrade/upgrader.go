@@ -101,7 +101,9 @@ func UpgradeCLI(upgrader Upgrader) func(*cli.Context) error {
 			return fmt.Errorf("unknown deployment target: %s", deploymentTarget)
 		}
 
-		artifactsFS, err := artifacts.Download(ctx, artifactsLocator, artifacts.BarProgressor())
+		cacheDir := cliCtx.String(deployer.CacheDirFlag.Name)
+
+		artifactsFS, err := artifacts.Download(ctx, artifactsLocator, artifacts.BarProgressor(), cacheDir)
 		if err != nil {
 			return fmt.Errorf("failed to download L1 artifacts: %w", err)
 		}

@@ -152,7 +152,7 @@ func (db *ChainsDB) OnEvent(ev event.Event) bool {
 			"chain", x.ChainID, "derived", x.Anchor.Derived, "source", x.Anchor.Source)
 		db.initFromAnchor(x.ChainID, x.Anchor)
 	case superevents.LocalDerivedEvent:
-		db.UpdateLocalSafe(x.ChainID, x.Derived.Source, x.Derived.Derived)
+		db.UpdateLocalSafe(x.ChainID, x.Derived.Source, x.Derived.Derived, x.NodeID)
 	case superevents.FinalizedL1RequestEvent:
 		db.onFinalizedL1(x.FinalizedL1)
 	case superevents.ReplaceBlockEvent:

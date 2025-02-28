@@ -14,7 +14,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 
-	"github.com/ethereum-optimism/optimism/op-node/params"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 )
 
@@ -823,11 +822,4 @@ func TestConfigImplementsBlockType(t *testing.T) {
 			assert.Equal(t, config.HasOptimismWithdrawalsRoot(test.blockTime), test.hasOptimismWithdrawalsRoot)
 		})
 	}
-}
-
-func TestConfig_GetMessageExpiryTimeInterop(t *testing.T) {
-	config := randConfig()
-	assert.Equal(t, config.GetMessageExpiryTimeInterop(), uint64(params.MessageExpiryTimeSecondsInterop))
-	config.OverrideMessageExpiryTimeInterop = 100
-	assert.Equal(t, config.GetMessageExpiryTimeInterop(), uint64(100))
 }

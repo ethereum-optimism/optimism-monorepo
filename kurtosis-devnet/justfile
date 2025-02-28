@@ -114,6 +114,9 @@ user-devnet DATA_FILE:
 # Pectra devnet
 pectra-devnet: (devnet "pectra.yaml")
 
+# Isthmus devnet
+isthmus-devnet: (devnet "isthmus.yaml")
+
 # subshells
 enter-devnet DEVNET CHAIN='Ethereum':
     exec go run ../devnet-sdk/shell/cmd/enter/main.go --devnet kt://{{DEVNET}} --chain {{CHAIN}}

@@ -47,6 +47,7 @@ import { IFaultDisputeGame } from "interfaces/dispute/IFaultDisputeGame.sol";
 import { IDelayedWETH } from "interfaces/dispute/IDelayedWETH.sol";
 import { IAnchorStateRegistry } from "interfaces/dispute/IAnchorStateRegistry.sol";
 import { IMIPS } from "interfaces/cannon/IMIPS.sol";
+import { IPermissionedDisputeGame } from "interfaces/dispute/IPermissionedDisputeGame.sol";
 import { IPreimageOracle } from "interfaces/cannon/IPreimageOracle.sol";
 
 /// @title Deploy
@@ -399,6 +400,8 @@ contract Deploy is Deployer {
         });
 
         setAlphabetFaultGameImplementation();
+        setSuperFaultGameImplementation();
+        setSuperPermissionedGameImplementation();
         setFastFaultGameImplementation();
         setCannonFaultGameImplementation();
 
@@ -670,6 +673,21 @@ contract Deploy is Deployer {
         }
     }
 
+    function loadInteropDevnetAbsolutePrestate() internal returns (Claim interopDevnetAbsolutePrestate_) {
+        string memory filePath = string.concat(vm.projectRoot(), "/../../op-program/bin/prestate-proof-interop.json");
+        if (bytes(Process.bash(string.concat("[[ -f ", filePath, " ]] && echo \"present\""))).length == 0) {
+            revert(
+                "Deploy: cannon prestate dump not found, generate it with `make cannon-prestate` in the monorepo root"
+            );
+        }
+        interopDevnetAbsolutePrestate_ =
+            Claim.wrap(abi.decode(bytes(Process.bash(string.concat("cat ", filePath, " | jq -r .pre"))), (bytes32)));
+        console.log(
+            "[Cannon Dispute Game] Using devnet Interop Devnet Absolute Prestate: %s",
+            vm.toString(Claim.unwrap(interopDevnetAbsolutePrestate_))
+        );
+    }
+
     /// @notice Loads the singlethreaded mips absolute prestate from the prestate-proof for devnets otherwise
     ///         from the config.
     function _loadDevnetStMipsAbsolutePrestate() internal returns (Claim mipsAbsolutePrestate_) {
@@ -747,13 +765,57 @@ contract Deploy is Deployer {
                 splitDepth: cfg.faultGameSplitDepth(),
                 clockExtension: Duration.wrap(uint64(cfg.faultGameClockExtension())),
                 maxClockDuration: Duration.wrap(uint64(cfg.faultGameMaxClockDuration())),
-                vm: IBigStepper(
-                    new AlphabetVM(outputAbsolutePrestate, IPreimageOracle(artifacts.mustGetAddress("PreimageOracle")))
-                ),
+                vm: IBigStepper(artifacts.mustGetAddress("MipsSingleton")),
                 weth: weth,
                 anchorStateRegistry: IAnchorStateRegistry(artifacts.mustGetAddress("AnchorStateRegistryProxy")),
                 l2ChainId: cfg.l2ChainID()
             })
+        });
+    }
+
+    /// @notice Sets the implementation for the `PERMISSIONED_SUPER_CANNON` game type in the `DisputeGameFactory`
+    function setSuperPermissionedGameImplementation() public onlyDevnet broadcast {
+        console.log("Setting SuperPermissionedDisputeGame implementation");
+        IDisputeGameFactory factory = IDisputeGameFactory(artifacts.mustGetAddress("DisputeGameFactoryProxy"));
+        IDelayedWETH weth = IDelayedWETH(artifacts.mustGetAddress("DelayedWETHProxy"));
+
+        _setFaultGameImplementation({
+            _factory: factory,
+            _params: IFaultDisputeGame.GameConstructorParams({
+                gameType: GameType.wrap(4),
+                absolutePrestate: loadInteropDevnetAbsolutePrestate(),
+                maxGameDepth: cfg.faultGameMaxDepth(),
+                splitDepth: cfg.faultGameSplitDepth(),
+                clockExtension: Duration.wrap(uint64(cfg.faultGameClockExtension())),
+                maxClockDuration: Duration.wrap(uint64(cfg.faultGameMaxClockDuration())),
+                vm: IBigStepper(artifacts.mustGetAddress("MipsSingleton")),
+                weth: weth,
+                anchorStateRegistry: IAnchorStateRegistry(artifacts.mustGetAddress("AnchorStateRegistryProxy")),
+                l2ChainId: 0 // Unused Param on SuperDisputeGame
+             })
+        });
+    }
+
+    /// @notice Sets the implementation for the `SUPER_CANNON` game type in the `DisputeGameFactory`
+    function setSuperFaultGameImplementation() public onlyDevnet broadcast {
+        console.log("Setting SuperFaultDisputeGame implementation");
+        IDisputeGameFactory factory = IDisputeGameFactory(artifacts.mustGetAddress("DisputeGameFactoryProxy"));
+        IDelayedWETH weth = IDelayedWETH(artifacts.mustGetAddress("DelayedWETHProxy"));
+
+        _setFaultGameImplementation({
+            _factory: factory,
+            _params: IFaultDisputeGame.GameConstructorParams({
+                gameType: GameType.wrap(4),
+                absolutePrestate: loadInteropDevnetAbsolutePrestate(),
+                maxGameDepth: cfg.faultGameMaxDepth(),
+                splitDepth: cfg.faultGameSplitDepth(),
+                clockExtension: Duration.wrap(uint64(cfg.faultGameClockExtension())),
+                maxClockDuration: Duration.wrap(uint64(cfg.faultGameMaxClockDuration())),
+                vm: IBigStepper(artifacts.mustGetAddress("MipsSingleton")),
+                weth: weth,
+                anchorStateRegistry: IAnchorStateRegistry(artifacts.mustGetAddress("AnchorStateRegistryProxy")),
+                l2ChainId: 0 // Unused Param on SuperDisputeGame
+             })
         });
     }
 
@@ -813,18 +875,51 @@ contract Deploy is Deployer {
             rawGameType != GameTypes.PERMISSIONED_CANNON.raw(), "Deploy: Permissioned Game should be deployed by OPCM"
         );
 
-        _factory.setImplementation(
-            _params.gameType,
-            IDisputeGame(
-                DeployUtils.create2AndSave({
-                    _save: artifacts,
-                    _salt: _implSalt(),
-                    _name: "FaultDisputeGame",
-                    _nick: string.concat("FaultDisputeGame_", vm.toString(rawGameType)),
-                    _args: DeployUtils.encodeConstructor(abi.encodeCall(IFaultDisputeGame.__constructor__, (_params)))
-                })
-            )
-        );
+        if (rawGameType == 4) {
+            _factory.setImplementation(
+                _params.gameType,
+                IDisputeGame(
+                    DeployUtils.create2AndSave({
+                        _save: artifacts,
+                        _salt: _implSalt(),
+                        _name: "SuperFaultDisputeGame",
+                        _nick: string.concat("SuperFaultDisputeGame_", vm.toString(rawGameType)),
+                        _args: DeployUtils.encodeConstructor(abi.encodeCall(IFaultDisputeGame.__constructor__, (_params)))
+                    })
+                )
+            );
+        } else if (rawGameType == 5) {
+            _factory.setImplementation(
+                _params.gameType,
+                IDisputeGame(
+                    DeployUtils.create2AndSave({
+                        _save: artifacts,
+                        _salt: _implSalt(),
+                        _name: "SuperPermissionedDisputeGame",
+                        _nick: string.concat("SuperFaultDisputeGame_", vm.toString(rawGameType)),
+                        _args: DeployUtils.encodeConstructor(
+                            abi.encodeCall(
+                                IPermissionedDisputeGame.__constructor__,
+                                (_params, cfg.l2OutputOracleProposer(), cfg.l2OutputOracleChallenger())
+                            )
+                        )
+                    })
+                )
+            );
+        } else {
+            _factory.setImplementation(
+                _params.gameType,
+                IDisputeGame(
+                    DeployUtils.create2AndSave({
+                        _save: artifacts,
+                        _salt: _implSalt(),
+                        _name: "FaultDisputeGame",
+                        _nick: string.concat("FaultDisputeGame_", vm.toString(rawGameType)),
+                        _args: DeployUtils.encodeConstructor(abi.encodeCall(IFaultDisputeGame.__constructor__, (_params)))
+                    })
+                )
+            );
+        }
 
         string memory gameTypeString;
         if (rawGameType == GameTypes.CANNON.raw()) {
@@ -835,6 +930,10 @@ contract Deploy is Deployer {
             gameTypeString = "OP Succinct";
         } else if (rawGameType == GameTypes.KAILUA.raw()) {
             gameTypeString = "Kailua";
+        } else if (rawGameType == 4) {
+            gameTypeString = "Super Cannon";
+        } else if (rawGameType == 5) {
+            gameTypeString = "Permissioned Super Cannon";
         } else {
             gameTypeString = "Unknown";
         }
@@ -866,7 +965,7 @@ contract Deploy is Deployer {
             ),
             saltMixer: saltMixer,
             gasLimit: uint64(cfg.l2GenesisBlockGasLimit()),
-            disputeGameType: GameTypes.PERMISSIONED_CANNON,
+            disputeGameType: GameType.wrap(4),
             disputeAbsolutePrestate: Claim.wrap(bytes32(cfg.faultGameAbsolutePrestate())),
             disputeMaxGameDepth: cfg.faultGameMaxDepth(),
             disputeSplitDepth: cfg.faultGameSplitDepth(),

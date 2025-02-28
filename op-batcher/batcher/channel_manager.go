@@ -111,6 +111,7 @@ func (s *channelManager) TxConfirmed(_id txID, inclusionBlock eth.BlockID) {
 	if channel, ok := s.txChannels[id]; ok {
 		delete(s.txChannels, id)
 		if timedOut := channel.TxConfirmed(id, inclusionBlock); timedOut {
+			s.log.Warn("channel timed out on chain", "channel_id", channel.ID(), "tx_id", id)
 			s.handleChannelInvalidated(channel)
 		}
 	} else {
@@ -125,11 +126,21 @@ func (s *channelManager) TxConfirmed(_id txID, inclusionBlock eth.BlockID) {
 // in the block queue and the blockCursor is ahead of it.
 // Panics if the block is not in state.
 func (s *channelManager) rewindToBlock(block eth.BlockID) {
+	initialCursor := s.blockCursor
 	idx := block.Number - s.blocks[0].Number().Uint64()
 	if s.blocks[idx].Hash() == block.Hash && idx < uint64(s.blockCursor) {
 		s.blockCursor = int(idx)
 	} else {
-		panic("tried to rewind to nonexistent block")
+		panic("rewindToBlock: tried to rewind to nonexistent block")
+	}
+
+	// Ensure metrics stay in sync by re-adding blocks which the cursor rewound over
+	for i := initialCursor - 1; i >= s.blockCursor; i-- {
+		block, ok := s.blocks.PeekN(i)
+		if !ok {
+			panic("rewindToBlock: block not found at index " + fmt.Sprint(i))
+		}
+		s.metr.RecordL2BlockInPendingQueue(block)
 	}
 }
 
@@ -144,21 +155,40 @@ func (s *channelManager) handleChannelInvalidated(c *channel) {
 		// In that case we end up with an empty frame (header only),
 		// and there are no blocks to requeue.
 		blockID := eth.ToBlockID(c.channelBuilder.blocks[0])
-		for _, block := range c.channelBuilder.blocks {
-			s.metr.RecordL2BlockInPendingQueue(block)
-		}
 		s.rewindToBlock(blockID)
 	} else {
 		s.log.Debug("channelManager.handleChannelInvalidated: channel had no blocks")
 	}
 
-	// Trim provided channel and any older channels:
+	// Trim provided channel and any newer channels:
+	invalidatedChannelIdx := 0
+
 	for i := range s.channelQueue {
 		if s.channelQueue[i] == c {
-			s.channelQueue = s.channelQueue[:i]
+			invalidatedChannelIdx = i
 			break
 		}
 	}
+
+	for i := invalidatedChannelIdx; i < len(s.channelQueue); i++ {
+		s.log.Warn("Dropped channel",
+			"id", s.channelQueue[i].ID(),
+			"none_submitted", s.channelQueue[i].NoneSubmitted(),
+			"fully_submitted", s.channelQueue[i].isFullySubmitted(),
+			"timed_out", s.channelQueue[i].isTimedOut(),
+			"full_reason", s.channelQueue[i].FullErr(),
+			"oldest_l2", s.channelQueue[i].OldestL2(),
+			"newest_l2", s.channelQueue[i].LatestL2(),
+		)
+		// Remove the channel from the txChannels map
+		for txID := range s.txChannels {
+			if s.txChannels[txID] == s.channelQueue[i] {
+				delete(s.txChannels, txID)
+			}
+		}
+	}
+	s.channelQueue = s.channelQueue[:invalidatedChannelIdx]
+
 	s.metr.RecordChannelQueueLength(len(s.channelQueue))
 
 	// We want to start writing to a new channel, so reset currentChannel.
@@ -346,6 +376,23 @@ func (s *channelManager) processBlocks() error {
 		latestL2ref eth.L2BlockRef
 	)
 
+	defer func() {
+		s.blockCursor += blocksAdded
+
+		s.metr.RecordL2BlocksAdded(latestL2ref,
+			blocksAdded,
+			s.pendingBlocks(),
+			s.currentChannel.InputBytes(),
+			s.currentChannel.ReadyBytes())
+		s.log.Debug("Added blocks to channel",
+			"blocks_added", blocksAdded,
+			"blocks_pending", s.pendingBlocks(),
+			"channel_full", s.currentChannel.IsFull(),
+			"input_bytes", s.currentChannel.InputBytes(),
+			"ready_bytes", s.currentChannel.ReadyBytes(),
+		)
+	}()
+
 	for i := s.blockCursor; ; i++ {
 		block, ok := s.blocks.PeekN(i)
 		if !ok {
@@ -369,21 +416,6 @@ func (s *channelManager) processBlocks() error {
 			break
 		}
 	}
-
-	s.blockCursor += blocksAdded
-
-	s.metr.RecordL2BlocksAdded(latestL2ref,
-		blocksAdded,
-		s.pendingBlocks(),
-		s.currentChannel.InputBytes(),
-		s.currentChannel.ReadyBytes())
-	s.log.Debug("Added blocks to channel",
-		"blocks_added", blocksAdded,
-		"blocks_pending", s.pendingBlocks(),
-		"channel_full", s.currentChannel.IsFull(),
-		"input_bytes", s.currentChannel.InputBytes(),
-		"ready_bytes", s.currentChannel.ReadyBytes(),
-	)
 	return nil
 }
 
@@ -494,22 +526,6 @@ func (s *channelManager) PendingDABytes() int64 {
 		return math.MinInt64
 	}
 	return int64(f)
-}
-
-// CheckExpectedProgress uses the supplied syncStatus to infer
-// whether the node providing the status has made the expected
-// safe head progress given fully submitted channels held in
-// state.
-func (m *channelManager) CheckExpectedProgress(syncStatus eth.SyncStatus) error {
-	for _, ch := range m.channelQueue {
-		if ch.isFullySubmitted() && // This implies a number of l1 confirmations has passed, depending on how the txmgr was configured
-			!ch.isTimedOut() &&
-			syncStatus.CurrentL1.Number > ch.maxInclusionBlock &&
-			syncStatus.SafeL2.Number < ch.LatestL2().Number {
-			return errors.New("safe head did not make expected progress")
-		}
-	}
-	return nil
 }
 
 func (m *channelManager) LastStoredBlock() eth.BlockID {

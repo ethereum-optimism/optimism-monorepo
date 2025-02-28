@@ -423,7 +423,7 @@ func (su *SupervisorBackend) DependencySet() depset.DependencySet {
 // Query methods
 // ----------------------------
 
-func (su *SupervisorBackend) CheckMessage(identifier types.Identifier, payloadHash common.Hash) (types.SafetyLevel, error) {
+func (su *SupervisorBackend) CheckMessage(identifier types.Identifier, payloadHash common.Hash, executingDescriptor types.ExecutingDescriptor) (types.SafetyLevel, error) {
 	logHash := types.PayloadHashToLogHash(payloadHash, identifier.Origin)
 	chainID := identifier.ChainID
 	blockNum := identifier.BlockNumber
@@ -446,7 +446,43 @@ func (su *SupervisorBackend) CheckMessage(identifier types.Identifier, payloadHa
 	if err != nil {
 		return types.Invalid, fmt.Errorf("failed to check log: %w", err)
 	}
+	if identifier.Timestamp+su.depSet.MessageExpiryWindow() < executingDescriptor.Timestamp {
+		su.logger.Debug("Message expired", "identifier", identifier, "payloadHash", payloadHash, "executingTimestamp", executingDescriptor.Timestamp)
+		return types.Invalid, nil
+	}
+	if identifier.Timestamp > executingDescriptor.Timestamp {
+		su.logger.Debug("Message timestamp is in the future", "identifier", identifier, "payloadHash", payloadHash, "executingTimestamp", executingDescriptor.Timestamp)
+		return types.Invalid, nil
+	}
 	return su.chainDBs.Safest(chainID, blockNum, logIdx)
+}
+
+func (su *SupervisorBackend) CheckMessagesV2(
+	messages []types.Message,
+	minSafety types.SafetyLevel,
+	executingDescriptor types.ExecutingDescriptor) error {
+	su.logger.Debug("Checking messages", "count", len(messages), "minSafety", minSafety, "executingTimestamp", executingDescriptor.Timestamp)
+
+	for _, msg := range messages {
+		su.logger.Debug("Checking message",
+			"identifier", msg.Identifier, "payloadHash", msg.PayloadHash.String(), "executingTimestamp", executingDescriptor.Timestamp)
+		safety, err := su.CheckMessage(msg.Identifier, msg.PayloadHash, executingDescriptor)
+		if err != nil {
+			su.logger.Error("Check message failed", "err", err,
+				"identifier", msg.Identifier, "payloadHash", msg.PayloadHash.String(), "executingTimestamp", executingDescriptor.Timestamp)
+			return fmt.Errorf("failed to check message: %w", err)
+		}
+		if !safety.AtLeastAsSafe(minSafety) {
+			su.logger.Error("Message is not sufficiently safe",
+				"safety", safety, "minSafety", minSafety,
+				"identifier", msg.Identifier, "payloadHash", msg.PayloadHash.String(), "executingTimestamp", executingDescriptor.Timestamp)
+			return fmt.Errorf("message %v (safety level: %v) does not meet the minimum safety %v",
+				msg.Identifier,
+				safety,
+				minSafety)
+		}
+	}
+	return nil
 }
 
 func (su *SupervisorBackend) CheckMessages(
@@ -457,7 +493,9 @@ func (su *SupervisorBackend) CheckMessages(
 	for _, msg := range messages {
 		su.logger.Debug("Checking message",
 			"identifier", msg.Identifier, "payloadHash", msg.PayloadHash.String())
-		safety, err := su.CheckMessage(msg.Identifier, msg.PayloadHash)
+		// Guarantee message expiry checks do not fail by setting the executing timestamp to the message timestamp
+		// This is intentionally done to avoid breaking checkMessagesV1 which doesn't handle message expiry checks
+		safety, err := su.CheckMessage(msg.Identifier, msg.PayloadHash, types.ExecutingDescriptor{Timestamp: msg.Identifier.Timestamp})
 		if err != nil {
 			su.logger.Error("Check message failed", "err", err,
 				"identifier", msg.Identifier, "payloadHash", msg.PayloadHash.String())
@@ -522,6 +560,14 @@ func (su *SupervisorBackend) SafeDerivedAt(ctx context.Context, chainID eth.Chai
 	return v.ID(), nil
 }
 
+func (su *SupervisorBackend) FindSealedBlock(ctx context.Context, chainID eth.ChainID, number uint64) (eth.BlockID, error) {
+	seal, err := su.chainDBs.FindSealedBlock(chainID, number)
+	if err != nil {
+		return eth.BlockID{}, err
+	}
+	return seal.ID(), nil
+}
+
 // AllSafeDerivedAt returns the last derived block for each chain, from the given L1 block
 func (su *SupervisorBackend) AllSafeDerivedAt(ctx context.Context, source eth.BlockID) (map[eth.ChainID]eth.BlockID, error) {
 	chains := su.depSet.Chains()
@@ -546,6 +592,18 @@ func (su *SupervisorBackend) Finalized(ctx context.Context, chainID eth.ChainID)
 
 func (su *SupervisorBackend) FinalizedL1() eth.BlockRef {
 	return su.chainDBs.FinalizedL1()
+}
+
+func (su *SupervisorBackend) IsLocalUnsafe(ctx context.Context, chainID eth.ChainID, block eth.BlockID) error {
+	return su.chainDBs.IsLocalUnsafe(chainID, block)
+}
+
+func (su *SupervisorBackend) IsCrossSafe(ctx context.Context, chainID eth.ChainID, block eth.BlockID) error {
+	return su.chainDBs.IsCrossSafe(chainID, block)
+}
+
+func (su *SupervisorBackend) IsLocalSafe(ctx context.Context, chainID eth.ChainID, block eth.BlockID) error {
+	return su.chainDBs.IsLocalSafe(chainID, block)
 }
 
 func (su *SupervisorBackend) CrossDerivedToSource(ctx context.Context, chainID eth.ChainID, derived eth.BlockID) (source eth.BlockRef, err error) {

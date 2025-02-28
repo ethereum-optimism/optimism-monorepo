@@ -24,7 +24,7 @@ var (
 )
 
 const (
-	StepsPerTimestamp = 1024
+	StepsPerTimestamp = 128
 )
 
 type PreimagePrestateProvider interface {

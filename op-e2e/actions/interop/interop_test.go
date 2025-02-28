@@ -25,10 +25,7 @@ func TestFullInterop(gt *testing.T) {
 
 	is := dsl.SetupInterop(t)
 	actors := is.CreateActors()
-
-	// get both sequencers set up
-	actors.ChainA.Sequencer.ActL2PipelineFull(t)
-	actors.ChainB.Sequencer.ActL2PipelineFull(t)
+	actors.PrepareChainState(t)
 
 	// sync the supervisor, handle initial events emitted by the nodes
 	actors.ChainA.Sequencer.SyncSupervisor(t)
@@ -168,10 +165,7 @@ func TestFinality(gt *testing.T) {
 	testFinality := func(t helpers.StatefulTesting, extraBlocks int) {
 		is := dsl.SetupInterop(t)
 		actors := is.CreateActors()
-
-		// set up a blank ChainA
-		actors.ChainA.Sequencer.ActL2PipelineFull(t)
-		actors.ChainA.Sequencer.SyncSupervisor(t)
+		actors.PrepareChainState(t)
 
 		actors.Supervisor.ProcessFull(t)
 
@@ -250,15 +244,7 @@ func TestInteropLocalSafeInvalidation(gt *testing.T) {
 
 	is := dsl.SetupInterop(t)
 	actors := is.CreateActors()
-
-	// get both sequencers set up
-	actors.ChainA.Sequencer.ActL2PipelineFull(t)
-	actors.ChainB.Sequencer.ActL2PipelineFull(t)
-
-	// sync the supervisor, handle initial events emitted by the nodes
-	actors.ChainA.Sequencer.SyncSupervisor(t)
-	actors.ChainB.Sequencer.SyncSupervisor(t)
-	actors.Supervisor.ProcessFull(t)
+	actors.PrepareChainState(t)
 
 	genesisB := actors.ChainB.Sequencer.SyncStatus()
 
@@ -279,7 +265,8 @@ func TestInteropLocalSafeInvalidation(gt *testing.T) {
 	require.NoError(t, err)
 
 	actors.ChainB.Sequencer.ActL2StartBlock(t)
-	require.NoError(t, actors.ChainB.SequencerEngine.EngineApi.IncludeTx(tx, aliceB.address))
+	_, err = actors.ChainB.SequencerEngine.EngineApi.IncludeTx(tx, aliceB.address)
+	require.NoError(t, err)
 	actors.ChainB.Sequencer.ActL2EndBlock(t)
 	actors.ChainB.Sequencer.ActL2PipelineFull(t)
 	originalBlock := actors.ChainB.Sequencer.SyncStatus().UnsafeL2
@@ -375,15 +362,7 @@ func TestInteropCrossSafeDependencyDelay(gt *testing.T) {
 
 	is := dsl.SetupInterop(t)
 	actors := is.CreateActors()
-
-	// get both sequencers set up
-	actors.ChainA.Sequencer.ActL2PipelineFull(t)
-	actors.ChainB.Sequencer.ActL2PipelineFull(t)
-
-	// sync the supervisor, handle initial events emitted by the nodes
-	actors.ChainA.Sequencer.SyncSupervisor(t)
-	actors.ChainB.Sequencer.SyncSupervisor(t)
-	actors.Supervisor.ProcessFull(t)
+	actors.PrepareChainState(t)
 
 	// We create a batch with some empty blocks before and after the cross-chain message,
 	// so multiple L2 blocks are all derived from the same L1 block.

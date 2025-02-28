@@ -5,7 +5,7 @@ pragma solidity 0.8.15;
 import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
 // Libraries
-import { Address } from "@openzeppelin/contracts/utils/Address.sol";
+import { EOA } from "src/libraries/EOA.sol";
 
 // Interfaces
 import { ICrossDomainMessenger } from "interfaces/universal/ICrossDomainMessenger.sol";
@@ -138,7 +138,7 @@ abstract contract ERC721Bridge is Initializable {
         // the NFT if they use this function because it sends the NFT to the same address as the
         // caller. This check could be bypassed by a malicious contract via initcode, but it takes
         // care of the user error we want to avoid.
-        require(!Address.isContract(msg.sender), "ERC721Bridge: account is not externally owned");
+        require(EOA.isSenderEOA(), "ERC721Bridge: account is not externally owned");
 
         _initiateBridgeERC721(_localToken, _remoteToken, msg.sender, msg.sender, _tokenId, _minGasLimit, _extraData);
     }

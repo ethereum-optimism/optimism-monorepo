@@ -708,10 +708,6 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("anchorStateRegistry()") });
         _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("attack(bytes32,uint256,bytes32)") });
         _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("bondDistributionMode()") });
-        _addSpec({
-            _name: "SuperFaultDisputeGame",
-            _sel: _getSel("challengeRootL2Block((bytes32,bytes32,bytes32,bytes32),bytes)")
-        });
         _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("claimCredit(address)") });
         _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("claimData(uint256)") });
         _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("claimDataLen()") });
@@ -731,9 +727,6 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("initialize()") });
         _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("l1Head()") });
         _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("l2BlockNumber()") });
-        _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("l2BlockNumberChallenged()") });
-        _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("l2BlockNumberChallenger()") });
-        _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("l2ChainId()") });
         _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("maxClockDuration()") });
         _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("maxGameDepth()") });
         _addSpec({ _name: "SuperFaultDisputeGame", _sel: _getSel("move(bytes32,uint256,bytes32,bool)") });
@@ -768,11 +761,6 @@ contract Specification_Test is CommonTest {
             _auth: Role.CHALLENGER
         });
         _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("bondDistributionMode()") });
-        _addSpec({
-            _name: "SuperPermissionedDisputeGame",
-            _sel: _getSel("challengeRootL2Block((bytes32,bytes32,bytes32,bytes32),bytes)"),
-            _auth: Role.CHALLENGER
-        });
         _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("challenger()") });
         _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("claimCredit(address)") });
         _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("claimData(uint256)") });
@@ -798,9 +786,6 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("initialize()") });
         _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("l1Head()") });
         _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("l2BlockNumber()") });
-        _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("l2BlockNumberChallenged()") });
-        _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("l2BlockNumberChallenger()") });
-        _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("l2ChainId()") });
         _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("maxClockDuration()") });
         _addSpec({ _name: "SuperPermissionedDisputeGame", _sel: _getSel("maxGameDepth()") });
         _addSpec({
@@ -1023,12 +1008,9 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "LivenessModule", _sel: _getSel("version()") });
 
         _addSpec({ _name: "StandardValidator", _sel: _getSel("superchainConfig()") });
-        _addSpec({ _name: "StandardValidator", _sel: _getSel("protocolVersions()") });
         _addSpec({ _name: "StandardValidator", _sel: _getSel("l1PAOMultisig()") });
         _addSpec({ _name: "StandardValidator", _sel: _getSel("mips()") });
         _addSpec({ _name: "StandardValidator", _sel: _getSel("challenger()") });
-        _addSpec({ _name: "StandardValidator", _sel: _getSel("superchainConfigImpl()") });
-        _addSpec({ _name: "StandardValidator", _sel: _getSel("protocolVersionsImpl()") });
         _addSpec({ _name: "StandardValidator", _sel: _getSel("l1ERC721BridgeImpl()") });
         _addSpec({ _name: "StandardValidator", _sel: _getSel("optimismPortalImpl()") });
         _addSpec({ _name: "StandardValidator", _sel: _getSel("systemConfigImpl()") });
@@ -1039,8 +1021,6 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "StandardValidator", _sel: _getSel("anchorStateRegistryImpl()") });
         _addSpec({ _name: "StandardValidator", _sel: _getSel("delayedWETHImpl()") });
         _addSpec({ _name: "StandardValidator", _sel: _getSel("mipsImpl()") });
-        _addSpec({ _name: "StandardValidator", _sel: _getSel("superchainConfigVersion()") });
-        _addSpec({ _name: "StandardValidator", _sel: _getSel("protocolVersionsVersion()") });
         _addSpec({ _name: "StandardValidator", _sel: _getSel("systemConfigVersion()") });
         _addSpec({ _name: "StandardValidator", _sel: _getSel("permissionedDisputeGameVersion()") });
         _addSpec({ _name: "StandardValidator", _sel: _getSel("mipsVersion()") });

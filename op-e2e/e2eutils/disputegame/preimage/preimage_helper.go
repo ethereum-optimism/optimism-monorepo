@@ -20,6 +20,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/wait"
 	"github.com/ethereum-optimism/optimism/op-service/sources/batching/rpcblock"
 	"github.com/ethereum-optimism/optimism/op-service/testutils"
+	"github.com/ethereum-optimism/optimism/op-service/txmgr"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -82,6 +83,7 @@ func (h *Helper) UploadLargePreimage(ctx context.Context, dataSize int, modifier
 	startBlock := big.NewInt(0)
 	totalBlocks := len(data) / types.BlockSize
 	in := bytes.NewReader(data)
+	var txs []txmgr.TxCandidate
 	for {
 		inputData, err := s.AbsorbUpTo(in, preimages.MaxChunkSize)
 		if !errors.Is(err, io.EOF) {
@@ -93,12 +95,17 @@ func (h *Helper) UploadLargePreimage(ctx context.Context, dataSize int, modifier
 		h.t.Logf("Uploading %v parts of preimage %v starting at block %v of about %v Finalize: %v", len(inputData.Commitments), uuid.Uint64(), startBlock.Uint64(), totalBlocks, inputData.Finalize)
 		tx, err := h.oracle.AddLeaves(uuid, startBlock, inputData.Input, inputData.Commitments, inputData.Finalize)
 		h.require.NoError(err)
-		transactions.RequireSendTx(h.t, ctx, h.client, tx, h.privKey)
+		// Can't use EstimateGas because all the transactions will be sent in a batch, and the contract checks the
+		// start block, which won't match subsequent transactions until the first one is processed. So set the gas limit
+		// to what EstimateGas was returning when this was written plus a bunch of headroom.
+		tx.GasLimit = 2000000 // 826536
+		txs = append(txs, tx)
 		startBlock = new(big.Int).Add(startBlock, big.NewInt(int64(len(inputData.Commitments))))
 		if inputData.Finalize {
 			break
 		}
 	}
+	transactions.RequireSendTxs(h.t, ctx, h.client, txs, h.privKey)
 
 	return types.LargePreimageIdent{
 		Claimant: crypto.PubkeyToAddress(h.privKey.PublicKey),

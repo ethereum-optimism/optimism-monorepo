@@ -23,6 +23,7 @@ import (
 
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
+	opsigner "github.com/ethereum-optimism/optimism/op-service/signer"
 )
 
 const (
@@ -569,7 +570,7 @@ func (p *publisher) PublishL2Payload(ctx context.Context, envelope *eth.Executio
 
 	data := buf.Bytes()
 	payloadData := data[65:]
-	sig, err := signer.Sign(ctx, SigningDomainBlocksV1, p.cfg.L2ChainID, payloadData)
+	sig, err := signer.Sign(ctx, SigningDomainBlocksV1, eth.ChainIDFromBig(p.cfg.L2ChainID), opsigner.PayloadHash(payloadData))
 	if err != nil {
 		return fmt.Errorf("failed to sign execution payload with signer: %w", err)
 	}

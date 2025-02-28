@@ -5,8 +5,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-node/rollup/derive"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/event"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
 	"github.com/stretchr/testify/require"
 )
 
@@ -66,17 +65,11 @@ type InteropDSL struct {
 func NewInteropDSL(t helpers.Testing) *InteropDSL {
 	setup := SetupInterop(t)
 	actors := setup.CreateActors()
+	actors.PrepareChainState(t)
 
 	t.Logf("ChainA: %v, ChainB: %v", actors.ChainA.ChainID, actors.ChainB.ChainID)
 
 	allChains := []*Chain{actors.ChainA, actors.ChainB}
-
-	// Get all the initial events processed
-	for _, chain := range allChains {
-		chain.Sequencer.ActL2PipelineFull(t)
-		chain.Sequencer.SyncSupervisor(t)
-	}
-	actors.Supervisor.ProcessFull(t)
 
 	superRootSource, err := NewSuperRootSource(
 		t.Ctx(),
@@ -99,6 +92,10 @@ func NewInteropDSL(t helpers.Testing) *InteropDSL {
 	}
 }
 
+func (d *InteropDSL) DepSet() *depset.StaticConfigDependencySet {
+	return d.setup.DepSet
+}
+
 func (d *InteropDSL) defaultChainOpts() ChainOpts {
 	return ChainOpts{
 		// Defensive copy to make sure the original slice isn't modified
@@ -116,7 +113,8 @@ func (d *InteropDSL) CreateUser() *DSLUser {
 	}
 }
 
-type TransactionCreator func(chain *Chain) (*types.Transaction, common.Address)
+type TransactionCreator func(chain *Chain) *GeneratedTransaction
+
 type AddL2BlockOpts struct {
 	BlockIsNotCrossUnsafe bool
 	TransactionCreators   []TransactionCreator
@@ -151,9 +149,7 @@ func (d *InteropDSL) AddL2Block(chain *Chain, optionalArgs ...func(*AddL2BlockOp
 		priorSyncStatus := chain.Sequencer.SyncStatus()
 		chain.Sequencer.ActL2StartBlock(d.t)
 		for _, creator := range opts.TransactionCreators {
-			tx, from := creator(chain)
-			err := chain.SequencerEngine.EngineApi.IncludeTx(tx, from)
-			require.NoError(d.t, err)
+			creator(chain).Include()
 		}
 		chain.Sequencer.ActL2EndBlock(d.t)
 		chain.Sequencer.SyncSupervisor(d.t)

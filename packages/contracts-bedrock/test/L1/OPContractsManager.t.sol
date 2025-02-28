@@ -3,6 +3,7 @@ pragma solidity 0.8.15;
 
 // Testing
 import { Test, stdStorage, StdStorage } from "forge-std/Test.sol";
+import { VmSafe } from "forge-std/Vm.sol";
 import { CommonTest } from "test/setup/CommonTest.sol";
 import { DeployOPChain_TestBase } from "test/opcm/DeployOPChain.t.sol";
 import { DelegateCaller } from "test/mocks/Callers.sol";
@@ -321,9 +322,16 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
         // then reset its code to the original code.
         bytes memory delegateCallerCode = address(_delegateCaller).code;
         vm.etch(_delegateCaller, vm.getDeployedCode("test/mocks/Callers.sol:DelegateCaller"));
+
         DelegateCaller(_delegateCaller).dcForward(
             address(opcm), abi.encodeCall(IOPContractsManager.upgrade, (opChainConfigs))
         );
+
+        VmSafe.Gas memory gas = vm.lastCallGas();
+
+        // Less than 90% of the gas target of 20M to account for the gas used by using Safe.
+        assertLt(gas.gasTotalUsed, 0.9 * 20_000_000, "Upgrade exceeds gas target of 15M");
+
         vm.etch(_delegateCaller, delegateCallerCode);
 
         // Check the implementations of the core addresses

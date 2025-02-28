@@ -43,7 +43,7 @@ func TestEmitterContract(gt *testing.T) {
 		actors = is.CreateActors()
 		aliceA = setupUser(t, is, actors.ChainA, 0)
 		aliceB = setupUser(t, is, actors.ChainB, 0)
-		initializeChainState(t, actors)
+		actors.PrepareChainState(t)
 		emitTx = initializeEmitterContractTest(t, aliceA, actors)
 	}
 
@@ -145,25 +145,6 @@ func idForTx(t helpers.Testing, tx *types.Transaction, srcChain *dsl.Chain) inbo
 	}
 }
 
-func initializeChainState(t helpers.Testing, actors *dsl.InteropActors) {
-	// Initialize both chain states
-	actors.ChainA.Sequencer.ActL2PipelineFull(t)
-	actors.ChainB.Sequencer.ActL2PipelineFull(t)
-
-	// Sync supervisors
-	actors.ChainA.Sequencer.SyncSupervisor(t)
-	actors.ChainB.Sequencer.SyncSupervisor(t)
-
-	// Verify initial state
-	statusA := actors.ChainA.Sequencer.SyncStatus()
-	statusB := actors.ChainB.Sequencer.SyncStatus()
-	require.Equal(t, uint64(0), statusA.UnsafeL2.Number)
-	require.Equal(t, uint64(0), statusB.UnsafeL2.Number)
-
-	// Complete initial sync
-	actors.Supervisor.ProcessFull(t)
-}
-
 func initializeEmitterContractTest(t helpers.Testing, aliceA *userWithKeys, actors *dsl.InteropActors) *types.Transaction {
 	// Deploy message contract and emit a log on ChainA
 	// This issues two blocks to ChainA
@@ -189,7 +170,8 @@ func includeTxOnChainBasic(t helpers.Testing, chain *dsl.Chain, tx *types.Transa
 	chain.Sequencer.ActL2StartBlock(t)
 	// is used for building an empty block with tx==nil
 	if tx != nil {
-		require.NoError(t, chain.SequencerEngine.EngineApi.IncludeTx(tx, sender))
+		_, err := chain.SequencerEngine.EngineApi.IncludeTx(tx, sender)
+		require.NoError(t, err)
 	}
 	chain.Sequencer.ActL2EndBlock(t)
 }

@@ -55,7 +55,7 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 		timedOut:       false,
 	}
 
-	happyCaseLogs := []string{} // in the happy case we expect no logs
+	happyCaseLogs := []string{"computed sync actions"}
 
 	type TestCase struct {
 		name string
@@ -196,6 +196,7 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 			expected: syncActions{
 				blocksToLoad: &inclusiveBlockRange{104, 109},
 			},
+			expectedLogs: happyCaseLogs,
 		},
 		{name: "no blocks",
 			// This happens when the batcher is starting up for the first time
@@ -229,6 +230,7 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 				channelsToPrune: 1,
 				blocksToLoad:    &inclusiveBlockRange{104, 109},
 			},
+			expectedLogs: happyCaseLogs,
 		},
 		{name: "happy path + multiple channels",
 			newSyncStatus: eth.SyncStatus{
@@ -277,7 +279,7 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 		},
 	}
 
-	for _, tc := range testCases[len(testCases)-1:] {
+	for _, tc := range testCases {
 
 		t.Run(tc.name, func(t *testing.T) {
 			l, h := testlog.CaptureLogger(t, log.LevelDebug)

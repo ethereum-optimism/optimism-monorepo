@@ -76,6 +76,19 @@ type outputRootProof struct {
 }
 
 func NewFaultDisputeGameContract(ctx context.Context, metrics metrics.ContractMetricer, addr common.Address, caller *batching.MultiCaller) (FaultDisputeGameContract, error) {
+	gameType, err := DetectGameType(ctx, addr, caller)
+	if err != nil {
+		return nil, fmt.Errorf("failed to detect game type: %w", err)
+	}
+	switch gameType {
+	case types.SuperCannonGameType, types.SuperPermissionedGameType:
+		return NewSuperFaultDisputeGameContract(ctx, metrics, addr, caller)
+	default:
+		return NewPreInteropFaultDisputeGameContract(ctx, metrics, addr, caller)
+	}
+}
+
+func NewPreInteropFaultDisputeGameContract(ctx context.Context, metrics metrics.ContractMetricer, addr common.Address, caller *batching.MultiCaller) (FaultDisputeGameContract, error) {
 	contractAbi := snapshots.LoadFaultDisputeGameABI()
 
 	var builder VersionedBuilder[FaultDisputeGameContract]
@@ -119,6 +132,19 @@ func NewFaultDisputeGameContract(ctx context.Context, metrics metrics.ContractMe
 			},
 		}, nil
 	})
+	v131Factory := func() (FaultDisputeGameContract, error) {
+		legacyAbi := mustParseAbi(faultDisputeGameAbi131)
+		return &FaultDisputeGameContract131{
+			FaultDisputeGameContractLatest: FaultDisputeGameContractLatest{
+				metrics:     metrics,
+				multiCaller: caller,
+				contract:    batching.NewBoundContract(legacyAbi, addr),
+			},
+		}, nil
+	}
+	// The ABI is equivalent between 1.2.x and 1.3.x - there were just changes to the constructor validation.
+	builder.AddVersion(1, 2, v131Factory)
+	builder.AddVersion(1, 3, v131Factory)
 	return builder.Build(ctx, caller, contractAbi, addr, func() (FaultDisputeGameContract, error) {
 		return &FaultDisputeGameContractLatest{
 			metrics:     metrics,
@@ -198,7 +224,7 @@ func (f *FaultDisputeGameContractLatest) GetGameMetadata(ctx context.Context, bl
 		return GameMetadata{}, fmt.Errorf("failed to retrieve game metadata: %w", err)
 	}
 	if len(results) != 7 {
-		return GameMetadata{}, fmt.Errorf("expected 6 results but got %v", len(results))
+		return GameMetadata{}, fmt.Errorf("expected 7 results but got %v", len(results))
 	}
 	l1Head := results[0].GetHash(0)
 	l2BlockNumber := results[1].GetBigInt(0).Uint64()
@@ -451,12 +477,12 @@ func (f *FaultDisputeGameContractLatest) GetAllClaims(ctx context.Context, block
 	return claims, nil
 }
 
-func (f *FaultDisputeGameContractLatest) BondDistributionMode(ctx context.Context) (uint8, error) {
-	result, err := f.multiCaller.SingleCall(ctx, rpcblock.Latest, f.contract.Call(methodBondDistributionMode))
+func (f *FaultDisputeGameContractLatest) GetBondDistributionMode(ctx context.Context, block rpcblock.Block) (types.BondDistributionMode, error) {
+	result, err := f.multiCaller.SingleCall(ctx, block, f.contract.Call(methodBondDistributionMode))
 	if err != nil {
 		return 0, fmt.Errorf("failed to fetch bond mode: %w", err)
 	}
-	return result.GetUint8(0), nil
+	return types.BondDistributionMode(result.GetUint8(0)), nil
 }
 
 func (f *FaultDisputeGameContractLatest) IsResolved(ctx context.Context, block rpcblock.Block, claims ...types.Claim) ([]bool, error) {
@@ -643,5 +669,5 @@ type FaultDisputeGameContract interface {
 	CallResolve(ctx context.Context) (gameTypes.GameStatus, error)
 	ResolveTx() (txmgr.TxCandidate, error)
 	Vm(ctx context.Context) (*VMContract, error)
-	BondDistributionMode(ctx context.Context) (uint8, error)
+	GetBondDistributionMode(ctx context.Context, block rpcblock.Block) (types.BondDistributionMode, error)
 }
