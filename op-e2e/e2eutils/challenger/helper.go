@@ -11,7 +11,6 @@ import (
 	"testing"
 	"time"
 
-	e2econfig "github.com/ethereum-optimism/optimism/op-e2e/config"
 	"github.com/ethereum-optimism/optimism/op-service/crypto"
 
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -32,6 +31,14 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
 )
 
+type PrestateVariant string
+
+const (
+	STCannonVariant PrestateVariant = ""
+	MTCannonVariant PrestateVariant = "mt64"
+	InteropVariant  PrestateVariant = "interop"
+)
+
 type EndpointProvider interface {
 	NodeEndpoint(name string) endpoint.RPC
 	RollupEndpoint(name string) endpoint.RPC
@@ -39,9 +46,9 @@ type EndpointProvider interface {
 }
 
 type System interface {
-	RollupCfg() *rollup.Config
-	L2Genesis() *core.Genesis
-	AllocType() e2econfig.AllocType
+	RollupCfgs() []*rollup.Config
+	L2Genesises() []*core.Genesis
+	PrestateVariant() PrestateVariant
 }
 type Helper struct {
 	log     log.Logger
@@ -120,43 +127,47 @@ func FindMonorepoRoot(t *testing.T) string {
 	return ""
 }
 
-func applyCannonConfig(c *config.Config, t *testing.T, rollupCfg *rollup.Config, l2Genesis *core.Genesis, allocType e2econfig.AllocType) {
+func applyCannonConfig(c *config.Config, t *testing.T, rollupCfgs []*rollup.Config, l2Genesises []*core.Genesis, prestateVariant PrestateVariant) {
 	require := require.New(t)
 	root := FindMonorepoRoot(t)
 	c.Cannon.VmBin = root + "cannon/bin/cannon"
 	c.Cannon.Server = root + "op-program/bin/op-program"
-	if allocType == e2econfig.AllocTypeMTCannon {
-		t.Log("Using Cannon64 absolute prestate")
-		c.CannonAbsolutePreState = root + "op-program/bin/prestate-mt64.bin.gz"
+	t.Logf("Using absolute prestate variant %v", prestateVariant)
+	if prestateVariant != "" {
+		c.CannonAbsolutePreState = root + "op-program/bin/prestate-" + string(prestateVariant) + ".bin.gz"
 	} else {
 		c.CannonAbsolutePreState = root + "op-program/bin/prestate.bin.gz"
 	}
 	c.Cannon.SnapshotFreq = 10_000_000
 
-	genesisBytes, err := json.Marshal(l2Genesis)
-	require.NoError(err, "marshall l2 genesis config")
-	genesisFile := filepath.Join(c.Datadir, "l2-genesis.json")
-	require.NoError(os.WriteFile(genesisFile, genesisBytes, 0o644))
-	c.Cannon.L2GenesisPaths = []string{genesisFile}
+	for _, l2Genesis := range l2Genesises {
+		genesisBytes, err := json.Marshal(l2Genesis)
+		require.NoError(err, "marshall l2 genesis config")
+		genesisFile := filepath.Join(c.Datadir, "l2-genesis.json")
+		require.NoError(os.WriteFile(genesisFile, genesisBytes, 0o644))
+		c.Cannon.L2GenesisPaths = append(c.Cannon.L2GenesisPaths, genesisFile)
+	}
 
-	rollupBytes, err := json.Marshal(rollupCfg)
-	require.NoError(err, "marshall rollup config")
-	rollupFile := filepath.Join(c.Datadir, "rollup.json")
-	require.NoError(os.WriteFile(rollupFile, rollupBytes, 0o644))
-	c.Cannon.RollupConfigPaths = []string{rollupFile}
+	for _, rollupCfg := range rollupCfgs {
+		rollupBytes, err := json.Marshal(rollupCfg)
+		require.NoError(err, "marshall rollup config")
+		rollupFile := filepath.Join(c.Datadir, "rollup.json")
+		require.NoError(os.WriteFile(rollupFile, rollupBytes, 0o644))
+		c.Cannon.RollupConfigPaths = append(c.Cannon.RollupConfigPaths, rollupFile)
+	}
 }
 
 func WithCannon(t *testing.T, system System) Option {
 	return func(c *config.Config) {
 		c.TraceTypes = append(c.TraceTypes, types.TraceTypeCannon)
-		applyCannonConfig(c, t, system.RollupCfg(), system.L2Genesis(), system.AllocType())
+		applyCannonConfig(c, t, system.RollupCfgs(), system.L2Genesises(), system.PrestateVariant())
 	}
 }
 
 func WithPermissioned(t *testing.T, system System) Option {
 	return func(c *config.Config) {
 		c.TraceTypes = append(c.TraceTypes, types.TraceTypePermissioned)
-		applyCannonConfig(c, t, system.RollupCfg(), system.L2Genesis(), system.AllocType())
+		applyCannonConfig(c, t, system.RollupCfgs(), system.L2Genesises(), system.PrestateVariant())
 	}
 }
 

@@ -55,6 +55,10 @@ type l2Net struct {
 	nodes    map[string]*l2Node
 }
 
+func (s *interopE2ESystem) L2GethEndpoint(id string, name string) endpoint.RPC {
+	net := s.l2s[id]
+	return net.nodes[name].l2Geth.UserRPC()
+}
 func (s *interopE2ESystem) L2GethClient(id string, name string) *ethclient.Client {
 	net := s.l2s[id]
 	node := net.nodes[name]
@@ -75,6 +79,12 @@ func (s *interopE2ESystem) L2GethClient(id string, name string) *ethclient.Clien
 		})
 	node.gethClient = ethclient.NewClient(rpcCl)
 	return node.gethClient
+}
+
+func (s *interopE2ESystem) L2RollupEndpoint(id string, name string) endpoint.RPC {
+	net := s.l2s[id]
+	node := net.nodes[name]
+	return node.opNode.UserRPC()
 }
 
 func (s *interopE2ESystem) L2RollupClient(id string, name string) *sources.RollupClient {

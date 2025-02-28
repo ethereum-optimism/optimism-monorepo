@@ -1,10 +1,17 @@
 package faultproofs
 
 import (
+	"context"
 	"crypto/ecdsa"
+	"math/big"
 	"testing"
+	"time"
 
+	"github.com/ethereum-optimism/optimism/op-chain-ops/devkeys"
+	"github.com/ethereum-optimism/optimism/op-chain-ops/interopgen"
 	"github.com/ethereum-optimism/optimism/op-e2e/config"
+	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/disputegame"
+	"github.com/ethereum-optimism/optimism/op-e2e/interop"
 	"github.com/ethereum-optimism/optimism/op-e2e/system/e2esys"
 	"github.com/ethereum-optimism/optimism/op-e2e/system/helpers"
 
@@ -106,6 +113,35 @@ func StartFaultDisputeSystem(t *testing.T, opts ...faultDisputeConfigOpts) (*e2e
 	sys, err := cfg.Start(t)
 	require.Nil(t, err, "Error starting up system")
 	return sys, sys.NodeClient("l1")
+}
+
+func StartInteropFaultDisputeSystem(t *testing.T, opts ...faultDisputeConfigOpts) (interop.SuperSystem, *disputegame.FactoryHelper, *ethclient.Client) {
+	fdc := new(faultDisputeConfig)
+	for _, opt := range opts {
+		opt(fdc)
+	}
+	recipe := interopgen.InteropDevRecipe{
+		L1ChainID:        900100,
+		L2ChainIDs:       []uint64{900200, 900201},
+		GenesisTimestamp: uint64(time.Now().Unix() + 3), // start chain 3 seconds from now
+	}
+	worldResources := interop.WorldResourcePaths{
+		FoundryArtifacts: "../../packages/contracts-bedrock/forge-artifacts",
+		SourceMap:        "../../packages/contracts-bedrock",
+	}
+	superCfg := interop.SuperSystemConfig{
+		SupportTimeTravel: true,
+	}
+
+	hdWallet, err := devkeys.NewMnemonicDevKeys(devkeys.TestMnemonic)
+	require.NoError(t, err)
+	l1User := devkeys.ChainUserKeys(new(big.Int).SetUint64(recipe.L1ChainID))(0)
+	privKey, err := hdWallet.Secret(l1User)
+	require.NoError(t, err)
+	s2 := interop.NewSuperSystem(t, &recipe, worldResources, superCfg)
+	factory := disputegame.NewFactoryHelper(t, context.Background(), disputegame.NewSuperDisputeSystem(s2),
+		disputegame.WithFactoryPrivKey(privKey))
+	return s2, factory, s2.L1GethClient()
 }
 
 func SendKZGPointEvaluationTx(t *testing.T, sys *e2esys.System, l2Node string, privateKey *ecdsa.PrivateKey) *types.Receipt {
