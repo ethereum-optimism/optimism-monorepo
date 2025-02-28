@@ -1508,6 +1508,7 @@ workflows:
             op-e2e/actions
             op-e2e/faultproofs
             packages/contracts-bedrock/scripts/checks
+            packages/contracts-bedrock/scripts/verify
             op-dripper
           requires:
             - contracts-bedrock-build
