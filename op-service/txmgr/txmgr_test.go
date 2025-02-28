@@ -1452,7 +1452,7 @@ func TestMinFees(t *testing.T) {
 			conf.MinTipCap.Store(tt.minTipCap)
 			h := newTestHarnessWithConfig(t, conf)
 
-			tip, baseFee, _, err := h.mgr.SuggestGasPriceCaps(context.TODO())
+			tip, baseFee, _, err := h.mgr.SuggestGasPriceCaps(context.Background())
 			require.NoError(err)
 
 			if tt.expectMinBaseFee {
@@ -1499,7 +1499,7 @@ func TestMaxFees(t *testing.T) {
 			conf.MaxTipCap.Store(tt.maxTipCap)
 			h := newTestHarnessWithConfig(t, conf)
 
-			tip, baseFee, _, err := h.mgr.SuggestGasPriceCaps(context.TODO())
+			tip, baseFee, _, err := h.mgr.SuggestGasPriceCaps(context.Background())
 			if tt.expectMaxBaseFee {
 				require.Equal(err, fmt.Errorf("baseFee is too high: %v, cap:%v", h.gasPricer.baseBaseFee, tt.maxBaseFee), "expect baseFee is too high")
 			}

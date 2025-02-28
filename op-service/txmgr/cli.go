@@ -160,7 +160,7 @@ func CLIFlagsWithDefaults(envPrefix string, defaults DefaultFlagValues) []cli.Fl
 		},
 		&cli.Float64Flag{
 			Name:    MaxTipCapFlagName,
-			Usage:   "Enforces a maximum tip cap (in GWei) to use when determining tx fees. Disabled by default.",
+			Usage:   "Enforces a maximum tip cap (in GWei) to use when determining tx fees, `TxMgr` returns an error when exceeded. Disabled by default.",
 			EnvVars: prefixEnvVars("TXMGR_MAX_TIP_CAP"),
 		},
 		&cli.Float64Flag{
@@ -171,7 +171,7 @@ func CLIFlagsWithDefaults(envPrefix string, defaults DefaultFlagValues) []cli.Fl
 		},
 		&cli.Float64Flag{
 			Name:    MaxBaseFeeFlagName,
-			Usage:   "Enforces a maximum base fee (in GWei) to assume when determining tx fees. Disabled by default.",
+			Usage:   "Enforces a maximum base fee (in GWei) to assume when determining tx fees, `TxMgr` returns an error when exceeded. Disabled by default.",
 			EnvVars: prefixEnvVars("TXMGR_MAX_BASEFEE"),
 		},
 		&cli.DurationFlag{
