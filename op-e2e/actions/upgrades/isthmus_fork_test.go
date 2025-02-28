@@ -490,7 +490,8 @@ func TestSetCodeTxTypeIsthmus(gt *testing.T) {
 	err = cl.SendTransaction(t.Ctx(), tx)
 	require.NoError(gt, err, "failed to send set code tx")
 
-	require.NoError(t, seqEngine.EngineApi.IncludeTx(tx, dp.Addresses.Alice), "failed to include set code tx")
+	_, err = seqEngine.EngineApi.IncludeTx(tx, dp.Addresses.Alice)
+	require.NoError(t, err, "failed to include set code tx")
 
 	sequencer.ActL2EndBlock(t)
 
