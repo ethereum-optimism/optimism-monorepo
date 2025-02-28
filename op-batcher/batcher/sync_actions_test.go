@@ -312,7 +312,7 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 			},
 			expectedLogs: noBlocksLogs,
 		},
-		{name: "LocalSafeL2=0,SafeL2>0", // This shouldn't ever happen, but has occured due to bugs
+		{name: "LocalSafeL2=0,SafeL2>0", // This shouldn't ever happen, but has occurred due to bugs
 			newSyncStatus: eth.SyncStatus{
 				HeadL1:      eth.BlockRef{Number: 5},
 				CurrentL1:   eth.BlockRef{Number: 2},
