@@ -200,6 +200,8 @@ github.com/ethereum-optimism/superchain-registry/validation v0.0.0-2025022622500
 github.com/ethereum-optimism/superchain-registry/validation v0.0.0-20250226225001-eda352a0be39/go.mod h1:NZ816PzLU1TLv1RdAvYAb6KWOj4Zm5aInT0YpDVml2Y=
 github.com/ethereum-optimism/superchain-registry/validation v0.0.0-20250227173852-b4f7e4022c2e h1:CWdI4k9JxMvWLv6HjWuAFJuuEwMEEwKdW/mOVnrNBD8=
 github.com/ethereum-optimism/superchain-registry/validation v0.0.0-20250227173852-b4f7e4022c2e/go.mod h1:NZ816PzLU1TLv1RdAvYAb6KWOj4Zm5aInT0YpDVml2Y=
+github.com/ethereum-optimism/superchain-registry/validation v0.0.0-20250228185245-d4bb112dc979 h1:P37l7EFCz5KxE20+yPa3LWiH2Cg+xx6lQ4mOKYCZFPs=
+github.com/ethereum-optimism/superchain-registry/validation v0.0.0-20250228185245-d4bb112dc979/go.mod h1:NZ816PzLU1TLv1RdAvYAb6KWOj4Zm5aInT0YpDVml2Y=
 github.com/ethereum/c-kzg-4844 v1.0.0 h1:0X1LBXxaEtYD9xsyj9B9ctQEZIpnvVDeoBx8aHEwTNA=
 github.com/ethereum/c-kzg-4844 v1.0.0/go.mod h1:VewdlzQmpT5QSrVhbBuGoCdFJkpaJlO1aQputP83wc0=
 github.com/ethereum/go-verkle v0.2.2 h1:I2W0WjnrFUIzzVPwm8ykY+7pL2d4VhlsePn4j7cnFk8=
