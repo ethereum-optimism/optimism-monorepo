@@ -72,10 +72,6 @@ func NewHandler(appVersion string, opts ...Option) *Handler {
 
 	var handler http.Handler
 	handler = bs.mux
-	// Apply user middlewares globally
-	for _, middleware := range bs.middlewares {
-		handler = middleware(handler)
-	}
 	// Outer-most middlewares: logging, metrics, TLS
 	handler = optls.NewPeerTLSMiddleware(handler)
 	handler = opmetrics.NewHTTPRecordingMiddleware(bs.httpRecorder, handler)
@@ -152,12 +148,8 @@ func (b *Handler) AddRPC(route string) error {
 
 	// default to 404 not-found
 	handler = http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		b.log.Info("oh no!")
 		http.NotFound(writer, request)
 	})
-
-	// Health endpoint is lowest priority.
-	handler = b.newHealthMiddleware(handler)
 
 	// serve RPC on configured RPC path (but not on arbitrary paths)
 	handler = b.newHttpRPCMiddleware(srv, handler)
@@ -166,6 +158,14 @@ func (b *Handler) AddRPC(route string) error {
 	if b.wsEnabled { // prioritize WS RPC, if it's an upgrade request
 		handler = b.newWsMiddleWare(srv, handler)
 	}
+
+	// Apply user middlewares
+	for _, middleware := range b.middlewares {
+		handler = middleware(handler)
+	}
+
+	// Health endpoint applies before user middleware
+	handler = b.newHealthMiddleware(handler)
 
 	b.rpcRoutes[route] = srv
 
