@@ -337,8 +337,9 @@ contract OptimismPortal2_Test is CommonTest {
         );
         if (_isCreation) _to = address(0);
 
-        uint256 balanceBefore = address(optimismPortal2).balance;
-        _mint = bound(_mint, 0, type(uint256).max - balanceBefore);
+        uint256 portalBalanceBefore = address(optimismPortal2).balance;
+        uint256 lockboxBalanceBefore = address(ethLockbox).balance;
+        _mint = bound(_mint, 0, type(uint256).max - portalBalanceBefore);
 
         // EOA emulation
         vm.expectEmit(address(optimismPortal2));
@@ -364,7 +365,8 @@ contract OptimismPortal2_Test is CommonTest {
             _isCreation: _isCreation,
             _data: _data
         });
-        assertEq(address(optimismPortal2).balance, balanceBefore + _mint);
+        assertEq(address(optimismPortal2).balance, portalBalanceBefore);
+        assertEq(address(ethLockbox).balance, lockboxBalanceBefore + _mint);
     }
 
     /// @dev Tests that `depositTransaction` succeeds for a contract.

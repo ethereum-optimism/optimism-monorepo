@@ -268,9 +268,11 @@ contract L1StandardBridge_DepositETH_Test is PreBridgeETH {
     ///      ETH ends up in the optimismPortal.
     function test_depositETH_fromEOA_succeeds() external {
         _preBridgeETH({ isLegacy: true, value: 500 });
-        uint256 balanceBefore = address(optimismPortal2).balance;
+        uint256 portalBalanceBefore = address(optimismPortal2).balance;
+        uint256 ethLockboxBalanceBefore = address(ethLockbox).balance;
         l1StandardBridge.depositETH{ value: 500 }(50000, hex"dead");
-        assertEq(address(optimismPortal2).balance, balanceBefore + 500);
+        assertEq(address(optimismPortal2).balance, portalBalanceBefore);
+        assertEq(address(ethLockbox).balance, ethLockboxBalanceBefore + 500);
     }
 
     /// @dev Tests that depositing ETH succeeds for an EOA using 7702 delegation.
