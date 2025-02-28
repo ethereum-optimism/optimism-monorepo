@@ -237,6 +237,9 @@ func (d *InteropDSL) ProcessCrossSafe(optionalArgs ...func(*ProcessCrossSafeOpts
 		require.Equalf(d.t, status.UnsafeL2, status.SafeL2, "Chain %v did not fully advance safe head", chain.ChainID)
 
 		chain.Sequencer.SyncSupervisor(d.t)
+		// Re-run in case there was an invalid block that was replaced so it can now be considered safe
+		// This needs to happen in the loop else replace-block events are never processed before the status checks above
+		d.Actors.Supervisor.ProcessFull(d.t)
 	}
 
 	// Re-run in case there was an invalid block that was replaced so it can now be considered safe
