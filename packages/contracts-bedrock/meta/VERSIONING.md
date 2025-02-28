@@ -59,7 +59,7 @@ Individual contract versioning could be deprecated when the following conditions
 
 1. Every OPCM instance is registered in the superchain registry
 2. All contracts are implemented as either proxies or concrete singletons, allowing verification of governance approval through the `OPCM.Implementations` struct
-3. We have validated with ecosystem partners (such as L2Beat) that removing `version()` functions would not negatively impact their workflows
+3. We have validated with engineering teams (such as the fault proofs team) and ecosystem partners (such as L2Beat) that removing `version()` functions would not negatively impact their workflows
 
 ## Monorepo Contracts Release Versioning
 
