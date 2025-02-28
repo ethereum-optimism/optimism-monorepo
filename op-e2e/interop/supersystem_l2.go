@@ -167,7 +167,7 @@ func (s *interopE2ESystem) newNodeForL2(
 			//SupervisorAddr:   s.supervisor.RPC(),
 			RPCAddr:          "127.0.0.1",
 			RPCPort:          0,
-			RPCJwtSecretPath: "jwt.secret",
+			RPCJwtSecretPath: s.t.TempDir() + "/jwt.secret",
 		},
 		P2P:                         nil, // disabled P2P setup for now
 		L1EpochPollInterval:         time.Second * 2,
