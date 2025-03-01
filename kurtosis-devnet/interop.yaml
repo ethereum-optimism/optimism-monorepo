@@ -5,9 +5,9 @@
   "op_proposer" (localDockerImage "op-proposer")
   "op_deployer" (localDockerImage "op-deployer")
   "op_supervisor" (localDockerImage "op-supervisor")
+  "prestate_builder" (localDockerImage "op-program-builder")
 -}}
 {{- $urls := dict
-  "prestate" (localPrestate.URL)
   "l1_artifacts" (localContractArtifacts "l1")
   "l2_artifacts" (localContractArtifacts "l2")
 -}}
@@ -82,8 +82,6 @@ optimism_package:
         - {{ $flags.log_level }}
       challenger_params:
         image: {{ $local_images.op_challenger }}
-        cannon_prestate_path: ""
-        cannon_prestates_url: {{ $urls.prestate }}
         cannon_trace_types: ["cannon", "permissioned", "super-cannon"]
         extra_params:
         - {{ $flags.log_level }}
@@ -142,8 +140,6 @@ optimism_package:
         - {{ $flags.log_level }}
       challenger_params:
         image: {{ $local_images.op_challenger }}
-        cannon_prestate_path: ""
-        cannon_prestates_url: {{ $urls.prestate }}
         cannon_trace_types: ["cannon", "permissioned", "super-cannon"]
         extra_params:
         - {{ $flags.log_level }}
@@ -162,8 +158,7 @@ optimism_package:
     image: {{ $local_images.op_deployer }}
     l1_artifacts_locator: {{ $urls.l1_artifacts }}
     l2_artifacts_locator: {{ $urls.l2_artifacts }}
-    global_deploy_overrides:
-      faultGameAbsolutePrestate: {{ localPrestate.Hashes.prestate_interop }}
+    prestate_builder_image: {{ $local_images.prestate_builder }}
   global_log_level: "info"
   global_node_selectors: {}
   global_tolerations: []

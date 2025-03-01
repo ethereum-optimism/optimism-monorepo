@@ -77,7 +77,7 @@ func (s *server) handleUpload(w http.ResponseWriter, r *http.Request) {
 	// Check if we need to rebuild
 	if currentHash == s.lastBuildHash {
 		log.Printf("Hash matches last build, skipping")
-		w.WriteHeader(http.StatusOK)
+		w.WriteHeader(http.StatusNotModified)
 		fmt.Fprintf(w, "Files unchanged, skipping build")
 		return
 	}
@@ -111,8 +111,8 @@ func (s *server) handleUpload(w http.ResponseWriter, r *http.Request) {
 	// Update the last successful build hash
 	s.lastBuildHash = currentHash
 
-	// Redirect to the proofs endpoint
-	http.Redirect(w, r, "/proofs", http.StatusSeeOther)
+	log.Printf("Build successful, last build hash: %s", currentHash)
+	w.WriteHeader(http.StatusOK)
 }
 
 func (s *server) processMultipartForm(r *http.Request) ([]*multipart.FileHeader, string, error) {

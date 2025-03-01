@@ -20,6 +20,7 @@ type FS interface {
 	ReadDir(name string) ([]fs.DirEntry, error)
 	ReadFile(name string) ([]byte, error)
 	Join(elem ...string) string
+	Stat(name string) (fs.FileInfo, error)
 
 	// Additional FileSystem operations
 	MkdirAll(path string, perm os.FileMode) error

@@ -68,6 +68,9 @@ op-proposer-image TAG='op-proposer:devnet': (_docker_build_stack TAG "op-propose
 op-supervisor-image TAG='op-supervisor:devnet': (_docker_build_stack TAG "op-supervisor-target")
 op-wheel-image TAG='op-wheel:devnet': (_docker_build_stack TAG "op-wheel-target")
 
+op-program-builder-image TAG='op-program-builder:devnet':
+    just op-program-svc/op-program-svc {{TAG}}
+
 KURTOSIS_PACKAGE := "github.com/ethpandaops/optimism-package"
 
 # Devnet template recipe

@@ -167,9 +167,19 @@ func TestNormalizeFilename(t *testing.T) {
 		expected string
 	}{
 		{
-			name:     "standard format",
+			name:     "standard format - unchanged",
 			input:    "prefix-123.json",
-			expected: "123-prefix.json",
+			expected: "prefix-123.json",
+		},
+		{
+			name:     "genesis format",
+			input:    "genesis-123.json",
+			expected: "123-genesis-l2.json",
+		},
+		{
+			name:     "rollup format",
+			input:    "rollup-456.json",
+			expected: "456-rollup.json",
 		},
 		{
 			name:     "no number",

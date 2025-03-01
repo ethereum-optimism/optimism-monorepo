@@ -1,4 +1,4 @@
-ARG BASE_VERSION=latest
+ARG BASE_IMAGE=op-program-base:latest
 
 FROM golang:1.22.7-alpine3.20 AS builder
 
@@ -9,7 +9,7 @@ RUN go mod init op-program-svc
 RUN go build -o op-program-svc .
 
 
-FROM op-program-base:${BASE_VERSION} AS svc
+FROM ${BASE_IMAGE} AS svc
 
 ARG GIT_COMMIT
 ARG GIT_DATE
