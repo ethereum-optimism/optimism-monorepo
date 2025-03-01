@@ -63,7 +63,17 @@ test-dev *ARGS: build-go-ffi
   FOUNDRY_PROFILE=lite forge test {{ARGS}}
 
 # Default block number for the forked upgrade path.
-export pinnedBlockNumber := env_var_or_default('FORK_BLOCK_NUMBER', '21387830')
+export sepoliaBlockNumber := "7701807"
+export mainnetBlockNumber := "21387830"
+
+export pinnedBlockNumber := if env_var_or_default("FORK_BASE_CHAIN", "") == "mainnet" {
+    mainnetBlockNumber
+} else if env_var_or_default("FORK_BASE_CHAIN", "") == "sepolia" {
+    sepoliaBlockNumber
+} else {
+    mainnetBlockNumber
+}
+
 print-pinned-block-number:
   echo $pinnedBlockNumber
 
@@ -77,8 +87,8 @@ print-pinned-block-number:
 # TODO(opcm upgrades): unskip the "NMC" tests which fail on the forked upgrade path with "UnexpectedRootClaim" errors.
 prepare-upgrade-env *ARGS : build-go-ffi
   #!/bin/bash
-  echo "Running upgrade tests at block $pinnedBlockNumber"
   export FORK_BLOCK_NUMBER=$pinnedBlockNumber
+  echo "Running upgrade tests at block $FORK_BLOCK_NUMBER"
   export FORK_RPC_URL=$ETH_RPC_URL
   export FORK_TEST=true
   {{ARGS}} \
