@@ -1,0 +1,42 @@
+endpoints: []
+
+builders:
+  builder-a:
+    noop:
+  builder-b:
+    noop:
+
+signers:
+  local-key-a:
+    local-key:
+      path: "./my-key.txt"
+  signer-b:
+    noop:
+
+committers:
+  commit-a:
+    noop:
+  commit-b:
+    noop:
+
+publishers:
+  pub-a:
+    noop:
+  pub-b:
+    noop:
+
+sequencers:
+  sequencer-a:
+    full:
+      builder: builder-a
+      signer: local-key-a
+      committer: commit-a
+      publisher: pub-a
+  sequencer-b:
+    full:
+      builder: builder-b
+      signer: signer-b
+      committer: commit-b
+      publisher: pub-b
+  sequencer-c:
+    noop:

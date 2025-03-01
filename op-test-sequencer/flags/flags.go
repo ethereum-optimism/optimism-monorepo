@@ -11,6 +11,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/oppprof"
 	oprpc "github.com/ethereum-optimism/optimism/op-service/rpc"
 	"github.com/ethereum-optimism/optimism/op-test-sequencer/config"
+	wconfig "github.com/ethereum-optimism/optimism/op-test-sequencer/sequencer/backend/work/config"
 )
 
 const EnvVarPrefix = "OP_TEST_SEQUENCER"
@@ -20,7 +21,13 @@ func prefixEnvVars(name string) []string {
 }
 
 var (
-	RPCJWTSecret = &cli.StringFlag{
+	BuildersConfigFlag = &cli.StringFlag{
+		Name:    "builders.config",
+		Usage:   "Config file to builder(s) to load",
+		EnvVars: prefixEnvVars("BUILDERS_CONFIG"),
+		Value:   config.DefaultConfigYaml,
+	}
+	RPCJWTSecretFlag = &cli.StringFlag{
 		Name:      "rpc.jwt-secret",
 		Usage:     "Path to JWT secret key for sequencer admin RPC.",
 		EnvVars:   prefixEnvVars("RPC_JWT_SECRET"),
@@ -37,7 +44,8 @@ var (
 var requiredFlags = []cli.Flag{}
 
 var optionalFlags = []cli.Flag{
-	RPCJWTSecret,
+	BuildersConfigFlag,
+	RPCJWTSecretFlag,
 	MockRunFlag,
 }
 
@@ -70,7 +78,8 @@ func ConfigFromCLI(ctx *cli.Context, version string) *config.Config {
 		MetricsConfig: opmetrics.ReadCLIConfig(ctx),
 		PprofConfig:   oppprof.ReadCLIConfig(ctx),
 		RPC:           oprpc.ReadCLIConfig(ctx),
+		JWTSecretPath: ctx.Path(RPCJWTSecretFlag.Name),
+		Ensemble:      &wconfig.YamlLoader{Path: ctx.String(BuildersConfigFlag.Name)},
 		MockRun:       ctx.Bool(MockRunFlag.Name),
-		JWTSecretPath: ctx.Path(RPCJWTSecret.Name),
 	}
 }
