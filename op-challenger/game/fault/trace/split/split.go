@@ -34,7 +34,7 @@ func NewSplitProviderSelector(topProvider types.TraceProvider, topDepth types.De
 		var pre, post types.Claim
 		// If pos is to the right of the leaf from the top game, we must be defending that output root
 		// otherwise, we're attacking it.
-		if pos.TraceIndex(pos.Depth()).Cmp(topLeaf.TraceIndex(pos.Depth())) > 0 {
+		if pos.IndexAtDepth().Cmp(topLeaf.TraceIndex(pos.Depth())) > 0 {
 			// Defending the top leaf claim, so use it as the pre-claim and find the post
 			pre = topLeaf
 			postTraceIdx := new(big.Int).Add(pre.TraceIndex(topDepth), big.NewInt(1))
