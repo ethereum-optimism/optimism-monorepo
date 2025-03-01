@@ -677,7 +677,7 @@ contract Deploy is Deployer {
         string memory filePath = string.concat(vm.projectRoot(), "/../../op-program/bin/prestate-proof-interop.json");
         if (bytes(Process.bash(string.concat("[[ -f ", filePath, " ]] && echo \"present\""))).length == 0) {
             revert(
-                "Deploy: cannon prestate dump not found, generate it with `make cannon-prestate` in the monorepo root"
+                "Deploy: cannon prestate dump not found, generate it with `make cannon-prestate-interop` in the monorepo root"
             );
         }
         interopDevnetAbsolutePrestate_ =
