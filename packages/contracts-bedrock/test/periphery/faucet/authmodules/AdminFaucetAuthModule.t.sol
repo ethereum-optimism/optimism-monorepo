@@ -82,7 +82,6 @@ contract AdminFaucetAuthModuleTest is Test {
     function test_adminProof_verify_succeeds() external {
         bytes32 nonce = faucetHelper.consumeNonce();
         bytes memory data = "0x";
-        uint32 gasLimit = 200000;
         address fundsReceiver = makeAddr("fundsReceiver");
         bytes memory proof = issueProofWithEIP712Domain(
             adminKey,
@@ -98,7 +97,7 @@ contract AdminFaucetAuthModuleTest is Test {
         vm.prank(nonAdmin);
         assertEq(
             adminFam.verify(
-                Faucet.DripParameters(payable(fundsReceiver), data, nonce, gasLimit),
+                Faucet.DripParameters(payable(fundsReceiver), data, nonce),
                 keccak256(abi.encodePacked(fundsReceiver)),
                 proof
             ),
@@ -110,7 +109,6 @@ contract AdminFaucetAuthModuleTest is Test {
     function test_nonAdminProof_verify_succeeds() external {
         bytes32 nonce = faucetHelper.consumeNonce();
         bytes memory data = "0x";
-        uint32 gasLimit = 200000;
         address fundsReceiver = makeAddr("fundsReceiver");
         bytes memory proof = issueProofWithEIP712Domain(
             nonAdminKey,
@@ -126,7 +124,7 @@ contract AdminFaucetAuthModuleTest is Test {
         vm.prank(admin);
         assertEq(
             adminFam.verify(
-                Faucet.DripParameters(payable(fundsReceiver), data, nonce, gasLimit),
+                Faucet.DripParameters(payable(fundsReceiver), data, nonce),
                 keccak256(abi.encodePacked(fundsReceiver)),
                 proof
             ),
@@ -139,7 +137,6 @@ contract AdminFaucetAuthModuleTest is Test {
     function test_proofWithWrongId_verify_succeeds() external {
         bytes32 nonce = faucetHelper.consumeNonce();
         bytes memory data = "0x";
-        uint32 gasLimit = 200000;
         address fundsReceiver = makeAddr("fundsReceiver");
         address randomAddress = makeAddr("randomAddress");
         bytes memory proof = issueProofWithEIP712Domain(
@@ -156,7 +153,7 @@ contract AdminFaucetAuthModuleTest is Test {
         vm.prank(admin);
         assertEq(
             adminFam.verify(
-                Faucet.DripParameters(payable(fundsReceiver), data, nonce, gasLimit),
+                Faucet.DripParameters(payable(fundsReceiver), data, nonce),
                 keccak256(abi.encodePacked(randomAddress)),
                 proof
             ),
