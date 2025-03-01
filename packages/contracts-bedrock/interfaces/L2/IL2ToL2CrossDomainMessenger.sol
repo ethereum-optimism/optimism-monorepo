@@ -52,14 +52,24 @@ interface IL2ToL2CrossDomainMessenger {
     /// @param sender       Address initiating this message call
     /// @param message      Message payload to call target with.
     event SentMessage(
-        uint256 indexed destination, address indexed target, uint256 indexed messageNonce, address sender, bytes message
+        uint256 indexed destination,
+        address indexed target,
+        uint256 indexed messageNonce,
+        address sender,
+        bytes message
     );
 
     /// @notice Emitted whenever a message is successfully relayed on this chain.
     /// @param source       Chain ID of the source chain.
     /// @param messageNonce Nonce associated with the messsage sent
     /// @param messageHash  Hash of the message that was relayed.
-    event RelayedMessage(uint256 indexed source, uint256 indexed messageNonce, bytes32 indexed messageHash);
+    /// @param returnData   Data returned by the target contract call
+    event RelayedMessage(
+        uint256 indexed source,
+        uint256 indexed messageNonce,
+        bytes32 indexed messageHash,
+        bytes returnData
+    );
 
     function version() external view returns (string memory);
 
@@ -86,7 +96,10 @@ interface IL2ToL2CrossDomainMessenger {
     /// @notice Retrieves the context of the current cross domain message. If not entered, reverts.
     /// @return sender_ Address of the sender of the current cross domain message.
     /// @return source_ Chain ID of the source of the current cross domain message.
-    function crossDomainMessageContext() external view returns (address sender_, uint256 source_);
+    function crossDomainMessageContext()
+        external
+        view
+        returns (address sender_, uint256 source_);
 
     /// @notice Sends a message to some target address on a destination chain. Note that if the call
     ///         always reverts, then the message will be unrelayable, and any ETH sent will be
@@ -97,7 +110,11 @@ interface IL2ToL2CrossDomainMessenger {
     /// @param _message     Message to trigger the target address with.
     /// @return msgHash_ The hash of the message being sent, which can be used for tracking whether
     ///                  the message has successfully been relayed.
-    function sendMessage(uint256 _destination, address _target, bytes calldata _message) external returns (bytes32);
+    function sendMessage(
+        uint256 _destination,
+        address _target,
+        bytes calldata _message
+    ) external returns (bytes32);
 
     /// @notice Relays a message that was sent by the other CrossDomainMessenger contract. Can only
     ///         be executed via cross-chain call from the other messenger OR if the message was
@@ -108,10 +125,7 @@ interface IL2ToL2CrossDomainMessenger {
     function relayMessage(
         Identifier calldata _id,
         bytes calldata _sentMessage
-    )
-        external
-        payable
-        returns (bytes memory returnData_);
+    ) external payable returns (bytes memory returnData_);
 
     function messageVersion() external view returns (uint16);
 
