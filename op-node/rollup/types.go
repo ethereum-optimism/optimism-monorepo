@@ -65,6 +65,11 @@ type AltDAConfig struct {
 	DAResolveWindow uint64 `json:"da_resolve_window"`
 }
 
+// DAWindow is number of L1 blocks to wait for challenge and resolve in the worst case, including the challenged L1 origin block itself
+func (a *AltDAConfig) DAWindow() uint64 {
+	return a.DAChallengeWindow + a.DAResolveWindow + 1
+}
+
 type Config struct {
 	// Genesis anchor point of the rollup
 	Genesis Genesis `json:"genesis"`
@@ -615,10 +620,10 @@ func (c *Config) AltDAEnabled() bool {
 }
 
 // SyncLookback computes the number of blocks to walk back in order to find the correct L1 origin.
-// In alt-da mode longest possible window is challenge + resolve windows.
+// In alt-da mode longest possible window is challenge + resolve windows + 1.
 func (c *Config) SyncLookback() uint64 {
 	if c.AltDAEnabled() {
-		if win := (c.AltDAConfig.DAChallengeWindow + c.AltDAConfig.DAResolveWindow); win > c.SeqWindowSize {
+		if win := c.AltDAConfig.DAWindow(); win > c.SeqWindowSize {
 			return win
 		}
 	}
