@@ -349,18 +349,23 @@ func (h *Host) Call(from common.Address, to common.Address, input []byte, gas ui
 	return h.env.Call(vm.AccountRef(from), to, input, gas, value)
 }
 
-// LoadContract loads the bytecode of a contract, and deploys it with regular CREATE.
-func (h *Host) LoadContract(artifactName, contractName string) (common.Address, error) {
+// LoadContractWithParameter is similar to LoadContract, but allows to specify constructor parameters.
+func (h *Host) LoadContractWithParameter(artifactName, contractName string, params []byte) (common.Address, error) {
 	artifact, err := h.af.ReadArtifact(artifactName, contractName)
 	if err != nil {
 		return common.Address{}, fmt.Errorf("failed to load %s / %s: %w", artifactName, contractName, err)
 	}
-	addr, err := h.Create(h.TxOrigin(), artifact.Bytecode.Object)
+	addr, err := h.Create(h.TxOrigin(), append(append(make([]byte, 0, len(artifact.Bytecode.Object)+len(params)), artifact.Bytecode.Object...), params...))
 	if err != nil {
 		return common.Address{}, err
 	}
 	h.RememberArtifact(addr, artifact, contractName)
 	return addr, nil
+}
+
+// LoadContract loads the bytecode of a contract, and deploys it with regular CREATE.
+func (h *Host) LoadContract(artifactName, contractName string) (common.Address, error) {
+	return h.LoadContractWithParameter(artifactName, contractName, nil)
 }
 
 // RememberArtifact registers an address as originating from a particular artifact.
