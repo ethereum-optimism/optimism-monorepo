@@ -675,7 +675,7 @@ contract Deploy is Deployer {
 
     function loadInteropDevnetAbsolutePrestate() internal returns (Claim interopDevnetAbsolutePrestate_) {
         string memory filePath = string.concat(vm.projectRoot(), "/../../op-program/bin/prestate-proof-interop.json");
-        if (bytes(Process.bash(string.concat("[[ -f ", filePath, " ]] && echo \"present\""))).length == 0) {
+        if (bytes(Process.bash(string.concat("[[ -f ", filePath, " ]] && echo present || echo"))).length == 0) {
             revert(
                 "Deploy: cannon prestate dump not found, generate it with `make cannon-prestate` in the monorepo root"
             );
@@ -693,7 +693,7 @@ contract Deploy is Deployer {
     function _loadDevnetStMipsAbsolutePrestate() internal returns (Claim mipsAbsolutePrestate_) {
         // Fetch the absolute prestate dump
         string memory filePath = string.concat(vm.projectRoot(), "/../../op-program/bin/prestate-proof.json");
-        if (bytes(Process.bash(string.concat("[[ -f ", filePath, " ]] && echo \"present\""))).length == 0) {
+        if (bytes(Process.bash(string.concat("[[ -f ", filePath, " ]] && echo present || echo"))).length == 0) {
             revert(
                 "Deploy: cannon prestate dump not found, generate it with `make cannon-prestate` in the monorepo root"
             );
@@ -711,7 +711,7 @@ contract Deploy is Deployer {
     function _loadDevnetMtMipsAbsolutePrestate() internal returns (Claim mipsAbsolutePrestate_) {
         // Fetch the absolute prestate dump
         string memory filePath = string.concat(vm.projectRoot(), "/../../op-program/bin/prestate-proof-mt64.json");
-        if (bytes(Process.bash(string.concat("[[ -f ", filePath, " ]] && echo \"present\""))).length == 0) {
+        if (bytes(Process.bash(string.concat("[[ -f ", filePath, " ]] && echo present || echo"))).length == 0) {
             revert(
                 "Deploy: MT-Cannon prestate dump not found, generate it with `make cannon-prestate-mt64` in the monorepo root"
             );
