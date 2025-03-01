@@ -26,7 +26,7 @@ func TestTransactionProcessor_Sign(t *testing.T) {
 	client := new(mockEthClient)
 
 	// Create a wallet with the test key
-	chain := newChain(chainID.String(), "http://localhost:8545", nil)
+	chain := newChain(chainID.String(), "http://localhost:8545", nil, nil)
 	wallet, err := newWallet(testKey, testAddr, chain)
 	assert.NoError(t, err)
 

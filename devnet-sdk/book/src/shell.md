@@ -53,7 +53,7 @@ export ETH_JWT_SECRET=...
 
 ```bash
 # Enter devnet shell
-go run devnet-sdk/shll/cmd/enter/main.go --descriptor devnet.json --chain ...
+go run devnet-sdk/shell/cmd/enter/main.go --descriptor devnet.json --chain ...
 
 # Now you can use tools directly
 cast block latest
@@ -72,6 +72,7 @@ exit
 ## Implementation Details
 
 The shell integration:
+
 1. Reads the descriptor file
 2. Sets up environment variables based on the descriptor content
 3. Creates a new shell session with the configured environment

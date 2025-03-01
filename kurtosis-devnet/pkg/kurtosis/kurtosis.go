@@ -199,11 +199,10 @@ func (d *KurtosisDeployer) GetEnvironmentInfo(ctx context.Context, spec *spec.En
 
 		// Add contract addresses if available
 		if deployerState.State != nil && deployerState.State.Deployments != nil {
-			if addresses, ok := deployerState.State.Deployments[chainSpec.NetworkID]; ok {
-				chain.Addresses = descriptors.AddressMap(addresses.Addresses)
-			}
-			if wallets, ok := deployerState.State.Deployments[chainSpec.NetworkID]; ok {
-				chain.Wallets = d.getWallets(wallets.Wallets)
+			if deploymentState, ok := deployerState.State.Deployments[chainSpec.NetworkID]; ok {
+				chain.Addresses = descriptors.AddressMap(deploymentState.Addresses)
+				chain.Wallets = d.getWallets(deployerState.Wallets)
+				chain.ChainConfig = deploymentState.ChainConfig
 			}
 		}
 

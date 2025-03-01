@@ -8,10 +8,13 @@ import (
 	"io"
 	"math/big"
 	"strings"
+	"text/template"
 
 	ktfs "github.com/ethereum-optimism/optimism/devnet-sdk/kt/fs"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core"
+	"github.com/ethereum/go-ethereum/params"
 )
 
 const (
@@ -20,6 +23,7 @@ const (
 	defaultStateName            = "state.json"
 	defaultGenesisArtifactName  = "el_cl_genesis_data"
 	defaultMnemonicsName        = "mnemonics.yaml"
+	defaultGenesisNameTemplate  = "genesis-{{.ChainID}}.json"
 )
 
 // DeploymentAddresses maps contract names to their addresses
@@ -29,8 +33,9 @@ type DeploymentAddresses map[string]types.Address
 type DeploymentStateAddresses map[string]DeploymentAddresses
 
 type DeploymentState struct {
-	Addresses DeploymentAddresses `json:"addresses"`
-	Wallets   WalletList          `json:"wallets"`
+	Addresses   DeploymentAddresses `json:"addresses"`
+	Wallets     WalletList          `json:"wallets"`
+	ChainConfig *params.ChainConfig `json:"chain_config"`
 }
 
 type DeployerState struct {
@@ -67,6 +72,7 @@ type Deployer struct {
 	stateName            string
 	genesisArtifactName  string
 	mnemonicsName        string
+	genesisNameTemplate  string
 }
 
 type DeployerOption func(*Deployer)
@@ -101,6 +107,12 @@ func WithMnemonicsName(name string) DeployerOption {
 	}
 }
 
+func WithGenesisNameTemplate(name string) DeployerOption {
+	return func(d *Deployer) {
+		d.genesisNameTemplate = name
+	}
+}
+
 func NewDeployer(enclave string, opts ...DeployerOption) *Deployer {
 	d := &Deployer{
 		enclave:              enclave,
@@ -109,6 +121,7 @@ func NewDeployer(enclave string, opts ...DeployerOption) *Deployer {
 		stateName:            defaultStateName,
 		genesisArtifactName:  defaultGenesisArtifactName,
 		mnemonicsName:        defaultMnemonicsName,
+		genesisNameTemplate:  defaultGenesisNameTemplate,
 	}
 
 	for _, opt := range opts {
@@ -288,7 +301,37 @@ func (d *Deployer) ExtractData(ctx context.Context) (*DeployerData, error) {
 		}
 	}
 
-	knownWallets, err := d.getKnownWallets(ctx, fs)
+	// retrieve genesis files
+	for id, deployment := range state.Deployments {
+		genesisBuffer := bytes.NewBuffer(nil)
+		genesisName, err := d.renderGenesisNameTemplate(id)
+		if err != nil {
+			return nil, err
+		}
+
+		if err := a.ExtractFiles(
+			ktfs.NewArtifactFileWriter(genesisName, genesisBuffer),
+		); err != nil {
+			return nil, err
+		}
+
+		// Parse the genesis file JSON into a core.Genesis struct
+		var genesis core.Genesis
+		if err := json.NewDecoder(genesisBuffer).Decode(&genesis); err != nil {
+			return nil, fmt.Errorf("failed to parse genesis file %s in artifact %s for chain ID %s: %w", genesisName, d.deployerArtifactName, id, err)
+		}
+
+		// Store the genesis data in the deployment state
+		deployment.ChainConfig = genesis.Config
+		state.Deployments[id] = deployment
+	}
+
+	genesisArtifact, err := fs.GetArtifact(ctx, d.genesisArtifactName)
+	if err != nil {
+		return nil, err
+	}
+
+	knownWallets, err := d.getKnownWallets(genesisArtifact)
 	if err != nil {
 		return nil, err
 	}
@@ -297,4 +340,19 @@ func (d *Deployer) ExtractData(ctx context.Context) (*DeployerData, error) {
 		State:   state,
 		Wallets: knownWallets,
 	}, nil
+}
+
+func (d *Deployer) renderGenesisNameTemplate(chainID string) (string, error) {
+	tmpl, err := template.New("genesis").Parse(d.genesisNameTemplate)
+	if err != nil {
+		return "", fmt.Errorf("failed to compile genesis name template %s: %w", d.genesisNameTemplate, err)
+	}
+
+	var buf bytes.Buffer
+	err = tmpl.Execute(&buf, map[string]string{"ChainID": chainID})
+	if err != nil {
+		return "", fmt.Errorf("failed to execute name template %s: %w", d.genesisNameTemplate, err)
+	}
+
+	return buf.String(), nil
 }

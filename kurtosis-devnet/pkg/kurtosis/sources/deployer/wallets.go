@@ -2,7 +2,6 @@ package deployer
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"io"
 
@@ -34,14 +33,9 @@ func getMnemonics(r io.Reader) (string, error) {
 	return config[0].Mnemonic, nil
 }
 
-func (d *Deployer) getKnownWallets(ctx context.Context, fs *ktfs.EnclaveFS) ([]*Wallet, error) {
-	a, err := fs.GetArtifact(ctx, d.genesisArtifactName)
-	if err != nil {
-		return nil, err
-	}
-
+func (d *Deployer) getKnownWallets(genesisArtifact *ktfs.Artifact) ([]*Wallet, error) {
 	mnemonicsBuffer := bytes.NewBuffer(nil)
-	if err := a.ExtractFiles(
+	if err := genesisArtifact.ExtractFiles(
 		ktfs.NewArtifactFileWriter(d.mnemonicsName, mnemonicsBuffer),
 	); err != nil {
 		return nil, err
