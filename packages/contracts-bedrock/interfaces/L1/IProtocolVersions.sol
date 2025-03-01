@@ -19,8 +19,10 @@ interface IProtocolVersions {
     function initialize(address _owner, ProtocolVersion _required, ProtocolVersion _recommended) external;
     function owner() external view returns (address);
     function recommended() external view returns (ProtocolVersion out_);
+    function recommendedVersion() external view returns (string memory out_);
     function renounceOwnership() external;
     function required() external view returns (ProtocolVersion out_);
+    function requiredVersion() external view returns (string memory out_);
     function setRecommended(ProtocolVersion _recommended) external;
     function setRequired(ProtocolVersion _required) external;
     function transferOwnership(address newOwner) external; // nosemgrep
