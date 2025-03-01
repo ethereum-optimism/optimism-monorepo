@@ -118,7 +118,7 @@ func (o *FastCanonicalBlockHeaderOracle) getHistoricalBlockHash(head *types.Head
 
 	context := core.NewEVMBlockContext(head, o.ctx, nil, o.config, statedb)
 	vmenv := vm.NewEVM(context, statedb, o.config, vm.Config{})
-	var caller vm.AccountRef // can be anything as long as it's not the system contract
+	var caller common.Address // can be anything as long as it's not the system contract
 	gas := uint64(1000000)
 	var input [32]byte
 	binary.BigEndian.PutUint64(input[24:], n)

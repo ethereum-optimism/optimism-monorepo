@@ -120,7 +120,7 @@ func NewEVMEnv(contracts *ContractMetadata) (*vm.EVM, *state.StateDB) {
 	copy(mipsCtorArgs[12:], contracts.Addresses.Oracle[:])
 	mipsDeploy := append(bytes.Clone(contracts.Artifacts.MIPS.Bytecode.Object), mipsCtorArgs[:]...)
 	startingGas := uint64(30_000_000)
-	_, deployedMipsAddr, leftOverGas, err := env.Create(vm.AccountRef(contracts.Addresses.Sender), mipsDeploy, startingGas, common.U2560)
+	_, deployedMipsAddr, leftOverGas, err := env.Create(contracts.Addresses.Sender, mipsDeploy, startingGas, common.U2560)
 	if err != nil {
 		panic(fmt.Errorf("failed to deploy MIPS contract: %w. took %d gas", err, startingGas-leftOverGas))
 	}
