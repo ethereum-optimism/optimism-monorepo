@@ -21,10 +21,6 @@ type DeploySuperchainInput struct {
 	RecommendedProtocolVersion params.ProtocolVersion `toml:"recommendedProtocolVersion"`
 }
 
-func (dsi *DeploySuperchainInput) InputSet() bool {
-	return true
-}
-
 type DeploySuperchainOutput struct {
 	SuperchainProxyAdmin  common.Address
 	SuperchainConfigImpl  common.Address

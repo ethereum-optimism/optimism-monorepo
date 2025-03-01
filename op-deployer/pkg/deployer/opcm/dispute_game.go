@@ -24,10 +24,6 @@ type DeployDisputeGameInput struct {
 	Challenger               common.Address
 }
 
-func (input *DeployDisputeGameInput) InputSet() bool {
-	return true
-}
-
 type DeployDisputeGameOutput struct {
 	DisputeGameImpl common.Address
 }

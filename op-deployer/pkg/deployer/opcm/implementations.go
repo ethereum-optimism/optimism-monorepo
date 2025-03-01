@@ -25,10 +25,6 @@ type DeployImplementationsInput struct {
 	UseInterop            bool // if true, deploy Interop implementations
 }
 
-func (input *DeployImplementationsInput) InputSet() bool {
-	return true
-}
-
 type DeployImplementationsOutput struct {
 	Opcm                             common.Address
 	DelayedWETHImpl                  common.Address

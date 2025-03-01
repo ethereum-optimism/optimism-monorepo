@@ -42,10 +42,6 @@ type DeployOPChainInput struct {
 	AllowCustomDisputeParameters bool
 }
 
-func (input *DeployOPChainInput) InputSet() bool {
-	return true
-}
-
 func (input *DeployOPChainInput) StartingAnchorRoot() []byte {
 	return PermissionedGameStartingAnchorRoot
 }
