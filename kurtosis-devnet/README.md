@@ -1,6 +1,7 @@
 # Getting Started
 
 Running a Kurtosis Devnet has the following prerequisites:
+- Install and activate [mise](https://mise.jdx.dev/getting-started.html)
 - Kurtosis must be installed
 - Docker Desktop must be installed and running
 
