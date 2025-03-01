@@ -15,14 +15,14 @@ import (
 
 type ClaimHelper struct {
 	require     *require.Assertions
-	game        *OutputGameHelper
+	game        *SplitGameHelper
 	Index       int64
 	ParentIndex int
 	Position    types.Position
 	claim       common.Hash
 }
 
-func newClaimHelper(game *OutputGameHelper, idx int64, claim types.Claim) *ClaimHelper {
+func newClaimHelper(game *SplitGameHelper, idx int64, claim types.Claim) *ClaimHelper {
 	return &ClaimHelper{
 		require:     game.Require,
 		game:        game,

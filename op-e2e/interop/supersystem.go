@@ -11,7 +11,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
+	"github.com/ethereum/go-ethereum/core"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -62,6 +64,10 @@ import (
 // kurtosis or another testing framework could be implemented
 type SuperSystem interface {
 	L1() *geth.GethInstance
+	L1GethClient() *ethclient.Client
+	L1Beacon() *fakebeacon.FakeBeacon
+	AdvanceL1Time(duration time.Duration)
+	DisputeGameFactoryAddr() common.Address
 
 	// Superchain level
 	L2IDs() []string
@@ -72,7 +78,9 @@ type SuperSystem interface {
 	SupervisorClient() *sources.SupervisorClient
 
 	// L2 client specific
+	L2GethEndpoint(id string, name string) endpoint.RPC
 	L2GethClient(network string, node string) *ethclient.Client
+	L2RollupEndpoint(network string, node string) endpoint.RPC
 	L2RollupClient(network string, node string) *sources.RollupClient
 	SendL2Tx(network string, node string, username string, applyTxOpts helpers.TxOptsFn) *types.Receipt
 	EmitData(ctx context.Context, network string, node string, username string, data string) *types.Receipt
@@ -80,6 +88,8 @@ type SuperSystem interface {
 
 	// L2 level
 	ChainID(network string) *big.Int
+	RollupConfig(network string) *rollup.Config
+	L2Genesis(network string) *core.Genesis
 	UserKey(nework, username string) ecdsa.PrivateKey
 	L2OperatorKey(network string, role devkeys.ChainOperatorRole) ecdsa.PrivateKey
 	Address(network string, username string) common.Address
@@ -97,11 +107,12 @@ type SuperSystem interface {
 	// Access a contract on a network by name
 }
 type SuperSystemConfig struct {
-	mempoolFiltering bool
+	mempoolFiltering  bool
+	SupportTimeTravel bool
 }
 
 // NewSuperSystem creates a new SuperSystem from a recipe. It creates an interopE2ESystem.
-func NewSuperSystem(t *testing.T, recipe *interopgen.InteropDevRecipe, w worldResourcePaths, config SuperSystemConfig) SuperSystem {
+func NewSuperSystem(t *testing.T, recipe *interopgen.InteropDevRecipe, w WorldResourcePaths, config SuperSystemConfig) SuperSystem {
 	s2 := &interopE2ESystem{recipe: recipe, config: &config}
 	s2.prepare(t, w)
 	return s2
@@ -115,6 +126,7 @@ type interopE2ESystem struct {
 	t               *testing.T
 	recipe          *interopgen.InteropDevRecipe
 	logger          log.Logger
+	timeTravelClock *clock.AdvancingClock
 	hdWallet        *devkeys.MnemonicDevKeys
 	worldDeployment *interopgen.WorldDeployment
 	worldOutput     *interopgen.WorldOutput
@@ -132,6 +144,20 @@ func (s *interopE2ESystem) L1() *geth.GethInstance {
 	return s.l1
 }
 
+func (s *interopE2ESystem) L1Beacon() *fakebeacon.FakeBeacon {
+	return s.beacon
+}
+
+func (s *interopE2ESystem) AdvanceL1Time(duration time.Duration) {
+	s.timeTravelClock.AdvanceTime(duration)
+}
+
+func (s *interopE2ESystem) DisputeGameFactoryAddr() common.Address {
+	// Currently uses the dispute game factory for the first L2 chain.
+	// Ultimately this should be a factory shared by all chains in the dependency set
+	return s.worldDeployment.L2s[s.L2IDs()[0]].DisputeGameFactoryProxy
+}
+
 // prepareHDWallet creates a new HD wallet to derive keys from
 func (s *interopE2ESystem) prepareHDWallet() *devkeys.MnemonicDevKeys {
 	hdWallet, err := devkeys.NewMnemonicDevKeys(devkeys.TestMnemonic)
@@ -139,13 +165,13 @@ func (s *interopE2ESystem) prepareHDWallet() *devkeys.MnemonicDevKeys {
 	return hdWallet
 }
 
-type worldResourcePaths struct {
-	foundryArtifacts string
-	sourceMap        string
+type WorldResourcePaths struct {
+	FoundryArtifacts string
+	SourceMap        string
 }
 
 // prepareWorld creates the world configuration from the recipe and deploys it
-func (s *interopE2ESystem) prepareWorld(w worldResourcePaths) (*interopgen.WorldDeployment, *interopgen.WorldOutput) {
+func (s *interopE2ESystem) prepareWorld(w WorldResourcePaths) (*interopgen.WorldDeployment, *interopgen.WorldOutput) {
 	// Build the world configuration from the recipe and the HD wallet
 	worldCfg, err := s.recipe.Build(s.hdWallet)
 	require.NoError(s.t, err)
@@ -155,8 +181,8 @@ func (s *interopE2ESystem) prepareWorld(w worldResourcePaths) (*interopgen.World
 	require.NoError(s.t, worldCfg.Check(logger))
 
 	// create the foundry artifacts and source map
-	foundryArtifacts := foundry.OpenArtifactsDir(w.foundryArtifacts)
-	sourceMap := foundry.NewSourceMapFS(os.DirFS(w.sourceMap))
+	foundryArtifacts := foundry.OpenArtifactsDir(w.FoundryArtifacts)
+	sourceMap := foundry.NewSourceMapFS(os.DirFS(w.SourceMap))
 
 	// deploy the world, using the logger, foundry artifacts, source map, and world configuration
 	worldDeployment, worldOutput, err := interopgen.Deploy(logger, foundryArtifacts, sourceMap, worldCfg)
@@ -182,6 +208,10 @@ func (s *interopE2ESystem) prepareL1() (*fakebeacon.FakeBeacon, *geth.GethInstan
 
 	l1FinalizedDistance := uint64(3)
 	l1Clock := clock.SystemClock
+	if s.config.SupportTimeTravel {
+		s.timeTravelClock = clock.NewAdvancingClock(100 * time.Millisecond)
+		l1Clock = s.timeTravelClock
+	}
 	// Start the L1 chain
 	l1Geth, err := geth.InitL1(
 		blockTimeL1,
@@ -232,6 +262,14 @@ func (s *interopE2ESystem) newOperatorKeysForL2(l2Out *interopgen.L2Output) map[
 
 func (s *interopE2ESystem) ChainID(network string) *big.Int {
 	return s.l2s[network].chainID
+}
+
+func (s *interopE2ESystem) RollupConfig(network string) *rollup.Config {
+	return s.l2s[network].l2Out.RollupCfg
+}
+
+func (s *interopE2ESystem) L2Genesis(network string) *core.Genesis {
+	return s.l2s[network].l2Out.Genesis
 }
 
 // prepareSupervisor creates a new supervisor for the system
@@ -306,7 +344,7 @@ func (s *interopE2ESystem) SupervisorClient() *sources.SupervisorClient {
 // prepare sets up the system for testing
 // components are built iteratively, so that they can be reused or modified
 // their creation can't be safely skipped or reordered at this time
-func (s *interopE2ESystem) prepare(t *testing.T, w worldResourcePaths) {
+func (s *interopE2ESystem) prepare(t *testing.T, w WorldResourcePaths) {
 	s.t = t
 	s.logger = testlog.Logger(s.t, log.LevelDebug)
 	s.hdWallet = s.prepareHDWallet()

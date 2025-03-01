@@ -17,12 +17,12 @@ const getTraceTimeout = 10 * time.Minute
 type OutputHonestHelper struct {
 	t            *testing.T
 	require      *require.Assertions
-	game         *OutputGameHelper
+	game         *SplitGameHelper
 	contract     contracts.FaultDisputeGameContract
 	correctTrace types.TraceAccessor
 }
 
-func NewOutputHonestHelper(t *testing.T, require *require.Assertions, game *OutputGameHelper, contract contracts.FaultDisputeGameContract, correctTrace types.TraceAccessor) *OutputHonestHelper {
+func NewOutputHonestHelper(t *testing.T, require *require.Assertions, game *SplitGameHelper, contract contracts.FaultDisputeGameContract, correctTrace types.TraceAccessor) *OutputHonestHelper {
 	return &OutputHonestHelper{
 		t:            t,
 		require:      require,

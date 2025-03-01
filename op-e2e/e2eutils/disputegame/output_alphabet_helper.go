@@ -44,7 +44,7 @@ func (g *OutputAlphabetGameHelper) CreateHonestActor(ctx context.Context, l2Node
 	prestateProvider := outputs.NewPrestateProvider(rollupClient, prestateBlock)
 	correctTrace, err := outputs.NewOutputAlphabetTraceAccessor(logger, metrics.NoopMetrics, prestateProvider, rollupClient, l2Client, l1Head, splitDepth, prestateBlock, poststateBlock)
 	g.Require.NoError(err, "Create trace accessor")
-	return NewOutputHonestHelper(g.T, g.Require, &g.OutputGameHelper, g.Game, correctTrace)
+	return NewOutputHonestHelper(g.T, g.Require, &g.OutputGameHelper.SplitGameHelper, g.Game, correctTrace)
 }
 
 func (g *OutputAlphabetGameHelper) CreateDishonestHelper(ctx context.Context, l2Node string, defender bool) *DishonestHelper {

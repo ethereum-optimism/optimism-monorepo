@@ -16,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/challenger"
 	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/wait"
 
 	"github.com/stretchr/testify/require"
@@ -374,6 +375,23 @@ type System struct {
 	clients map[string]*ethclient.Client
 }
 
+func (sys *System) PrestateVariant() challenger.PrestateVariant {
+	switch sys.AllocType() {
+	case config.AllocTypeMTCannon:
+		return challenger.MTCannonVariant
+	default:
+		return challenger.STCannonVariant
+	}
+}
+
+func (sys *System) DisputeGameFactoryAddr() common.Address {
+	return sys.L1Deployments().DisputeGameFactoryProxy
+}
+
+func (sys *System) SupervisorClient() *sources.SupervisorClient {
+	panic("supervisor not supported for single chain system")
+}
+
 func (sys *System) Config() SystemConfig { return sys.Cfg }
 
 // AdvanceTime advances the system clock by the given duration.
@@ -417,8 +435,16 @@ func (sys *System) RollupCfg() *rollup.Config {
 	return sys.RollupConfig
 }
 
+func (sys *System) RollupCfgs() []*rollup.Config {
+	return []*rollup.Config{sys.RollupConfig}
+}
+
 func (sys *System) L2Genesis() *core.Genesis {
 	return sys.L2GenesisCfg
+}
+
+func (sys *System) L2Genesises() []*core.Genesis {
+	return []*core.Genesis{sys.L2GenesisCfg}
 }
 
 func (sys *System) AllocType() config.AllocType {
