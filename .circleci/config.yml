@@ -1371,24 +1371,39 @@ jobs:
         description: Goreleaser config file
         default: .goreleaser.yaml
         type: string
-    docker:
-      - image: <<pipeline.parameters.default_docker_image>>
+      brew_release:
+        description: Whether to setup GitHub token for brew release
+        type: boolean
+        default: false
+    machine:
+      image: ubuntu-2204:2024.08.1
     resource_class: large
     steps:
-      - setup_remote_docker
+      - checkout
       - gcp-cli/install
-      - gcp-oidc-authenticate:
-          gcp_cred_config_file_path: /tmp/gcp_cred_config.json
-          oidc_token_file_path: /tmp/oidc_token.json
-      - utils/checkout-with-mise
-      - run:
-          name: Configure Docker
-          command: |
-            gcloud auth configure-docker us-docker.pkg.dev
+      # - gcp-oidc-authenticate:
+      #     gcp_cred_config_file_path: /tmp/gcp_cred_config.json
+      #     oidc_token_file_path: /tmp/oidc_token.json
+
+      # - run:
+      #     name: Configure Docker
+      #     command: |
+      #       gcloud auth configure-docker us-docker.pkg.dev
+      - when:
+          condition: << parameters.brew_release >>
+          steps:
+            - utils/setup-circleci-utils-and-github-token:
+                # GoReleaser uses the GITHUB_TOKEN environment variable to authenticate with GitHub
+                github-app-repo: ethereum-optimism/homebrew-tap
+                github-token: GITHUB_TOKEN
       - run:
           name: Run goreleaser
           command: |
-            goreleaser release --clean -f ./<<parameters.module>>/<<parameters.filename>>
+            echo 'deb [trusted=yes] https://repo.goreleaser.com/apt/ /' | sudo tee /etc/apt/sources.list.d/goreleaser.list
+            sudo apt update
+            sudo apt install goreleaser-pro
+            ls -la
+            goreleaser release --snapshot --clean -f ./<<parameters.module>>/<<parameters.filename>>
 
   stale-check:
       machine:
@@ -1582,10 +1597,11 @@ workflows:
             tags:
               only: /^op-deployer.*/
             branches:
-              ignore: /.*/
+              only: yash/homebrew-builds-for-op-deployer
           module: op-deployer
+          brew_release: true
           context:
-            - oplabs-gcr-release
+            - circleci-optimism
 
   release:
     when:
