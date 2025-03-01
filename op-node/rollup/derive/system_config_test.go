@@ -32,7 +32,8 @@ var (
 	oneUint256 = abi.Arguments{
 		{Type: uint256T},
 	}
-	eip1559Params = []byte{0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8}
+	eip1559Params     = []byte{0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8}
+	operatorFeeParams = []byte{0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x5, 0x0, 0x0, 0x0, 0x0, 0x0, 0x7, 0xd, 0x8}
 )
 
 // TestProcessSystemConfigUpdateLogEvent tests the parsing of an event and mutating the
@@ -205,6 +206,28 @@ func TestProcessSystemConfigUpdateLogEvent(t *testing.T) {
 			},
 			config: eth.SystemConfig{
 				EIP1559Params: eth.Bytes8(eip1559Params),
+			},
+			err: false,
+		},
+		{
+			name: "SystemConfigUpdateOperatorFeeParams",
+			log: &types.Log{
+				Topics: []common.Hash{
+					ConfigUpdateEventABIHash,
+					ConfigUpdateEventVersion0,
+					SystemConfigUpdateOperatorFeeParams,
+				},
+			},
+			hook: func(t *testing.T, log *types.Log) *types.Log {
+				numberData, err := oneUint256.Pack(new(big.Int).SetBytes(operatorFeeParams))
+				require.NoError(t, err)
+				data, err := bytesArgs.Pack(numberData)
+				require.NoError(t, err)
+				log.Data = data
+				return log
+			},
+			config: eth.SystemConfig{
+				OperatorFeeParams: eth.Bytes32(operatorFeeParams),
 			},
 			err: false,
 		},

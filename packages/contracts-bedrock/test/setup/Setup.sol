@@ -44,6 +44,7 @@ import { IOptimismSuperchainERC20Factory } from "interfaces/L2/IOptimismSupercha
 import { IBaseFeeVault } from "interfaces/L2/IBaseFeeVault.sol";
 import { ISequencerFeeVault } from "interfaces/L2/ISequencerFeeVault.sol";
 import { IL1FeeVault } from "interfaces/L2/IL1FeeVault.sol";
+import { IOperatorFeeVault } from "interfaces/L2/IOperatorFeeVault.sol";
 import { IGasPriceOracle } from "interfaces/L2/IGasPriceOracle.sol";
 import { IL1Block } from "interfaces/L2/IL1Block.sol";
 import { ISuperchainWETH } from "interfaces/L2/ISuperchainWETH.sol";
@@ -120,6 +121,7 @@ contract Setup {
     IBaseFeeVault baseFeeVault = IBaseFeeVault(payable(Predeploys.BASE_FEE_VAULT));
     ISequencerFeeVault sequencerFeeVault = ISequencerFeeVault(payable(Predeploys.SEQUENCER_FEE_WALLET));
     IL1FeeVault l1FeeVault = IL1FeeVault(payable(Predeploys.L1_FEE_VAULT));
+    IOperatorFeeVault operatorFeeVault = IOperatorFeeVault(payable(Predeploys.OPERATOR_FEE_VAULT));
     IGasPriceOracle gasPriceOracle = IGasPriceOracle(Predeploys.GAS_PRICE_ORACLE);
     IL1Block l1Block = IL1Block(Predeploys.L1_BLOCK_ATTRIBUTES);
     IGovernanceToken governanceToken = IGovernanceToken(Predeploys.GOVERNANCE_TOKEN);
@@ -285,6 +287,7 @@ contract Setup {
         labelPredeploy(Predeploys.OPTIMISM_MINTABLE_ERC721_FACTORY);
         labelPredeploy(Predeploys.BASE_FEE_VAULT);
         labelPredeploy(Predeploys.L1_FEE_VAULT);
+        labelPredeploy(Predeploys.OPERATOR_FEE_VAULT);
         labelPredeploy(Predeploys.L1_BLOCK_ATTRIBUTES);
         labelPredeploy(Predeploys.GAS_PRICE_ORACLE);
         labelPredeploy(Predeploys.LEGACY_MESSAGE_PASSER);

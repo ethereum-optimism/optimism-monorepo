@@ -27,6 +27,8 @@ contract GasPriceOracle_Test is CommonTest {
     uint256 constant l1FeeScalar = 10;
     uint32 constant blobBaseFeeScalar = 15;
     uint32 constant baseFeeScalar = 20;
+    uint32 constant operatorFeeScalar = 4_000_000;
+    uint64 constant operatorFeeConstant = 300;
 
     /// @dev Sets up the test suite.
     function setUp() public virtual override {
@@ -350,5 +352,48 @@ contract GasPriceOracleFjordActive_Test is GasPriceOracle_Test {
         // 162_356_900 * (20 * 16 * 2 * 1e6 + 3 * 1e6 * 15) / 1e12 == 111,214.4765
         uint256 upperBound = gasPriceOracle.getL1FeeUpperBound(data.length);
         assertEq(upperBound, 111214);
+    }
+
+    /// @dev Tests that `operatorFee` is 0 is Isthmus is not activated.
+    function test_getOperatorFee_succeeds() external view {
+        assertEq(gasPriceOracle.isIsthmus(), false);
+        assertEq(gasPriceOracle.getOperatorFee(10), 0);
+    }
+}
+
+contract GasPriceOracleIsthmus_Test is GasPriceOracle_Test {
+    /// @dev Sets up the test suite.
+    function setUp() public virtual override {
+        l2Fork = Fork.ISTHMUS;
+        super.setUp();
+
+        bytes memory calldataPacked = Encoding.encodeSetL1BlockValuesIsthmus(
+            baseFeeScalar,
+            blobBaseFeeScalar,
+            sequenceNumber,
+            timestamp,
+            number,
+            baseFee,
+            blobBaseFee,
+            hash,
+            batcherHash,
+            operatorFeeScalar,
+            operatorFeeConstant
+        );
+
+        vm.prank(depositor);
+        (bool success,) = address(l1Block).call(calldataPacked);
+        require(success, "GasPriceOracleIsthmus_Test: Function call failed");
+    }
+
+    /// @dev Tests that `operatorFee` is set correctly.
+    function test_getOperatorFee_succeeds() external view {
+        assertEq(gasPriceOracle.getOperatorFee(10), 10 * operatorFeeScalar / 1e6 + operatorFeeConstant);
+    }
+
+    /// @dev Tests that `setIsthmus` is only callable by the depositor.
+    function test_setIsthmus_wrongCaller_reverts() external {
+        vm.expectRevert("GasPriceOracle: only the depositor account can set isIsthmus flag");
+        gasPriceOracle.setIsthmus();
     }
 }

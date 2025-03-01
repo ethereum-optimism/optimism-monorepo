@@ -23,6 +23,7 @@ const (
 	ProxyAdmin                    = "0x4200000000000000000000000000000000000018"
 	BaseFeeVault                  = "0x4200000000000000000000000000000000000019"
 	L1FeeVault                    = "0x420000000000000000000000000000000000001a"
+	OperatorFeeVault              = "0x420000000000000000000000000000000000001b"
 	SchemaRegistry                = "0x4200000000000000000000000000000000000020"
 	EAS                           = "0x4200000000000000000000000000000000000021"
 	CrossL2Inbox                  = "0x4200000000000000000000000000000000000022"
@@ -63,6 +64,7 @@ var (
 	ProxyAdminAddr                    = common.HexToAddress(ProxyAdmin)
 	BaseFeeVaultAddr                  = common.HexToAddress(BaseFeeVault)
 	L1FeeVaultAddr                    = common.HexToAddress(L1FeeVault)
+	OperatorFeeVaultAddr              = common.HexToAddress(OperatorFeeVault)
 	SchemaRegistryAddr                = common.HexToAddress(SchemaRegistry)
 	EASAddr                           = common.HexToAddress(EAS)
 	CrossL2InboxAddr                  = common.HexToAddress(CrossL2Inbox)
@@ -117,6 +119,7 @@ func init() {
 	Predeploys["ProxyAdmin"] = &Predeploy{Address: ProxyAdminAddr}
 	Predeploys["BaseFeeVault"] = &Predeploy{Address: BaseFeeVaultAddr}
 	Predeploys["L1FeeVault"] = &Predeploy{Address: L1FeeVaultAddr}
+	Predeploys["OperatorFeeVault"] = &Predeploy{Address: OperatorFeeVaultAddr}
 	Predeploys["SchemaRegistry"] = &Predeploy{Address: SchemaRegistryAddr}
 	Predeploys["EAS"] = &Predeploy{Address: EASAddr}
 	Predeploys["Create2Deployer"] = &Predeploy{

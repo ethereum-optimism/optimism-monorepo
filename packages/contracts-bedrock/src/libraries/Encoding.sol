@@ -177,6 +177,52 @@ library Encoding {
         );
     }
 
+    /// @notice Returns an appropriately encoded call to L1Block.setL1BlockValuesIsthmus
+    /// @param _baseFeeScalar       L1 base fee Scalar
+    /// @param _blobBaseFeeScalar   L1 blob base fee Scalar
+    /// @param _sequenceNumber      Number of L2 blocks since epoch start.
+    /// @param _timestamp           L1 timestamp.
+    /// @param _number              L1 blocknumber.
+    /// @param _baseFee             L1 base fee.
+    /// @param _blobBaseFee         L1 blob base fee.
+    /// @param _hash                L1 blockhash.
+    /// @param _batcherHash         Versioned hash to authenticate batcher by.
+    /// @param _operatorFeeScalar   Operator fee scalar.
+    /// @param _operatorFeeConstant Operator fee constant.
+    function encodeSetL1BlockValuesIsthmus(
+        uint32 _baseFeeScalar,
+        uint32 _blobBaseFeeScalar,
+        uint64 _sequenceNumber,
+        uint64 _timestamp,
+        uint64 _number,
+        uint256 _baseFee,
+        uint256 _blobBaseFee,
+        bytes32 _hash,
+        bytes32 _batcherHash,
+        uint32 _operatorFeeScalar,
+        uint64 _operatorFeeConstant
+    )
+        internal
+        pure
+        returns (bytes memory)
+    {
+        bytes4 functionSignature = bytes4(keccak256("setL1BlockValuesIsthmus()"));
+        return abi.encodePacked(
+            functionSignature,
+            _baseFeeScalar,
+            _blobBaseFeeScalar,
+            _sequenceNumber,
+            _timestamp,
+            _number,
+            _baseFee,
+            _blobBaseFee,
+            _hash,
+            _batcherHash,
+            _operatorFeeScalar,
+            _operatorFeeConstant
+        );
+    }
+
     /// @notice Returns an appropriately encoded call to L1Block.setL1BlockValuesInterop
     /// @param _baseFeeScalar       L1 base fee Scalar
     /// @param _blobBaseFeeScalar   L1 blob base fee Scalar

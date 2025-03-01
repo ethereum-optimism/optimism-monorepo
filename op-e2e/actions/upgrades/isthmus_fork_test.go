@@ -353,7 +353,7 @@ func TestIsthmusNetworkUpgradeTransactions(gt *testing.T) {
 
 	// L1Block: 1 set-L1-info + 1 deploy
 	// See [derive.IsthmusNetworkUpgradeTransactions]
-	require.Equal(t, 2, len(transactions))
+	require.Equal(t, 9, len(transactions))
 
 	// Contract deployment transaction
 	txn := transactions[1]

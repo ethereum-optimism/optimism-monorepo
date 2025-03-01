@@ -55,6 +55,8 @@
   "protocolVersionsProxy": "0x0000000000000000000000000000000000000000",
   "gasPriceOracleBaseFeeScalar": 0,
   "gasPriceOracleBlobBaseFeeScalar": 0,
+  "gasPriceOracleOperatorFeeScalar": 0,
+  "gasPriceOracleOperatorFeeConstant": 0,
   "gasPriceOracleOverhead": 2100,
   "gasPriceOracleScalar": 1000000,
   "enableGovernance": true,
