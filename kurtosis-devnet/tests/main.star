@@ -12,7 +12,7 @@ def run(plan, devnet, timestamp, tests):
 
     for test in tests:
         plan.run_sh(
-            run = "/bin/bash /tests/{} --devnet {} --environment /tests/{}.json".format(test, devnet, devnet),
+            run = "/bin/bash /tests/{} --perspective internal --environment /tests/{}.json".format(test, devnet),
             name = "{}-{}".format(test, timestamp),
             image = "mslipper/deployment-utils:latest",
             wait="180s",
