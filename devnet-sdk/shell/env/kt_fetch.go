@@ -11,13 +11,14 @@ import (
 )
 
 const (
-	KurtosisDevnetEnvArtifactName = "devnet"
-	KurtosisDevnetEnvArtifactPath = "env.json"
+	KurtosisDevnetEnvArtifactNamePrefix = "devnet-descriptor-"
+	KurtosisDevnetEnvArtifactPath       = "env.json"
 )
 
 // EnclaveFS is an interface that both our mock and the real implementation satisfy
 type EnclaveFS interface {
 	GetArtifact(ctx context.Context, name string) (*ktfs.Artifact, error)
+	GetAllArtifactNames(ctx context.Context) ([]string, error)
 	Close() error
 }
 
@@ -28,6 +29,10 @@ type enclaveFSWrapper struct {
 
 func (w *enclaveFSWrapper) GetArtifact(ctx context.Context, name string) (*ktfs.Artifact, error) {
 	return w.fs.GetArtifact(ctx, name)
+}
+
+func (w *enclaveFSWrapper) GetAllArtifactNames(ctx context.Context) ([]string, error) {
+	return w.fs.GetAllArtifactNames(ctx)
 }
 
 func (w *enclaveFSWrapper) Close() error {
@@ -49,11 +54,11 @@ var NewEnclaveFS NewEnclaveFSFunc = func(ctx context.Context, enclave string) (E
 }
 
 // parseKurtosisURL parses a Kurtosis URL of the form kt://enclave/artifact/file
-// If artifact is omitted, it defaults to "devnet"
+// If artifact is omitted, it defaults to ""
 // If file is omitted, it defaults to "env.json"
 func parseKurtosisURL(u *url.URL) (enclave, artifactName, fileName string) {
 	enclave = u.Host
-	artifactName = KurtosisDevnetEnvArtifactName
+	artifactName = ""
 	fileName = KurtosisDevnetEnvArtifactPath
 
 	// Trim both prefix and suffix slashes before splitting
@@ -69,6 +74,43 @@ func parseKurtosisURL(u *url.URL) (enclave, artifactName, fileName string) {
 	return
 }
 
+func getDefaultDescriptor(ctx context.Context, fs EnclaveFS) (string, error) {
+	prefix := KurtosisDevnetEnvArtifactNamePrefix
+
+	names, err := fs.GetAllArtifactNames(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	var maxSuffix int
+	var maxName string
+	for _, name := range names {
+		if !strings.HasPrefix(name, prefix) {
+			continue
+		}
+
+		// Extract the suffix after the prefix
+		suffix := name[len(prefix):]
+		// Parse the suffix as a number
+		var num int
+		if _, err := fmt.Sscanf(suffix, "%d", &num); err != nil {
+			continue // Skip if suffix is not a valid number
+		}
+
+		// Update maxName if this number is larger
+		if maxName == "" || num > maxSuffix {
+			maxSuffix = num
+			maxName = name
+		}
+	}
+
+	if maxName == "" {
+		return "", fmt.Errorf("no descriptor found with valid numerical suffix")
+	}
+
+	return maxName, nil
+}
+
 // fetchKurtosisData reads data from a Kurtosis artifact
 func fetchKurtosisData(u *url.URL) (string, []byte, error) {
 	enclave, artifactName, fileName := parseKurtosisURL(u)
@@ -76,6 +118,14 @@ func fetchKurtosisData(u *url.URL) (string, []byte, error) {
 	fs, err := NewEnclaveFS(context.Background(), enclave)
 	if err != nil {
 		return "", nil, fmt.Errorf("error creating enclave fs: %w", err)
+	}
+
+	if artifactName == "" {
+		artifactName, err = getDefaultDescriptor(context.Background(), fs)
+		if err != nil {
+			return "", nil, fmt.Errorf("error getting default descriptor: %w", err)
+		}
+		fmt.Printf("Using default descriptor: %s\n", artifactName)
 	}
 
 	art, err := fs.GetArtifact(context.Background(), artifactName)

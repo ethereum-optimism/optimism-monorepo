@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"strings"
 
 	ktfs "github.com/ethereum-optimism/optimism/devnet-sdk/kt/fs"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/shell/env"
@@ -39,6 +40,7 @@ type Deployer struct {
 	engineManager  EngineManager
 	templateFile   string
 	dataFile       string
+	newEnclaveFS   func(ctx context.Context, enclave string) (*ktfs.EnclaveFS, error)
 }
 
 func WithKurtosisDeployer(ktDeployer DeployerFunc) DeployerOption {
@@ -95,12 +97,19 @@ func WithEnclave(enclave string) DeployerOption {
 	}
 }
 
+func WithNewEnclaveFSFunc(newEnclaveFS func(ctx context.Context, enclave string) (*ktfs.EnclaveFS, error)) DeployerOption {
+	return func(d *Deployer) {
+		d.newEnclaveFS = newEnclaveFS
+	}
+}
+
 func NewDeployer(opts ...DeployerOption) *Deployer {
 	d := &Deployer{
 		kurtosisBinary: "kurtosis",
 		ktDeployer: func(opts ...kurtosis.KurtosisDeployerOptions) (deployer, error) {
 			return kurtosis.NewKurtosisDeployer(opts...)
 		},
+		newEnclaveFS: ktfs.NewEnclaveFS,
 	}
 	for _, opt := range opts {
 		opt(d)
@@ -146,7 +155,7 @@ func (d *Deployer) deployEnvironment(ctx context.Context, r io.Reader) (*kurtosi
 	}
 
 	// Upload the environment info to the enclave.
-	fs, err := ktfs.NewEnclaveFS(ctx, d.enclave)
+	fs, err := d.newEnclaveFS(ctx, d.enclave)
 	if err != nil {
 		return nil, fmt.Errorf("error getting enclave fs: %w", err)
 	}
@@ -158,11 +167,43 @@ func (d *Deployer) deployEnvironment(ctx context.Context, r io.Reader) (*kurtosi
 		return nil, fmt.Errorf("error encoding environment: %w", err)
 	}
 
-	if err := fs.PutArtifact(ctx, env.KurtosisDevnetEnvArtifactName, ktfs.NewArtifactFileReader(env.KurtosisDevnetEnvArtifactPath, envBuf)); err != nil {
+	descName, err := getNextDevnetDescriptor(ctx, fs)
+	if err != nil {
+		return nil, fmt.Errorf("error getting next devnet descriptor: %w", err)
+	}
+
+	if err := fs.PutArtifact(ctx, descName, ktfs.NewArtifactFileReader(env.KurtosisDevnetEnvArtifactPath, envBuf)); err != nil {
 		return nil, fmt.Errorf("error putting environment artifact: %w", err)
 	}
 
 	return info, nil
+}
+
+func getNextDevnetDescriptor(ctx context.Context, fs *ktfs.EnclaveFS) (string, error) {
+	artifactNames, err := fs.GetAllArtifactNames(ctx)
+	if err != nil {
+		return "", fmt.Errorf("error getting artifact names: %w", err)
+	}
+
+	maxNum := -1
+	for _, artifactName := range artifactNames {
+		if !strings.HasPrefix(artifactName, env.KurtosisDevnetEnvArtifactNamePrefix) {
+			continue
+		}
+
+		numStr := strings.TrimPrefix(artifactName, env.KurtosisDevnetEnvArtifactNamePrefix)
+		num := 0
+		if _, err := fmt.Sscanf(numStr, "%d", &num); err != nil {
+			log.Printf("Warning: invalid devnet descriptor format: %s", artifactName)
+			continue
+		}
+
+		if num > maxNum {
+			maxNum = num
+		}
+	}
+
+	return fmt.Sprintf("%s%d", env.KurtosisDevnetEnvArtifactNamePrefix, maxNum+1), nil
 }
 
 func (d *Deployer) renderTemplate(buildDir string, urlBuilder func(path ...string) string) (*bytes.Buffer, error) {
