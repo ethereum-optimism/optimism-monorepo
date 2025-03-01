@@ -73,7 +73,13 @@ func NewL2FaultProofEnv[c any](t helpers.Testing, testCfg *TestCfg[c], tp *e2eut
 			override(dp.DeployConfig)
 		}
 	})
-	sd := e2eutils.Setup(t, dp, helpers.DefaultAlloc)
+
+	genesisAlloc := testCfg.Allocs
+	if genesisAlloc == nil {
+		genesisAlloc = helpers.DefaultAlloc
+	}
+
+	sd := e2eutils.Setup(t, dp, genesisAlloc)
 
 	jwtPath := e2eutils.WriteDefaultJWT(t)
 

@@ -3,6 +3,8 @@ package helpers
 import (
 	"fmt"
 	"testing"
+
+	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils"
 )
 
 type RunTest[cfg any] func(t *testing.T, testCfg *TestCfg[cfg])
@@ -12,6 +14,7 @@ type TestCfg[cfg any] struct {
 	CheckResult CheckResult
 	InputParams []FixtureInputParam
 	Custom      cfg
+	Allocs      *e2eutils.AllocParams
 }
 
 type TestCase[cfg any] struct {
