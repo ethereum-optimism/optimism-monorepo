@@ -137,7 +137,7 @@ cat << EOL >> tmp_config.json
   "faultGameClockExtension": 0,
   "faultGameMaxClockDuration": 1200,
   "faultGameGenesisBlock": 0,
-  "faultGameGenesisOutputRoot": "0x0000000000000000000000000000000000000000000000000000000000000000",
+  "faultGameGenesisOutputRoot": "0xDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEF",
   "faultGameSplitDepth": 14,
   "faultGameWithdrawalDelay": 600,
 
