@@ -169,7 +169,7 @@ contract OPPrestateUpdater_Test is Test {
                 gasLimit: 30_000_000,
                 disputeGameType: GameType.wrap(1),
                 disputeAbsolutePrestate: Claim.wrap(
-                    bytes32(hex"038512e02c4c3f7bdaec27d00edf55b7155e0905301e1a88083e4e0a6764d54c")
+                    bytes32(hex"0x035ac388b5cb22acf52a2063cfde108d09b1888655d21f02f595f9c3ea6cbdcd")
                 ),
                 disputeMaxGameDepth: 73,
                 disputeSplitDepth: 30,
