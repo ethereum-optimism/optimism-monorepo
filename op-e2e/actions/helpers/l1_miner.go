@@ -121,6 +121,10 @@ func (s *L1Miner) ActL1StartBlock(timeDelta uint64) Action {
 			core.ProcessBeaconBlockRoot(*header.ParentBeaconRoot, vmenv)
 		}
 
+		if s.l1Cfg.Config.IsPrague(header.Number, header.Time) {
+			header.RequestsHash = &types.EmptyRequestsHash
+		}
+
 		s.l1Building = true
 		s.l1BuildingHeader = header
 		s.l1BuildingState = statedb
@@ -246,7 +250,7 @@ func (s *L1Miner) ActL1EndBlock(t Testing) *types.Block {
 	}
 	_, err = s.l1Chain.InsertChain(types.Blocks{block})
 	if err != nil {
-		t.Fatalf("failed to insert block into l1 chain")
+		t.Fatalf("failed to insert block into l1 chain: %w", err)
 	}
 	return block
 }
