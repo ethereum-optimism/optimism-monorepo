@@ -28,8 +28,6 @@ func TestDeployDisputeGame(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	standardVersionsTOML, err := standard.L1VersionsDataFor(11155111)
-	require.NoError(t, err)
 	vmAddr := common.Address{'V'}
 	host.ImportAccount(vmAddr, types.Account{Code: vmCode})
 	// Address has to match the one returned by vmCode for oracle()(address)
@@ -37,7 +35,6 @@ func TestDeployDisputeGame(t *testing.T) {
 
 	input := DeployDisputeGameInput{
 		Release:                  "dev",
-		StandardVersionsToml:     standardVersionsTOML,
 		VmAddress:                vmAddr,
 		GameKind:                 "PermissionedDisputeGame",
 		GameType:                 1,

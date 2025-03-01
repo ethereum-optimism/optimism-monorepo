@@ -198,7 +198,6 @@ var Commands = []*cli.Command{
 		Usage:  "Bootstraps implementations.",
 		Flags:  cliapp.ProtectFlags(ImplementationsFlags),
 		Action: ImplementationsCLI,
-		Hidden: true,
 	},
 	{
 		Name:   "proxy",

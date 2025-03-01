@@ -8,7 +8,6 @@ import (
 
 type DeployDisputeGameInput struct {
 	Release                  string
-	StandardVersionsToml     string
 	VmAddress                common.Address
 	GameKind                 string
 	GameType                 uint32
@@ -22,6 +21,10 @@ type DeployDisputeGameInput struct {
 	L2ChainId                common.Hash
 	Proposer                 common.Address
 	Challenger               common.Address
+}
+
+func (input *DeployDisputeGameInput) StandardVersionsToml() string {
+	return ""
 }
 
 func (input *DeployDisputeGameInput) InputSet() bool {

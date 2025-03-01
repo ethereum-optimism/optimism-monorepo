@@ -7,6 +7,8 @@ import (
 	"net/url"
 	"reflect"
 
+	"github.com/ethereum-optimism/superchain-registry/validation"
+
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/artifacts"
 
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/standard"
@@ -229,7 +231,7 @@ func (c *Intent) checkL1Prod() error {
 		return err
 	}
 
-	if _, ok := versions[c.L1ContractsLocator.Tag]; !ok {
+	if _, ok := versions[validation.Semver(c.L1ContractsLocator.Tag)]; !ok {
 		return fmt.Errorf("tag '%s' not found in standard versions", c.L1ContractsLocator.Tag)
 	}
 

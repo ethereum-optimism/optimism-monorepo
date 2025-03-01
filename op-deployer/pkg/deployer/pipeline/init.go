@@ -3,10 +3,7 @@ package pipeline
 import (
 	"context"
 	"crypto/rand"
-	"errors"
 	"fmt"
-	"os"
-	"strings"
 
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/standard"
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/state"
@@ -15,8 +12,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 )
-
-var ErrRefusingToDeployTaggedReleaseWithoutOPCM = errors.New("refusing to deploy tagged release without OPCM")
 
 func IsSupportedStateVersion(version int) bool {
 	return version == 1
@@ -32,9 +27,18 @@ func InitLiveStrategy(ctx context.Context, env *Env, intent *state.Intent, st *s
 
 	opcmAddress, opcmAddrErr := standard.ManagerImplementationAddrFor(intent.L1ChainID, intent.L1ContractsLocator.Tag)
 	hasPredeployedOPCM := opcmAddrErr == nil
-	isTag := intent.L1ContractsLocator.IsTag()
+	isL1Tag := intent.L1ContractsLocator.IsTag()
+	isL2Tag := intent.L2ContractsLocator.IsTag()
 
-	if isTag && hasPredeployedOPCM {
+	if isL1Tag && !standard.IsSupportedL1Version(intent.L1ContractsLocator.Tag) {
+		return fmt.Errorf("unsupported L1 version: %s", intent.L1ContractsLocator.Tag)
+	}
+
+	if isL2Tag && !standard.IsSupportedL2Version(intent.L2ContractsLocator.Tag) {
+		return fmt.Errorf("unsupported L2 version: %s", intent.L2ContractsLocator.Tag)
+	}
+
+	if isL1Tag && hasPredeployedOPCM {
 		superCfg, err := standard.SuperchainFor(intent.L1ChainID)
 		if err != nil {
 			return fmt.Errorf("error getting superchain config: %w", err)
@@ -45,8 +49,6 @@ func InitLiveStrategy(ctx context.Context, env *Env, intent *state.Intent, st *s
 			return fmt.Errorf("error getting superchain proxy admin address: %w", err)
 		}
 
-		// Have to do this weird pointer thing below because the Superchain Registry defines its
-		// own Address type.
 		st.SuperchainDeployment = &state.SuperchainDeployment{
 			ProxyAdminAddress:            proxyAdmin,
 			ProtocolVersionsProxyAddress: superCfg.ProtocolVersionsAddr,
@@ -55,10 +57,6 @@ func InitLiveStrategy(ctx context.Context, env *Env, intent *state.Intent, st *s
 
 		st.ImplementationsDeployment = &state.ImplementationsDeployment{
 			OpcmAddress: opcmAddress,
-		}
-	} else if isTag && !hasPredeployedOPCM {
-		if err := displayWarning(); err != nil {
-			return err
 		}
 	}
 
@@ -135,24 +133,4 @@ func InitGenesisStrategy(env *Env, intent *state.Intent, st *state.State) error 
 
 func immutableErr(field string, was, is any) error {
 	return fmt.Errorf("%s is immutable: was %v, is %v", field, was, is)
-}
-
-func displayWarning() error {
-	warning := strings.TrimPrefix(`
-####################### WARNING! WARNING WARNING! #######################
-
-You are deploying a tagged release to a chain with no pre-deployed OPCM.
-Due to a quirk of our contract version system, this can lead to deploying
-contracts containing unaudited or untested code. As a result, this 
-functionality is currently disabled.
-
-We will fix this in an upcoming release.
-
-This process will now exit.
-
-####################### WARNING! WARNING WARNING! #######################
-`, "\n")
-
-	_, _ = fmt.Fprint(os.Stderr, warning)
-	return ErrRefusingToDeployTaggedReleaseWithoutOPCM
 }

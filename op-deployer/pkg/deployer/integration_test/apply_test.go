@@ -128,8 +128,9 @@ func TestEndToEndApply(t *testing.T) {
 		intent, st := newIntent(t, l1ChainID, dk, l2ChainID1, loc, loc)
 		intent.L1ContractsLocator = artifacts.DefaultL1ContractsLocator
 		intent.L2ContractsLocator = artifacts.DefaultL2ContractsLocator
+		cg := ethClientCodeGetter(ctx, l1Client)
 
-		require.ErrorIs(t, deployer.ApplyPipeline(
+		require.NoError(t, deployer.ApplyPipeline(
 			ctx,
 			deployer.ApplyPipelineOpts{
 				DeploymentTarget:   deployer.DeploymentTargetLive,
@@ -141,7 +142,10 @@ func TestEndToEndApply(t *testing.T) {
 				StateWriter:        pipeline.NoopStateWriter(),
 				CacheDir:           testCacheDir,
 			},
-		), pipeline.ErrRefusingToDeployTaggedReleaseWithoutOPCM)
+		))
+
+		validateSuperchainDeployment(t, st, cg)
+		validateOPChainDeployment(t, cg, st, intent, false)
 	})
 
 	t.Run("with calldata broadcasts", func(t *testing.T) {

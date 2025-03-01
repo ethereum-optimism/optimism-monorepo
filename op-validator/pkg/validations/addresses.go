@@ -13,9 +13,10 @@ const (
 
 var addresses = map[uint64]map[string]common.Address{
 	11155111: {
-		// Both versions below bootstrapped on 02/23/2025 using OP Deployer.
+		// Bootstrapped on 02/23/2025 using OP Deployer.
 		VersionV180: common.HexToAddress("0x0a5bf8ebb4b177b2dcc6eba933db726a2e2e2b4d"),
-		VersionV200: common.HexToAddress("0xaf72eedb110f114a3b4e921c12755b4e47dbd63d"),
+		// Bootstrapped on 02/28/2025 using OP Deployer.
+		VersionV200: common.HexToAddress("0xf1ed53f385188b5efc0cc0f0dfa77357dd4b3833"),
 	},
 }
 

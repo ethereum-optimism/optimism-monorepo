@@ -8,6 +8,7 @@
 - [Usage](user-guide/usage.md)
   - [init](user-guide/init.md)
   - [apply](user-guide/apply.md)
+  - [bootstrap](user-guide/bootstrap.md)
 - [Known Limitations](user-guide/known-limitations.md)
 
 # Reference Guide
@@ -16,3 +17,4 @@
   - [Deployment Pipeline](reference-guide/pipeline.md)
   - [Scripting Engine](reference-guide/engine.md)
 - [Artifacts Locators](reference-guide/artifacts-locators.md)
+- [Releases](reference-guide/releases.md)
