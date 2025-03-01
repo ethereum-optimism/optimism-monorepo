@@ -158,6 +158,11 @@ func (cfg *Config) ValidateL1Config(ctx context.Context, client L1Client) error 
 		return err
 	}
 
+	return nil
+}
+
+// ValidateL1Genesis checks L1 Genesis blockhash exists on L1 EL node
+func  (cfg *Config) ValidateL1Genesis(ctx context.Context, client L1Client) error {
 	// Validate the Rollup L1 Genesis Blockhash
 	if err := cfg.CheckL1GenesisBlockHash(ctx, client); err != nil {
 		return err
