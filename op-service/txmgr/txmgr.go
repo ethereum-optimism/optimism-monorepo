@@ -892,6 +892,7 @@ func (m *SimpleTxManager) increaseGasPrice(ctx context.Context, tx *types.Transa
 
 // SuggestGasPriceCaps suggests what the new tip, base fee, and blob base fee should be based on
 // the current L1 conditions. `blobBaseFee` will be nil if 4844 is not yet active.
+// Note that an error will be returned if MaxTipCap or MaxBaseFee is exceeded.
 func (m *SimpleTxManager) SuggestGasPriceCaps(ctx context.Context) (*big.Int, *big.Int, *big.Int, error) {
 	cCtx, cancel := context.WithTimeout(ctx, m.cfg.NetworkTimeout)
 	defer cancel()
@@ -913,15 +914,24 @@ func (m *SimpleTxManager) SuggestGasPriceCaps(ctx context.Context) (*big.Int, *b
 
 	// Enforce minimum base fee and tip cap
 	minTipCap := m.cfg.MinTipCap.Load()
+	maxTipCap := m.cfg.MaxTipCap.Load()
 	minBaseFee := m.cfg.MinBaseFee.Load()
+	maxBaseFee := m.cfg.MaxBaseFee.Load()
 
 	if minTipCap != nil && tip.Cmp(minTipCap) == -1 {
 		m.l.Debug("Enforcing min tip cap", "minTipCap", minTipCap, "origTipCap", tip)
 		tip = new(big.Int).Set(minTipCap)
 	}
+	if maxTipCap != nil && tip.Cmp(maxTipCap) > 0 {
+		return nil, nil, nil, fmt.Errorf("tip is too high: %v, cap:%v", tip, maxTipCap)
+	}
+
 	if minBaseFee != nil && baseFee.Cmp(minBaseFee) == -1 {
 		m.l.Debug("Enforcing min base fee", "minBaseFee", minBaseFee, "origBaseFee", baseFee)
 		baseFee = new(big.Int).Set(minBaseFee)
+	}
+	if maxBaseFee != nil && baseFee.Cmp(maxBaseFee) > 0 {
+		return nil, nil, nil, fmt.Errorf("baseFee is too high: %v, cap:%v", baseFee, maxBaseFee)
 	}
 
 	return tip, baseFee, blobFee, nil

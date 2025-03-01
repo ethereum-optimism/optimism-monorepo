@@ -32,7 +32,9 @@ const (
 	FeeLimitMultiplierFlagName         = "fee-limit-multiplier"
 	FeeLimitThresholdFlagName          = "txmgr.fee-limit-threshold"
 	MinBaseFeeFlagName                 = "txmgr.min-basefee"
+	MaxBaseFeeFlagName                 = "txmgr.max-basefee"
 	MinTipCapFlagName                  = "txmgr.min-tip-cap"
+	MaxTipCapFlagName                  = "txmgr.max-tip-cap"
 	ResubmissionTimeoutFlagName        = "resubmission-timeout"
 	NetworkTimeoutFlagName             = "network-timeout"
 	TxSendTimeoutFlagName              = "txmgr.send-timeout"
@@ -157,10 +159,20 @@ func CLIFlagsWithDefaults(envPrefix string, defaults DefaultFlagValues) []cli.Fl
 			EnvVars: prefixEnvVars("TXMGR_MIN_TIP_CAP"),
 		},
 		&cli.Float64Flag{
+			Name:    MaxTipCapFlagName,
+			Usage:   "Enforces a maximum tip cap (in GWei) to use when determining tx fees, `TxMgr` returns an error when exceeded. Disabled by default.",
+			EnvVars: prefixEnvVars("TXMGR_MAX_TIP_CAP"),
+		},
+		&cli.Float64Flag{
 			Name:    MinBaseFeeFlagName,
 			Usage:   "Enforces a minimum base fee (in GWei) to assume when determining tx fees. 1 GWei by default.",
 			Value:   defaults.MinBaseFeeGwei,
 			EnvVars: prefixEnvVars("TXMGR_MIN_BASEFEE"),
+		},
+		&cli.Float64Flag{
+			Name:    MaxBaseFeeFlagName,
+			Usage:   "Enforces a maximum base fee (in GWei) to assume when determining tx fees, `TxMgr` returns an error when exceeded. Disabled by default.",
+			EnvVars: prefixEnvVars("TXMGR_MAX_BASEFEE"),
 		},
 		&cli.DurationFlag{
 			Name:    ResubmissionTimeoutFlagName,
@@ -214,6 +226,8 @@ type CLIConfig struct {
 	FeeLimitThresholdGwei      float64
 	MinBaseFeeGwei             float64
 	MinTipCapGwei              float64
+	MaxBaseFeeGwei             float64
+	MaxTipCapGwei              float64
 	ResubmissionTimeout        time.Duration
 	ReceiptQueryInterval       time.Duration
 	NetworkTimeout             time.Duration
@@ -289,7 +303,9 @@ func ReadCLIConfig(ctx *cli.Context) CLIConfig {
 		FeeLimitMultiplier:         ctx.Uint64(FeeLimitMultiplierFlagName),
 		FeeLimitThresholdGwei:      ctx.Float64(FeeLimitThresholdFlagName),
 		MinBaseFeeGwei:             ctx.Float64(MinBaseFeeFlagName),
+		MaxBaseFeeGwei:             ctx.Float64(MaxBaseFeeFlagName),
 		MinTipCapGwei:              ctx.Float64(MinTipCapFlagName),
+		MaxTipCapGwei:              ctx.Float64(MaxTipCapFlagName),
 		ResubmissionTimeout:        ctx.Duration(ResubmissionTimeoutFlagName),
 		ReceiptQueryInterval:       ctx.Duration(ReceiptQueryIntervalFlagName),
 		NetworkTimeout:             ctx.Duration(NetworkTimeoutFlagName),
@@ -346,6 +362,23 @@ func NewConfig(cfg CLIConfig, l log.Logger) (*Config, error) {
 		return nil, fmt.Errorf("invalid min tip cap: %w", err)
 	}
 
+	var (
+		maxBaseFee, maxTipCap *big.Int
+	)
+	if cfg.MaxBaseFeeGwei > 0 {
+		maxBaseFee, err = eth.GweiToWei(cfg.MaxBaseFeeGwei)
+		if err != nil {
+			return nil, fmt.Errorf("invalid max base fee: %w", err)
+		}
+	}
+
+	if cfg.MaxTipCapGwei > 0 {
+		maxTipCap, err = eth.GweiToWei(cfg.MaxTipCapGwei)
+		if err != nil {
+			return nil, fmt.Errorf("invalid max tip cap: %w", err)
+		}
+	}
+
 	res := Config{
 		Backend: l1,
 		ChainID: chainID,
@@ -365,7 +398,9 @@ func NewConfig(cfg CLIConfig, l log.Logger) (*Config, error) {
 	res.FeeLimitThreshold.Store(feeLimitThreshold)
 	res.FeeLimitMultiplier.Store(cfg.FeeLimitMultiplier)
 	res.MinBaseFee.Store(minBaseFee)
+	res.MaxBaseFee.Store(maxBaseFee)
 	res.MinTipCap.Store(minTipCap)
+	res.MaxTipCap.Store(maxTipCap)
 	res.MinBlobTxFee.Store(defaultMinBlobTxFee)
 
 	return &res, nil
@@ -390,9 +425,13 @@ type Config struct {
 
 	// Minimum base fee (in Wei) to assume when determining tx fees.
 	MinBaseFee atomic.Pointer[big.Int]
+	// Maximum base fee (in Wei) to assume when determining tx fees.
+	MaxBaseFee atomic.Pointer[big.Int]
 
 	// Minimum tip cap (in Wei) to enforce when determining tx fees.
 	MinTipCap atomic.Pointer[big.Int]
+	// Maximum tip cap (in Wei) to enforce when determining tx fees.
+	MaxTipCap atomic.Pointer[big.Int]
 
 	MinBlobTxFee atomic.Pointer[big.Int]
 

@@ -133,11 +133,16 @@ type gasPricer struct {
 	mu            sync.Mutex
 }
 
+const (
+	baseGasTipFee = 5
+	baseBaseFee   = 7
+)
+
 func newGasPricer(mineAtEpoch int64) *gasPricer {
 	return &gasPricer{
 		mineAtEpoch:   mineAtEpoch,
-		baseGasTipFee: big.NewInt(5),
-		baseBaseFee:   big.NewInt(7),
+		baseGasTipFee: big.NewInt(baseGasTipFee),
+		baseBaseFee:   big.NewInt(baseBaseFee),
 		// Simulate 100 excess blobs, which results in a blobBaseFee of 50 wei.  This default means
 		// blob txs will be subject to the geth minimum blobgas fee of 1 gwei.
 		excessBlobGas: 100 * (params.BlobTxBlobGasPerBlob),
@@ -1448,7 +1453,7 @@ func TestMinFees(t *testing.T) {
 			conf.MinTipCap.Store(tt.minTipCap)
 			h := newTestHarnessWithConfig(t, conf)
 
-			tip, baseFee, _, err := h.mgr.SuggestGasPriceCaps(context.TODO())
+			tip, baseFee, _, err := h.mgr.SuggestGasPriceCaps(context.Background())
 			require.NoError(err)
 
 			if tt.expectMinBaseFee {
@@ -1460,6 +1465,53 @@ func TestMinFees(t *testing.T) {
 			if tt.expectMinTipCap {
 				require.Equal(tt.minTipCap, tip, "expect suggested tip to equal MinTipCap")
 			} else {
+				require.Equal(h.gasPricer.baseGasTipFee, tip, "expect suggested tip to equal mock tip")
+			}
+		})
+	}
+}
+
+func TestMaxFees(t *testing.T) {
+	for _, tt := range []struct {
+		desc             string
+		maxBaseFee       *big.Int
+		maxTipCap        *big.Int
+		expectMaxBaseFee bool
+		expectMaxTipCap  bool
+	}{
+		{
+			desc: "no-maxs",
+		},
+		{
+			desc:             "max-basefee",
+			maxBaseFee:       big.NewInt(baseBaseFee - 1),
+			expectMaxBaseFee: true,
+		},
+		{
+			desc:            "max-tipcap",
+			maxTipCap:       big.NewInt(baseGasTipFee - 1),
+			expectMaxTipCap: true,
+		},
+	} {
+		t.Run(tt.desc, func(t *testing.T) {
+			require := require.New(t)
+			conf := configWithNumConfs(1)
+			conf.MaxBaseFee.Store(tt.maxBaseFee)
+			conf.MaxTipCap.Store(tt.maxTipCap)
+			h := newTestHarnessWithConfig(t, conf)
+
+			tip, baseFee, _, err := h.mgr.SuggestGasPriceCaps(context.Background())
+			if tt.expectMaxBaseFee {
+				require.Equal(err, fmt.Errorf("baseFee is too high: %v, cap:%v", h.gasPricer.baseBaseFee, tt.maxBaseFee), "expect baseFee is too high")
+			}
+
+			if tt.expectMaxTipCap {
+				require.Equal(err, fmt.Errorf("tip is too high: %v, cap:%v", h.gasPricer.baseGasTipFee, tt.maxTipCap), "expect tip is too high")
+			}
+
+			if !(tt.expectMaxBaseFee || tt.expectMaxTipCap) {
+				require.NoError(err)
+				require.Equal(h.gasPricer.baseBaseFee, baseFee, "expect suggested base fee to equal mock base fee")
 				require.Equal(h.gasPricer.baseGasTipFee, tip, "expect suggested tip to equal mock tip")
 			}
 		})
