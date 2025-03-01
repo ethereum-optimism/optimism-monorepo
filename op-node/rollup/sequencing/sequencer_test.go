@@ -3,6 +3,7 @@ package sequencing
 import (
 	"context"
 	"encoding/binary"
+	"fmt"
 	"math/rand" // nosemgrep
 	"testing"
 	"time"
@@ -611,6 +612,58 @@ func TestSequencerBuild(t *testing.T) {
 	nextTime, ok := seq.NextAction()
 	require.True(t, ok, "ready to build next block")
 	require.Equal(t, testClock.Now(), nextTime, "start asap on the next block")
+}
+
+func TestSequencerL1TemporaryErrorEvent(t *testing.T) {
+	logger := testlog.Logger(t, log.LevelError)
+	seq, deps := createSequencer(logger)
+	testClock := clock.NewSimpleClock()
+	seq.timeNow = testClock.Now
+	testClock.SetTime(30000)
+	emitter := &testutils.MockEmitter{}
+	seq.AttachEmitter(emitter)
+
+	// Init will request a forkchoice update
+	emitter.ExpectOnce(engine.ForkchoiceRequestEvent{})
+	require.NoError(t, seq.Init(context.Background(), true))
+	emitter.AssertExpectations(t)
+	require.True(t, seq.Active(), "started in active mode")
+
+	// It will request a forkchoice update, it needs the head before being able to build on top of it
+	emitter.ExpectOnce(engine.ForkchoiceRequestEvent{})
+	seq.OnEvent(SequencerActionEvent{})
+	emitter.AssertExpectations(t)
+
+	// Now send the forkchoice data, for the sequencer to learn what to build on top of.
+	head := eth.L2BlockRef{
+		Hash:   common.Hash{0x22},
+		Number: 100,
+		L1Origin: eth.BlockID{
+			Hash:   common.Hash{0x11, 0xa},
+			Number: 1000,
+		},
+		Time: uint64(testClock.Now().Unix()),
+	}
+	seq.OnEvent(engine.ForkchoiceUpdateEvent{UnsafeL2Head: head})
+	emitter.AssertExpectations(t)
+
+	// force FindL1Origin to return an error
+	deps.l1OriginSelector.l1OriginFn = func(l2Head eth.L2BlockRef) (eth.L1BlockRef, error) {
+		return eth.L1BlockRef{}, fmt.Errorf("l1OriginFn error")
+	}
+
+	emitter.ExpectOnceRun(func(ev event.Event) {
+		_, ok := ev.(rollup.L1TemporaryErrorEvent)
+		require.True(t, ok)
+	})
+	seq.OnEvent(SequencerActionEvent{})
+	emitter.AssertExpectations(t)
+
+	sealTargetTime1, ok1 := seq.NextAction()
+	require.True(t, seq.OnEvent(rollup.L1TemporaryErrorEvent{}))
+	sealTargetTime2, ok2 := seq.NextAction()
+
+	require.True(t, ok1 == ok2 && sealTargetTime2.After(sealTargetTime1))
 }
 
 type sequencerTestDeps struct {
