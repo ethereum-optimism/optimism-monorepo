@@ -79,6 +79,10 @@ type CLIConfig struct {
 	// ActiveSequencerCheckDuration is the duration between checks to determine the active sequencer endpoint.
 	ActiveSequencerCheckDuration time.Duration
 
+	// If Stopped is true, the proposer starts stopped and won't start proposing right away.
+	// Proposing needs to be started via an admin RPC.
+	Stopped bool
+
 	// Whether to wait for the sequencer to sync to a recent block at startup.
 	WaitNodeSync bool
 }
@@ -146,6 +150,7 @@ func NewConfig(ctx *cli.Context) *CLIConfig {
 		ProposalInterval:             ctx.Duration(flags.ProposalIntervalFlag.Name),
 		DisputeGameType:              uint32(ctx.Uint(flags.DisputeGameTypeFlag.Name)),
 		ActiveSequencerCheckDuration: ctx.Duration(flags.ActiveSequencerCheckDurationFlag.Name),
+		Stopped:                      ctx.Bool(flags.StoppedFlag.Name),
 		WaitNodeSync:                 ctx.Bool(flags.WaitNodeSyncFlag.Name),
 	}
 }
