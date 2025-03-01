@@ -209,6 +209,7 @@ func Setup(t require.TestingT, deployParams *DeployParams, alloc *AllocParams) *
 		GraniteTime:            deployConf.GraniteTime(uint64(deployConf.L1GenesisBlockTimestamp)),
 		HoloceneTime:           deployConf.HoloceneTime(uint64(deployConf.L1GenesisBlockTimestamp)),
 		IsthmusTime:            deployConf.IsthmusTime(uint64(deployConf.L1GenesisBlockTimestamp)),
+		JovianTime:             deployConf.JovianTime(uint64(deployConf.L1GenesisBlockTimestamp)),
 		InteropTime:            deployConf.InteropTime(uint64(deployConf.L1GenesisBlockTimestamp)),
 		AltDAConfig:            pcfg,
 		ChainOpConfig: &params.OptimismConfig{
@@ -239,7 +240,8 @@ func SystemConfigFromDeployConfig(deployConfig *genesis.DeployConfig) eth.System
 }
 
 func ApplyDeployConfigForks(deployConfig *genesis.DeployConfig) {
-	isIsthmus := os.Getenv("OP_E2E_USE_ISTHMUS") == "true"
+	isJovian := os.Getenv("OP_E2E_USE_JOVIAN") == "true"
+	isIsthmus := isJovian || os.Getenv("OP_E2E_USE_ISTHMUS") == "true"
 	isHolocene := isIsthmus || os.Getenv("OP_E2E_USE_HOLOCENE") == "true"
 	isGranite := isHolocene || os.Getenv("OP_E2E_USE_GRANITE") == "true"
 	isFjord := isGranite || os.Getenv("OP_E2E_USE_FJORD") == "true"
@@ -262,6 +264,9 @@ func ApplyDeployConfigForks(deployConfig *genesis.DeployConfig) {
 	}
 	if isIsthmus {
 		deployConfig.L2GenesisIsthmusTimeOffset = new(hexutil.Uint64)
+	}
+	if isJovian {
+		deployConfig.L2GenesisJovianTimeOffset = new(hexutil.Uint64)
 	}
 	// Canyon and lower is activated by default
 	deployConfig.L2GenesisCanyonTimeOffset = new(hexutil.Uint64)
