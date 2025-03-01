@@ -47,14 +47,28 @@ func (s syncActions) TerminalString() string {
 // state of the batcher (blocks and channels), the new sync status, and the previous current L1 block. The actions are returned
 // in a struct specifying the number of blocks to prune, the number of channels to prune, whether to wait for node sync, the block
 // range to load into the local state, and whether to clear the state entirely. Returns an boolean indicating if the sequencer is out of sync.
-func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCurrentL1 eth.L1BlockRef, blocks queue.Queue[*types.Block], channels []T, l log.Logger) (syncActions, bool) {
+func computeSyncActions[T channelStatuser](
+	newSyncStatus eth.SyncStatus,
+	prevCurrentL1 eth.L1BlockRef,
+	blocks queue.Queue[*types.Block],
+	channels []T,
+	l log.Logger,
+	preferLocalSafeL2 bool,
+) (syncActions, bool) {
 
 	m := l.With(
 		"syncStatus.headL1", newSyncStatus.HeadL1,
 		"syncStatus.currentL1", newSyncStatus.CurrentL1,
 		"syncStatus.localSafeL2", newSyncStatus.LocalSafeL2,
+		"syncStatus.safeL2", newSyncStatus.SafeL2,
 		"syncStatus.unsafeL2", newSyncStatus.UnsafeL2,
 	)
+
+	safeL2 := newSyncStatus.SafeL2
+	if preferLocalSafeL2 {
+		// This is preffered when running interop, but not yet enabled by default.
+		safeL2 = newSyncStatus.LocalSafeL2
+	}
 
 	// PART 1: Initial checks on the sync status
 	if newSyncStatus.HeadL1 == (eth.L1BlockRef{}) {
@@ -69,8 +83,8 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 	}
 
 	var allUnsafeBlocks *inclusiveBlockRange
-	if newSyncStatus.UnsafeL2.Number > newSyncStatus.LocalSafeL2.Number {
-		allUnsafeBlocks = &inclusiveBlockRange{newSyncStatus.LocalSafeL2.Number + 1, newSyncStatus.UnsafeL2.Number}
+	if newSyncStatus.UnsafeL2.Number > safeL2.Number {
+		allUnsafeBlocks = &inclusiveBlockRange{safeL2.Number + 1, newSyncStatus.UnsafeL2.Number}
 	}
 
 	// PART 2: checks involving only the oldest block in the state
@@ -89,12 +103,12 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 	// and we need to start over, loading all unsafe blocks
 	// from the sequencer.
 	startAfresh := syncActions{
-		clearState:   &newSyncStatus.LocalSafeL2.L1Origin,
+		clearState:   &safeL2.L1Origin,
 		blocksToLoad: allUnsafeBlocks,
 	}
 
 	oldestBlockInStateNum := oldestBlockInState.NumberU64()
-	nextSafeBlockNum := newSyncStatus.LocalSafeL2.Number + 1
+	nextSafeBlockNum := safeL2.Number + 1
 
 	if nextSafeBlockNum < oldestBlockInStateNum {
 		m.Warn("next safe block is below oldest block in state",
@@ -120,7 +134,7 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 		return startAfresh, false
 	}
 
-	if numBlocksToDequeue > 0 && blocks[numBlocksToDequeue-1].Hash() != newSyncStatus.LocalSafeL2.Hash {
+	if numBlocksToDequeue > 0 && blocks[numBlocksToDequeue-1].Hash() != safeL2.Hash {
 		m.Warn("safe chain reorg, clearing channel manager state",
 			"syncActions", startAfresh,
 			"existingBlock", eth.ToBlockID(blocks[numBlocksToDequeue-1]))
@@ -132,7 +146,7 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 		if ch.isFullySubmitted() &&
 			!ch.isTimedOut() &&
 			newSyncStatus.CurrentL1.Number > ch.MaxInclusionBlock() &&
-			newSyncStatus.LocalSafeL2.Number < ch.LatestL2().Number {
+			safeL2.Number < ch.LatestL2().Number {
 			// Safe head did not make the expected progress
 			// for a fully submitted channel. This indicates
 			// that the derivation pipeline may have stalled
@@ -147,7 +161,7 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 	// PART 5: happy path
 	numChannelsToPrune := 0
 	for _, ch := range channels {
-		if ch.LatestL2().Number > newSyncStatus.LocalSafeL2.Number {
+		if ch.LatestL2().Number > safeL2.Number {
 			// If the channel has blocks which are not yet safe
 			// we do not want to prune it.
 			break
