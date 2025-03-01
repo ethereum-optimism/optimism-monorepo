@@ -33,5 +33,10 @@ func BuildOpProgramClient(t *testing.T) string {
 	cmd.Stderr = &out
 	require.NoErrorf(t, cmd.Run(), "Failed to build op-program-client: %v", &out)
 	t.Log("Built op-program-client successfully")
-	return "../../../op-program/bin/op-program-client"
+
+	clientPath, err = filepath.Abs("../../../op-program/bin/op-program-client")
+	require.NoError(t, err)
+	_, err = os.Stat(clientPath)
+	require.NoError(t, err)
+	return clientPath
 }
