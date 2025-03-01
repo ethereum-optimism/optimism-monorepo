@@ -1,6 +1,6 @@
 ## Optimism Monorepo Documentation
 
-The `docs/` directory contains Optimism documentation closely tied to the implementation details of the monorepo (https://github.com/ethereum-optimism/optimism).
+The `docs/` directory contains Optimism documentation closely tied to the implementation details of the [monorepo](https://github.com/ethereum-optimism/optimism).
 
 The directory layout is divided into the following sub-directories.
 
